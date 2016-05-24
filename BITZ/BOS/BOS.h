@@ -47,7 +47,7 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 	 
 /* RTOS CLI */
 #include "FreeRTOS_CLI.h"
-#include "UART-interrupt-driven-command-console.h"
+#include "BOS_CLI.h"
 
 /* C STD Library */
 #include <stdio.h>
@@ -64,7 +64,7 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 /* Module includes and initialization */
 #ifdef H01R0
 	#include "H01R0.h"
-	#include "H01R0_usart.h"	
+	#include "H01R0_uart.h"	
 	#include "H01R0_gpio.h"	
 	#include "H01R0_dma.h"		
 	#define	Module_Init		H01R0_Init
@@ -140,6 +140,7 @@ extern char cRxedChar;
 extern uint8_t myID;
 extern uint16_t myPN;
 extern uint8_t N;
+extern const char modulePNstring[4][5];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)];

@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * File Name          : DMA.c
+  * File Name          : H01R0_DMA.c
   * Description        : This file provides code for the configuration
   *                      of the DMA instances.
   ******************************************************************************
@@ -129,7 +129,7 @@ void PortMemDMA1_Setup(UART_HandleTypeDef* huart, uint8_t num)
 	
 	
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch4_7_DMA2_Ch3_5_IRQn);
 	
 	/* Start DMA stream	*/	
@@ -180,7 +180,7 @@ void PortMemDMA2_Setup(UART_HandleTypeDef* huart, uint8_t num)
 	__HAL_LINKDMA(huart,hdmarx,portMemDMA2);
 	
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch4_7_DMA2_Ch3_5_IRQn);
 	
 	/* Start DMA stream	*/	
@@ -231,7 +231,7 @@ void PortMemDMA3_Setup(UART_HandleTypeDef* huart, uint8_t num)
 	__HAL_LINKDMA(huart,hdmarx,portMemDMA3);
 
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch2_3_DMA2_Ch1_2_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch2_3_DMA2_Ch1_2_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch2_3_DMA2_Ch1_2_IRQn);
 	
 	/* Start DMA stream	*/	
@@ -282,7 +282,7 @@ void PortPortDMA1_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	__HAL_LINKDMA(huartSrc,hdmarx,portPortDMA1);
 	
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch1_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch1_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch1_IRQn);
 	
 	/* Start DMA stream	*/	
@@ -334,7 +334,7 @@ void PortPortDMA2_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	__HAL_LINKDMA(huartSrc,hdmarx,portPortDMA2);
 	
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch2_3_DMA2_Ch1_2_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch2_3_DMA2_Ch1_2_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch2_3_DMA2_Ch1_2_IRQn);
 	
 	/* Start DMA stream	*/	
@@ -386,7 +386,7 @@ void PortPortDMA3_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	__HAL_LINKDMA(huartSrc,hdmarx,portPortDMA3);
 	
 	/* DMA interrupt init */
-	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 0, 0);
+	HAL_NVIC_SetPriority(DMA1_Ch4_7_DMA2_Ch3_5_IRQn, 1, 0);
 	HAL_NVIC_EnableIRQ(DMA1_Ch4_7_DMA2_Ch3_5_IRQn);
 	
 	/* Start DMA stream	*/	

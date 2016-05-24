@@ -20,6 +20,9 @@ uint8_t myID = 1;
 //uint8_t myID = _module;
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim7;	/* micro-second delay counter */
+
+/* Define module PN strings [available PNs+1][5 chars] */
+const char modulePNstring[4][5] = {"", "H01R0", "H01R1", "H02R0"};
 	
 /* Number of modules in the array */
 #ifndef _N
@@ -820,8 +823,8 @@ BOS_Status Explore(void)
 	
 	/* >>> Step 4 - Ask each new module to explore and repeat */
 	
-	while (lastID != currentID)
-	{
+//	while (lastID != currentID)
+//	{
 		/* Update lastID */
 		lastID = currentID;
 		
@@ -886,9 +889,10 @@ BOS_Status Explore(void)
 			/* Step 4e - Ask the module to update its topology array */
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-			osDelay(60);
+			//osDelay(60);
+			osDelay(200);
 		}
-	}
+//	}
 	
 	
 	/* >>> Step 5 - Make sure all connected modules have been discovered */

@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * File Name          : USART.c
+  * File Name          : H01R0_uart.c
   * Description        : This file provides code for the configuration
   *                      of the USART instances.
   ******************************************************************************
@@ -216,7 +216,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART1_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART1_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
 	#endif
   }
@@ -242,7 +242,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART2_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART2_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART2_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
 	#endif
   }
@@ -268,7 +268,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART3_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART3_8_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART3_8_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART3_8_IRQn);
 	#endif
   }
@@ -294,7 +294,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART4_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART3_8_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART3_8_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART3_8_IRQn);
 	#endif
   }
@@ -320,7 +320,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART5_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART3_8_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART3_8_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART3_8_IRQn);
 	#endif
   }
@@ -346,7 +346,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(USART6_RX_PORT, &GPIO_InitStruct);
 
     /* Peripheral interrupt init*/
-    HAL_NVIC_SetPriority(USART3_8_IRQn, 0, 0);
+    HAL_NVIC_SetPriority(USART3_8_IRQn, 1, 0);
     HAL_NVIC_EnableIRQ(USART3_8_IRQn);
 	#endif
   }
