@@ -89,27 +89,10 @@ int main(void)
 /* FrontEndTask function */
 void FrontEndTask(void * argument)
 {
-	#if _module == 1
-	
-		Explore();
-	
-
-	#else
-		
-		osDelay(500);
-	#endif
 			
   /* Infinite loop */
   for(;;)
   {
-		#if _module == 3
-
-		
-		#else
-		
-			
-		
-		#endif
 		
 
 

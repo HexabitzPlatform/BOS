@@ -16,7 +16,7 @@
 #include "BOS.h"
 
 /* Private variables ---------------------------------------------------------*/
-uint8_t myID = 1;
+uint8_t myID = 0;
 //uint8_t myID = _module;
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim7;	/* micro-second delay counter */
@@ -36,10 +36,10 @@ uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 #ifndef _N
-	uint16_t array[50][MaxNumOfPorts+1] = {{0}};			/* Array topology */
-	uint8_t routeDist[50] = {0}; 
-	uint8_t routePrev[50] = {0}; 
-	uint8_t route[50] = {0};
+	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
+	uint8_t routeDist[MaxNumOfModules] = {0}; 
+	uint8_t routePrev[MaxNumOfModules] = {0}; 
+	uint8_t route[MaxNumOfModules] = {0};
 #else
 	uint8_t routeDist[_N] = {0}; 
 	uint8_t routePrev[_N] = {0}; 
@@ -52,11 +52,10 @@ uint8_t messageLength[NumOfPorts] = {0};
 uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)] = {0};
 char cRxedChar = 0; 
 uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
-uint8_t longMessageScratchpad[] = {0};
+static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
 	
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
-//extern TaskHandle_t SendMessageTaskHandle;
 #ifdef _P1
 extern TaskHandle_t P1MsgTaskHandle;
 #endif
@@ -99,6 +98,10 @@ static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
  * Implements the update command.
  */
 static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+/*
+ * Implements the explore command.
+ */
+static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 
 
@@ -109,7 +112,7 @@ This generates a table that shows how much run time each task has */
 static const CLI_Command_Definition_t prvRunTimeStatsCommandDefinition =
 {
 	( const int8_t * ) "run-time-stats", /* The command string to type. */
-	( const int8_t * ) "run-time-stats:\r\n Displays a table showing how much processing time each FreeRTOS task has used\r\n\r\n",
+	( const int8_t * ) "run-time-stats:\r\n Display a table showing how much processing time each FreeRTOS task has used\r\n\r\n",
 	prvRunTimeStatsCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
@@ -119,7 +122,7 @@ This generates a table that gives information on each task in the system. */
 static const CLI_Command_Definition_t prvTaskStatsCommandDefinition =
 {
 	( const int8_t * ) "task-stats", /* The command string to type. */
-	( const int8_t * ) "task-stats:\r\n Displays a table showing the state of each FreeRTOS task\r\n\r\n",
+	( const int8_t * ) "task-stats:\r\n Display a table showing the state of each FreeRTOS task\r\n\r\n",
 	prvTaskStatsCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
@@ -128,7 +131,7 @@ static const CLI_Command_Definition_t prvTaskStatsCommandDefinition =
 static const CLI_Command_Definition_t pingCommandDefinition =
 {
 	( const int8_t * ) "ping", /* The command string to type. */
-	( const int8_t * ) "ping:\r\n Pings a module\r\n\r\n",
+	( const int8_t * ) "ping:\r\n Ping a module\r\n\r\n",
 	pingCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
@@ -137,8 +140,17 @@ static const CLI_Command_Definition_t pingCommandDefinition =
 static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition =
 {
 	( const int8_t * ) "update", /* The command string to type. */
-	( const int8_t * ) "update:\r\n Puts the module in bootloader mode to update its firmware\r\n\r\n",
+	( const int8_t * ) "update:\r\n Put the module in bootloader mode to update its firmware\r\n\r\n",
 	bootloaderUpdateCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : explore */
+static const CLI_Command_Definition_t exploreCommandDefinition =
+{
+	( const int8_t * ) "explore", /* The command string to type. */
+	( const int8_t * ) "explore:\r\n Explore the array and build its topology\r\n\r\n",
+	exploreCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
 /*-----------------------------------------------------------*/
@@ -217,10 +229,7 @@ uint8_t port, src, dst, temp; uint16_t code;
 						
 						case CODE_hi :					
 							/* Record your neighbor info */
-							if (src == 1)		/* Is it the master? */
-								neighbors[port-1][0] = ( (uint16_t) 0xFF << 8 ) + cMessage[port-1][6];		/* Neighbor ID + Neighbor own port */
-							else
-								neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][6];			/* Neighbor ID + Neighbor own port */
+							neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][6];			/* Neighbor ID + Neighbor own port */
 							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */
 							/* Send your own info */
 							messageParams[1] = (uint8_t) myPN;
@@ -289,10 +298,10 @@ uint8_t port, src, dst, temp; uint16_t code;
 							if (longMessage) {
 								/* array is 2-byte oriented thus memcpy can copy only even number of bytes */
 								/* Use a 1-byte oriented scratchpad */
-								memcpy(&longMessageScratchpad+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
+								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
 								longMessageLastPtr += messageLength[port-1]-5;
 							} else {
-								memcpy(&longMessageScratchpad+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
+								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
 								longMessageLastPtr += messageLength[port-1]-5;
 								N = (longMessageLastPtr / (MaxNumOfPorts+1)) / 2;
 								/* Copy the scratchpad to array */
@@ -415,7 +424,7 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 	/* Message length */
 	length = messageLength[incomingPort-1];
 	/* Message code */
-	memcpy(&code, &cMessage[incomingPort-1][2], 2);
+	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
 	/* Message parameters */
 	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
 	
@@ -423,7 +432,7 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 	port = FindRoute(myID, cMessage[incomingPort-1][0]); 
 	
 	/* Transmit the message from this port */
-	SendMessageFromPort(port, 0xFF, code, length-5);	
+	SendMessageFromPort(port, cMessage[incomingPort-1][0], code, length-5);	
 
 	return result;	
 }
@@ -506,6 +515,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &prvRunTimeStatsCommandDefinition );	
 	FreeRTOS_CLIRegisterCommand( &pingCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &bootloaderUpdateCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &exploreCommandDefinition );
 	
 #ifdef H01R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
@@ -771,22 +781,21 @@ BOS_Status Explore(void)
 	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0;
 	uint16_t temp16 = 0;
 	
-	/* >>> Step 1 - Array exploration algorithm was executed */
-
+	myID = 1; 		/* Master ID */
 	
-	/* >>> Step 2 - Reverse master ports and explore adjacent neighbors */
+	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
 	
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 	{
-		SwapUartPins(GetUart(port), REVERSED);
+		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(0);
+	ExploreNeighbors(PcPort);
 
 	
-	/* >>> Step 3 - Assign IDs to new modules & update the topology array */
+	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 	
-	/* Step 3a - Assign IDs to new modules */
-	myID = 1; currentID = 1;
+	/* Step 2a - Assign IDs to new modules */
+	currentID = 1;
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 	{
 		if (neighbors[port-1][0])
@@ -803,7 +812,7 @@ BOS_Status Explore(void)
 		}
 	}
 	
-	/* Step 3b - Update master topology array */
+	/* Step 2b - Update master topology array */
 	array[0][0]	= myPN;					
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 	{
@@ -821,31 +830,31 @@ BOS_Status Explore(void)
 	}		
 	
 	
-	/* >>> Step 4 - Ask each new module to explore and repeat */
+	/* >>> Step 3 - Ask each new module to explore and repeat */
 	
-//	while (lastID != currentID)
-//	{
+	while (lastID != currentID)
+	{
 		/* Update lastID */
 		lastID = currentID;
 		
 		/* Scan all discovered modules */
 		for (uint8_t i=2 ; i<=currentID ; i++) 
 		{
-			/* Step 4a - Ask the module to reverse ports */
+			/* Step 3a - Ask the module to reverse ports */
 			messageParams[0] = REVERSED;
 			SendMessageToModule(i, CODE_port_dir, 1);
 			osDelay(10);
 			
-			/* Step 4b - Ask the module to explore adjacent neighbors */
+			/* Step 3b - Ask the module to explore adjacent neighbors */
 			SendMessageToModule(i, CODE_explore_adj, 0);
 			osDelay(100);		
 		
-			/* Step 4c - Assign IDs to new modules */
+			/* Step 3c - Assign IDs to new modules */
 			for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
 			{
 				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 				temp1 = (uint8_t)(temp16>>8);											
-				if (temp1 == 1)
+				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
 				{
 					/* New ID */
 					messageParams[1] = ++currentID;		
@@ -860,7 +869,7 @@ BOS_Status Explore(void)
 				}
 			}
 			
-			/* Step 4d - Update master topology array */
+			/* Step 3d - Update master topology array */
 			for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
 			{
 				if (neighbors2[j-1][0])
@@ -868,7 +877,7 @@ BOS_Status Explore(void)
 					temp16 = neighbors2[j-1][0];
 					temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
 					temp2 = (uint8_t)(neighbors2[j-1][0]);					/* Neighbor port */		
-					if (temp1 != 0xFF)			/* Execlude the master */
+					if (temp1 != 1)			/* Execlude the master */
 					{
 						/* Update module i section */
 						if (array[i-1][j] == 0) {
@@ -886,24 +895,23 @@ BOS_Status Explore(void)
 			/* Reset neighbors2 array */
 			memset(neighbors2, 0, sizeof(neighbors2) );
 			
-			/* Step 4e - Ask the module to update its topology array */
+			/* Step 3e - Ask the module to update its topology array */
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-			//osDelay(60);
-			osDelay(200);
+			osDelay(60);
 		}
-//	}
+	}
+
 	
+	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	
-	/* >>> Step 5 - Make sure all connected modules have been discovered */
-	
-//	ExploreNeighbors(0);
+//	ExploreNeighbors(PcPort);
 //	/* Check for any unIDed neighbors */
 //	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
 //	{
 //		temp16 = neighbors[i-1][0];		/* Neighbor ID */
 //		temp1 = (uint8_t)(temp16>>8);											
-//		if (temp1 == 1) {
+//		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
 //			result = BOS_ERR_UnIDedModule;
 //		}		
 //	}
@@ -917,23 +925,22 @@ BOS_Status Explore(void)
 //		{
 //			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 //			temp1 = (uint8_t)(temp16>>8);											
-//			if (temp1 == 1) {
+//			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
 //				result = BOS_ERR_UnIDedModule;
 //			}
 //		}				
 //	}
 	
 	
-	/* >>> Step 6 - If no unIDed modules found, update all with latest topology */
+	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
 	
 //	if (result == BOS_OK)
 //	{
-//		N = currentID;			/* Update number of modules in the array */
 //		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 //		SendMessageToModule(0xFF, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));		
 //	}
 	
-	/* >>> Step 7 - Build and broadcast broadcast plans */
+	/* >>> Step 6 - Build and broadcast broadcast plans */
 	
 
 	return result;
@@ -1124,6 +1131,49 @@ finishedRoute:
 
 /*-----------------------------------------------------------*/
 
+/* --- Display array topology in human-readable format through module port --- 
+*/
+void DisplayTopology(uint8_t port)
+{
+	//char* pcMessage = malloc(20);
+	static char pcMessage[30];
+	
+	/* Print table header */
+	strcpy(pcMessage, "\n\r(Module:Port)\t\t");
+	writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
+	{
+		sprintf(pcMessage, "P%d\t", i);
+		writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+	}
+	writePxMutex(port, "\n\n\r", 3, cmd50ms, HAL_MAX_DELAY);
+	
+	/* Print each row */
+	for(uint8_t row=0 ; row<N ; row++)
+	{
+		sprintf(pcMessage, "Module %d:\t",row+1);
+		writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+		/* Module PN */
+		strncpy(pcMessage, modulePNstring[(array[row][0])], 5);
+		writePxMutex(port, pcMessage, 5, cmd50ms, HAL_MAX_DELAY);
+		writePxMutex(port, "\t", 1, cmd50ms, HAL_MAX_DELAY);
+		/* Connections */
+		for(uint8_t col=1 ; col<=NumOfPorts ; col++)
+		{
+			if (!array[row][col])
+				sprintf(pcMessage, "%d\t",0);
+			else
+				sprintf(pcMessage, "%d:%d\t", (array[row][col]>>3), (array[row][col]&0x07) );
+			writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);			
+		}
+		writePxMutex(port, "\n\r", 2, cmd50ms, HAL_MAX_DELAY);
+	}
+	
+	writePxMutex(port, "\n", 1, cmd50ms, HAL_MAX_DELAY);
+}
+
+/*-----------------------------------------------------------*/
+
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
@@ -1215,6 +1265,43 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 	*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
 
 	NVIC_SystemReset();		
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK;
+	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
+	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Below is the discovered topology:\n\r";
+	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections and try again.\n\r";
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Respond to the update command */
+	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
+	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	
+	/* Call array exploration routine */
+	result = Explore();
+	if (result == BOS_OK) {
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		DisplayTopology(PcPort);
+	} else {
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	}
+	sprintf( ( char * ) pcWriteBuffer, " ");
 	
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */

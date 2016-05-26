@@ -93,7 +93,8 @@ typedef enum
 } BOS_Status;
 
 /* BOS Parameters */ 
-#define MAX_MESSAGE_SIZE			(50)
+#define MAX_MESSAGE_SIZE			50
+#define	MaxNumOfModules				50
 #define MaxNumOfPorts					10
 #define	MSG_ACK								0x65
 
@@ -201,7 +202,7 @@ extern BOS_Status Explore(void);
 extern BOS_Status ExploreNeighbors(uint8_t ignore);
 extern void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction);
 extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
-
+extern void DisplayTopology(uint8_t port);
 
 
 #endif /* BOS_H */
