@@ -58,7 +58,7 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 #include <math.h>	 
 
 /* Include a predefined topology here */
-//#include "topology_ex.h"
+#include "topology_ex.h"
 
 
 /* Module includes and initialization */
@@ -88,16 +88,20 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 /* BOS_Status Type Definition */  
 typedef enum 
 {
-  BOS_OK       	= 0x00,
-  BOS_ERR_UnIDedModule    = 0x05,
+  BOS_OK = 0,
+  BOS_ERR_NoResponse = 2,
+  BOS_ERR_UnIDedModule = 5,
+	BOS_ERR_WrongName = 100,
+	BOS_ERR_WrongID = 101,
+	BOS_BROADCAST = 255,
 } BOS_Status;
 
 /* BOS Parameters */ 
 #define MAX_MESSAGE_SIZE			50
+#define cmdMAX_INPUT_SIZE			50
 #define	MaxNumOfModules				50
 #define MaxNumOfPorts					10
-#define	MSG_ACK								0x65
-
+#define MaxLengthOfAlias			10
 
 /* Delay macros */
 #define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
@@ -149,8 +153,13 @@ extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
 extern uint8_t messageLength[NumOfPorts];
 extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
 extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
+static char pcUserMessage[80];
+extern BOS_Status responseStatus;
 #ifndef _N
-extern uint16_t array[50][MaxNumOfPorts+1];
+	extern uint16_t array[50][MaxNumOfPorts+1];
+	extern char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1];
+#else
+	extern char moduleAlias[_N][MaxLengthOfAlias+1];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
@@ -161,21 +170,23 @@ extern uint8_t route[];
    ----------------------------------------------------------------------- 
 */
 #define	CODE_ping									1
-#define	CODE_IND_toggle						2
+#define	CODE_ping_response				2
 
-#define	CODE_hi										4
-#define	CODE_hi_response					5
+#define	CODE_IND_toggle						5
 
-#define	CODE_task_stats						6
-#define	CODE_run_time_stats				7
+#define	CODE_hi										10
+#define	CODE_hi_response					11
+#define	CODE_explore_adj					12
+#define	CODE_explore_adj_response	13
+#define	CODE_port_dir							14
+#define	CODE_module_id						15
+#define	CODE_topology							16
+#define	CODE_broadcast_plan				17
 
-#define	CODE_explore_adj					10
-#define	CODE_explore_adj_response	11
-#define	CODE_port_dir							12
-#define	CODE_module_id						13
-#define	CODE_topology							14
-#define	CODE_broadcast_plan				15
-
+#define	CODE_CLI_command 					20
+#define	CODE_CLI_response  				21
+#define	CODE_task_stats						22
+#define	CODE_run_time_stats				23
 
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
@@ -194,7 +205,7 @@ extern UART_HandleTypeDef* GetUart(uint8_t port);
 extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern void vRegisterCLICommands(void);
 extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfParams);
-extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_t numberOfParams);
+extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
 extern void StartMicroDelay(uint16_t Delay);
@@ -203,6 +214,7 @@ extern BOS_Status ExploreNeighbors(uint8_t ignore);
 extern void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction);
 extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
 extern void DisplayTopology(uint8_t port);
+extern uint8_t GetID(char* string);
 
 
 #endif /* BOS_H */

@@ -599,6 +599,24 @@ H01R0_Status RGB_LED_off(void)
 	return result;
 }
 
+/*-----------------------------------------------------------*/
+
+/* --- Toggle RGB LED --- 
+*/
+H01R0_Status RGB_LED_toggle(uint8_t intensity)
+{
+	H01R0_Status result = H01R0_OK;
+	
+	if (RGB_LED_State)
+		result = RGB_LED_off();
+	else
+		result = RGB_LED_on(intensity);
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 

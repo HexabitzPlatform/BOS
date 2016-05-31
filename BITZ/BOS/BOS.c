@@ -16,8 +16,7 @@
 #include "BOS.h"
 
 /* Private variables ---------------------------------------------------------*/
-uint8_t myID = 0;
-//uint8_t myID = _module;
+
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim7;	/* micro-second delay counter */
 
@@ -26,9 +25,11 @@ const char modulePNstring[4][5] = {"", "H01R0", "H01R1", "H02R0"};
 	
 /* Number of modules in the array */
 #ifndef _N
-	uint8_t N = 1;						
+	uint8_t N = 1;
+	uint8_t myID = 0;
 #else
 	uint8_t N = _N;
+	uint8_t myID = _module;
 #endif
 
 /* Routing and topology */
@@ -37,13 +38,17 @@ uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 #ifndef _N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
+	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
 	uint8_t routePrev[MaxNumOfModules] = {0}; 
 	uint8_t route[MaxNumOfModules] = {0};
+	char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1] = {0};
 #else
+	uint16_t arrayPortsDir[_N]= {0};
 	uint8_t routeDist[_N] = {0}; 
 	uint8_t routePrev[_N] = {0}; 
 	uint8_t route[_N] = {0};
+	char moduleAlias[_N][MaxLengthOfAlias+1] = {0};
 #endif
 
 /* Dimension the buffer into which the input messages is placed. */
@@ -53,7 +58,9 @@ uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)] = {0};
 char cRxedChar = 0; 
 uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
-	
+static char pcUserMessage[80];
+BOS_Status responseStatus = BOS_OK; 
+
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
 #ifdef _P1
@@ -75,10 +82,15 @@ extern TaskHandle_t P5MsgTaskHandle;
 extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
+/* UARTcmd task */
+extern xTaskHandle xCommandConsoleTask;
+
+
 /* Private function prototypes -----------------------------------------------*/	
 
 uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
+void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 
 /* Prototype commands functions ----------------------------------------------*/
@@ -101,8 +113,9 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 /*
  * Implements the explore command.
  */
+#ifndef _N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-
+#endif
 
 
 /* Create CLI commands --------------------------------------------------------*/
@@ -146,6 +159,7 @@ static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition =
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : explore */
+#ifndef _N
 static const CLI_Command_Definition_t exploreCommandDefinition =
 {
 	( const int8_t * ) "explore", /* The command string to type. */
@@ -153,6 +167,7 @@ static const CLI_Command_Definition_t exploreCommandDefinition =
 	exploreCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
+#endif
 /*-----------------------------------------------------------*/
 
 /* Define long messages -------------------------------------------------------*/
@@ -173,6 +188,8 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 uint8_t port, src, dst, temp; uint16_t code;
+static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
+portBASE_TYPE xReturned; int8_t *pcOutputString;
 	
 	port = (int8_t)(unsigned) argument;
 	
@@ -193,7 +210,7 @@ uint8_t port, src, dst, temp; uint16_t code;
 			code = ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3];	
 			
 			/* Is it a long message? Check MSB */
-			if (code > 16) {
+			if (code>>15) {
 				longMessage = 1;
 				code &= 0x7FFF;
 			} else {
@@ -220,7 +237,14 @@ uint8_t port, src, dst, temp; uint16_t code;
 					switch (code)
 					{
 						case CODE_ping :
+							SendMessageToModule(src, CODE_ping_response, 0);
 							RTOS_IND_blink(200);
+							break;
+
+						case CODE_ping_response :
+							sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
+							writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
+							responseStatus = BOS_OK;
 							break;
 						
 						case CODE_IND_toggle :
@@ -236,22 +260,17 @@ uint8_t port, src, dst, temp; uint16_t code;
 							messageParams[0] = (uint8_t) (myPN >> 8);	
 							messageParams[2] = port;
 							osDelay(2);
-							/* Port, Destination = 0 (adjacent neighbor), message code, number of parameters */
-							SendMessageFromPort(port, 0, CODE_hi_response, 3);
+							/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
+							SendMessageFromPort(port, 0, 0, CODE_hi_response, 3);
 							break;
 						
 						case CODE_hi_response :
 							/* Record your neighbor info */
 							neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][6];		/* Neighbor ID + Neighbor own port */
-							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */						
+							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */	
+							responseStatus = BOS_OK;
 							break;
-						
-						case CODE_task_stats :
-							break;
-						
-						case CODE_run_time_stats :
-							break;
-						
+
 						case CODE_explore_adj :
 							ExploreNeighbors(port);
 							osDelay(10); temp = 0;
@@ -265,8 +284,8 @@ uint8_t port, src, dst, temp; uint16_t code;
 									temp += 5;		
 								}
 							}
-							/* Port, Destination = 0 (adjacent neighbor), message code, number of parameters */
-							SendMessageFromPort(port, 0, CODE_explore_adj_response, temp);
+							/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
+							SendMessageFromPort(port, 0, 0, CODE_explore_adj_response, temp);
 							break;
 						
 						case CODE_explore_adj_response :
@@ -275,13 +294,16 @@ uint8_t port, src, dst, temp; uint16_t code;
 							for (uint8_t k=0 ; k<temp ; k++)  {
 								memcpy(&neighbors2[(cMessage[port-1][4+k*5])-1][0], &cMessage[port-1][5+k*5], (size_t)(4));
 							}
+							responseStatus = BOS_OK;
 							break;
 						
 						case CODE_port_dir :
-							/* Reverse all ports other than the input one */
+							/* Reverse/un-reverse ports according to command parameters */
 							for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
-								if (p != port)	SwapUartPins(GetUart(p), cMessage[port-1][4]);
+								if (p != port)	SwapUartPins(GetUart(p), cMessage[port-1][3+p]); 
 							}
+							/* Check the input port direction */
+							SwapUartPins(GetUart(port), cMessage[port-1][4+MaxNumOfPorts]);
 							break;
 							
 						case CODE_module_id :
@@ -290,7 +312,7 @@ uint8_t port, src, dst, temp; uint16_t code;
 							else if (cMessage[port-1][4] == 1) {		/* Change my neighbor's ID */
 								messageParams[0] = 0;											/* change own ID */
 								messageParams[1] = cMessage[port-1][5];		/* The new ID */
-								SendMessageFromPort(cMessage[port-1][6], 0, CODE_module_id, 3);
+								SendMessageFromPort(cMessage[port-1][6], 0, 0, CODE_module_id, 3);
 							}
 							break;
 							
@@ -310,7 +332,49 @@ uint8_t port, src, dst, temp; uint16_t code;
 								RTOS_IND_blink(100);
 							}
 							break;
+							
+						case CODE_CLI_command :
+							/* Obtain the address of the output buffer. */
+							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+							/* Copy the command */
+							memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
+							do 
+							{
+								/* Process the command locally */
+								xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );					
+								/* Copy the generated string to messageParams */
+								memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
+								/* Send command response */	
+								SendMessageToModule(src, CODE_CLI_response, strlen((char*) pcOutputString));
+								osDelay(10); 
+							} 
+							while( xReturned != pdFALSE );								
+							/* Reset the buffer */
+							memset( cCLIString, 0x00, cmdMAX_INPUT_SIZE );
+							break;
+							
+						case CODE_CLI_response :
+							/* Obtain the address of the output buffer. */
+							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+							/* Copy the response */
+							if (longMessage) {
+								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
+								longMessageLastPtr += messageLength[port-1]-5;
+							} else {
+								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
+								longMessageLastPtr = 0;
+								responseStatus = BOS_OK;
+								/* Wake up the UARTCmd task again */
+								xTaskNotifyGive(xCommandConsoleTask);
+							}							
+							break;
 						
+						case CODE_task_stats :
+							break;
+						
+						case CODE_run_time_stats :
+							break;
+												
 					#if defined (H01R0) || defined (H01R1)
 						case CODE_H01R0_on :
 							RGB_LED_on(cMessage[port-1][4]);
@@ -419,10 +483,12 @@ uint8_t QnotEmpty(uint8_t* Q)
 BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t length = 0, port = 0; uint16_t code = 0;
+	uint8_t length = 0, port = 0, src = 0; uint16_t code = 0;
 	
 	/* Message length */
 	length = messageLength[incomingPort-1];
+	/* Message source */
+	src = cMessage[incomingPort-1][1];
 	/* Message code */
 	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
 	/* Message parameters */
@@ -432,7 +498,7 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 	port = FindRoute(myID, cMessage[incomingPort-1][0]); 
 	
 	/* Transmit the message from this port */
-	SendMessageFromPort(port, cMessage[incomingPort-1][0], code, length-5);	
+	SendMessageFromPort(port, src, cMessage[incomingPort-1][0], code, length-5);	
 
 	return result;	
 }
@@ -468,6 +534,41 @@ void NotifyMessagingTaskFromISR(uint8_t port)
 	#ifdef _P6
 		case P6 :
 			vTaskNotifyGiveFromISR(P6MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
+	#endif
+		default:
+			;
+	}		
+}
+
+/*-----------------------------------------------------------*/
+
+void NotifyMessagingTask(uint8_t port)
+{
+	switch (port)
+	{
+	#ifdef _P1
+		case P1 : 
+			xTaskNotifyGive(P1MsgTaskHandle);	
+	#endif
+	#ifdef _P2
+		case P2 :
+			xTaskNotifyGive(P2MsgTaskHandle);	
+	#endif
+	#ifdef _P3
+		case P3 :
+			xTaskNotifyGive(P3MsgTaskHandle);	
+	#endif
+	#ifdef _P4
+		case P4 :
+			xTaskNotifyGive(P4MsgTaskHandle);	
+	#endif
+	#ifdef _P5
+		case P5 :
+			xTaskNotifyGive(P5MsgTaskHandle);	
+	#endif
+	#ifdef _P6
+		case P6 :
+			xTaskNotifyGive(P6MsgTaskHandle);	
 	#endif
 		default:
 			;
@@ -515,7 +616,9 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &prvRunTimeStatsCommandDefinition );	
 	FreeRTOS_CLIRegisterCommand( &pingCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &bootloaderUpdateCommandDefinition );
+#ifndef _N
 	FreeRTOS_CLIRegisterCommand( &exploreCommandDefinition );
+#endif
 	
 #ifdef H01R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
@@ -644,7 +747,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 		port = FindRoute(myID, dst); 
 		
 		/* Transmit the message from this port */
-		SendMessageFromPort(port, dst, code, numberOfParams);	
+		SendMessageFromPort(port, myID, dst, code, numberOfParams);	
 	}
 	/* Broadcast message */
 	else
@@ -652,7 +755,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 		for( uint8_t port=1 ; port <= NumOfPorts ; port++ )
 		{
 			/* Transmit the message from this port */
-			SendMessageFromPort(port, dst, code, numberOfParams);	
+			SendMessageFromPort(port, myID, dst, code, numberOfParams);	
 		}
 	}
 
@@ -663,7 +766,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 
 /* --- Send a message from a specific port 
 */
-BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_t numberOfParams)
+BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
 	BOS_Status result = BOS_OK; 
 	uint8_t length = 0; static uint8_t totalNumberOfParams = MAX_MESSAGE_SIZE-5; static uint16_t ptrShift = 0;
@@ -672,9 +775,11 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_
 	/* Increase the priority of current running task */
 	vTaskPrioritySet( NULL, osPriorityHigh );
 	
+	if (!src)	src = myID;
+	
 	/* Construct the message */
 	message[0] = dst;						
-	message[1] = myID;
+	message[1] = src;
 	message[3] = (uint8_t) code;
 	message[2] = (uint8_t) (code >> 8);	
 	
@@ -683,6 +788,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_
 		memcpy((char*)&message[4], (&messageParams[0]+ptrShift), numberOfParams);
 		/* Calculate message length */
 		length = numberOfParams + 5;
+		/* Reset messageParams buffer */
+		memset( (&messageParams[0]+ptrShift), 0, numberOfParams );
 	} else {
 		/* Toggle code MSB to inform receiver of a long message */
 		code |= 0x8000;		
@@ -694,7 +801,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_
 			if ( (totalNumberOfParams/numberOfParams) >= 1) 
 			{	
 				/* Call this function recursively */
-				SendMessageFromPort(port, dst, code, numberOfParams);
+				SendMessageFromPort(port, src, dst, code, numberOfParams);
 				osDelay(10);
 				/* Reset messageParams buffer */
 				memset( (&messageParams[0]+ptrShift), 0, numberOfParams );
@@ -733,6 +840,9 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_
 
 	/* Put the priority of current running task back to normal */
 	vTaskPrioritySet( NULL, osPriorityNormal );
+	
+	/* In case response is expected */
+	responseStatus = BOS_ERR_NoResponse;
 
 	/* Read this port again */
 	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
@@ -747,14 +857,16 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t dst, uint16_t code, uint16_
 BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t length = 0; uint16_t code = 0;
+	uint8_t length = 0, src = 0; uint16_t code = 0;
 	
 	/* Use broadcast plans */
 	
 	/* Message length */
 	length = messageLength[incomingPort-1];
+	/* Message source */
+	src = cMessage[incomingPort-1][1];
 	/* Message code */
-	memcpy(&code, &cMessage[incomingPort-1][2], 2);
+	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
 	/* Message parameters */
 	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
 	
@@ -764,7 +876,7 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 		if (port != incomingPort) 	/* Also check for broadcast ports from broadacast plans */	
 		{
 			/* Transmit the message from this port */
-			SendMessageFromPort(port, 0xFF, code, length-5);	
+			SendMessageFromPort(port, src, 0xFF, code, length-5);	
 		}	
 	}
 	
@@ -785,8 +897,7 @@ BOS_Status Explore(void)
 	
 	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
 	
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	ExploreNeighbors(PcPort);
@@ -805,7 +916,7 @@ BOS_Status Explore(void)
 			N = currentID;			/* Update number of modules in the array */
 			/* Inform module to change ID */
 			messageParams[0] = 0;		/* change own ID */
-			SendMessageFromPort(port, 0, CODE_module_id, 3);			
+			SendMessageFromPort(port, 0, 0, CODE_module_id, 3);			
 			/* Modify neighbors table */
 			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
 			osDelay(10);
@@ -841,8 +952,11 @@ BOS_Status Explore(void)
 		for (uint8_t i=2 ; i<=currentID ; i++) 
 		{
 			/* Step 3a - Ask the module to reverse ports */
-			messageParams[0] = REVERSED;
-			SendMessageToModule(i, CODE_port_dir, 1);
+			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) {
+				messageParams[p-1] = REVERSED;
+			}
+			messageParams[MaxNumOfPorts] = NORMAL;		/* Make sure the inport is not reversed */
+			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
 			osDelay(10);
 			
 			/* Step 3b - Ask the module to explore adjacent neighbors */
@@ -905,44 +1019,112 @@ BOS_Status Explore(void)
 	
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	
-//	ExploreNeighbors(PcPort);
-//	/* Check for any unIDed neighbors */
-//	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
-//	{
-//		temp16 = neighbors[i-1][0];		/* Neighbor ID */
-//		temp1 = (uint8_t)(temp16>>8);											
-//		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
-//			result = BOS_ERR_UnIDedModule;
-//		}		
-//	}
-//	/* Ask other modules for any unIDed neighbors */
-//	for (uint8_t i=2 ; i<=currentID ; i++) 
-//	{
-//		SendMessageToModule(i, CODE_explore_adj, 0);
-//		osDelay(100);	
-//		/* Check for any unIDed neighbors */
-//		for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
-//		{
-//			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
-//			temp1 = (uint8_t)(temp16>>8);											
-//			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
-//				result = BOS_ERR_UnIDedModule;
-//			}
-//		}				
-//	}
+	ExploreNeighbors(PcPort);
+	/* Check for any unIDed neighbors */
+	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
+	{
+		temp16 = neighbors[i-1][0];		/* Neighbor ID */
+		temp1 = (uint8_t)(temp16>>8);											
+		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+			result = BOS_ERR_UnIDedModule;
+		}		
+	}
+	/* Ask other modules for any unIDed neighbors */
+	for (uint8_t i=2 ; i<=currentID ; i++) 
+	{
+		SendMessageToModule(i, CODE_explore_adj, 0);
+		osDelay(100);	
+		/* Check for any unIDed neighbors */
+		for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
+		{
+			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
+			temp1 = (uint8_t)(temp16>>8);											
+			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+				result = BOS_ERR_UnIDedModule;
+			}
+		}				
+	}
 	
 	
 	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
 	
-//	if (result == BOS_OK)
-//	{
-//		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-//		SendMessageToModule(0xFF, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));		
-//	}
+	if (result == BOS_OK)
+	{	
+		/* Step 5a - Update other modules ports starting from the last one */
+		for (uint8_t i=currentID ; i>=2 ; i--) 
+		{
+			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) 
+			{		
+				if (!array[i-1][p])	{
+					/* If empty port leave normal */
+					messageParams[p-1] = NORMAL;
+					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
+				} else {
+					/* If not empty, check neighbor */			
+					temp16 = array[i-1][p];
+					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
+					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
+					/* Check neighbor port direction */
+					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
+						/* Neighbor port is normal */
+						messageParams[p-1] = REVERSED;
+						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
+					} else {
+						/* Neighbor port is reversed */
+						messageParams[p-1] = NORMAL;
+						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
+					}				
+				}
+			}
+			
+			/* Step 5b - Check if an inport is reversed */
+			/* Find out the inport to this module from master */
+			FindRoute(1, i);
+			temp1 = route[routeDist[i-1]-1];				/* previous module = route[Number of hops - 1] */
+			temp2 = FindRoute(i, temp1);
+			/* Is the inport reversed? */
+			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
+				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
+			
+			/* Step 5c - Update module ports directions */
+			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
+			osDelay(10);			
+		}			
 	
-	/* >>> Step 6 - Build and broadcast broadcast plans */
+		/* Step 5d - Update master ports > all normal */
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
+		}
+		arrayPortsDir[0] = (uint16_t) NORMAL;
+	}
 	
+			
+	/* >>> Step 6 - Test new port directions by pinging all modules */
+	if (result == BOS_OK) 
+	{		
+		for (uint8_t i=2 ; i<=currentID ; i++) 
+		{
+			SendMessageToModule(i, CODE_ping, 0);
+			osDelay(300*routeDist[i-1]);	
+			if (responseStatus == BOS_OK)
+				result = BOS_OK;
+			else if (responseStatus == BOS_ERR_NoResponse)
+				result = BOS_ERR_NoResponse;
+		}
+	}
+	
+	
+	/* >>> Step 7 - Build and broadcast broadcast plans */
+	
+	
+	/* >>> Step 8 - Save all (topology, port directions and broadcast plans) in Flash */
+	
+	if (result == BOS_OK)
+	{
+		
+	}	
 
+	
 	return result;
 }
 
@@ -963,8 +1145,8 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 			messageParams[0] = (uint8_t) (myPN >> 8);
 			messageParams[1] = (uint8_t) myPN;
 			messageParams[2] = port;
-			/* Port, Destination = 0 (adjacent neighbor), message code, number of parameters */
-			SendMessageFromPort(port, 0, CODE_hi, 3);
+			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
+			SendMessageFromPort(port, 0, 0, CODE_hi, 3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
 			osDelay(10);
 		}
@@ -1135,41 +1317,70 @@ finishedRoute:
 */
 void DisplayTopology(uint8_t port)
 {
-	//char* pcMessage = malloc(20);
-	static char pcMessage[30];
-	
 	/* Print table header */
-	strcpy(pcMessage, "\n\r(Module:Port)\t\t");
-	writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+	strcpy(pcUserMessage, "\n\r(Module:Port)\t\t");
+	writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
 	{
-		sprintf(pcMessage, "P%d\t", i);
-		writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+		sprintf(pcUserMessage, "P%d\t", i);
+		writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 	}
 	writePxMutex(port, "\n\n\r", 3, cmd50ms, HAL_MAX_DELAY);
 	
 	/* Print each row */
 	for(uint8_t row=0 ; row<N ; row++)
 	{
-		sprintf(pcMessage, "Module %d:\t",row+1);
-		writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);
+		sprintf(pcUserMessage, "Module %d:\t",row+1);
+		writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 		/* Module PN */
-		strncpy(pcMessage, modulePNstring[(array[row][0])], 5);
-		writePxMutex(port, pcMessage, 5, cmd50ms, HAL_MAX_DELAY);
+		strncpy(pcUserMessage, modulePNstring[(array[row][0])], 5);
+		writePxMutex(port, pcUserMessage, 5, cmd50ms, HAL_MAX_DELAY);
 		writePxMutex(port, "\t", 1, cmd50ms, HAL_MAX_DELAY);
 		/* Connections */
 		for(uint8_t col=1 ; col<=NumOfPorts ; col++)
 		{
 			if (!array[row][col])
-				sprintf(pcMessage, "%d\t",0);
+				sprintf(pcUserMessage, "%d\t",0);
 			else
-				sprintf(pcMessage, "%d:%d\t", (array[row][col]>>3), (array[row][col]&0x07) );
-			writePxMutex(port, pcMessage, strlen(pcMessage), cmd50ms, HAL_MAX_DELAY);			
+				sprintf(pcUserMessage, "%d:%d\t", (array[row][col]>>3), (array[row][col]&0x07) );
+			writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);			
 		}
 		writePxMutex(port, "\n\r", 2, cmd50ms, HAL_MAX_DELAY);
 	}
 	
 	writePxMutex(port, "\n", 1, cmd50ms, HAL_MAX_DELAY);
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Extract module ID from it's alias, ID string or keyword --- 
+*/
+uint8_t GetID(char* string)
+{
+	uint8_t id = 0;
+	
+	if(!strcmp(string, "me"))							/* Check keywords */
+		return myID;
+	else if(!strcmp(string, "all"))							
+		return 0xFF;				/* BOS_BROADCAST */
+	else if (string[0] == '#') {					/* Check IDs */
+		id = atol(string+1);
+		if (id > 0 && id <= N)
+			return id;
+		else if (id == myID)
+			return myID;
+		else
+			return 101;				/* BOS_ERR_WrongID */
+	} else {															/* Check alias */
+		for (uint8_t i=1 ; i<=N ; i++) {
+			if(!strcmp(string, moduleAlias[i-1]) && (*string != 0))
+				return i;
+			else
+				return 100;			/* BOS_ERR_WrongName */
+		}
+	}
+	
+	return 0;
 }
 
 /*-----------------------------------------------------------*/
@@ -1272,13 +1483,13 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 }
 
 /*-----------------------------------------------------------*/
-
+#ifndef _N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	BOS_Status result = BOS_OK;
 	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
 	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Below is the discovered topology:\n\r";
-	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections and try again.\n\r";
+	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -1307,5 +1518,6 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	pdFALSE. */
 	return pdFALSE;
 }
+#endif
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

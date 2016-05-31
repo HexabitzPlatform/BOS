@@ -118,9 +118,9 @@ extern uint8_t RGB_LED_Intensity_Old;
    ----------------------------------------------------------------------- 
 */
 
-#define	CODE_H01R0_on							20
-#define	CODE_H01R0_off						21
-#define	CODE_H01R0_toggle					22
+#define	CODE_H01R0_on							100
+#define	CODE_H01R0_off						101
+#define	CODE_H01R0_toggle					102
 
 	
 /* -----------------------------------------------------------------------
@@ -138,6 +138,7 @@ extern uint8_t RGB_LED_Intensity_Old;
 extern H01R0_Status RGB_LED_setColor(uint8_t color, uint8_t intensity);
 extern H01R0_Status RGB_LED_on(uint8_t intensity);
 extern H01R0_Status RGB_LED_off(void);
+extern H01R0_Status RGB_LED_toggle(uint8_t intensity);
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|

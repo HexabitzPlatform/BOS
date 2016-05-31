@@ -157,7 +157,6 @@ void StartDefaultTask(void * argument)
 	/* Start by reading all ports */	
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		readPxITMutex(port, &cRxedChar, sizeof( cRxedChar ), cmd50ms);
-		//HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, sizeof( cRxedChar ));
 	}
 	
   /* Infinite loop */
