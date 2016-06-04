@@ -35,6 +35,11 @@
  *
  */
 
+/*
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.0.0 - Copyright (C) 2016 Hexabitz
+    All rights reserved
+*/
+
 /* Standard includes. */
 #include <string.h>
 #include <stdint.h>
@@ -65,7 +70,7 @@ static int8_t prvGetNumberOfParameters( const int8_t * pcCommandString );
 
 /* The definition of the "help" command.  This command is always at the front
 of the list of registered commands. */
-static const CLI_Command_Definition_t xHelpCommand =
+static const CLI_Command_Definition_t xHelpCommand =		
 {
 	( const int8_t * ) "help",
 	( const int8_t * ) "\r\nhelp:\r\n Lists all the registered commands\r\n\r\n",
@@ -75,7 +80,7 @@ static const CLI_Command_Definition_t xHelpCommand =
 
 /* The definition of the list of commands.  Commands that are registered are
 added to this list. */
-static CLI_Definition_List_Item_t xRegisteredCommands =
+CLI_Definition_List_Item_t xRegisteredCommands =		/* Hexabitz >> removed static */
 {
 	&xHelpCommand,	/* The first command in the list is always the help command, defined in this file. */
 	NULL			/* The next pointer is initialised to NULL, as there are no other registered commands yet. */

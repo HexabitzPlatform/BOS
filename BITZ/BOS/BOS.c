@@ -22,6 +22,9 @@ TIM_HandleTypeDef htim7;	/* micro-second delay counter */
 
 /* Define module PN strings [available PNs+1][5 chars] */
 const char modulePNstring[4][5] = {"", "H01R0", "H01R1", "H02R0"};
+
+/* Define BOS keywords */
+const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
 	
 /* Number of modules in the array */
 #ifndef _N
@@ -43,12 +46,14 @@ uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 	uint8_t routePrev[MaxNumOfModules] = {0}; 
 	uint8_t route[MaxNumOfModules] = {0};
 	char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1] = {0};
+	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 #else
 	uint16_t arrayPortsDir[_N]= {0};
 	uint8_t routeDist[_N] = {0}; 
 	uint8_t routePrev[_N] = {0}; 
 	uint8_t route[_N] = {0};
 	char moduleAlias[_N][MaxLengthOfAlias+1] = {0};
+	uint8_t broadcastResponse[_N] = {0};
 #endif
 
 /* Dimension the buffer into which the input messages is placed. */
@@ -60,6 +65,7 @@ uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
 static char pcUserMessage[80];
 BOS_Status responseStatus = BOS_OK; 
+
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -85,6 +91,13 @@ extern TaskHandle_t P6MsgTaskHandle;
 /* UARTcmd task */
 extern xTaskHandle xCommandConsoleTask;
 
+/* Define CLI command list*/
+typedef struct xCOMMAND_INPUT_LIST
+{
+	const CLI_Command_Definition_t *pxCommandLineDefinition;
+	struct xCOMMAND_INPUT_LIST *pxNext;
+} CLI_Definition_List_Item_t;
+extern CLI_Definition_List_Item_t xRegisteredCommands;
 
 /* Private function prototypes -----------------------------------------------*/	
 
@@ -93,32 +106,21 @@ uint8_t QnotEmpty(uint8_t* Q);
 void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 
-/* Prototype commands functions ----------------------------------------------*/
-/*
- * Implements the task-stats command.
- */
+
+/* Create CLI commands --------------------------------------------------------*/
+
 static portBASE_TYPE prvTaskStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-/*
- * Implements the run-time-stats command.
- */
 static portBASE_TYPE prvRunTimeStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-/*
- * Implements the ping command.
- */
 static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-/*
- * Implements the update command.
- */
 static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-/*
- * Implements the explore command.
- */
 #ifndef _N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 #endif
+static portBASE_TYPE resetCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
-
-/* Create CLI commands --------------------------------------------------------*/
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -169,6 +171,43 @@ static const CLI_Command_Definition_t exploreCommandDefinition =
 };
 #endif
 /*-----------------------------------------------------------*/
+/* CLI command structure : reset */
+static const CLI_Command_Definition_t resetCommandDefinition =
+{
+	( const int8_t * ) "reset", /* The command string to type. */
+	( const int8_t * ) "reset:\r\n Reset the module\r\n\r\n",
+	resetCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : name */
+static const CLI_Command_Definition_t nameCommandDefinition =
+{
+	( const int8_t * ) "name", /* The command string to type. */
+	( const int8_t * ) "name:\r\n Name the module with an alias (1st par.)\r\n\r\n",
+	nameCommand, /* The function to run. */
+	1 /* One parameter is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : status */
+static const CLI_Command_Definition_t statusCommandDefinition =
+{
+	( const int8_t * ) "status", /* The command string to type. */
+	( const int8_t * ) "status:\r\n Display module status\r\n\r\n",
+	statusCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : info */
+static const CLI_Command_Definition_t infoCommandDefinition =
+{
+	( const int8_t * ) "info", /* The command string to type. */
+	( const int8_t * ) "info:\r\n Display array infromation\r\n\r\n",
+	infoCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+
 
 /* Define long messages -------------------------------------------------------*/
 
@@ -242,7 +281,10 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 							break;
 
 						case CODE_ping_response :
-							sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
+							if (!moduleAlias[myID-1][0])
+								sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
+							else
+								sprintf( ( char * ) pcUserMessage, "Hi from module %d (%s)\r\n", src, moduleAlias[src-1]);
 							writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 							responseStatus = BOS_OK;
 							break;
@@ -270,7 +312,7 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */	
 							responseStatus = BOS_OK;
 							break;
-
+					#ifndef _N
 						case CODE_explore_adj :
 							ExploreNeighbors(port);
 							osDelay(10); temp = 0;
@@ -296,7 +338,7 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 							}
 							responseStatus = BOS_OK;
 							break;
-						
+					#endif						
 						case CODE_port_dir :
 							/* Reverse/un-reverse ports according to command parameters */
 							for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
@@ -333,6 +375,27 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 							}
 							break;
 							
+						case CODE_read_port_dir :
+							temp = 0;
+							/* Check my own ports */
+							for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
+								if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
+									messageParams[temp++] = p;
+								}									
+							}
+							/* Send response */
+							SendMessageToModule(src, CODE_read_port_dir_response, temp);
+							break;
+						
+						case CODE_read_port_dir_response :
+							/* Read module ports directions */
+							for (uint8_t p=0 ; p<(messageLength[port-1]-5) ; p++) 
+							{
+								arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][4+p])-1));								
+							}
+							responseStatus = BOS_OK;
+							break;						
+						
 						case CODE_CLI_command :
 							/* Obtain the address of the output buffer. */
 							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
@@ -367,12 +430,6 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 								/* Wake up the UARTCmd task again */
 								xTaskNotifyGive(xCommandConsoleTask);
 							}							
-							break;
-						
-						case CODE_task_stats :
-							break;
-						
-						case CODE_run_time_stats :
 							break;
 												
 					#if defined (H01R0) || defined (H01R1)
@@ -596,7 +653,8 @@ void BOS_Init(void)
 	HAL_Delay(100);
 	IND_blink(100);
 	HAL_Delay(100);
-	IND_blink(100);	
+	IND_blink(100);
+	
 	
 	/* Initialize the module */
 #ifdef  Module_Init
@@ -619,12 +677,17 @@ void vRegisterCLICommands(void)
 #ifndef _N
 	FreeRTOS_CLIRegisterCommand( &exploreCommandDefinition );
 #endif
+	FreeRTOS_CLIRegisterCommand( &resetCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &nameCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &statusCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &infoCommandDefinition );
 	
 #ifdef H01R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &colorCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &RGBCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
 #endif	
 }
 
@@ -769,7 +832,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
 	BOS_Status result = BOS_OK; 
-	uint8_t length = 0; static uint8_t totalNumberOfParams = MAX_MESSAGE_SIZE-5; static uint16_t ptrShift = 0;
+	uint8_t length = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0;
 	char message[MAX_MESSAGE_SIZE] = {0};
 	
 	/* Increase the priority of current running task */
@@ -884,7 +947,7 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 }
 
 /*-----------------------------------------------------------*/
-
+#ifndef _N
 /* --- Explore the array and create its topology (executed only by master)
 */
 BOS_Status Explore(void)
@@ -1080,7 +1143,7 @@ BOS_Status Explore(void)
 			/* Step 5b - Check if an inport is reversed */
 			/* Find out the inport to this module from master */
 			FindRoute(1, i);
-			temp1 = route[routeDist[i-1]-1];				/* previous module = route[Number of hops - 1] */
+			temp1 = route[NumberOfHops-1];				/* previous module = route[Number of hops - 1] */
 			temp2 = FindRoute(i, temp1);
 			/* Is the inport reversed? */
 			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
@@ -1105,7 +1168,7 @@ BOS_Status Explore(void)
 		for (uint8_t i=2 ; i<=currentID ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			osDelay(300*routeDist[i-1]);	
+			osDelay(300*NumberOfHops);	
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
 			else if (responseStatus == BOS_ERR_NoResponse)
@@ -1127,9 +1190,9 @@ BOS_Status Explore(void)
 	
 	return result;
 }
-
+#endif
 /*-----------------------------------------------------------*/
-
+#ifndef _N
 /* --- Explore adjacent neighbors 
 */
 BOS_Status ExploreNeighbors(uint8_t ignore)
@@ -1154,7 +1217,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 	
 	return result;
 }
-
+#endif
 /*-----------------------------------------------------------*/
 
 /* --- Load and start micro-second delay counter --- 
@@ -1318,7 +1381,7 @@ finishedRoute:
 void DisplayTopology(uint8_t port)
 {
 	/* Print table header */
-	strcpy(pcUserMessage, "\n\r(Module:Port)\t\t");
+	sprintf(pcUserMessage, "\n\r(Module:Port)\t\t");
 	writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
 	{
@@ -1353,6 +1416,109 @@ void DisplayTopology(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
+/* --- Display ports directions in human-readable format through module port --- 
+*/
+void DisplayPortsDir(uint8_t port)
+{
+	sprintf(pcUserMessage, "\n\rThese ports are reversed:");
+	writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
+	
+	for (uint8_t i=1 ; i<=N ; i++) 
+	{
+		for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) 
+		{		
+			if ( (arrayPortsDir[i-1] & (0x8000>>(p-1))) ) 			/* Port is reversed */
+			{
+				sprintf(pcUserMessage, "\n\rModule %d : P%d", i, p);
+				writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
+			}	
+		}
+	}
+	
+	sprintf(pcUserMessage, "\n\n\rAll other ports are normal\n\r");
+	writePxMutex(port, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Display a description of current module status (Firmware, Ports, P2P DMAs) --- 
+*/
+void DisplayModuleStatus(uint8_t port)
+{
+	int8_t *pcOutputString;
+	
+	/* Obtain the address of the output buffer. */
+	pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+	
+	strcpy( (char *) pcOutputString, "");
+	
+	sprintf(pcUserMessage, "\n\r*** Module %d Status ***\n", myID);
+	strcat( (char *) pcOutputString, pcUserMessage);
+	sprintf(pcUserMessage, "\n\rConnected via port: P%d\n\r", PcPort);
+	strcat( (char *) pcOutputString, pcUserMessage);
+	
+	/* Firmware */
+	sprintf(pcUserMessage, "\n\rFirmware version: %s", _firmVersion);
+	strcat( (char *) pcOutputString, pcUserMessage);
+	sprintf(pcUserMessage, "\n\rFirmware date:    %s", _firmDate);
+	strcat( (char *) pcOutputString, pcUserMessage);
+	sprintf(pcUserMessage, "\n\rFirmware time:    %s\n\r", _firmTime);
+	strcat( (char *) pcOutputString, pcUserMessage);	
+	
+	/* Ports */
+	sprintf(pcUserMessage, "\n\rPorts Status:\n\n\r");
+	strcat( (char *) pcOutputString, pcUserMessage);
+	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
+	{
+		sprintf(pcUserMessage, "P%d: ", i);
+		strcat( (char *) pcOutputString, pcUserMessage);
+		switch (portStatus[i])
+		{
+				case FREE : 
+						sprintf(pcUserMessage, "Free\n\r"); break;
+				case MSG :
+						sprintf(pcUserMessage, "Receiving messages\n\r"); break;
+				case STREAM :
+						sprintf(pcUserMessage, "Streaming\n\r"); break;
+				case CLI :
+						sprintf(pcUserMessage, "Receiving user commands\n\r"); break;
+				default:
+						break;
+		}		
+		strcat( (char *) pcOutputString, pcUserMessage);
+	}	
+
+	/* P2P DMAs */
+	sprintf(pcUserMessage, "\n\rPort-to-port DMAs Status:\n\r");
+	strcat( (char *) pcOutputString, pcUserMessage);	
+	if (portPortDMA1.Instance == 0) {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is free");
+	} else {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is streaming from P%d to P%d", GetPort(portPortDMA1.Parent), GetPort(dmaStreamDst[0]));
+	}
+	strcat( (char *) pcOutputString, pcUserMessage);
+	if (portPortDMA2.Instance == 0) {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is free");
+	} else {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is streaming from P%d to P%d", GetPort(portPortDMA2.Parent), GetPort(dmaStreamDst[1]));
+	}
+	strcat( (char *) pcOutputString, pcUserMessage);
+	if (portPortDMA3.Instance == 0) {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is free");
+	} else {
+			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
+	}
+	strcat( (char *) pcOutputString, pcUserMessage);
+	strcat( (char *) pcOutputString, "\n\r");
+	
+	/* Display output */
+	if (port)
+		writePxMutex(port, (char *) pcOutputString, strlen( (char *) pcOutputString), cmd50ms, HAL_MAX_DELAY);
+	
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Extract module ID from it's alias, ID string or keyword --- 
 */
 uint8_t GetID(char* string)
@@ -1383,6 +1549,82 @@ uint8_t GetID(char* string)
 	return 0;
 }
 
+/*-----------------------------------------------------------*/
+
+/* --- Name a module with an alias --- 
+*/
+BOS_Status NameModule(uint8_t module, char* alias)
+{
+	BOS_Status result = BOS_OK; 
+	static const CLI_Definition_List_Item_t *pxCommand = NULL;
+	const int8_t *pcRegisteredCommandString;
+	size_t xCommandStringLength;
+
+	/* Check alias with keywords */
+	for(int i=0 ; i<NumOfKeywords ; i++)
+	{
+		if (!strcmp(alias, BOSkeywords[i]))	
+			return BOS_ERR_Keyword;
+	}
+	
+	/* Check alias with other aliases */
+	for(int i=0 ; i<N ; i++)
+	{
+		if (!strcmp(alias, moduleAlias[i]))	
+			return BOS_ERR_ExistingAlias;
+	}
+	
+	/* Check alias with BOS and module commands */
+	for( pxCommand = &xRegisteredCommands; pxCommand != NULL; pxCommand = pxCommand->pxNext )
+	{
+		pcRegisteredCommandString = pxCommand->pxCommandLineDefinition->pcCommand;
+		xCommandStringLength = strlen( ( const char * ) pcRegisteredCommandString );
+		
+		if( !strncmp(alias, (const char *) pcRegisteredCommandString, xCommandStringLength ) ) {
+			return BOS_ERR_ExistingCmd;
+		}
+	}
+	
+	/* Alias is unique */
+	strcpy(moduleAlias[module-1], alias);
+	
+	/* Share new alias with other modules */
+	
+	/* Save new alias to Flash */
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+#ifdef _N
+/* --- Read Ports directions when a pre-defined topology file is used --- 
+*/
+BOS_Status ReadPortsDir(void)
+{
+	BOS_Status result = BOS_OK; 
+	
+	/* Ask all other modules for their ports directions */
+	for (uint8_t i=1 ; i<=N ; i++) 
+	{
+		if (i != myID) {
+			SendMessageToModule(i, CODE_read_port_dir, 0);
+			osDelay(50);
+			if (responseStatus != BOS_OK)	{
+				result = BOS_ERR_NoResponse;
+			} 	
+		} else {
+			/* Check my own ports */
+			for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
+				if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
+					arrayPortsDir[myID-1] |= (0x8000>>(p-1));
+				}									
+			}
+		}
+	}
+	
+	return result;
+}
+#endif
 /*-----------------------------------------------------------*/
 
 
@@ -1436,7 +1678,8 @@ const int8_t * const pcStatsTableHeader = ( int8_t * ) "Task            Abs Time
 
 static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	static const int8_t *pcMessage = ( int8_t * ) "Hi from module %d\r\n";
+	static const int8_t *pcMessage1 = ( int8_t * ) "Hi from module %d\r\n";
+	static const int8_t *pcMessage2 = ( int8_t * ) "Hi from module %d (%s)\r\n";
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -1446,7 +1689,11 @@ static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	configASSERT( pcWriteBuffer );
 
 	/* Respond to the ping */
-	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, myID);
+	if (!moduleAlias[myID-1][0])
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage1, myID);
+	else
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage2, myID, moduleAlias[myID-1]);
+	
 	RTOS_IND_blink(200);	
 	
 	/* There is no more data to return after this single string, so return
@@ -1519,5 +1766,125 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	return pdFALSE;
 }
 #endif
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE resetCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	NVIC_SystemReset();	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1; 
+	static portBASE_TYPE xParameterStringLength1;
+	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Module %d is named %s\n\r";
+	static const int8_t *pcMessageKey = ( int8_t * ) "%s is a reserved BOS keyword! Please use a different alias\n\r";
+	static const int8_t *pcMessageAlias = ( int8_t * ) "%s is already used! Please use a different alias\n\r";
+	static const int8_t *pcMessageCmd = ( int8_t * ) "%s is an existing CLI command! Please use a different alias\n\r";
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+
+	/* Check alias length */
+	if (xParameterStringLength1 > MaxLengthOfAlias) {
+		pcParameterString1[MaxLengthOfAlias] = '\0';
+	}
+	
+	/* Name the module */
+	result = NameModule(myID, (char*) pcParameterString1);
+		
+	/* Respond to the update command */
+	if (result == BOS_OK)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, myID, pcParameterString1);
+	else if (result == BOS_ERR_Keyword)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageKey, pcParameterString1);
+	else if (result == BOS_ERR_ExistingAlias)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageAlias, pcParameterString1);	
+	else if (result == BOS_ERR_ExistingCmd)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmd, pcParameterString1);	
+	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Respond to the status command */
+	DisplayModuleStatus(0);
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Read Ports directions when a pre-defined topology file is used */
+	result = ReadPortsDir();
+
+	/* Respond to the info command */
+	sprintf( ( char * ) pcWriteBuffer, "\n\rNumber of modules: %d\n", N);
+	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	sprintf( ( char * ) pcWriteBuffer, "\n\rArray topology:\n");
+	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	DisplayTopology(PcPort);
+	DisplayPortsDir(PcPort);
+	if (result == BOS_ERR_NoResponse) {
+		sprintf( ( char * ) pcWriteBuffer, "Could not read ports directions of some modules! Please try again\n\r");
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);		
+	}
+	sprintf( ( char * ) pcWriteBuffer, " ");
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

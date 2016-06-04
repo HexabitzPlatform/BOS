@@ -56,6 +56,8 @@ DMA_HandleTypeDef portPortDMA1;
 DMA_HandleTypeDef portPortDMA2;
 DMA_HandleTypeDef portPortDMA3;
 
+UART_HandleTypeDef* dmaStreamDst[3] = {0};
+
 
 /* Private function prototypes -----------------------------------------------*/
 void PortMemDMA1_Init(void);
@@ -79,9 +81,9 @@ void MX_DMA_Init(void)
 	PortMemDMA1_Init();
 	PortMemDMA2_Init();
 	PortMemDMA3_Init();
-	PortPortDMA1_Init();
-	PortPortDMA2_Init();
-	PortPortDMA3_Init();
+//	PortPortDMA1_Init();
+//	PortPortDMA2_Init();
+//	PortPortDMA3_Init();
 }
 
 /*-----------------------------------------------------------*/
@@ -286,8 +288,13 @@ void PortPortDMA1_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	HAL_NVIC_EnableIRQ(DMA1_Ch1_IRQn);
 	
 	/* Start DMA stream	*/	
+	dmaStreamDst[0] = huartDst;
 	huartSrc->State = HAL_UART_STATE_READY;
 	HAL_UART_Receive_DMA(huartSrc, (uint8_t *)(&(huartDst->Instance->TDR)), num);
+	
+	/* Lock the ports */
+	portStatus[GetPort(huartSrc)] = STREAM;
+	portStatus[GetPort(huartDst)] = STREAM;
 }
 
 /*-----------------------------------------------------------*/
@@ -338,8 +345,13 @@ void PortPortDMA2_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	HAL_NVIC_EnableIRQ(DMA1_Ch2_3_DMA2_Ch1_2_IRQn);
 	
 	/* Start DMA stream	*/	
+	dmaStreamDst[1] = huartDst;
 	huartSrc->State = HAL_UART_STATE_READY;
 	HAL_UART_Receive_DMA(huartSrc, (uint8_t *)(&(huartDst->Instance->TDR)), num);
+	
+	/* Lock the ports */
+	portStatus[GetPort(huartSrc)] = STREAM;
+	portStatus[GetPort(huartDst)] = STREAM;
 }
 
 /*-----------------------------------------------------------*/
@@ -390,8 +402,13 @@ void PortPortDMA3_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartD
 	HAL_NVIC_EnableIRQ(DMA1_Ch4_7_DMA2_Ch3_5_IRQn);
 	
 	/* Start DMA stream	*/	
+	dmaStreamDst[2] = huartDst;
 	huartSrc->State = HAL_UART_STATE_READY;
 	HAL_UART_Receive_DMA(huartSrc, (uint8_t *)(&(huartDst->Instance->TDR)), num);
+	
+	/* Lock the ports */
+	portStatus[GetPort(huartSrc)] = STREAM;
+	portStatus[GetPort(huartDst)] = STREAM;
 }
 
 /*-----------------------------------------------------------*/

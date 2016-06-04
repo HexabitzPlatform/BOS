@@ -103,7 +103,7 @@ void vUARTCommandConsoleStart( void )
 
 static void prvUARTCommandConsoleTask( void *pvParameters )
 {
-char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port;
+char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, m = 1;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; uint8_t id = 0; char idString[MaxLengthOfAlias] = {0};
 portBASE_TYPE xReturned;
@@ -184,17 +184,47 @@ portBASE_TYPE xReturned;
 						sprintf( ( char * ) pcOutputString, "Wrong module ID! Please try again.\n\r");
 						xReturned = pdFALSE;						
 					}	else if (id == BOS_BROADCAST) {
-						/* Broadcast the command */
-
-
-						xReturned = pdFALSE;						
+						/* Check if command is broadcastable */
+								
+						if (!(broadcastResponse[m-1]) ) {	
+							/* Execute locally */
+							if (m == myID) {
+								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );
+								if (xReturned == pdFALSE)	{
+									broadcastResponse[myID-1] = 1;
+									/* Activate next message */
+									xReturned = pdTRUE; ++m;
+								}			
+							/* Broadcast the command */								
+							} else {
+								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
+								SendMessageToModule(m, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+								/* Wait for response for a maximum of 1000msec */
+								ulTaskNotifyTake(pdTRUE, 1000);		
+								/* If timeout */
+								if (responseStatus != BOS_OK)	
+									sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);
+								else
+									broadcastResponse[m-1] = 1;
+								/* Activate next message */
+								xReturned = pdTRUE; ++m;
+								osDelay(50);
+							}
+							/* Is broadcast finished? */
+							if (m > N) {
+								xReturned = pdFALSE;
+								m = 1;
+								memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );			
+							}
+						}									
 					}	else {
 						/* Forward the command */
 						strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 						SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 						xReturned = pdFALSE;
-						/* Wait for response for a maximum of 500msec */
-						ulTaskNotifyTake(pdTRUE, cmd500ms);
+						/* Wait for response for a maximum of 1000msec */
+						ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
+						/* If timeout */
 						if (responseStatus != BOS_OK)
 							sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
 					}						
@@ -204,7 +234,8 @@ portBASE_TYPE xReturned;
 				}
 				
 				/* Write the generated string to the UART. */
-				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);								
+				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);		
+				memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 		
 			} while( xReturned != pdFALSE );
 					
@@ -217,7 +248,6 @@ portBASE_TYPE xReturned;
 			cInputIndex = 0;
 			memset( cInputString, 0x00, cmdMAX_INPUT_SIZE );
 			memset( idString, 0x00, MaxLengthOfAlias );
-			memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 			
 			/* Start to transmit a line separator, just to make the output easier to read. */
 			writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms);

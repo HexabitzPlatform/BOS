@@ -61,6 +61,7 @@ extern DMA_HandleTypeDef portPortDMA1;
 extern DMA_HandleTypeDef portPortDMA2;
 extern DMA_HandleTypeDef portPortDMA3;	 
 
+extern UART_HandleTypeDef* dmaStreamDst[3];
 	 
 /* External function prototypes ----------------------------------------------*/
 extern void MX_DMA_Init(void);

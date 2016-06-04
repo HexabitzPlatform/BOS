@@ -58,11 +58,17 @@ void TIM3_Init(void);
 
 /* Create CLI commands --------------------------------------------------------*/
 
+portBASE_TYPE onCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+portBASE_TYPE offCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+portBASE_TYPE colorCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+portBASE_TYPE RGBCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+portBASE_TYPE toggleCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+
 /* CLI command structure : on */
 const CLI_Command_Definition_t onCommandDefinition =
 {
 	( const int8_t * ) "on", /* The command string to type. */
-	( const int8_t * ) "(H01R0) on:\r\n Turn RGB LED on (white color) at a specific intensity (0-100%)\r\n\r\n",
+	( const int8_t * ) "(H01R0) on:\r\n Turn RGB LED on (white color) at a specific intensity (0-100%) (1st par.)\r\n\r\n",
 	onCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
@@ -95,7 +101,15 @@ const CLI_Command_Definition_t RGBCommandDefinition =
 	4 /* Four parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-
+/* CLI command structure : toggle */
+const CLI_Command_Definition_t toggleCommandDefinition =
+{
+	( const int8_t * ) "toggle", /* The command string to type. */
+	( const int8_t * ) "(H01R0) toggle:\r\n Toggle RGB LED (white color) at a specific intensity (0-100%) (1st par.)\r\n\r\n",
+	toggleCommand, /* The function to run. */
+	1 /* One parameter is expected. */
+};
+/*-----------------------------------------------------------*/
 
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
@@ -803,5 +817,46 @@ portBASE_TYPE RGBCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const i
 
 /*-----------------------------------------------------------*/
 
+portBASE_TYPE toggleCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	H01R0_Status result = H01R0_OK;
+	
+	int8_t *pcParameterString1; portBASE_TYPE xParameterStringLength1 = 0; 
+	uint8_t intensity = 0;
+	static const int8_t *pcOK1Message = ( int8_t * ) "RGB LED is on at intensity %d%%\r\n";
+	static const int8_t *pcOK0Message = ( int8_t * ) "RGB LED is off\r\n";
+	static const int8_t *pcWrongIntensityMessage = ( int8_t * ) "Wrong intensity!\n\r";
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter
+								(
+									pcCommandString,		/* The command string itself. */
+									1,						/* Return the first parameter. */
+									&xParameterStringLength1	/* Store the parameter string length. */
+								);
+	intensity = ( uint8_t ) atol( ( char * ) pcParameterString1 );
+	
+	result = RGB_LED_toggle(intensity);	
+	
+	/* Respond to the command */
+	if ( (result == H01R0_OK) && RGB_LED_State)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcOK1Message, intensity);
+	else if ( (result == H01R0_OK) && !RGB_LED_State)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcOK0Message, intensity);
+	else if (result == H01R0_ERR_WrongIntensity)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcWrongIntensityMessage);
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

@@ -91,6 +91,9 @@ typedef enum
   BOS_OK = 0,
   BOS_ERR_NoResponse = 2,
   BOS_ERR_UnIDedModule = 5,
+	BOS_ERR_Keyword = 6,
+	BOS_ERR_ExistingAlias = 7,
+	BOS_ERR_ExistingCmd = 8,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_BROADCAST = 255,
@@ -102,6 +105,8 @@ typedef enum
 #define	MaxNumOfModules				50
 #define MaxNumOfPorts					10
 #define MaxLengthOfAlias			10
+#define NumOfKeywords					2
+
 
 /* Delay macros */
 #define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
@@ -146,6 +151,7 @@ extern uint8_t myID;
 extern uint16_t myPN;
 extern uint8_t N;
 extern const char modulePNstring[4][5];
+extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)];
@@ -158,8 +164,10 @@ extern BOS_Status responseStatus;
 #ifndef _N
 	extern uint16_t array[50][MaxNumOfPorts+1];
 	extern char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1];
+	extern uint8_t broadcastResponse[MaxNumOfModules];
 #else
 	extern char moduleAlias[_N][MaxLengthOfAlias+1];
+	extern uint8_t broadcastResponse[_N];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
@@ -182,11 +190,12 @@ extern uint8_t route[];
 #define	CODE_module_id						15
 #define	CODE_topology							16
 #define	CODE_broadcast_plan				17
+#define	CODE_read_port_dir				18
+#define	CODE_read_port_dir_response		19
 
 #define	CODE_CLI_command 					20
 #define	CODE_CLI_response  				21
-#define	CODE_task_stats						22
-#define	CODE_run_time_stats				23
+
 
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
@@ -199,6 +208,8 @@ extern uint8_t route[];
 #define IND_off()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
 #define IND_blink(t)				IND_on();	HAL_Delay(t); IND_off()		/* Use before starting the scheduler */
 #define RTOS_IND_blink(t)		IND_on();	osDelay(t); IND_off()			/* Use after starting the scheduler */
+
+#define	NumberOfHops		routeDist[i-1]
 
 extern void BOS_Init(void);
 extern UART_HandleTypeDef* GetUart(uint8_t port);
@@ -214,7 +225,12 @@ extern BOS_Status ExploreNeighbors(uint8_t ignore);
 extern void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction);
 extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
 extern void DisplayTopology(uint8_t port);
+extern void DisplayPortsDir(uint8_t port);
+extern void DisplayModuleStatus(uint8_t port);
 extern uint8_t GetID(char* string);
+extern BOS_Status NameModule(uint8_t module, char* alias);
+extern BOS_Status ReadPortsDir(void);
+
 
 
 #endif /* BOS_H */

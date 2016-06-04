@@ -144,15 +144,11 @@ extern H01R0_Status RGB_LED_toggle(uint8_t intensity);
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
 */
-portBASE_TYPE onCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-portBASE_TYPE offCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-portBASE_TYPE colorCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-portBASE_TYPE RGBCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 extern const CLI_Command_Definition_t onCommandDefinition;
 extern const CLI_Command_Definition_t offCommandDefinition;
 extern const CLI_Command_Definition_t colorCommandDefinition;
 extern const CLI_Command_Definition_t RGBCommandDefinition;
-
+extern const CLI_Command_Definition_t toggleCommandDefinition;
 
 
 
