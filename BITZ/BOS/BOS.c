@@ -19,6 +19,7 @@
 
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim7;	/* micro-second delay counter */
+uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
 const char modulePNstring[4][5] = {"", "H01R0", "H01R1", "H02R0"};
@@ -45,14 +46,14 @@ uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
 	uint8_t routePrev[MaxNumOfModules] = {0}; 
 	uint8_t route[MaxNumOfModules] = {0};
-	char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1] = {0};
+	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 #else
 	uint16_t arrayPortsDir[_N]= {0};
 	uint8_t routeDist[_N] = {0}; 
 	uint8_t routePrev[_N] = {0}; 
 	uint8_t route[_N] = {0};
-	char moduleAlias[_N][MaxLengthOfAlias+1] = {0};
+	char moduleAlias[_N+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[_N] = {0};
 #endif
 
@@ -96,7 +97,8 @@ typedef struct xCOMMAND_INPUT_LIST
 {
 	const CLI_Command_Definition_t *pxCommandLineDefinition;
 	struct xCOMMAND_INPUT_LIST *pxNext;
-} CLI_Definition_List_Item_t;
+} 
+CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
 /* Private function prototypes -----------------------------------------------*/	
@@ -105,7 +107,12 @@ uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
 void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
-
+BOS_Status SaveEEtopology(void);
+BOS_Status LoadEEtopology(void);
+BOS_Status SaveEEportsDir(void);
+BOS_Status LoadEEportsDir(void);
+BOS_Status SaveEEalias(void);
+BOS_Status LoadEEalias(void);
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -255,7 +262,7 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 			} else {
 				longMessage = 0;
 			}
-			
+	
 			/* Check the end of message char 0x75 */
 			if (cMessage[port-1][messageLength[port-1]-1] == 0x75)
 			{
@@ -277,16 +284,16 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 					{
 						case CODE_ping :
 							SendMessageToModule(src, CODE_ping_response, 0);
-							RTOS_IND_blink(200);
+							indMode = IND_ping;
 							break;
 
 						case CODE_ping_response :
-							if (!moduleAlias[myID-1][0])
+							if (!moduleAlias[myID][0])
 								sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
 							else
-								sprintf( ( char * ) pcUserMessage, "Hi from module %d (%s)\r\n", src, moduleAlias[src-1]);
+								sprintf( ( char * ) pcUserMessage, "Hi from module %d (%s)\r\n", src, moduleAlias[src]);
 							writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
-							responseStatus = BOS_OK;
+							responseStatus = BOS_OK;								
 							break;
 						
 						case CODE_IND_toggle :
@@ -371,7 +378,7 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 								/* Copy the scratchpad to array */
 								memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
 								longMessageLastPtr = 0;
-								RTOS_IND_blink(100);
+								indMode = IND_topology;
 							}
 							break;
 							
@@ -394,10 +401,15 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 								arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][4+p])-1));								
 							}
 							responseStatus = BOS_OK;
-							break;						
+							break;		
+
+						case CODE_exp_eeprom :
+							SaveEEtopology();
+							SaveEEportsDir();
+							break;
 						
 						case CODE_CLI_command :
-							/* Obtain the address of the output buffer. */
+							/* Obtain the address of the output buffer */
 							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
 							/* Copy the command */
 							memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
@@ -562,6 +574,8 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 
 /*-----------------------------------------------------------*/
 
+/* --- Activate Messaging Tasks from ISR
+*/
 void NotifyMessagingTaskFromISR(uint8_t port)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
@@ -599,6 +613,8 @@ void NotifyMessagingTaskFromISR(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
+/* --- Activate Messaging Tasks 
+*/
 void NotifyMessagingTask(uint8_t port)
 {
 	switch (port)
@@ -634,6 +650,179 @@ void NotifyMessagingTask(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
+/* --- Load stored variables from emulated EEPROM 
+*/
+void LoadEEvars(void)
+{
+	/* Load array topology */
+#ifndef _N
+	LoadEEtopology();
+#endif	
+	/* Load port directions */
+	LoadEEportsDir();
+	
+	/* Load module alias */
+	LoadEEalias();
+	
+	/* Load other variables */
+
+	
+}
+
+/*-----------------------------------------------------------*/
+#ifndef _N
+/* --- Save array topology in EEPROM --- 
+*/
+BOS_Status SaveEEtopology(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp = 0;
+	
+	/* Save number of modules and myID */
+	temp = (uint16_t) (N<<8) + myID;
+	EE_WriteVariable(VirtAddVarTab[_EE_NBase], temp);
+	
+	/* Save topology */
+	for(uint8_t i=1 ; i<=N ; i++)
+	{
+		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		{
+			if (array[i-1][0]) {
+				EE_WriteVariable(VirtAddVarTab[_EE_topologyBase+add], array[i-1][j]);
+				add++;
+			}				
+		}
+	}
+	
+	if ((add+_EE_NBase) >= _EE_portDirBase)
+		result = BOS_ERR_EEPROM;
+	
+	return result;
+}
+#endif
+/*-----------------------------------------------------------*/
+#ifndef _N
+/* --- Load array topology stored in EEPROM --- 
+*/
+BOS_Status LoadEEtopology(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp;
+	
+	/* Load number of modules */
+	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
+	N = (uint8_t) (temp>>8);
+	myID = (uint8_t) temp;
+	
+	/* Load topology */
+	for(uint8_t i=1 ; i<=N ; i++)
+	{
+		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		{
+			EE_ReadVariable(VirtAddVarTab[_EE_topologyBase+add], &array[i-1][j]);
+			add++;			
+		}
+	}	
+	
+	return result;
+}
+#endif
+/*-----------------------------------------------------------*/
+
+/* --- Save array ports directions in EEPROM --- 
+*/
+BOS_Status SaveEEportsDir(void)
+{
+	BOS_Status result = BOS_OK; 
+	
+	for(uint8_t i=1 ; i<=N ; i++)
+	{
+		if (arrayPortsDir[i-1])
+			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+		
+		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+			result = BOS_ERR_EEPROM;
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load array ports directions stored in EEPROM --- 
+*/
+BOS_Status LoadEEportsDir(void)
+{
+	BOS_Status result = BOS_OK; 
+	
+	for(uint8_t i=1 ; i<=N ; i++)
+	{
+		EE_ReadVariable(VirtAddVarTab[_EE_portDirBase+i-1], &arrayPortsDir[i-1]);		
+		
+		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+			result = BOS_ERR_EEPROM;
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Save module alias in EEPROM --- 
+*/
+BOS_Status SaveEEalias(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp = 0;
+	
+	for(uint8_t i=0 ; i<=N ; i++)
+	{
+		if (moduleAlias[i][0]) 
+		{
+			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
+			{
+				temp = (uint16_t) (moduleAlias[i][j-1]<<8) + moduleAlias[i][j];
+				EE_WriteVariable(VirtAddVarTab[_EE_aliasBase+add], temp);
+				add++;			
+			}
+		}			
+	}
+	
+	if ((add+_EE_aliasBase) >= _EE_varBase)
+		result = BOS_ERR_EEPROM;
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load module alias stored in EEPROM --- 
+*/
+BOS_Status LoadEEalias(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp = 0;
+	
+	for(uint8_t i=0 ; i<=N ; i++)
+	{
+		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
+		{
+			EE_ReadVariable(VirtAddVarTab[_EE_aliasBase+add], &temp);
+			moduleAlias[i][j] = (uint8_t) temp;
+			moduleAlias[i][j-1] = (uint8_t) (temp>>8);
+			add++;			
+		}
+		moduleAlias[i][MaxLengthOfAlias] = '\0';
+	}
+	
+	if ((add+_EE_aliasBase) >= _EE_varBase)
+		result = BOS_ERR_EEPROM;
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
    ----------------------------------------------------------------------- 
@@ -643,6 +832,12 @@ void NotifyMessagingTask(uint8_t port)
 */
 void BOS_Init(void)
 {
+	/* Unlock the Flash Program Erase controller */
+	HAL_FLASH_Unlock();
+
+	/* EEPROM Init */
+	EE_Init();
+	
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
 	MX_DMA_Init();
@@ -660,7 +855,15 @@ void BOS_Init(void)
 #ifdef  Module_Init
 	Module_Init();
 #endif
+
+	/* Load stored EEPROM variables */
+	LoadEEvars();
 	
+	/* If no pre-defined topology, initialize ports directions */
+#ifndef _N
+	UpdateMyPortsDir();
+#endif	
+
 }
 
 /*-----------------------------------------------------------*/
@@ -1163,12 +1366,14 @@ BOS_Status Explore(void)
 	
 			
 	/* >>> Step 6 - Test new port directions by pinging all modules */
+	
 	if (result == BOS_OK) 
 	{		
-		for (uint8_t i=2 ; i<=currentID ; i++) 
+		for (uint8_t i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			osDelay(300*NumberOfHops);	
+			//osDelay(100*NumberOfHops);	
+			osDelay(100);
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
 			else if (responseStatus == BOS_ERR_NoResponse)
@@ -1180,14 +1385,22 @@ BOS_Status Explore(void)
 	/* >>> Step 7 - Build and broadcast broadcast plans */
 	
 	
-	/* >>> Step 8 - Save all (topology, port directions and broadcast plans) in Flash */
+	/* >>> Step 8 - Save all (topology, port directions and broadcast plans) in EEPROM */
 	
 	if (result == BOS_OK)
 	{
-		
+		/* Save data in the master */
+		SaveEEtopology();
+		SaveEEportsDir();
+		/* Ask other modules to save their data too */
+		//SendMessageToModule(0xFF, CODE_exp_eeprom, 0);
+		for (uint8_t i=2 ; i<=N ; i++) 
+		{
+			SendMessageToModule(i, CODE_exp_eeprom, 0);	
+			osDelay(50);
+		}
 	}	
 
-	
 	return result;
 }
 #endif
@@ -1249,10 +1462,12 @@ void StartMicroDelay(uint16_t Delay)
 void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction)
 {
 	if (direction == REVERSED) {
+		arrayPortsDir[myID-1] |= (0x8000>>(GetPort(huart)-1));		/* Set bit to one */
 		huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
 		HAL_UART_Init(huart);
 	} else if (direction == NORMAL) {
+		arrayPortsDir[myID-1] &= (~(0x8000>>(GetPort(huart)-1)));		/* Set bit to zero */
 		huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_DISABLE;
 		HAL_UART_Init(huart);		
@@ -1538,8 +1753,8 @@ uint8_t GetID(char* string)
 		else
 			return 101;				/* BOS_ERR_WrongID */
 	} else {															/* Check alias */
-		for (uint8_t i=1 ; i<=N ; i++) {
-			if(!strcmp(string, moduleAlias[i-1]) && (*string != 0))
+		for (uint8_t i=0 ; i<=N ; i++) {
+			if(!strcmp(string, moduleAlias[i]) && (*string != 0))
 				return i;
 			else
 				return 100;			/* BOS_ERR_WrongName */
@@ -1586,17 +1801,19 @@ BOS_Status NameModule(uint8_t module, char* alias)
 	}
 	
 	/* Alias is unique */
-	strcpy(moduleAlias[module-1], alias);
+	strcpy(moduleAlias[module], alias);
 	
 	/* Share new alias with other modules */
 	
+	
 	/* Save new alias to Flash */
+	result = SaveEEalias();
 	
 	return result;
 }
 
 /*-----------------------------------------------------------*/
-#ifdef _N
+
 /* --- Read Ports directions when a pre-defined topology file is used --- 
 */
 BOS_Status ReadPortsDir(void)
@@ -1616,11 +1833,34 @@ BOS_Status ReadPortsDir(void)
 			/* Check my own ports */
 			for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
 				if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
-					arrayPortsDir[myID-1] |= (0x8000>>(p-1));
+					arrayPortsDir[myID-1] |= (0x8000>>(p-1));		/* Set bit to 1 */
 				}									
 			}
 		}
 	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+#ifndef _N
+/* --- Update module port directions based on what is stored in eeprom --- 
+*/
+BOS_Status UpdateMyPortsDir(void)
+{
+	BOS_Status result = BOS_OK;
+	
+	/* Check port direction */
+	for (uint8_t p=1 ; p<=NumOfPorts ; p++) 
+	{
+		if ( !(arrayPortsDir[myID-1] & (0x8000>>(p-1))) ) {
+			/* Port is normal */
+			SwapUartPins(GetUart(p), NORMAL);
+		} else {
+			/* Port is reversed */
+			SwapUartPins(GetUart(p), REVERSED);					
+		}	
+	}		
 	
 	return result;
 }
@@ -1689,10 +1929,10 @@ static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	configASSERT( pcWriteBuffer );
 
 	/* Respond to the ping */
-	if (!moduleAlias[myID-1][0])
+	if (!moduleAlias[myID][0])
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage1, myID);
 	else
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage2, myID, moduleAlias[myID-1]);
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage2, myID, moduleAlias[myID]);
 	
 	RTOS_IND_blink(200);	
 	
@@ -1755,6 +1995,7 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 		DisplayTopology(PcPort);
+		DisplayPortsDir(PcPort);
 	} else {
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
@@ -1862,10 +2103,10 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	( void ) pcCommandString;
 	( void ) xWriteBufferLen;
 	configASSERT( pcWriteBuffer );
-	
+
 	/* Read Ports directions when a pre-defined topology file is used */
 	result = ReadPortsDir();
-
+	
 	/* Respond to the info command */
 	sprintf( ( char * ) pcWriteBuffer, "\n\rNumber of modules: %d\n", N);
 	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);

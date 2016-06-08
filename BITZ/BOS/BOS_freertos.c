@@ -162,8 +162,23 @@ void StartDefaultTask(void * argument)
   /* Infinite loop */
   for(;;)
   {
-		//IND_toggle();
-    osDelay(500);
+		/* Switch indicator LED according to mode */
+		switch (indMode)
+		{
+			case IND_ping :
+				RTOS_IND_blink(200);
+				indMode = IND_off;
+				break;
+			
+			case IND_topology :
+				RTOS_IND_blink(100);
+				indMode = IND_off;
+				break;
+			
+			default:
+				break;
+		}
+		
   }
 	
 }

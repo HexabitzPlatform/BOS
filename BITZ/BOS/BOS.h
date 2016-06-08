@@ -31,6 +31,7 @@ enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
 enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
+enum IndMode{IND_off, IND_ping, IND_topology};
 
 
 /* Includes ------------------------------------------------------------------*/
@@ -44,10 +45,11 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
-	 
-/* RTOS CLI */
-#include "FreeRTOS_CLI.h"
+#include "FreeRTOS_CLI.h"	 
+
+/* BOS */
 #include "BOS_CLI.h"
+#include "BOS_eeprom.h"
 
 /* C STD Library */
 #include <stdio.h>
@@ -58,7 +60,7 @@ enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 #include <math.h>	 
 
 /* Include a predefined topology here */
-#include "topology_ex.h"
+//#include "topology_ex.h"
 
 
 /* Module includes and initialization */
@@ -94,6 +96,7 @@ typedef enum
 	BOS_ERR_Keyword = 6,
 	BOS_ERR_ExistingAlias = 7,
 	BOS_ERR_ExistingCmd = 8,
+	BOS_ERR_EEPROM = 10,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_BROADCAST = 255,
@@ -102,11 +105,21 @@ typedef enum
 /* BOS Parameters */ 
 #define MAX_MESSAGE_SIZE			50
 #define cmdMAX_INPUT_SIZE			50
-#define	MaxNumOfModules				50
+#define	MaxNumOfModules				25
 #define MaxNumOfPorts					10
 #define MaxLengthOfAlias			10
 #define NumOfKeywords					2
 
+/* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
+#define _EE_NBase						1	
+#define _EE_topologyBase		2	
+#define _EE_portDirBase			277	
+#define _EE_aliasBase				303	
+#define _EE_varBase					434
+
+#if MaxNumOfModules > 25
+ #warning "Only data for 25 modules will be stored in EEPROM."
+#endif
 
 /* Delay macros */
 #define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
@@ -149,6 +162,7 @@ typedef enum
 extern char cRxedChar;
 extern uint8_t myID;
 extern uint16_t myPN;
+extern uint8_t indMode;
 extern uint8_t N;
 extern const char modulePNstring[4][5];
 extern const char BOSkeywords[NumOfKeywords][4];
@@ -162,11 +176,11 @@ extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 static char pcUserMessage[80];
 extern BOS_Status responseStatus;
 #ifndef _N
-	extern uint16_t array[50][MaxNumOfPorts+1];
-	extern char moduleAlias[MaxNumOfModules][MaxLengthOfAlias+1];
+	extern uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];
+	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
 #else
-	extern char moduleAlias[_N][MaxLengthOfAlias+1];
+	extern char moduleAlias[_N+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[_N];
 #endif
 extern uint8_t routeDist[]; 
@@ -192,9 +206,9 @@ extern uint8_t route[];
 #define	CODE_broadcast_plan				17
 #define	CODE_read_port_dir				18
 #define	CODE_read_port_dir_response		19
-
-#define	CODE_CLI_command 					20
-#define	CODE_CLI_response  				21
+#define	CODE_exp_eeprom	 					20
+#define	CODE_CLI_command 					21
+#define	CODE_CLI_response  				22
 
 
 /* -----------------------------------------------------------------------
@@ -230,7 +244,7 @@ extern void DisplayModuleStatus(uint8_t port);
 extern uint8_t GetID(char* string);
 extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status ReadPortsDir(void);
-
+extern BOS_Status UpdateMyPortsDir(void);
 
 
 #endif /* BOS_H */
