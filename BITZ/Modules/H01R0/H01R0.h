@@ -82,9 +82,10 @@
 /* H01R0_Status Type Definition */  
 typedef enum 
 {
-  H01R0_OK = 0x00,
-  H01R0_ERR_WrongColor = 0x01,
-	H01R0_ERR_WrongIntensity = 0x02,
+  H01R0_OK = 0,
+	H01R0_ERR_UnknownMessage = 1,
+  H01R0_ERR_WrongColor = 2,
+	H01R0_ERR_WrongIntensity = 3,
 } H01R0_Status;
 
 /* Indicator LED */
@@ -93,6 +94,11 @@ typedef enum
 
 /* Color Enumerations */
 enum BasicColors{BLACK=1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN};
+
+/* RGB LED Mode Enumerations */
+enum RGBLedMode{RGB_pulseRGB=1, RGB_pulseColor, RGB_sweepBasic, RGB_sweepFine, RGB_dimUp, RGB_dimUpWait, RGB_dimDown, RGB_dimDownWait,\
+	RGB_dimUpDown, RGB_dimDownUp, RGB_dimUpDownWait, RGB_dimDownUpWait};
+
 
 /* Export UART variables */
 extern UART_HandleTypeDef huart1;
@@ -112,6 +118,10 @@ extern void MX_USART6_UART_Init(void);
 
 extern uint8_t RGB_LED_State;
 extern uint8_t RGB_LED_Intensity_Old;
+extern uint8_t rgbLedMode;
+extern uint8_t rgbRed, rgbGreen, rgbBlue, rgbColor; 
+extern uint32_t rgbPeriod, rgbDC; 
+extern int16_t rgbCount;
 
 /* -----------------------------------------------------------------------
 	|														Message Codes	 														 	|
@@ -121,6 +131,10 @@ extern uint8_t RGB_LED_Intensity_Old;
 #define	CODE_H01R0_on							100
 #define	CODE_H01R0_off						101
 #define	CODE_H01R0_toggle					102
+#define	CODE_H01R0_color					103
+#define	CODE_H01R0_pulse					104
+#define	CODE_H01R0_sweep					105
+#define	CODE_H01R0_dim						106
 
 	
 /* -----------------------------------------------------------------------
@@ -135,10 +149,19 @@ extern uint8_t RGB_LED_Intensity_Old;
 	extern void H01R1_Init(void);
 	extern void startPWM_RED(uint16_t period, uint16_t width);
 #endif
+extern H01R0_Status H01R0_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 extern H01R0_Status RGB_LED_setColor(uint8_t color, uint8_t intensity);
 extern H01R0_Status RGB_LED_on(uint8_t intensity);
 extern H01R0_Status RGB_LED_off(void);
 extern H01R0_Status RGB_LED_toggle(uint8_t intensity);
+extern H01R0_Status RGB_LED_pulseRGB(uint8_t red, uint8_t green, uint8_t blue, uint32_t period, uint32_t dc, int32_t repeat);
+extern H01R0_Status RGB_LED_pulseColor(uint8_t color, uint32_t period, uint32_t dc, int32_t repeat);
+extern void RGBpulse(uint8_t mode);
+extern H01R0_Status RGB_LED_sweep(uint8_t mode, uint32_t period, int32_t repeat);
+extern void RGBsweepBasic(void);
+extern void RGBsweepFine(void);
+extern H01R0_Status RGB_LED_dim(uint8_t color, uint8_t mode, uint32_t period, uint32_t wait, int32_t repeat);
+extern void RGBdim(uint8_t mode);
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
@@ -149,8 +172,10 @@ extern const CLI_Command_Definition_t offCommandDefinition;
 extern const CLI_Command_Definition_t colorCommandDefinition;
 extern const CLI_Command_Definition_t RGBCommandDefinition;
 extern const CLI_Command_Definition_t toggleCommandDefinition;
-
-
+extern const CLI_Command_Definition_t pulseColorCommandDefinition;
+extern const CLI_Command_Definition_t pulseRGBCommandDefinition;
+extern const CLI_Command_Definition_t sweepCommandDefinition;
+extern const CLI_Command_Definition_t dimCommandDefinition;
 
 
 #endif /* H01R0_H */

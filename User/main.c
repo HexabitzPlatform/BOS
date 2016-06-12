@@ -90,13 +90,75 @@ int main(void)
 void FrontEndTask(void * argument)
 {
 
+//	messageParams[0] = GREEN;
+//	messageParams[1] = RGB_dimUpDown;
+//	messageParams[2] = 0; messageParams[3] = 0; messageParams[4] = 3; messageParams[5] = 232;
+//	messageParams[6] = 0; messageParams[7] = 0; messageParams[8] = 0; messageParams[9] = 0;
+//	messageParams[10] = 0xFF; messageParams[11] = 0xFF; messageParams[12] = 0xFF; messageParams[13] = 0xFF;
+//	/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
+//	SendMessageFromPort(P4, 0, 0, CODE_H01R0_dim, 14);
 	
   /* Infinite loop */
   for(;;)
   {
-		
-
-
+//		/* Switch RGB LED according to its mode */
+//		switch (rgbLedMode)
+//		{
+//			case RGB_pulseRGB :			
+//				RGBpulse(rgbLedMode);
+//				break;
+//			
+//			case RGB_pulseColor :
+//				RGBpulse(rgbLedMode);
+//				break;
+//			
+//			case RGB_sweepBasic :
+//				RGBsweepBasic();
+//				break;
+//
+//			case RGB_sweepFine :
+//				RGBsweepFine();
+//				break;
+//			
+//			case RGB_dimUp :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimUpWait :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimDown :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimDownWait :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimUpDown :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimDownUp :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimUpDownWait :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			case RGB_dimDownUpWait :
+//				RGBdim(rgbLedMode);
+//				break;
+//			
+//			default:
+//				/* Wait forever until rgbLedMode is set */
+//				ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+//				break;
+//		}
+//		
+//		taskYIELD();
   }	
 
 }

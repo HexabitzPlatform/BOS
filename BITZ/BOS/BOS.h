@@ -70,6 +70,7 @@ enum IndMode{IND_off, IND_ping, IND_topology};
 	#include "H01R0_gpio.h"	
 	#include "H01R0_dma.h"		
 	#define	Module_Init		H01R0_Init
+	#define	Module_MessagingTask		(BOS_Status) H01R0_MessagingTask
 #endif
 #ifdef H01R1
 	#include "H01R0.h"
@@ -91,6 +92,7 @@ enum IndMode{IND_off, IND_ping, IND_topology};
 typedef enum 
 {
   BOS_OK = 0,
+	BOS_ERR_UnknownMessage = 1,
   BOS_ERR_NoResponse = 2,
   BOS_ERR_UnIDedModule = 5,
 	BOS_ERR_Keyword = 6,
@@ -191,6 +193,7 @@ extern uint8_t route[];
 	|														Message Codes	 														 	|
    ----------------------------------------------------------------------- 
 */
+#define	CODE_unknown_message			0
 #define	CODE_ping									1
 #define	CODE_ping_response				2
 

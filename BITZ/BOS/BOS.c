@@ -233,9 +233,10 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 */
 void PxMessagingTask(void * argument)
 {
-uint8_t port, src, dst, temp; uint16_t code;
-static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
-portBASE_TYPE xReturned; int8_t *pcOutputString;
+	BOS_Status result = BOS_OK;
+	uint8_t port, src, dst, temp; uint16_t code;
+	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
+	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	
 	port = (int8_t)(unsigned) argument;
 	
@@ -243,7 +244,7 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 	for( ;; )
 	{
 		
-		/* Wait for ever until a message is received on one of the ports */
+		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 			
 		if (messageLength[port-1])
@@ -277,11 +278,13 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 						ForwardReceivedMessage(port);
 				}
 				else 
-				{
-							
-					/* Execute required tasks */
+				{				
+					/* Process BOS tasks */
 					switch (code)
 					{
+						case CODE_unknown_message :					
+							break;
+						
 						case CODE_ping :
 							SendMessageToModule(src, CODE_ping_response, 0);
 							indMode = IND_ping;
@@ -404,7 +407,9 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 							break;		
 
 						case CODE_exp_eeprom :
+						#ifndef _N
 							SaveEEtopology();
+						#endif
 							SaveEEportsDir();
 							break;
 						
@@ -443,25 +448,10 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 								xTaskNotifyGive(xCommandConsoleTask);
 							}							
 							break;
-												
-					#if defined (H01R0) || defined (H01R1)
-						case CODE_H01R0_on :
-							RGB_LED_on(cMessage[port-1][4]);
-							break;
-						
-						case CODE_H01R0_off :
-							RGB_LED_off();
-							break;
-						
-						case CODE_H01R0_toggle :
-							if (RGB_LED_State)
-								RGB_LED_off();
-							else
-								RGB_LED_on(cMessage[port-1][4]);
-							break;
-					#endif
 							
 						default:
+							/* Process module tasks */
+							result = Module_MessagingTask(code, port, src, dst);
 							break;
 					}
 					
@@ -469,6 +459,12 @@ portBASE_TYPE xReturned; int8_t *pcOutputString;
 
 			}	
 			
+		}
+		
+		/* Is it unknown message? */
+		if (result == BOS_ERR_UnknownMessage) {
+			SendMessageToModule(src, CODE_unknown_message, 0);
+			result = BOS_OK;			
 		}
 		
 		/* Reset message buffer */
@@ -891,6 +887,10 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &colorCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &RGBCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pulseColorCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pulseRGBCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
 #endif	
 }
 

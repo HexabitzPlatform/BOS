@@ -179,6 +179,7 @@ void StartDefaultTask(void * argument)
 				break;
 		}
 		
+		taskYIELD();
   }
 	
 }

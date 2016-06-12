@@ -62,6 +62,7 @@ void MX_USART1_UART_Init(void)
 //  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart1.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart1);
 	#if (H01R0 || H01R1) && (_P5pol_reversed)	
 		huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart1.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
@@ -86,6 +87,7 @@ void MX_USART2_UART_Init(void)
 //  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart2.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart2);
 	#if (H01R0 || H01R1) && (_P2pol_reversed)	
 		huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart2.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
@@ -110,6 +112,7 @@ void MX_USART3_UART_Init(void)
   //huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart3.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart3);
 	#if (H01R0 || H01R1) && (_P4pol_reversed)	
 		huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart3.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
@@ -134,6 +137,7 @@ void MX_USART4_UART_Init(void)
 //  huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart4.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart4);
 	#if (H01R0 || H01R1) && (_P1pol_reversed)	
 		huart4.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart4.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
@@ -158,6 +162,7 @@ void MX_USART5_UART_Init(void)
 //  huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart5.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart5);
 	#if (H01R0 || H01R1) && (_P6pol_reversed)	
 		huart5.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart5.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
@@ -182,6 +187,7 @@ void MX_USART6_UART_Init(void)
 //  huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 	huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_RXOVERRUNDISABLE_INIT;
 	huart6.AdvancedInit.OverrunDisable = UART_ADVFEATURE_OVERRUN_DISABLE;
+	HAL_UART_Init(&huart6);
 	#if (H01R0 || H01R1) && (_P3pol_reversed)	
 		huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
 		huart6.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
