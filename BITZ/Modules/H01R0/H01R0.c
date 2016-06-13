@@ -770,9 +770,6 @@ H01R0_Status RGB_LED_pulseRGB(uint8_t red, uint8_t green, uint8_t blue, uint32_t
 	
 	rgbLedMode = RGB_pulseRGB;
 	
-	/* Activate the FrontEndTask */
-	xTaskNotifyGive(FrontEndTaskHandle);
-	
 	return result;
 }
 
@@ -788,9 +785,6 @@ H01R0_Status RGB_LED_pulseColor(uint8_t color, uint32_t period, uint32_t dc, int
 	rgbPeriod = period; rgbDC = dc; rgbCount = repeat;
 	
 	rgbLedMode = RGB_pulseColor;
-	
-	/* Activate the FrontEndTask */
-	xTaskNotifyGive(FrontEndTaskHandle);
 	
 	return result;
 }
@@ -834,10 +828,7 @@ H01R0_Status RGB_LED_sweep(uint8_t mode, uint32_t period, int32_t repeat)
 	
 	rgbPeriod = period; rgbCount = repeat;
 	rgbLedMode = mode;
-	
-	/* Activate the FrontEndTask */
-	xTaskNotifyGive(FrontEndTaskHandle);
-	
+
 	return result;
 }
 
@@ -944,9 +935,6 @@ H01R0_Status RGB_LED_dim(uint8_t color, uint8_t mode, uint32_t period, uint32_t 
 	rgbColor = color;
 	rgbPeriod = period; rgbDC = wait; rgbCount = repeat;
 	rgbLedMode = mode;
-	
-	/* Activate the FrontEndTask */
-	xTaskNotifyGive(FrontEndTaskHandle);
 	
 	return result;
 }

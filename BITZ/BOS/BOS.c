@@ -819,6 +819,56 @@ BOS_Status LoadEEalias(void)
 
 /*-----------------------------------------------------------*/
 
+
+/* --- Load module alias stored in EEPROM --- 
+*/
+BOS_Status BOS_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	char cRxedChar = 0; uint8_t port = GetPort(huart);
+	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+	
+	/* Read buffer */
+	cRxedChar = huart->Instance->RDR;
+	
+	/* Received CLI request? */
+	if( cRxedChar == '\r' )
+	{
+		cRxedChar = '\0';
+		PcPort = port; 
+		portStatus[port] = CLI;
+		
+		/* Activate the CLI task */
+		vTaskNotifyGiveFromISR(xCommandConsoleTask, &( xHigherPriorityTaskWoken ) );		
+	}
+	/* Received messaging request? (any value between 1 and 50 other than \r = 0x0D) */
+	else if( (cRxedChar != '\0') && (cRxedChar <= 50) )
+	{
+		portStatus[port] = MSG;
+		messageLength[port-1] = cRxedChar;			
+			
+		/* Activate DMA transfer */
+		PortMemDMA1_Setup(huart, cRxedChar);
+		
+		cRxedChar = '\0';	
+	}
+	/* Message has been received? */
+	else if( cRxedChar == 0x75 )
+	{
+		/* Notify messaging tasks */
+		NotifyMessagingTaskFromISR(port);		
+	}
+	
+	// Give back the mutex.
+	xSemaphoreGiveFromISR( PxRxSemaphoreHandle[port], &( xHigherPriorityTaskWoken ) );
+	
+	/* Read this port again */
+	if (portStatus[port] == FREE) {
+		HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);
+	}
+}
+
+/*-----------------------------------------------------------*/
+
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
    ----------------------------------------------------------------------- 

@@ -49,7 +49,7 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
-
+xTaskHandle xCommandConsoleTask = NULL;
 
 #ifdef _P1
 	TaskHandle_t P1MsgTaskHandle = NULL;
@@ -82,6 +82,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
 void FrontEndTask(void * argument);
 extern void PxMessagingTask(void * argument);
+extern void prvUARTCommandConsoleTask( void *pvParameters );
 
 /*-----------------------------------------------------------*/
 
@@ -144,8 +145,8 @@ void MX_FREERTOS_Init(void)
 	/* Register command line commands */
 	vRegisterCLICommands();
 	
-	/* Start the tasks that implements the command console on the UART */
-	vUARTCommandConsoleStart();
+	/* Start the task that implements the command console on the UART */
+	xTaskCreate(prvUARTCommandConsoleTask, "UARTCmd",		(2*configMINIMAL_STACK_SIZE),	NULL,	osPriorityNormal, &xCommandConsoleTask);		
 	
 }
 

@@ -161,12 +161,6 @@ http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
 #define configUSE_MALLOC_FAILED_HOOK	1
 #define configCHECK_FOR_STACK_OVERFLOW	2
 
-/* Priorities to assign to tasks created by this demo. */
-#define configUART_COMMAND_CONSOLE_TASK_PRIORITY	osPriorityNormal
-
-/* Stack sizes to assign to tasks created by this demo. */
-#define configUART_COMMAND_CONSOLE_STACK_SIZE		( configMINIMAL_STACK_SIZE * 2 )
-
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */ 
 #define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 

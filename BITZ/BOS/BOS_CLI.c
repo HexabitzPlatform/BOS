@@ -61,15 +61,6 @@
 
 /*-----------------------------------------------------------*/
 
-/*
- * The task that implements the command console processing.
- */
-static void prvUARTCommandConsoleTask( void *pvParameters );
-
-/*-----------------------------------------------------------*/
-
-/* Holds the handle of the task that implements the UART command console. */
-xTaskHandle xCommandConsoleTask = NULL;
 
 static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
@@ -90,18 +81,7 @@ char pcWelcomePortMessage[40] = {0};
 
 /*-----------------------------------------------------------*/
 
-void vUARTCommandConsoleStart( void )
-{
-	xTaskCreate( 	prvUARTCommandConsoleTask,				/* The task that implements the command console. */
-					( const char * ) "UARTCmd",				/* Text name assigned to the task.  This is just to assist debugging.  The kernel does not use this name itself. */
-					configUART_COMMAND_CONSOLE_STACK_SIZE,	/* The size of the stack allocated to the task. */
-					NULL,									/* The parameter is not used, so NULL is passed. */
-					configUART_COMMAND_CONSOLE_TASK_PRIORITY,/* The priority allocated to the task. */
-					&xCommandConsoleTask );					/* Used to store the handle to the created task. */
-}
-/*-----------------------------------------------------------*/
-
-static void prvUARTCommandConsoleTask( void *pvParameters )
+void prvUARTCommandConsoleTask( void *pvParameters )
 {
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, m = 1;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];

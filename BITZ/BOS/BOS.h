@@ -60,7 +60,7 @@ enum IndMode{IND_off, IND_ping, IND_topology};
 #include <math.h>	 
 
 /* Include a predefined topology here */
-//#include "topology_ex.h"
+#include "topology_ex.h"
 
 
 /* Module includes and initialization */
