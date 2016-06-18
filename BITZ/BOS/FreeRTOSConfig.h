@@ -184,10 +184,15 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() vMainConfigureTimerForRunTimeStats()
 #define portGET_RUN_TIME_COUNTER_VALUE() ulMainGetRunTimeCounterValue()
 
-// No MPU in Cortex-M0
+/* No MPU in Cortex-M0 */
 #define portUSING_MPU_WRAPPERS 0
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
+/* Software Timers */
+#define configUSE_TIMERS 	1
+#define	configTIMER_TASK_PRIORITY		1	
+#define configTIMER_QUEUE_LENGTH	4
+#define configTIMER_TASK_STACK_DEPTH		configMINIMAL_STACK_SIZE	
 
 /* Place holder for calls to ioctl that don't use the value parameter. */
 #define cmdPARAMTER_NOT_USED		( ( void * ) 0 )

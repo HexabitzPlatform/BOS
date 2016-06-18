@@ -49,6 +49,7 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
+TaskHandle_t RGBledTaskHandle = NULL;
 xTaskHandle xCommandConsoleTask = NULL;
 
 #ifdef _P1
@@ -81,6 +82,7 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
 void FrontEndTask(void * argument);
+void RGBledTask(void * argument);
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
 
@@ -93,6 +95,12 @@ void MX_FREERTOS_Init(void)
   /* Create a defaultTask */
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &defaultTaskHandle);	
 
+	/* Create the front-end task */
+	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
+
+	/* Create the RGB LED task */
+	xTaskCreate(RGBledTask, (const char *) "RGBledTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &RGBledTaskHandle);
+	
   /* Create message parsing tasks for module ports */
 #ifdef _P1
   xTaskCreate(PxMessagingTask, (const char *) "P1MsgTask", configMINIMAL_STACK_SIZE, (void *) P1, osPriorityAboveNormal, &P1MsgTaskHandle);
@@ -113,9 +121,6 @@ void MX_FREERTOS_Init(void)
 	xTaskCreate(PxMessagingTask, (const char *) "P6MsgTask", configMINIMAL_STACK_SIZE, (void *) P6, osPriorityAboveNormal, &P6MsgTaskHandle);
 #endif
 
-	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
-	
 	/* Create semaphores to protect module ports (FreeRTOS vSemaphoreCreateBinary didn't work) */
 #ifdef _P1
 	osSemaphoreDef(SemaphoreP1); PxRxSemaphoreHandle[P1] = osSemaphoreCreate(osSemaphore(SemaphoreP1), 1);

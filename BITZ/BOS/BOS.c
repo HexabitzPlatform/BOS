@@ -46,7 +46,7 @@ uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
 	uint8_t routePrev[MaxNumOfModules] = {0}; 
 	uint8_t route[MaxNumOfModules] = {0};
-	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1] = {0};
+	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1] = {0};		/* moduleAlias[0] used to store alias for module 0 */
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 #else
 	uint16_t arrayPortsDir[_N]= {0};
@@ -113,6 +113,11 @@ BOS_Status SaveEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
+BOS_Status LoadEEstreams(void);
+void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3);
+void StreamTimerCallback( TimerHandle_t xTimer );
+
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -127,7 +132,7 @@ static portBASE_TYPE resetCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-
+static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -214,6 +219,16 @@ static const CLI_Command_Definition_t infoCommandDefinition =
 	0 /* No parameters are expected. */
 };
 /*-----------------------------------------------------------*/
+/* CLI command structure : scast */
+static const CLI_Command_Definition_t scastCommandDefinition =
+{
+	( const int8_t * ) "scast", /* The command string to type. */
+	( const int8_t * ) "scast:\r\n Start a single-cast DMA stream. Source port (1st par.), source module (2nd par.), destination port (3rd par.), \
+destination module (4th par.), direction ('forward', 'backward', 'bidirectional') (5th par.), transfer count (bytes) (6th par.), transfer timeout (ms) (7th par.)\r\n\r\n",
+	scastCommand, /* The function to run. */
+	7 /* Seven parameters are expected. */
+};
+/*-----------------------------------------------------------*/
 
 
 /* Define long messages -------------------------------------------------------*/
@@ -234,7 +249,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t port, src, dst, temp; uint16_t code;
+	uint8_t port, src, dst, temp; uint16_t code; uint32_t count, timeout;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	
@@ -449,7 +464,29 @@ void PxMessagingTask(void * argument)
 							}							
 							break;
 							
-						default:
+						case CODE_DMA_channel :
+							/* Save stream paramters in EEPROM */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high word */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low word */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high word */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low word */
+							EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
+							if (messageLength[port-1] == 18)
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
+							if (messageLength[port-1] == 20)
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][17] << 8 ) + cMessage[port-1][18]);			/* src3 | dst3 */
+							/* Reset MCU */
+							NVIC_SystemReset();
+							break;
+						
+						case CODE_DMA_scast_stream :
+							count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
+							timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];
+							StartScastDMAStream(cMessage[port-1][13], myID, cMessage[port-1][15], cMessage[port-1][14], cMessage[port-1][12], count, timeout);
+							break;
+							
+						default :
 							/* Process module tasks */
 							result = Module_MessagingTask(code, port, src, dst);
 							break;
@@ -470,10 +507,12 @@ void PxMessagingTask(void * argument)
 		/* Reset message buffer */
 		memset(cMessage[port-1], 0, (size_t) messageLength[port-1]);
 		messageLength[port-1] = 0;
-		/* Free the port */
-		portStatus[port] = FREE;
-		/* Read this port again */
-		HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
+		if (portStatus[port] != STREAM) {
+			/* Free the port */
+			portStatus[port] = FREE;
+			/* Read this port again */
+			HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
+		}
 		
 		taskYIELD();
 	}
@@ -660,6 +699,9 @@ void LoadEEvars(void)
 	/* Load module alias */
 	LoadEEalias();
 	
+	/* Load DMA streams */
+	LoadEEstreams();
+	
 	/* Load other variables */
 
 	
@@ -811,7 +853,7 @@ BOS_Status LoadEEalias(void)
 		moduleAlias[i][MaxLengthOfAlias] = '\0';
 	}
 	
-	if ((add+_EE_aliasBase) >= _EE_varBase)
+	if ((add+_EE_aliasBase) >= _EE_DMAStreamsBase)
 		result = BOS_ERR_EEPROM;
 	
 	return result;
@@ -819,56 +861,271 @@ BOS_Status LoadEEalias(void)
 
 /*-----------------------------------------------------------*/
 
-
-/* --- Load module alias stored in EEPROM --- 
+/* --- BOS UART RxCplt ISR --- 
 */
-BOS_Status BOS_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+void BOS_UART_RxCplt_Callback(UART_HandleTypeDef *huart)
 {
 	char cRxedChar = 0; uint8_t port = GetPort(huart);
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
-	/* Read buffer */
-	cRxedChar = huart->Instance->RDR;
-	
-	/* Received CLI request? */
-	if( cRxedChar == '\r' )
+	if (portStatus[port] != STREAM) 
 	{
-		cRxedChar = '\0';
-		PcPort = port; 
-		portStatus[port] = CLI;
+		/* Read buffer */
+		cRxedChar = huart->Instance->RDR;
 		
-		/* Activate the CLI task */
-		vTaskNotifyGiveFromISR(xCommandConsoleTask, &( xHigherPriorityTaskWoken ) );		
-	}
-	/* Received messaging request? (any value between 1 and 50 other than \r = 0x0D) */
-	else if( (cRxedChar != '\0') && (cRxedChar <= 50) )
-	{
-		portStatus[port] = MSG;
-		messageLength[port-1] = cRxedChar;			
+		/* Received CLI request? */
+		if( cRxedChar == '\r' )
+		{
+			cRxedChar = '\0';
+			PcPort = port; 
+			portStatus[port] = CLI;
 			
-		/* Activate DMA transfer */
-		PortMemDMA1_Setup(huart, cRxedChar);
+			/* Activate the CLI task */
+			vTaskNotifyGiveFromISR(xCommandConsoleTask, &( xHigherPriorityTaskWoken ) );		
+		}
+		/* Received messaging request? (any value between 1 and 50 other than \r = 0x0D) */
+		else if( (cRxedChar != '\0') && (cRxedChar <= 50) )
+		{
+			portStatus[port] = MSG;
+			messageLength[port-1] = cRxedChar;			
+				
+			/* Activate DMA transfer */
+			PortMemDMA1_Setup(huart, cRxedChar);
+			
+			cRxedChar = '\0';	
+		}
+		/* Message has been received? */
+		else if( cRxedChar == 0x75 )
+		{
+			/* Notify messaging tasks */
+			NotifyMessagingTaskFromISR(port);		
+		}
 		
-		cRxedChar = '\0';	
-	}
-	/* Message has been received? */
-	else if( cRxedChar == 0x75 )
-	{
-		/* Notify messaging tasks */
-		NotifyMessagingTaskFromISR(port);		
+		/* Give back the mutex */
+		xSemaphoreGiveFromISR( PxRxSemaphoreHandle[port], &( xHigherPriorityTaskWoken ) );
+		
+		/* Read this port again */
+		if (portStatus[port] == FREE) {
+			HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);
+		}
 	}
 	
-	// Give back the mutex.
-	xSemaphoreGiveFromISR( PxRxSemaphoreHandle[port], &( xHigherPriorityTaskWoken ) );
-	
-	/* Read this port again */
-	if (portStatus[port] == FREE) {
-		HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- BOS DMA1 Ch1 ISR --- 
+*/
+void BOS_DMA1_Ch1_Callback(void)
+{
+	/* Streaming DMA 1 */
+	HAL_DMA_IRQHandler(&portPortDMA1);
+	if (DMAStream1total)
+		++DMAStream1count;
+	if (DMAStream1count >= DMAStream1total) {
+		StopPortPortDMA1();
+	}
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- BOS DMA1 Ch2-3 DMA2 Ch1-2 ISR --- 
+*/
+void BOS_DMA1_Ch2_3_DMA2_Ch1_2_Callback(void)
+{
+	/* Messaging DMA 3 */
+	if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF2) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA3);
+	/* Streaming DMA 2 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF3) == SET) {
+		HAL_DMA_IRQHandler(&portPortDMA2);
+		if (DMAStream2total)
+			++DMAStream2count;
+		if (DMAStream2count >= DMAStream2total) {
+			StopPortPortDMA2();
+		}
+	}
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- BOS DMA1 Ch4-7 DMA2 Ch3-5 ISR --- 
+*/
+void BOS_DMA1_Ch4_7_DMA2_Ch3_5_Callback(void)
+{
+	/* Messaging DMA 1 */
+	if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF5) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA1);
+	/* Messaging DMA 2 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF6) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA2);
+	/* Streaming DMA 3 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF3) == SET) {
+		HAL_DMA_IRQHandler(&portPortDMA3);
+		if (DMAStream3total)
+			++DMAStream3count;
+		if (DMAStream3count >= DMAStream3total) {
+			StopPortPortDMA3();
+		}
 	}
 }
 
 /*-----------------------------------------------------------*/
 
+/* --- Load module DMA streams --- 
+*/
+BOS_Status LoadEEstreams(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t temp1 = 0, temp2 = 0, status1 = 0, status2 = 0; 
+	uint8_t direction = 0; uint32_t count = 0, timeout = 0;
+	static uint8_t src1, dst1, src2, dst2, src3, dst3;
+	
+	/* Direction */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase], &temp1);
+	if (!status1) {
+		direction = (uint8_t) temp1;
+	}
+
+	/* Count */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], &temp1);
+	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], &temp2);
+	if (!status1 && !status2) {
+		count = ( (uint32_t) temp1 << 16 ) + temp2;
+	}
+	
+	/* Timeout */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], &temp1);
+	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], &temp2);
+	if (!status1 && !status2) {
+		timeout = ( (uint32_t) temp1 << 16 ) + temp2;
+	}
+	
+	/* src1 | dst1 */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], &temp1);
+	if (!status1) {
+		src1 = (uint8_t) (temp1 >> 8);
+		dst1 = (uint8_t) temp1;
+	}
+	
+	/* src2 | dst2 */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], &temp1);
+	if (!status1) {
+		src2 = (uint8_t) (temp1 >> 8);
+		dst2 = (uint8_t) temp1;	
+	}
+
+	/* src3 | dst3 */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], &temp1);
+	if (!status1) {
+		src3 = (uint8_t) (temp1 >> 8);
+		dst3 = (uint8_t) temp1;
+	}
+	
+	/* Activate the DMA streams */
+	SetupDMAStreamsFromMessage(direction, count, timeout, src1, dst1, src2, dst2, src3, dst3);
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Setup DMA streams upon request from another module --- 
+*/
+void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3)
+{
+	TimerHandle_t xTimer = NULL;
+	
+	/* Start DMA streams */
+	if (direction == FORWARD) 
+	{							
+		if (src1 && dst1) {
+			PortPortDMA1_Setup(GetUart(src1), GetUart(dst1), 1); DMAStream1total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
+		}
+		if (src2 && dst2) {
+			PortPortDMA2_Setup(GetUart(src2), GetUart(dst2), 1); DMAStream2total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 2, StreamTimerCallback );
+		}
+		if (src3 && dst3) {
+			PortPortDMA3_Setup(GetUart(src3), GetUart(dst3), 1); DMAStream3total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 3, StreamTimerCallback );
+		}
+	} 
+	else if (direction == BACKWARD) 
+	{
+		if (src1 && dst1) {
+			PortPortDMA1_Setup(GetUart(dst1), GetUart(src1), 1); DMAStream1total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
+		}
+		if (src2 && dst2) {
+			PortPortDMA2_Setup(GetUart(dst2), GetUart(src2), 1); DMAStream2total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 2, StreamTimerCallback );
+		}
+		if (src3 && dst3) {
+			PortPortDMA3_Setup(GetUart(dst3), GetUart(src3), 1); DMAStream3total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 3, StreamTimerCallback );
+		}
+	} 
+	else if (direction == BIDIRECTIONAL) 
+	{
+		if (src1 && dst1) {
+			PortPortDMA1_Setup(GetUart(src1), GetUart(dst1), 1); DMAStream1total = count;
+			PortPortDMA2_Setup(GetUart(dst1), GetUart(src1), 1); DMAStream2total = count;
+			/* Create a timeout timer */
+			xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
+		}
+	}
+
+	/* Start the timeout timer */
+	xTimerStart( xTimer, portMAX_DELAY );
+
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- DMA stream timer callback --- 
+*/
+void StreamTimerCallback( TimerHandle_t xTimer )
+{
+	uint32_t tid = 0;
+	
+	tid = ( uint32_t ) pvTimerGetTimerID( xTimer );
+	
+	switch (tid)
+	{
+		case 1 :
+			StopPortPortDMA1();
+			break;
+		
+		case 2 :
+			StopPortPortDMA2();
+			break;
+		
+		case 3 :
+			StopPortPortDMA3();
+			break;
+		
+		case 12 :
+			StopPortPortDMA1();
+			StopPortPortDMA2();
+			break;
+		
+		default:
+			break;
+	}	
+}
+
+/*-----------------------------------------------------------*/	
+
+	
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
    ----------------------------------------------------------------------- 
@@ -930,6 +1187,8 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &nameCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &statusCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &infoCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &scastCommandDefinition );
+	
 	
 #ifdef H01R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
@@ -1396,7 +1655,7 @@ BOS_Status Explore(void)
 			/* Step 5b - Check if an inport is reversed */
 			/* Find out the inport to this module from master */
 			FindRoute(1, i);
-			temp1 = route[NumberOfHops-1];				/* previous module = route[Number of hops - 1] */
+			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
 			temp2 = FindRoute(i, temp1);
 			/* Is the inport reversed? */
 			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
@@ -1422,7 +1681,7 @@ BOS_Status Explore(void)
 		for (uint8_t i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			//osDelay(100*NumberOfHops);	
+			//osDelay(100*NumberOfHops(i));	
 			osDelay(100);
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
@@ -1756,19 +2015,19 @@ void DisplayModuleStatus(uint8_t port)
 	/* P2P DMAs */
 	sprintf(pcUserMessage, "\n\rPort-to-port DMAs Status:\n\r");
 	strcat( (char *) pcOutputString, pcUserMessage);	
-	if (portPortDMA1.Instance == 0) {
+	if (portPortDMA1.Instance->CNDTR == 0) {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is free");
 	} else {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is streaming from P%d to P%d", GetPort(portPortDMA1.Parent), GetPort(dmaStreamDst[0]));
 	}
 	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA2.Instance == 0) {
+	if (portPortDMA2.Instance->CNDTR == 0) {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is free");
 	} else {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is streaming from P%d to P%d", GetPort(portPortDMA2.Parent), GetPort(dmaStreamDst[1]));
 	}
 	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA3.Instance == 0) {
+	if (portPortDMA3.Instance->CNDTR == 0) {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is free");
 	} else {
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
@@ -1803,15 +2062,13 @@ uint8_t GetID(char* string)
 		else
 			return 101;				/* BOS_ERR_WrongID */
 	} else {															/* Check alias */
-		for (uint8_t i=0 ; i<=N ; i++) {
+		for (int8_t i=N ; i>=0 ; i--) {
 			if(!strcmp(string, moduleAlias[i]) && (*string != 0))
-				return i;
-			else
-				return 100;			/* BOS_ERR_WrongName */
+				return i;	
 		}
+		return 100;			/* BOS_ERR_WrongName */
 	}
 	
-	return 0;
 }
 
 /*-----------------------------------------------------------*/
@@ -1833,7 +2090,7 @@ BOS_Status NameModule(uint8_t module, char* alias)
 	}
 	
 	/* Check alias with other aliases */
-	for(int i=0 ; i<N ; i++)
+	for(int i=1 ; i<N ; i++)
 	{
 		if (!strcmp(alias, moduleAlias[i]))	
 			return BOS_ERR_ExistingAlias;
@@ -1917,7 +2174,102 @@ BOS_Status UpdateMyPortsDir(void)
 #endif
 /*-----------------------------------------------------------*/
 
+/* --- Start a single-cast DMA stream across the array. Transfer ends after (count) bytes are transferred 
+			or timeout (ms), whichever comes first. --- 
+*/
+BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout)
+{
+	BOS_Status result = BOS_OK;
+	TimerHandle_t xTimer = NULL;
+	uint8_t port = 0, temp1 = 0, temp2 = 0;
+	
+	/* Is the source a different module? */
+	if (srcM != myID) {
+		/* Forward this task to the source module */
+		messageParams[0] = (uint8_t) (count >> 24);			/* Count */
+		messageParams[1] = (uint8_t) (count >> 16);
+		messageParams[2] = (uint8_t) (count >> 8);
+		messageParams[3] = (uint8_t) count;
+		messageParams[4] = (uint8_t) (timeout >> 24);		/* Timeout */
+		messageParams[5] = (uint8_t) (timeout >> 16);
+		messageParams[6] = (uint8_t) (timeout >> 8);
+		messageParams[7] = (uint8_t) timeout;
+		messageParams[8] = direction;										/* Stream direction */
+		messageParams[9] = srcP;												/* Source port */
+		messageParams[10] = dstM;												/* destination module */
+		messageParams[11] = dstP;												/* destination port */
+		SendMessageToModule(srcM, CODE_DMA_scast_stream, 12);		
+		
+		return result;
+	}
+	
+	/* Inform participating modules */
+	for(uint8_t i=0 ; i<sizeof(route) ; i++)
+	{
+		FindRoute(srcM, dstM);
+		/* Message other modules */
+		if (route[i]) 
+		{
+			/* Find out the inport and outport to this module from previous one */
+			if (route[i+1]) {
+				temp1 = FindRoute(route[i], route[i+1]);
+			} else {
+				temp1 = FindRoute(route[i], srcM);
+			}
+			FindRoute(srcM, dstM);
+			if (route[i] == dstM) {
+				temp2 = dstP;
+			} else {
+				temp2 = FindRoute(route[i], route[i-1]);
+			}
+			/* Message parameters*/
+			messageParams[0] = (uint8_t) (count >> 24);			/* Count */
+			messageParams[1] = (uint8_t) (count >> 16);
+			messageParams[2] = (uint8_t) (count >> 8);
+			messageParams[3] = (uint8_t) count;
+			messageParams[4] = (uint8_t) (timeout >> 24);		/* Timeout */
+			messageParams[5] = (uint8_t) (timeout >> 16);
+			messageParams[6] = (uint8_t) (timeout >> 8);
+			messageParams[7] = (uint8_t) timeout;
+			messageParams[8] = direction;										/* Stream direction */
+			messageParams[9] = temp1;												/* Source port */
+			messageParams[10] = temp2;											/* destination port */
+			FindRoute(srcM, dstM);
+			SendMessageToModule(route[i], CODE_DMA_channel, 11);
+			osDelay(10);
+		}
+	}
+	
+	if (srcM == dstM)
+		port = dstP;
+	else
+		port = FindRoute(srcM, dstM);
+	
+	/* Setup my own DMA stream */
+	if (direction == FORWARD) {
+		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
+		/* Create a timeout timer */
+		xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
+	} else if (direction == BACKWARD) {
+		PortPortDMA1_Setup(GetUart(port), GetUart(srcP), 1); DMAStream1total = count;
+		/* Create a timeout timer */
+		xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
+	} else if (direction == BIDIRECTIONAL) {
+		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
+		PortPortDMA2_Setup(GetUart(port), GetUart(srcP), 1); DMAStream2total = count;
+		/* Create a timeout timer */
+		xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
+	}
+	
+	/* Start the timeout timer */
+	xTimerStart( xTimer, portMAX_DELAY );
+	
+	return result;
+}
 
+/*-----------------------------------------------------------*/
+
+ 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
@@ -2177,5 +2529,80 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 
 /*-----------------------------------------------------------*/
 
+static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3, *pcParameterString4; 
+	static int8_t *pcParameterString5, *pcParameterString6, *pcParameterString7; 
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0, xParameterStringLength3 = 0; 
+	portBASE_TYPE xParameterStringLength4 = 0, xParameterStringLength5 = 0, xParameterStringLength6 = 0;
+	portBASE_TYPE xParameterStringLength7 = 0;
+	uint8_t direction = 0, srcP = 0, dstP = 0, srcM = 0, dstM = 0; uint32_t count = 0, timeout = 0;
+	char par1[MaxLengthOfAlias+1] = {0}, par2[MaxLengthOfAlias+1] = {0}, par3[MaxLengthOfAlias+1] = {0};
+	
+	static const int8_t *pcMessage = ( int8_t * ) "Activating a %s single-cast DMA stream from P%d in module %s to P%d in module %s. The stream will deactivate after %d bytes or %d ms\n\r";
+	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'P' || pcParameterString1[0] == 'p') {
+		srcP = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	}
+
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	strncpy(par1, ( char * ) pcParameterString2, xParameterStringLength2);
+	srcM = GetID(par1);
+	
+	/* Obtain the 3rd parameter string. */
+	pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
+	if (pcParameterString3[0] == 'P' || pcParameterString3[0] == 'p') {
+		dstP = ( uint8_t ) atol( ( char * ) pcParameterString3+1 );
+	}
+
+	/* Obtain the 4th parameter string. */
+	pcParameterString4 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 4, &xParameterStringLength4);
+	strncpy(par2, ( char * ) pcParameterString4, xParameterStringLength4);
+	dstM = GetID(par2);
+	
+	/* Obtain the 5th parameter string. */
+	pcParameterString5 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 5, &xParameterStringLength5);
+	/* Read the color value. */
+	if (!strncmp((const char *)pcParameterString5, "FORWARD", xParameterStringLength5) || !strncmp((const char *)pcParameterString5, "forward", xParameterStringLength5))
+		direction = FORWARD;
+	else if (!strncmp((const char *)pcParameterString5, "BACKWARD", xParameterStringLength5) || !strncmp(( const char *)pcParameterString5, "backward", xParameterStringLength5))
+		direction = BACKWARD;
+	else if (!strncmp((const char *)pcParameterString5, "BIDIRECTIONAL", xParameterStringLength5) || !strncmp((const char *)pcParameterString5, "bidirectional", xParameterStringLength5))
+		direction = BIDIRECTIONAL;
+	strncpy(par3, ( char * ) pcParameterString5, xParameterStringLength5);
+	
+	/* Obtain the 6th parameter string. */
+	pcParameterString6 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 6, &xParameterStringLength6);
+	count = ( uint32_t ) atol( ( char * ) pcParameterString6 );
+
+	/* Obtain the 7th parameter string. */
+	pcParameterString7 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 7, &xParameterStringLength7);
+	timeout = ( uint32_t ) atol( ( char * ) pcParameterString7 );
+	
+	result = StartScastDMAStream(srcP, srcM, dstP, dstM, direction, count, timeout);
+	
+	/* Respond to the command */
+	if (result == H01R0_OK) 
+	{	
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, par3, srcP, par1, dstP, par2, count, timeout);
+	}
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

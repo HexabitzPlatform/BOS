@@ -32,6 +32,7 @@ enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
 enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0};
 enum IndMode{IND_off, IND_ping, IND_topology};
+enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 
 
 /* Includes ------------------------------------------------------------------*/
@@ -117,7 +118,8 @@ typedef enum
 #define _EE_topologyBase		2	
 #define _EE_portDirBase			277	
 #define _EE_aliasBase				303	
-#define _EE_varBase					434
+#define _EE_DMAStreamsBase	434
+#define _EE_varBase					442
 
 #if MaxNumOfModules > 25
  #warning "Only data for 25 modules will be stored in EEPROM."
@@ -212,6 +214,8 @@ extern uint8_t route[];
 #define	CODE_exp_eeprom	 					20
 #define	CODE_CLI_command 					21
 #define	CODE_CLI_response  				22
+#define	CODE_DMA_channel  				23
+#define	CODE_DMA_scast_stream  		24
 
 
 /* -----------------------------------------------------------------------
@@ -226,7 +230,7 @@ extern uint8_t route[];
 #define IND_blink(t)				IND_on();	HAL_Delay(t); IND_off()		/* Use before starting the scheduler */
 #define RTOS_IND_blink(t)		IND_on();	osDelay(t); IND_off()			/* Use after starting the scheduler */
 
-#define	NumberOfHops		routeDist[i-1]
+#define	NumberOfHops(i)		routeDist[i-1]
 
 extern void BOS_Init(void);
 extern UART_HandleTypeDef* GetUart(uint8_t port);
@@ -248,6 +252,7 @@ extern uint8_t GetID(char* string);
 extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
+extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);
 
 
 #endif /* BOS_H */

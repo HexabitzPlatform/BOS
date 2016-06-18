@@ -435,6 +435,77 @@ H01R0_Status RGB_LED_intensity(uint8_t intensityRed, uint8_t intensityGreen, uin
 	
 	return result;
 }
+
+/*-----------------------------------------------------------*/
+
+/* RGBledTask function */
+void RGBledTask(void * argument)
+{
+
+  /* Infinite loop */
+  for(;;)
+  {
+		/* Switch RGB LED according to its mode */
+		switch (rgbLedMode)
+		{
+			case RGB_pulseRGB :			
+				RGBpulse(rgbLedMode);
+				break;
+			
+			case RGB_pulseColor :
+				RGBpulse(rgbLedMode);
+				break;
+			
+			case RGB_sweepBasic :
+				RGBsweepBasic();
+				break;
+
+			case RGB_sweepFine :
+				RGBsweepFine();
+				break;
+			
+			case RGB_dimUp :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimUpWait :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimDown :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimDownWait :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimUpDown :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimDownUp :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimUpDownWait :
+				RGBdim(rgbLedMode);
+				break;
+			
+			case RGB_dimDownUpWait :
+				RGBdim(rgbLedMode);
+				break;
+			
+			default:
+				osDelay(10);
+				break;
+		}
+		
+		taskYIELD();
+  }	
+
+}
+
 #endif
 /*-----------------------------------------------------------*/
 #ifdef H01R1
