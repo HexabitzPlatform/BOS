@@ -1251,6 +1251,10 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 		case P10 :
 			return P10uart;
 	#endif
+	#ifdef _PUSB
+		case PUSB :
+			return PUSBuart;
+	#endif
 		default:
 			return 0;
 	}		
@@ -1276,20 +1280,20 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 	else if (huart->Instance == USART5)
 		return P6;
 #endif
-//#if (HO01R2 || HO02R1)
-//		if (huart->Instance == USART2)
-//				return P1;
-//		else if (huart->Instance == USART6)
-//				return P2;
-//		else if (huart->Instance == USART3)
-//				return P3;
-//		else if (huart->Instance == USART5)
-//				return P4;
-//		else if (huart->Instance == USART1)
-//				return P5;
-//		else if (huart->Instance == USART4)
-//				return P6;
-//#endif
+#if (H11R0)
+		if (huart->Instance == USART2)
+				return P1;
+		else if (huart->Instance == USART6)
+				return P2;
+		else if (huart->Instance == USART4)
+				return P3;
+		else if (huart->Instance == USART3)
+				return P4;
+		else if (huart->Instance == USART1)
+				return P5;
+		else if (huart->Instance == USART5)
+				return P6;
+#endif
 //#if (PO01R0 || PO02R0)
 //		if (huart->Instance == USART5)
 //				return P1;
@@ -1770,16 +1774,18 @@ void StartMicroDelay(uint16_t Delay)
 */
 void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction)
 {
-	if (direction == REVERSED) {
-		arrayPortsDir[myID-1] |= (0x8000>>(GetPort(huart)-1));		/* Set bit to one */
-		huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
-		huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
-		HAL_UART_Init(huart);
-	} else if (direction == NORMAL) {
-		arrayPortsDir[myID-1] &= (~(0x8000>>(GetPort(huart)-1)));		/* Set bit to zero */
-		huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
-		huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_DISABLE;
-		HAL_UART_Init(huart);		
+	if (huart != NULL) {
+		if (direction == REVERSED) {
+			arrayPortsDir[myID-1] |= (0x8000>>(GetPort(huart)-1));		/* Set bit to one */
+			huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
+			huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
+			HAL_UART_Init(huart);
+		} else if (direction == NORMAL) {
+			arrayPortsDir[myID-1] &= (~(0x8000>>(GetPort(huart)-1)));		/* Set bit to zero */
+			huart->AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_SWAP_INIT;
+			huart->AdvancedInit.Swap = UART_ADVFEATURE_SWAP_DISABLE;
+			HAL_UART_Init(huart);		
+		}
 	}
 }
 

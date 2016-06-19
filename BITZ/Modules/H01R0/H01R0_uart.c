@@ -358,63 +358,73 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
   }
 }
 
-// Blocking (polling-based) read protected with a semaphore
+/* --- Blocking (polling-based) read protected with a semaphore --- 
+*/
 HAL_StatusTypeDef readPxMutex(uint8_t port, char *buffer, uint16_t n, uint32_t mutexTimeout, uint32_t portTimeout)
 {
 	HAL_StatusTypeDef result = HAL_ERROR;
 	
-	// Wait for the semaphore to be available. 
-	if (osSemaphoreWait(PxRxSemaphoreHandle[port], mutexTimeout) == osOK) {
-		
-		while( result != HAL_OK && result != HAL_TIMEOUT ) {
-			result = HAL_UART_Receive(GetUart(port), (uint8_t *)buffer, n, portTimeout);
+	if (GetUart(port) != NULL) {
+		/* Wait for the semaphore to be available. */
+		if (osSemaphoreWait(PxRxSemaphoreHandle[port], mutexTimeout) == osOK) {
+			while( result != HAL_OK && result != HAL_TIMEOUT ) {
+				result = HAL_UART_Receive(GetUart(port), (uint8_t *)buffer, n, portTimeout);
+			}
+			/* Give back the semaphore. */
+			osSemaphoreRelease(PxRxSemaphoreHandle[port]);
 		}
-		// Give back the semaphore.
-		osSemaphoreRelease(PxRxSemaphoreHandle[port]);
 	}
 	
 	return result;
 }
 
-// Blocking (polling-based) write protected with a semaphore
+/* --- Blocking (polling-based) write protected with a semaphore --- 
+*/
 HAL_StatusTypeDef writePxMutex(uint8_t port, char *buffer, uint16_t n, uint32_t mutexTimeout, uint32_t portTimeout)
 {
 	HAL_StatusTypeDef result = HAL_ERROR;
 	
-	// Wait for the semaphore to be available. 
-	if (osSemaphoreWait(PxTxSemaphoreHandle[port], mutexTimeout) == osOK) {
-		while( result != HAL_OK && result !=  HAL_TIMEOUT ) {
-			result = HAL_UART_Transmit(GetUart(port), (uint8_t *)buffer, n, portTimeout);
+	if (GetUart(port) != NULL) {
+		/*/ Wait for the semaphore to be available. */
+		if (osSemaphoreWait(PxTxSemaphoreHandle[port], mutexTimeout) == osOK) {
+			while( result != HAL_OK && result !=  HAL_TIMEOUT ) {
+				result = HAL_UART_Transmit(GetUart(port), (uint8_t *)buffer, n, portTimeout);
+			}
+			/* Give back the semaphore. */
+			osSemaphoreRelease(PxTxSemaphoreHandle[port]);
 		}
-
-		// Give back the semaphore.
-		osSemaphoreRelease(PxTxSemaphoreHandle[port]);
 	}
 	
 	return result;
 }
 
-// Non-blocking (interrupt-based) read protected with a semaphore
+/* --- Non-blocking (interrupt-based) read protected with a semaphore --- 
+*/
 HAL_StatusTypeDef readPxITMutex(uint8_t port, char *buffer, uint16_t n, uint32_t mutexTimeout)
 {
 	HAL_StatusTypeDef result = HAL_ERROR; 
 	
-	// Wait for the mutex to be available. 
-	if (osSemaphoreWait(PxRxSemaphoreHandle[port], mutexTimeout) == osOK) {
-		result = HAL_UART_Receive_IT(GetUart(port), (uint8_t *)buffer, n);
+	if (GetUart(port) != NULL) {
+		/* Wait for the mutex to be available. */
+		if (osSemaphoreWait(PxRxSemaphoreHandle[port], mutexTimeout) == osOK) {
+			result = HAL_UART_Receive_IT(GetUart(port), (uint8_t *)buffer, n);
+		}
 	}
 	
 	return result;
 }
 
-// Non-blocking (interrupt-based) write protected with a semaphore
+/* --- Non-blocking (interrupt-based) write protected with a semaphore --- 
+*/
 HAL_StatusTypeDef writePxITMutex(uint8_t port, char *buffer, uint16_t n, uint32_t mutexTimeout)
 {
 	HAL_StatusTypeDef result = HAL_ERROR; 
-	
-	// Wait for the mutex to be available. 
-	if (osSemaphoreWait(PxTxSemaphoreHandle[port], mutexTimeout) == osOK) {
-		result = HAL_UART_Transmit_IT(GetUart(port), (uint8_t *)buffer, n);
+
+	if (GetUart(port) != NULL) {	
+		/* Wait for the mutex to be available. */
+		if (osSemaphoreWait(PxTxSemaphoreHandle[port], mutexTimeout) == osOK) {
+			result = HAL_UART_Transmit_IT(GetUart(port), (uint8_t *)buffer, n);
+		}
 	}
 	
 	return result;

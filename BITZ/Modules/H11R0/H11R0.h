@@ -21,10 +21,11 @@
 /* Define available ports */
 #define _P1 
 #define _P2 
-#define _PUSB 
+#define _P3
 #define _P4 
 #define _P5 
 #define _P6
+#define _PUSB 
 
 /* Define available USARTs */
 #define _Usart1 1
@@ -114,7 +115,6 @@ extern void MX_USART6_UART_Init(void);
    ----------------------------------------------------------------------- 
 */
 
-//#define	CODE_H01R0_on							100
 
 
 	
@@ -131,7 +131,7 @@ extern H11R0_Status H11R0_MessagingTask(uint16_t code, uint8_t port, uint8_t src
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
 */
-//extern const CLI_Command_Definition_t onCommandDefinition;
+
 
 
 

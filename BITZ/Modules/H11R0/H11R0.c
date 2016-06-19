@@ -34,18 +34,7 @@ UART_HandleTypeDef huart6;
 
 /* Create CLI commands --------------------------------------------------------*/
 
-//portBASE_TYPE onCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
-
-///* CLI command structure : off */
-//const CLI_Command_Definition_t offCommandDefinition =
-//{
-//	( const int8_t * ) "off", /* The command string to type. */
-//	( const int8_t * ) "(H01R0) off:\r\n Turn RGB LED off\r\n\r\n",
-//	offCommand, /* The function to run. */
-//	0 /* No parameters are expected. */
-//};
-/*-----------------------------------------------------------*/
 
 
 /* -----------------------------------------------------------------------
@@ -61,9 +50,7 @@ H11R0_Status H11R0_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8
 	
 	switch (code)
 	{
-//		case CODE_H01R0_on :
-//			break;
-		
+
 		default:
 			result = H11R0_ERR_UnknownMessage;
 			break;
@@ -106,44 +93,6 @@ void H11R0_Init(void)
    ----------------------------------------------------------------------- 
 */
 
-//portBASE_TYPE onCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
-//{
-//	H01R0_Status result = H01R0_OK;
-//	
-//	int8_t *pcParameterString1; portBASE_TYPE xParameterStringLength1 = 0; 
-//	uint8_t intensity = 0;
-//	static const int8_t *pcOKMessage = ( int8_t * ) "RGB LED is on at intensity %d%%\r\n";
-//	static const int8_t *pcWrongIntensityMessage = ( int8_t * ) "Wrong intensity!\n\r";
-//	
-//	/* Remove compile time warnings about unused parameters, and check the
-//	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-//	write buffer length is adequate, so does not check for buffer overflows. */
-//	( void ) xWriteBufferLen;
-//	configASSERT( pcWriteBuffer );
-//	
-//	/* Obtain the 1st parameter string. */
-//	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter
-//								(
-//									pcCommandString,		/* The command string itself. */
-//									1,						/* Return the first parameter. */
-//									&xParameterStringLength1	/* Store the parameter string length. */
-//								);
-//	intensity = ( uint8_t ) atol( ( char * ) pcParameterString1 );
-//	
-//	result = RGB_LED_on(intensity);	
-//	
-//	/* Respond to the command */
-//	if (result == H01R0_OK)
-//		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcOKMessage, intensity);
-//	else if (result == H01R0_ERR_WrongIntensity)
-//		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcWrongIntensityMessage);
-//	
-//	/* There is no more data to return after this single string, so return
-//	pdFALSE. */
-//	return pdFALSE;
-//}
-
-/*-----------------------------------------------------------*/
 
 
 /*-----------------------------------------------------------*/

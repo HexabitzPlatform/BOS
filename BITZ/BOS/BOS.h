@@ -27,7 +27,7 @@
 #endif
 
 /* Enumerations */
-enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10};
+enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
 enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H11R0};
@@ -158,8 +158,9 @@ typedef enum
 	#ifndef P2uart	
 		#define P2uart &huart6
 	#endif
-	#ifndef PUSB	
-		#define PUSB &huart4
+	#ifndef P3uart	
+		#define P3uart &huart4
+		#define PUSBuart P3uart
 	#endif
 	#ifndef P4uart	
 		#define P4uart &huart3
