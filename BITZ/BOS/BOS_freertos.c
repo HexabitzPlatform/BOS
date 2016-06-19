@@ -49,7 +49,6 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
-TaskHandle_t RGBledTaskHandle = NULL;
 xTaskHandle xCommandConsoleTask = NULL;
 
 #ifdef _P1
@@ -97,9 +96,6 @@ void MX_FREERTOS_Init(void)
 
 	/* Create the front-end task */
 	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
-
-	/* Create the RGB LED task */
-	xTaskCreate(RGBledTask, (const char *) "RGBledTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &RGBledTaskHandle);
 	
   /* Create message parsing tasks for module ports */
 #ifdef _P1

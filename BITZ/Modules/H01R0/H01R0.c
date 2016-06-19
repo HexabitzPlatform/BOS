@@ -46,8 +46,7 @@ uint8_t RGB_LED_Intensity_Old = 0;
 uint8_t rgbLedMode = 0;
 uint8_t rgbRed = 0, rgbGreen = 0, rgbBlue = 0, rgbColor = 0; 
 uint32_t rgbPeriod = 0, rgbDC = 0; int16_t rgbCount = 0;
-
-extern TaskHandle_t FrontEndTaskHandle;
+TaskHandle_t RGBledTaskHandle = NULL;
 
 /* Private function prototypes -----------------------------------------------*/	
 #ifdef H01R0
@@ -620,6 +619,9 @@ void H01R0_Init(void)
 	TIM14_Init();
 	/* Blue LED dutycycle */
 	TIM16_Init();
+
+	/* Create the RGB LED task */
+	xTaskCreate(RGBledTask, (const char *) "RGBledTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &RGBledTaskHandle);
 }
 #endif
 #ifdef H01R1

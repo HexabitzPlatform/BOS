@@ -22,7 +22,7 @@ TIM_HandleTypeDef htim7;	/* micro-second delay counter */
 uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[4][5] = {"", "H01R0", "H01R1", "H02R0"};
+const char modulePNstring[5][5] = {"", "H01R0", "H01R1", "H02R0", "H11R0"};
 
 /* Define BOS keywords */
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
@@ -2593,7 +2593,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	result = StartScastDMAStream(srcP, srcM, dstP, dstM, direction, count, timeout);
 	
 	/* Respond to the command */
-	if (result == H01R0_OK) 
+	if (result == BOS_OK) 
 	{	
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, par3, srcP, par1, dstP, par2, count, timeout);
 	}
