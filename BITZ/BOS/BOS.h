@@ -30,7 +30,7 @@
 enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
-enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H11R0};
+enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H11R0};
 enum IndMode{IND_off, IND_ping, IND_topology};
 enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 
@@ -77,6 +77,15 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H01R0.h"
 	#define	Module_Init		H01R1_Init
 #endif
+#ifdef H04R0
+	#include "H04R0.h"
+	#include "H04R0_uart.h"	
+	#include "H04R0_gpio.h"	
+	#include "H04R0_dma.h"		
+	#include "H04R0_dac.h"		
+	#define	Module_Init		H04R0_Init
+	#define	Module_MessagingTask		(BOS_Status) H04R0_MessagingTask
+#endif
 #ifdef H11R0
 	#include "H11R0.h"
 	#include "H11R0_uart.h"	
@@ -90,7 +99,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #if defined (H01R0) || defined (H01R1) || defined (H02R0)
 	#define	NumOfPorts		6
 #endif
-#if defined (H11R0)
+#if defined (H04R0) || defined (H11R0)
 	#define	NumOfPorts		5
 #endif
 
@@ -151,6 +160,23 @@ typedef enum
 	#define P5uart &huart1
 	#define P6uart &huart5
 #endif
+#if (H04R0)
+	#ifndef P1uart	
+		#define P1uart &huart4
+	#endif
+	#ifndef P2uart	
+		#define P2uart &huart2
+	#endif
+	#ifndef P4uart	
+		#define P4uart &huart3
+	#endif
+	#ifndef P5uart	
+		#define P5uart &huart1
+	#endif
+	#ifndef P6uart	
+		#define P6uart &huart5
+	#endif
+#endif
 #if (H11R0)
 	#ifndef P1uart	
 		#define P1uart &huart2
@@ -180,7 +206,7 @@ extern uint8_t myID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[5][5];
+extern const char modulePNstring[6][5];
 extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];

@@ -80,7 +80,9 @@ void USART1_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart1)		
   HAL_UART_IRQHandler(&huart1);
+#endif
 	
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the
@@ -97,8 +99,10 @@ void USART2_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart2)	
   HAL_UART_IRQHandler(&huart2);
-
+#endif
+	
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the
 	unblocked (higher priority) task is returned to immediately. */
@@ -114,10 +118,18 @@ void USART3_8_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart3)
 	HAL_UART_IRQHandler(&huart3);
+#endif
+#if defined (_Usart4)
 	HAL_UART_IRQHandler(&huart4);
+#endif
+#if defined (_Usart5)
 	HAL_UART_IRQHandler(&huart5);
+#endif
+#if defined (_Usart6)
 	HAL_UART_IRQHandler(&huart6);
+#endif
 
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the

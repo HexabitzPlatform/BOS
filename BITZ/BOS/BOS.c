@@ -22,7 +22,7 @@ TIM_HandleTypeDef htim7;	/* micro-second delay counter */
 uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[5][5] = {"", "H01R0", "H01R1", "H02R0", "H11R0"};
+const char modulePNstring[6][5] = {"", "H01R0", "H01R1", "H02R0", "H04R0", "H11R0"};
 
 /* Define BOS keywords */
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
@@ -1280,6 +1280,18 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 	else if (huart->Instance == USART5)
 		return P6;
 #endif
+#if (H04R0)
+		if (huart->Instance == USART4)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART3)
+				return P4;
+		else if (huart->Instance == USART1)
+				return P5;
+		else if (huart->Instance == USART5)
+				return P6;
+#endif
 #if (H11R0)
 		if (huart->Instance == USART2)
 				return P1;
@@ -1294,19 +1306,7 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 		else if (huart->Instance == USART5)
 				return P6;
 #endif
-//#if (PO01R0 || PO02R0)
-//		if (huart->Instance == USART5)
-//				return P1;
-//		else if (huart->Instance == USART2)
-//				return P2;
-//		else if (huart->Instance == USART3)
-//				return P3;
-//		else if (huart->Instance == USART8)
-//				return P4;
-//		else if (huart->Instance == USART4)
-//				return P5;
-//#endif
-//		
+		
 	return 0;
 }
 
