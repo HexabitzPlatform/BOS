@@ -105,15 +105,10 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #endif
 
 /* Number of ports */
-#if defined (H01R0) || defined (H01R1) || defined (H02R0)
+#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H11R0)
 	#define	NumOfPorts		6
 #endif
-#if defined (H04R0) || defined (H11R0)
-	#define	NumOfPorts		5
-#endif
-#if defined (H07R0)
-	#define	NumOfPorts		4
-#endif
+
 
 /* Firmware */
 #define	_firmVersion		"FOR001"

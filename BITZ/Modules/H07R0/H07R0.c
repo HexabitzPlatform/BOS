@@ -77,7 +77,7 @@ void H07R0_Init(void)
   MX_USART4_UART_Init();
 	
 	/* ADC */
-	MX_ADC_Init();
+	//MX_ADC_Init();
   
 }
 /*-----------------------------------------------------------*/
