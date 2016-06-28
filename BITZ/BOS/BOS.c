@@ -745,7 +745,7 @@ BOS_Status SaveEEtopology(void)
 BOS_Status LoadEEtopology(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp;
+	uint16_t add = 0, temp = 0;
 	
 	/* Load number of modules */
 	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
@@ -1168,6 +1168,18 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 		return P5;
 	else if (huart->Instance == USART5)
 		return P6;
+#endif
+#if (H02R0)
+		if (huart->Instance == USART4)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART6)
+				return P3;
+		else if (huart->Instance == USART1)
+				return P5;
+		else if (huart->Instance == USART5)
+				return P6;
 #endif
 #if (H04R0)
 		if (huart->Instance == USART4)

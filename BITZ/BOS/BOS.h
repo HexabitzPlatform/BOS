@@ -77,6 +77,14 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H01R0.h"
 	#define	Module_Init		H01R1_Init
 #endif
+#ifdef H02R0
+	#include "H02R0.h"
+	#include "H02R0_uart.h"	
+	#include "H02R0_gpio.h"	
+	#include "H02R0_dma.h"		
+	#define	Module_Init		H02R0_Init
+	#define	Module_MessagingTask		(BOS_Status) H02R0_MessagingTask
+#endif
 #ifdef H04R0
 	#include "H04R0.h"
 	#include "H04R0_uart.h"	
@@ -174,6 +182,23 @@ typedef enum
 	#define P4uart &huart3
 	#define P5uart &huart1
 	#define P6uart &huart5
+#endif
+#if (H02R0)
+	#ifndef P1uart	
+		#define P1uart &huart4
+	#endif
+	#ifndef P2uart	
+		#define P2uart &huart2
+	#endif
+	#ifndef P3uart	
+		#define P3uart &huart6
+	#endif
+	#ifndef P5uart	
+		#define P5uart &huart1
+	#endif
+	#ifndef P6uart	
+		#define P6uart &huart5
+	#endif
 #endif
 #if (H04R0)
 	#ifndef P1uart	
