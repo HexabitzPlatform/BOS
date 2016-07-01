@@ -22,7 +22,7 @@ TIM_HandleTypeDef htim7;	/* micro-second delay counter */
 uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[5][5] = {"", "H01R0", "H01R1", "H02R0", "H11R0"};
+const char modulePNstring[8][5] = {"", "H01R0", "H01R1", "H02R0", "H04R0", "H07R0", "H09R0", "H11R0"};
 
 /* Define BOS keywords */
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
@@ -745,7 +745,7 @@ BOS_Status SaveEEtopology(void)
 BOS_Status LoadEEtopology(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp;
+	uint16_t add = 0, temp = 0;
 	
 	/* Load number of modules */
 	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
@@ -857,117 +857,6 @@ BOS_Status LoadEEalias(void)
 		result = BOS_ERR_EEPROM;
 	
 	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- BOS UART RxCplt ISR --- 
-*/
-void BOS_UART_RxCplt_Callback(UART_HandleTypeDef *huart)
-{
-	char cRxedChar = 0; uint8_t port = GetPort(huart);
-	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-	
-	if (portStatus[port] != STREAM) 
-	{
-		/* Read buffer */
-		cRxedChar = huart->Instance->RDR;
-		
-		/* Received CLI request? */
-		if( cRxedChar == '\r' )
-		{
-			cRxedChar = '\0';
-			PcPort = port; 
-			portStatus[port] = CLI;
-			
-			/* Activate the CLI task */
-			vTaskNotifyGiveFromISR(xCommandConsoleTask, &( xHigherPriorityTaskWoken ) );		
-		}
-		/* Received messaging request? (any value between 1 and 50 other than \r = 0x0D) */
-		else if( (cRxedChar != '\0') && (cRxedChar <= 50) )
-		{
-			portStatus[port] = MSG;
-			messageLength[port-1] = cRxedChar;			
-				
-			/* Activate DMA transfer */
-			PortMemDMA1_Setup(huart, cRxedChar);
-			
-			cRxedChar = '\0';	
-		}
-		/* Message has been received? */
-		else if( cRxedChar == 0x75 )
-		{
-			/* Notify messaging tasks */
-			NotifyMessagingTaskFromISR(port);		
-		}
-		
-		/* Give back the mutex */
-		xSemaphoreGiveFromISR( PxRxSemaphoreHandle[port], &( xHigherPriorityTaskWoken ) );
-		
-		/* Read this port again */
-		if (portStatus[port] == FREE) {
-			HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);
-		}
-	}
-	
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- BOS DMA1 Ch1 ISR --- 
-*/
-void BOS_DMA1_Ch1_Callback(void)
-{
-	/* Streaming DMA 1 */
-	HAL_DMA_IRQHandler(&portPortDMA1);
-	if (DMAStream1total)
-		++DMAStream1count;
-	if (DMAStream1count >= DMAStream1total) {
-		StopPortPortDMA1();
-	}
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- BOS DMA1 Ch2-3 DMA2 Ch1-2 ISR --- 
-*/
-void BOS_DMA1_Ch2_3_DMA2_Ch1_2_Callback(void)
-{
-	/* Messaging DMA 3 */
-	if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF2) == SET) {
-		HAL_DMA_IRQHandler(&portMemDMA3);
-	/* Streaming DMA 2 */
-	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF3) == SET) {
-		HAL_DMA_IRQHandler(&portPortDMA2);
-		if (DMAStream2total)
-			++DMAStream2count;
-		if (DMAStream2count >= DMAStream2total) {
-			StopPortPortDMA2();
-		}
-	}
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- BOS DMA1 Ch4-7 DMA2 Ch3-5 ISR --- 
-*/
-void BOS_DMA1_Ch4_7_DMA2_Ch3_5_Callback(void)
-{
-	/* Messaging DMA 1 */
-	if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF5) == SET) {
-		HAL_DMA_IRQHandler(&portMemDMA1);
-	/* Messaging DMA 2 */
-	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF6) == SET) {
-		HAL_DMA_IRQHandler(&portMemDMA2);
-	/* Streaming DMA 3 */
-	} else if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF3) == SET) {
-		HAL_DMA_IRQHandler(&portPortDMA3);
-		if (DMAStream3total)
-			++DMAStream3count;
-		if (DMAStream3count >= DMAStream3total) {
-			StopPortPortDMA3();
-		}
-	}
 }
 
 /*-----------------------------------------------------------*/
@@ -1280,6 +1169,52 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 	else if (huart->Instance == USART5)
 		return P6;
 #endif
+#if (H02R0)
+		if (huart->Instance == USART4)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART6)
+				return P3;
+		else if (huart->Instance == USART1)
+				return P5;
+		else if (huart->Instance == USART5)
+				return P6;
+#endif
+#if (H04R0)
+		if (huart->Instance == USART4)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART3)
+				return P4;
+		else if (huart->Instance == USART1)
+				return P5;
+		else if (huart->Instance == USART5)
+				return P6;
+#endif
+#if (H07R0)
+		if (huart->Instance == USART4)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART3)
+				return P4;
+		else if (huart->Instance == USART1)
+				return P5;
+#endif
+#if (H09R0)
+		if (huart->Instance == USART5)
+				return P1;
+		else if (huart->Instance == USART2)
+				return P2;
+		else if (huart->Instance == USART6)
+				return P3;
+		else if (huart->Instance == USART3)
+				return P4;
+		else if (huart->Instance == USART1)
+				return P5;
+#endif
 #if (H11R0)
 		if (huart->Instance == USART2)
 				return P1;
@@ -1294,19 +1229,7 @@ uint8_t GetPort(UART_HandleTypeDef *huart)
 		else if (huart->Instance == USART5)
 				return P6;
 #endif
-//#if (PO01R0 || PO02R0)
-//		if (huart->Instance == USART5)
-//				return P1;
-//		else if (huart->Instance == USART2)
-//				return P2;
-//		else if (huart->Instance == USART3)
-//				return P3;
-//		else if (huart->Instance == USART8)
-//				return P4;
-//		else if (huart->Instance == USART4)
-//				return P5;
-//#endif
-//		
+		
 	return 0;
 }
 

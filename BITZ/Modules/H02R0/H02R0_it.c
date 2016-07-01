@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    stm32f0xx_it.c
+  * @file    H02R0_it.c
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
@@ -45,10 +45,7 @@
 /* External function prototypes ----------------------------------------------*/
 extern xTaskHandle xCommandConsoleTask;
 extern void NotifyMessagingTaskFromISR(uint8_t port);
-extern void BOS_DMA1_Ch1_Callback(void);
-extern void BOS_DMA1_Ch2_3_DMA2_Ch1_2_Callback(void);
-extern void BOS_UART_RxCplt_Callback(UART_HandleTypeDef *huart);
-extern void BOS_DMA1_Ch4_7_DMA2_Ch3_5_Callback(void);
+
 
 
 /******************************************************************************/
@@ -80,7 +77,9 @@ void USART1_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart1)		
   HAL_UART_IRQHandler(&huart1);
+#endif
 	
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the
@@ -97,8 +96,10 @@ void USART2_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart2)	
   HAL_UART_IRQHandler(&huart2);
-
+#endif
+	
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the
 	unblocked (higher priority) task is returned to immediately. */
@@ -114,10 +115,18 @@ void USART3_8_IRQHandler(void)
 {
 	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 	
+#if defined (_Usart3)
 	HAL_UART_IRQHandler(&huart3);
+#endif
+#if defined (_Usart4)
 	HAL_UART_IRQHandler(&huart4);
+#endif
+#if defined (_Usart5)
 	HAL_UART_IRQHandler(&huart5);
+#endif
+#if defined (_Usart6)
 	HAL_UART_IRQHandler(&huart6);
+#endif
 
 	/* If lHigherPriorityTaskWoken is now equal to pdTRUE, then a context
 	switch should be performed before the interrupt exists.  That ensures the
@@ -133,8 +142,13 @@ void USART3_8_IRQHandler(void)
 */
 void DMA1_Ch1_IRQHandler(void)
 {
-	/* BOS DMA1 Ch1 ISR */
-	BOS_DMA1_Ch1_Callback();
+	/* Streaming DMA 1 */
+	HAL_DMA_IRQHandler(&portPortDMA1);
+	if (DMAStream1total)
+		++DMAStream1count;
+	if (DMAStream1count >= DMAStream1total) {
+		StopPortPortDMA1();
+	}
 	
 }
 
@@ -145,9 +159,18 @@ void DMA1_Ch1_IRQHandler(void)
 */
 void DMA1_Ch2_3_DMA2_Ch1_2_IRQHandler(void)
 {
-	/* BOS DMA1 Ch2-3 DMA2 Ch1-2 ISR */
-	BOS_DMA1_Ch2_3_DMA2_Ch1_2_Callback();
-	
+	/* Messaging DMA 3 */
+	if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF2) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA3);
+	/* Streaming DMA 2 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF3) == SET) {
+		HAL_DMA_IRQHandler(&portPortDMA2);
+		if (DMAStream2total)
+			++DMAStream2count;
+		if (DMAStream2count >= DMAStream2total) {
+			StopPortPortDMA2();
+		}
+	}
 }
 
 /*-----------------------------------------------------------*/
@@ -157,9 +180,21 @@ void DMA1_Ch2_3_DMA2_Ch1_2_IRQHandler(void)
 */
 void DMA1_Ch4_7_DMA2_Ch3_5_IRQHandler(void)
 {
-	/* BOS DMA1 Ch4-7 DMA2 Ch3-5 ISR */
-	BOS_DMA1_Ch4_7_DMA2_Ch3_5_Callback();
-	
+	/* Messaging DMA 1 */
+	if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF5) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA1);
+	/* Messaging DMA 2 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA1,DMA_ISR_TCIF6) == SET) {
+		HAL_DMA_IRQHandler(&portMemDMA2);
+	/* Streaming DMA 3 */
+	} else if (HAL_DMA_GET_IT_SOURCE(DMA2,DMA_ISR_TCIF3) == SET) {
+		HAL_DMA_IRQHandler(&portPortDMA3);
+		if (DMAStream3total)
+			++DMAStream3count;
+		if (DMAStream3count >= DMAStream3total) {
+			StopPortPortDMA3();
+		}
+	}
 }
 
 /*-----------------------------------------------------------*/
@@ -178,8 +213,50 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	/* BOS UART RxCplt ISR */
-	BOS_UART_RxCplt_Callback(huart);
+	char cRxedChar = 0; uint8_t port = GetPort(huart);
+	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+	
+	if (portStatus[port] != STREAM) 
+	{
+		/* Read buffer */
+		cRxedChar = huart->Instance->RDR;
+		
+		/* Received CLI request? */
+		if( cRxedChar == '\r' )
+		{
+			cRxedChar = '\0';
+			PcPort = port; 
+			portStatus[port] = CLI;
+			
+			/* Activate the CLI task */
+			vTaskNotifyGiveFromISR(xCommandConsoleTask, &( xHigherPriorityTaskWoken ) );		
+		}
+		/* Received messaging request? (any value between 1 and 50 other than \r = 0x0D) */
+		else if( (cRxedChar != '\0') && (cRxedChar <= 50) )
+		{
+			portStatus[port] = MSG;
+			messageLength[port-1] = cRxedChar;			
+				
+			/* Activate DMA transfer */
+			PortMemDMA1_Setup(huart, cRxedChar);
+			
+			cRxedChar = '\0';	
+		}
+		/* Message has been received? */
+		else if( cRxedChar == 0x75 )
+		{
+			/* Notify messaging tasks */
+			NotifyMessagingTaskFromISR(port);		
+		}
+		
+		/* Give back the mutex */
+		xSemaphoreGiveFromISR( PxRxSemaphoreHandle[port], &( xHigherPriorityTaskWoken ) );
+		
+		/* Read this port again */
+		if (portStatus[port] == FREE) {
+			HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);
+		}
+	}
 	
 	UartRxReady = SET;
 }
