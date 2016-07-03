@@ -30,7 +30,7 @@
 enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
-enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H07R0, _H09R0, _H11R0};
+enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H07R0, _H08R0, _H09R0, _H11R0};
 enum IndMode{IND_off, IND_ping, IND_topology};
 enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 
@@ -77,6 +77,14 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H01R0.h"
 	#define	Module_Init		H01R1_Init
 #endif
+#ifdef H02R0
+	#include "H02R0.h"
+	#include "H02R0_uart.h"	
+	#include "H02R0_gpio.h"	
+	#include "H02R0_dma.h"		
+	#define	Module_Init		H02R0_Init
+	#define	Module_MessagingTask		(BOS_Status) H02R0_MessagingTask
+#endif
 #ifdef H04R0
 	#include "H04R0.h"
 	#include "H04R0_uart.h"	
@@ -94,6 +102,14 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H07R0_adc.h"		
 	#define	Module_Init		H07R0_Init
 	#define	Module_MessagingTask		(BOS_Status) H07R0_MessagingTask
+#endif
+#ifdef H08R0
+	#include "H08R0.h"
+	#include "H08R0_uart.h"	
+	#include "H08R0_gpio.h"	
+	#include "H08R0_dma.h"			
+	#define	Module_Init		H08R0_Init
+	#define	Module_MessagingTask		(BOS_Status) H08R0_MessagingTask
 #endif
 #ifdef H09R0
 	#include "H09R0.h"
@@ -113,7 +129,8 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #endif
 
 /* Number of ports (maximum port rank) */
-#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H09R0) || defined (H11R0)
+#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H08R0) || defined (H9R0) \
+|| defined (H11R0)
 	#define	NumOfPorts		6
 #endif
 
@@ -175,6 +192,23 @@ typedef enum
 	#define P5uart &huart1
 	#define P6uart &huart5
 #endif
+#if (H02R0)
+	#ifndef P1uart	
+		#define P1uart &huart4
+	#endif
+	#ifndef P2uart	
+		#define P2uart &huart2
+	#endif
+	#ifndef P3uart	
+		#define P3uart &huart6
+	#endif
+	#ifndef P5uart	
+		#define P5uart &huart1
+	#endif
+	#ifndef P6uart	
+		#define P6uart &huart5
+	#endif
+#endif
 #if (H04R0)
 	#ifndef P1uart	
 		#define P1uart &huart4
@@ -204,6 +238,26 @@ typedef enum
 	#endif
 	#ifndef P5uart	
 		#define P5uart &huart1
+	#endif
+#endif
+#if (H08R0)
+	#ifndef P1uart	
+		#define P1uart &huart3
+	#endif
+	#ifndef P2uart	
+		#define P2uart &huart1
+	#endif
+	#ifndef P3uart	
+		#define P3uart &huart5
+	#endif
+	#ifndef P4uart	
+		#define P4uart &huart4
+	#endif
+	#ifndef P5uart	
+		#define P5uart &huart2
+	#endif
+	#ifndef P6uart	
+		#define P6uart &huart6
 	#endif
 #endif
 #if (H09R0)
@@ -252,7 +306,7 @@ extern uint8_t myID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[8][5];
+extern const char modulePNstring[9][5];
 extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
