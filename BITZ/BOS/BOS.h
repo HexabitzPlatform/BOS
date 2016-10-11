@@ -61,7 +61,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #include <math.h>	 
 
 /* Include a predefined topology here */
-//#include "topology_ex.h"
+#include "topology_ring.h"
 
 
 /* Module includes and initialization */
@@ -129,7 +129,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #endif
 
 /* Number of ports (maximum port rank) */
-#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H08R0) || defined (H9R0) \
+#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H08R0) || defined (H09R0) \
 || defined (H11R0)
 	#define	NumOfPorts		6
 #endif

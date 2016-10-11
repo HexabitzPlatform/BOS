@@ -1090,6 +1090,12 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
 #endif	
+#ifdef H09R0	
+	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &ledModeCommandDefinition );
+#endif
 }
 
 /*-----------------------------------------------------------*/
