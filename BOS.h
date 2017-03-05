@@ -60,10 +60,6 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #include <ctype.h>
 #include <math.h>	 
 
-/* Include a predefined topology here */
-#include "topology_ring.h"
-
-
 /* Module includes and initialization */
 #ifdef H01R0
 	#include "H01R0.h"
