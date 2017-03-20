@@ -27,7 +27,7 @@
 #endif
 
 /* Enumerations */
-enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
+enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
 enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H07R0, _H08R0, _H09R0, _H11R0};
@@ -124,12 +124,13 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#define	Module_MessagingTask		(BOS_Status) H11R0_MessagingTask
 #endif
 
-/* Number of ports (maximum port rank) */
+/* Number of ports (maximum port rank) >> Move inside module file */
 #if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H08R0) || defined (H09R0) \
 || defined (H11R0)
 	#define	NumOfPorts		6
 #endif
-
+#define P_LAST 								NumOfPorts
+#define P_PROG 								NumOfPorts
 
 /* Firmware */
 #define	_firmVersion		"FOR001"
@@ -177,6 +178,12 @@ typedef enum
 #define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
 #define	Delay_ms(t)			HAL_Delay(t)					/* Non-RTOS safe */
 #define	Delay_s(t)			HAL_Delay(1000*t)			/* Non-RTOS safe */
+
+/* Serial Wire Interface */
+#define SWDIO_PIN			GPIO_PIN_13
+#define	SWDIO_PORT		GPIOA
+#define	SWCLK_PIN			GPIO_PIN_14
+#define	SWCLK_PORT		GPIOA
 
 
 /* Port-UART mapping */
@@ -282,7 +289,7 @@ typedef enum
 	#endif
 	#ifndef P3uart	
 		#define P3uart &huart4
-		#define PUSBuart P3uart
+		#define P_USBuart P3uart
 	#endif
 	#ifndef P4uart	
 		#define P4uart &huart3

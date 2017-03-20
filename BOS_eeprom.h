@@ -83,6 +83,7 @@ extern uint16_t VirtAddVarTab[NumOfEEPROMvar+1];
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 uint16_t EE_Init(void);
+uint16_t EE_Format(void);
 uint16_t EE_ReadVariable(uint16_t VirtAddress, uint16_t* Data);
 uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data);
 uint16_t Flash_WriteVariable(uint32_t Address, uint16_t Data);
