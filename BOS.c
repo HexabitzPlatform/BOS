@@ -118,6 +118,7 @@ void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t time
 	uint8_t dst2, uint8_t src3, uint8_t dst3);
 void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
+void EE_FormatForFactoryReset(void);
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -1014,9 +1015,8 @@ void StreamTimerCallback( TimerHandle_t xTimer )
 
 /*-----------------------------------------------------------*/	
 
-
-/* --- Check for factory reset condition: Either SWDIO is connected to programming port RXD
-					or TXD of first port is connected to RXD of second port
+/* --- Check for factory reset condition: First port TXD is connected to last port RXD   
+					or to programming port RXD   
 */
 uint8_t IsFactoryReset(void)
 {
@@ -1025,6 +1025,12 @@ uint8_t IsFactoryReset(void)
 	uint16_t P1_TX_Pin = 0, P_last_RX_Pin = 0, P_prog_RX_Pin = 0;
 	
 	/* -- Setup GPIOs -- */
+	
+  /* Enable all GPIO Ports Clocks */
+  __GPIOA_CLK_ENABLE();
+  __GPIOB_CLK_ENABLE();
+  __GPIOC_CLK_ENABLE();
+	__GPIOD_CLK_ENABLE();
 	
 	/* UART pins */
 #ifdef _Usart1
@@ -1064,7 +1070,6 @@ uint8_t IsFactoryReset(void)
 	}
 #endif
 	
-	
 	/* RXD of last port */
 #ifdef _Usart1
 	if(GetUart(P_LAST) == &huart1) {
@@ -1102,7 +1107,6 @@ uint8_t IsFactoryReset(void)
 		P_last_RX_Pin = USART6_RX_PIN;
 	}
 #endif	
-
 	
 	/* RXD of programming port */
 #ifdef _Usart1
@@ -1142,7 +1146,6 @@ uint8_t IsFactoryReset(void)
 	}
 #endif	
 	
-
 	/* TXD of first port */
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -1160,36 +1163,58 @@ uint8_t IsFactoryReset(void)
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
 	GPIO_InitStruct.Pin = P_prog_RX_Pin;
 	HAL_GPIO_Init(P_prog_RX_Port, &GPIO_InitStruct);	
-
-	/* SWDIO pin */
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIO_InitStruct.Pin = SWDIO_PIN;
-	HAL_GPIO_Init(SWDIO_PORT, &GPIO_InitStruct);
 	
 	/* Check for factory reset conditions */
 	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
 	Delay_ms(1);
-	if(HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == RESET)
+	if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == RESET)
 	{
 		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
 		Delay_ms(1);
-		if(HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == SET) {
+		if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == SET) {
 			return 1;
 		}
 	}
+	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(1);
+	if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == RESET)
+	{
+		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(1);
+		if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == SET) {
+			return 1;
+		}
+	}
+
 	
-//	HAL_GPIO_WritePin(SWDIO_PORT,SWDIO_PIN,GPIO_PIN_RESET);
-//	Delay_ms(1);
-//	if(HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == RESET)
-//	{
-//		HAL_GPIO_WritePin(SWDIO_PORT,SWDIO_PIN,GPIO_PIN_SET);
-//		Delay_ms(1);
-//		if(HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == SET) {
-//			return 1;
-//		}
-//	}
-//	
+	/* Clear flag for formated EEPROM if it was already set */
+	/* Flag address (STM32F09x) - Last 4 words of SRAM */
+	*((unsigned long *)0x20007FF0) = 0xFFFFFFFF; 
+	
 	return 0;
+}
+
+/*-----------------------------------------------------------*/	
+ 
+/* --- Format emulated EEPROM for a factory reset
+*/
+void EE_FormatForFactoryReset(void)
+{
+	/* Check if EEPROM was just formated? */
+	/* Flag address (STM32F09x) - Last 4 words of SRAM */
+	if (*((unsigned long *)0x20007FF0) == 0xBEEFDEAD)
+	{
+		// Do nothing
+	}
+	else
+	{
+		if (EE_Format() == HAL_OK) 
+		{
+			/* Set flag for formated EEPROM */
+			*((unsigned long *)0x20007FF0) = 0xBEEFDEAD; 
+		}
+	}
+	
 }
 
 /*-----------------------------------------------------------*/	
@@ -1212,8 +1237,8 @@ void BOS_Init(void)
 	/* Check for factory reset */
 	if (IsFactoryReset())
 	{
-		/* Format EEPROM */
-		EE_Format();
+		/* Format EEPROM once */
+		EE_FormatForFactoryReset();
 		
 		/* Software reset */
 		NVIC_SystemReset();
@@ -1232,9 +1257,7 @@ void BOS_Init(void)
 	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */
 	{
-		IND_blink(100);
-		HAL_Delay(100);
-		IND_blink(100);
+		IND_blink(500);
 	}
 	else							/* Non-native module */
 	{

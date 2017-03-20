@@ -130,7 +130,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#define	NumOfPorts		6
 #endif
 #define P_LAST 								NumOfPorts
-#define P_PROG 								NumOfPorts
+#define P_PROG 								P2
 
 /* Firmware */
 #define	_firmVersion		"FOR001"
