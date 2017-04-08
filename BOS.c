@@ -508,7 +508,7 @@ void PxMessagingTask(void * argument)
 		/* Reset message buffer */
 		memset(cMessage[port-1], 0, (size_t) messageLength[port-1]);
 		messageLength[port-1] = 0;
-		if (portStatus[port] != STREAM) {
+		if (portStatus[port] != STREAM && portStatus[port] != CLI) {
 			/* Free the port */
 			portStatus[port] = FREE;
 			/* Read this port again */
