@@ -751,6 +751,7 @@ BOS_Status LoadEEtopology(void)
 	/* Load number of modules */
 	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
 	N = (uint8_t) (temp>>8);
+	if (N == 0)	N = 1;
 	myID = (uint8_t) temp;
 	
 	/* Load topology */
@@ -1795,7 +1796,12 @@ BOS_Status Explore(void)
 	
 	if (result == BOS_OK)
 	{	
-		/* Step 5a - Update other modules ports starting from the last one */
+		/* Step 5a - Virtually reset the state of master ports to Normal */
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
+		}
+		
+		/* Step 5b - Update other modules ports starting from the last one */
 		for (uint8_t i=currentID ; i>=2 ; i--) 
 		{
 			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) 
@@ -1822,7 +1828,7 @@ BOS_Status Explore(void)
 				}
 			}
 			
-			/* Step 5b - Check if an inport is reversed */
+			/* Step 5c - Check if an inport is reversed */
 			/* Find out the inport to this module from master */
 			FindRoute(1, i);
 			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
@@ -1831,16 +1837,15 @@ BOS_Status Explore(void)
 			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
 				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
 			
-			/* Step 5c - Update module ports directions */
+			/* Step 5d - Update module ports directions */
 			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
 			osDelay(10);			
 		}			
 	
-		/* Step 5d - Update master ports > all normal */
+		/* Step 5e - Update master ports > all normal */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
 		}
-		arrayPortsDir[0] = (uint16_t) NORMAL;
 	}
 	
 			
@@ -2142,6 +2147,7 @@ void DisplayPortsDir(uint8_t port)
 void DisplayModuleStatus(uint8_t port)
 {
 	int8_t *pcOutputString;
+	uint16_t temp = 0;
 	
 	/* Obtain the address of the output buffer. */
 	pcOutputString = FreeRTOS_CLIGetOutputBuffer();
@@ -2205,6 +2211,22 @@ void DisplayModuleStatus(uint8_t port)
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
 	}
 	strcat( (char *) pcOutputString, pcUserMessage);
+	strcat( (char *) pcOutputString, "\n\r");
+	
+	/* Ports direction */
+	strcat( (char *) pcOutputString, "\n\rThese ports are reversed: ");
+	temp = strlen( (char *) pcOutputString);
+	for (uint8_t p=1 ; p<=NumOfPorts ; p++) 
+	{		
+		if ( (arrayPortsDir[myID-1] & (0x8000>>(p-1))) ) 			/* Port is reversed */
+		{
+			sprintf(pcUserMessage, "P%d ", p);
+			strcat( (char *) pcOutputString, pcUserMessage);
+		}	
+	}
+	if (temp == strlen( (char *) pcOutputString)) {				/* All ports are normal */
+		strcat( (char *) pcOutputString, "None");
+	}
 	strcat( (char *) pcOutputString, "\n\r");
 	
 	/* Display output */
@@ -2679,7 +2701,8 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	configASSERT( pcWriteBuffer );
 
 	/* Read Ports directions when a pre-defined topology file is used */
-	result = ReadPortsDir();
+	if (N > 1)
+		result = ReadPortsDir();
 	
 	/* Respond to the info command */
 	sprintf( ( char * ) pcWriteBuffer, "\n\rNumber of modules: %d\n", N);
