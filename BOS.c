@@ -116,7 +116,8 @@ BOS_Status LoadEEstreams(void);
 void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
 	uint8_t dst2, uint8_t src3, uint8_t dst3);
 void StreamTimerCallback( TimerHandle_t xTimer );
-
+uint8_t IsFactoryReset(void);
+void EE_FormatForFactoryReset(void);
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -506,7 +507,7 @@ void PxMessagingTask(void * argument)
 		/* Reset message buffer */
 		memset(cMessage[port-1], 0, (size_t) messageLength[port-1]);
 		messageLength[port-1] = 0;
-		if (portStatus[port] != STREAM) {
+		if (portStatus[port] != STREAM && portStatus[port] != CLI) {
 			/* Free the port */
 			portStatus[port] = FREE;
 			/* Read this port again */
@@ -749,6 +750,7 @@ BOS_Status LoadEEtopology(void)
 	/* Load number of modules */
 	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
 	N = (uint8_t) (temp>>8);
+	if (N == 0)	N = 1;
 	myID = (uint8_t) temp;
 	
 	/* Load topology */
@@ -1013,7 +1015,210 @@ void StreamTimerCallback( TimerHandle_t xTimer )
 
 /*-----------------------------------------------------------*/	
 
+/* --- Check for factory reset condition: First port TXD is connected to last port RXD   
+					or to programming port RXD   
+*/
+uint8_t IsFactoryReset(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	GPIO_TypeDef *P1_TX_Port = 0, *P_last_RX_Port = 0, *P_prog_RX_Port = 0;
+	uint16_t P1_TX_Pin = 0, P_last_RX_Pin = 0, P_prog_RX_Pin = 0;
 	
+	/* -- Setup GPIOs -- */
+	
+  /* Enable all GPIO Ports Clocks */
+  __GPIOA_CLK_ENABLE();
+  __GPIOB_CLK_ENABLE();
+  __GPIOC_CLK_ENABLE();
+	__GPIOD_CLK_ENABLE();
+	
+	/* UART pins */
+#ifdef _Usart1
+	if(GetUart(P1) == &huart1) {
+		P1_TX_Port = USART1_TX_PORT;
+		P1_TX_Pin = USART1_TX_PIN;
+	}
+#endif
+#ifdef _Usart2
+	if(GetUart(P1) == &huart2) {
+		P1_TX_Port = USART2_TX_PORT;
+		P1_TX_Pin = USART2_TX_PIN;
+	}
+#endif
+#ifdef _Usart3
+	if(GetUart(P1) == &huart3) {
+		P1_TX_Port = USART3_TX_PORT;
+		P1_TX_Pin = USART3_TX_PIN;
+	}
+#endif
+#ifdef _Usart4
+	if(GetUart(P1) == &huart4) {
+		P1_TX_Port = USART4_TX_PORT;
+		P1_TX_Pin = USART4_TX_PIN;
+	}
+#endif
+#ifdef _Usart5
+	if(GetUart(P1) == &huart5) {
+		P1_TX_Port = USART5_TX_PORT;
+		P1_TX_Pin = USART5_TX_PIN;
+	}
+#endif
+#ifdef _Usart6
+	if(GetUart(P1) == &huart6) {
+		P1_TX_Port = USART6_TX_PORT;
+		P1_TX_Pin = USART6_TX_PIN;
+	}
+#endif
+	
+	/* RXD of last port */
+#ifdef _Usart1
+	if(GetUart(P_LAST) == &huart1) {
+		P_last_RX_Port = USART1_RX_PORT;
+		P_last_RX_Pin = USART1_RX_PIN;
+	}
+#endif
+#ifdef _Usart2
+	if(GetUart(P_LAST) == &huart2) {
+		P_last_RX_Port = USART2_RX_PORT;
+		P_last_RX_Pin = USART2_RX_PIN;
+	}
+#endif
+#ifdef _Usart3
+	if(GetUart(P_LAST) == &huart3) {
+		P_last_RX_Port = USART3_RX_PORT;
+		P_last_RX_Pin = USART3_RX_PIN;
+	}
+#endif
+#ifdef _Usart4
+	if(GetUart(P_LAST) == &huart4) {
+		P_last_RX_Port = USART4_RX_PORT;
+		P_last_RX_Pin = USART4_RX_PIN;
+	}
+#endif
+#ifdef _Usart5
+	if(GetUart(P_LAST) == &huart5) {
+		P_last_RX_Port = USART5_RX_PORT;
+		P_last_RX_Pin = USART5_RX_PIN;
+	}
+#endif
+#ifdef _Usart6
+	if(GetUart(P_LAST) == &huart6) {
+		P_last_RX_Port = USART6_RX_PORT;
+		P_last_RX_Pin = USART6_RX_PIN;
+	}
+#endif	
+	
+	/* RXD of programming port */
+#ifdef _Usart1
+	if(GetUart(P_PROG) == &huart1) {
+		P_prog_RX_Port = USART1_RX_PORT;
+		P_prog_RX_Pin = USART1_RX_PIN;
+	}
+#endif
+#ifdef _Usart2
+	if(GetUart(P_PROG) == &huart2) {
+		P_prog_RX_Port = USART2_RX_PORT;
+		P_prog_RX_Pin = USART2_RX_PIN;
+	}
+#endif
+#ifdef _Usart3
+	if(GetUart(P_PROG) == &huart3) {
+		P_prog_RX_Port = USART3_RX_PORT;
+		P_prog_RX_Pin = USART3_RX_PIN;
+	}
+#endif
+#ifdef _Usart4
+	if(GetUart(P_PROG) == &huart4) {
+		P_prog_RX_Port = USART4_RX_PORT;
+		P_prog_RX_Pin = USART4_RX_PIN;
+	}
+#endif
+#ifdef _Usart5
+	if(GetUart(P_PROG) == &huart5) {
+		P_prog_RX_Port = USART5_RX_PORT;
+		P_prog_RX_Pin = USART5_RX_PIN;
+	}
+#endif
+#ifdef _Usart6
+	if(GetUart(P_PROG) == &huart6) {
+		P_prog_RX_Port = USART6_RX_PORT;
+		P_prog_RX_Pin = USART6_RX_PIN;
+	}
+#endif	
+	
+	/* TXD of first port */
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Pin = P1_TX_Pin;
+	HAL_GPIO_Init(P1_TX_Port, &GPIO_InitStruct);
+	
+	/* RXD of last port */
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
+	GPIO_InitStruct.Pin = P_last_RX_Pin;
+	HAL_GPIO_Init(P_last_RX_Port, &GPIO_InitStruct);	
+	
+	/* RXD of programming port */
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
+	GPIO_InitStruct.Pin = P_prog_RX_Pin;
+	HAL_GPIO_Init(P_prog_RX_Port, &GPIO_InitStruct);	
+	
+	/* Check for factory reset conditions */
+	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(1);
+	if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == RESET)
+	{
+		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(1);
+		if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == SET) {
+			return 1;
+		}
+	}
+	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(1);
+	if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == RESET)
+	{
+		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(1);
+		if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == SET) {
+			return 1;
+		}
+	}
+
+	
+	/* Clear flag for formated EEPROM if it was already set */
+	/* Flag address (STM32F09x) - Last 4 words of SRAM */
+	*((unsigned long *)0x20007FF0) = 0xFFFFFFFF; 
+	
+	return 0;
+}
+
+/*-----------------------------------------------------------*/	
+ 
+/* --- Format emulated EEPROM for a factory reset
+*/
+void EE_FormatForFactoryReset(void)
+{
+	/* Check if EEPROM was just formated? */
+	/* Flag address (STM32F09x) - Last 4 words of SRAM */
+	if (*((unsigned long *)0x20007FF0) == 0xBEEFDEAD)
+	{
+		// Do nothing
+	}
+	else
+	{
+		if (EE_Format() == HAL_OK) 
+		{
+			/* Set flag for formated EEPROM */
+			*((unsigned long *)0x20007FF0) = 0xBEEFDEAD; 
+		}
+	}
+	
+}
+
+/*-----------------------------------------------------------*/	
+
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
    ----------------------------------------------------------------------- 
@@ -1023,11 +1228,26 @@ void StreamTimerCallback( TimerHandle_t xTimer )
 */
 void BOS_Init(void)
 {
-	/* Unlock the Flash Program Erase controller */
+	/* Unlock the Flash memory */
 	HAL_FLASH_Unlock();
 
 	/* EEPROM Init */
 	EE_Init();
+	
+	/* Check for factory reset */
+	if (IsFactoryReset())
+	{
+		/* Format EEPROM once */
+		EE_FormatForFactoryReset();
+		
+		/* Software reset */
+		NVIC_SystemReset();
+	}
+	else
+	{	
+		/* Load stored EEPROM variables */
+		LoadEEvars();
+	}
 	
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -1035,11 +1255,18 @@ void BOS_Init(void)
 	MX_TIM_USEC_Init();
 	
 	/* Startup indicator sequence */
-	IND_blink(500);
-	HAL_Delay(100);
-	IND_blink(100);
-	HAL_Delay(100);
-	IND_blink(100);
+	if (myID == 0)		/* Native module */
+	{
+		IND_blink(500);
+	}
+	else							/* Non-native module */
+	{
+		IND_blink(500);
+		HAL_Delay(100);
+		IND_blink(100);
+		HAL_Delay(100);
+		IND_blink(100);
+	}
 	
 	
 	/* Initialize the module */
@@ -1047,10 +1274,7 @@ void BOS_Init(void)
 	Module_Init();
 #endif
 
-	/* Load stored EEPROM variables */
-	LoadEEvars();
-	
-	/* If no pre-defined topology, initialize ports directions */
+/* If no pre-defined topology, initialize ports direction */
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
@@ -1145,9 +1369,9 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 		case P10 :
 			return P10uart;
 	#endif
-	#ifdef _PUSB
-		case PUSB :
-			return PUSBuart;
+	#ifdef _P_USB
+		case P_USB :
+			return P_USBuart;
 	#endif
 		default:
 			return 0;
@@ -1571,7 +1795,12 @@ BOS_Status Explore(void)
 	
 	if (result == BOS_OK)
 	{	
-		/* Step 5a - Update other modules ports starting from the last one */
+		/* Step 5a - Virtually reset the state of master ports to Normal */
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
+		}
+		
+		/* Step 5b - Update other modules ports starting from the last one */
 		for (uint8_t i=currentID ; i>=2 ; i--) 
 		{
 			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) 
@@ -1598,7 +1827,7 @@ BOS_Status Explore(void)
 				}
 			}
 			
-			/* Step 5b - Check if an inport is reversed */
+			/* Step 5c - Check if an inport is reversed */
 			/* Find out the inport to this module from master */
 			FindRoute(1, i);
 			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
@@ -1607,16 +1836,15 @@ BOS_Status Explore(void)
 			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
 				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
 			
-			/* Step 5c - Update module ports directions */
+			/* Step 5d - Update module ports directions */
 			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
 			osDelay(10);			
 		}			
 	
-		/* Step 5d - Update master ports > all normal */
+		/* Step 5e - Update master ports > all normal */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
 		}
-		arrayPortsDir[0] = (uint16_t) NORMAL;
 	}
 	
 			
@@ -1918,6 +2146,7 @@ void DisplayPortsDir(uint8_t port)
 void DisplayModuleStatus(uint8_t port)
 {
 	int8_t *pcOutputString;
+	uint16_t temp = 0;
 	
 	/* Obtain the address of the output buffer. */
 	pcOutputString = FreeRTOS_CLIGetOutputBuffer();
@@ -1981,6 +2210,22 @@ void DisplayModuleStatus(uint8_t port)
 			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
 	}
 	strcat( (char *) pcOutputString, pcUserMessage);
+	strcat( (char *) pcOutputString, "\n\r");
+	
+	/* Ports direction */
+	strcat( (char *) pcOutputString, "\n\rThese ports are reversed: ");
+	temp = strlen( (char *) pcOutputString);
+	for (uint8_t p=1 ; p<=NumOfPorts ; p++) 
+	{		
+		if ( (arrayPortsDir[myID-1] & (0x8000>>(p-1))) ) 			/* Port is reversed */
+		{
+			sprintf(pcUserMessage, "P%d ", p);
+			strcat( (char *) pcOutputString, pcUserMessage);
+		}	
+	}
+	if (temp == strlen( (char *) pcOutputString)) {				/* All ports are normal */
+		strcat( (char *) pcOutputString, "None");
+	}
 	strcat( (char *) pcOutputString, "\n\r");
 	
 	/* Display output */
@@ -2325,7 +2570,7 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 {
 	BOS_Status result = BOS_OK;
 	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
-	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Below is the discovered topology:\n\r";
+	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
 	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
 	
 	/* Remove compile time warnings about unused parameters, and check the
@@ -2455,7 +2700,8 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	configASSERT( pcWriteBuffer );
 
 	/* Read Ports directions when a pre-defined topology file is used */
-	result = ReadPortsDir();
+	if (N > 1)
+		result = ReadPortsDir();
 	
 	/* Respond to the info command */
 	sprintf( ( char * ) pcWriteBuffer, "\n\rNumber of modules: %d\n", N);
@@ -2465,7 +2711,7 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	DisplayTopology(PcPort);
 	DisplayPortsDir(PcPort);
 	if (result == BOS_ERR_NoResponse) {
-		sprintf( ( char * ) pcWriteBuffer, "Could not read ports directions of some modules! Please try again\n\r");
+		sprintf( ( char * ) pcWriteBuffer, "Could not read ports direction for some modules! Please try again\n\r");
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);		
 	}
 	sprintf( ( char * ) pcWriteBuffer, " ");
