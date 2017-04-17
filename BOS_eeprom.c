@@ -49,7 +49,6 @@ uint16_t VirtAddVarTab[NumOfEEPROMvar+1] = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
-static uint16_t EE_Format(void);
 static uint16_t EE_VerifyPageFullWriteVariable(uint16_t VirtAddress, uint16_t Data);
 static uint16_t EE_PageTransfer(uint16_t VirtAddress, uint16_t Data);
 static uint16_t EE_FindValidPage(uint8_t Operation);
@@ -448,51 +447,51 @@ uint16_t EE_WriteVariable(uint16_t VirtAddress, uint16_t Data)
   * @retval Status of the last operation (Flash write or erase) done during
   *         EEPROM formating
   */
-static uint16_t EE_Format(void)
+uint16_t EE_Format(void)
 {
 	HAL_StatusTypeDef FlashStatus = HAL_OK;
-
-  /* Erase Page0 */
-  FLASH_PageErase(PAGE0_BASE_ADDRESS);
+	
+	/* Erase Page0 */
+	FLASH_PageErase(PAGE0_BASE_ADDRESS);
 	
 	/* Wait for last operation to be completed */
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-  /* If erase operation was failed, a Flash error code is returned */
-  if (FlashStatus != HAL_OK)
-  {
-    return pFlash.ErrorCode;
-  }
+	/* If erase operation was failed, a Flash error code is returned */
+	if (FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
 	else
 	{
 		/* Operation is completed, disable the PER Bit */
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
 	}
 	
-  /* Set Page0 as valid page: Write VALID_PAGE at Page0 base address */
+	/* Set Page0 as valid page: Write VALID_PAGE at Page0 base address */
 	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, PAGE0_BASE_ADDRESS, VALID_PAGE);
 
 	/* Wait for last operation to be completed */
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-  /* If program operation was failed, a Flash error code is returned */
-  if (FlashStatus != HAL_OK)
-  {
-    return pFlash.ErrorCode;
-  }
+	/* If program operation was failed, a Flash error code is returned */
+	if (FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
 	else
 	{
 		/* If the program operation is completed, disable the PG Bit */
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
 	}
 				
-  /* Erase Page1 */
-  FLASH_PageErase(PAGE1_BASE_ADDRESS);
+	/* Erase Page1 */
+	FLASH_PageErase(PAGE1_BASE_ADDRESS);
 	/* Wait for last operation to be completed */
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-  /* If program operation was failed, a Flash error code is returned */
-  if (FlashStatus != HAL_OK)
-  {
-    return pFlash.ErrorCode;
-  }
+	/* If program operation was failed, a Flash error code is returned */
+	if (FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
 	else
 	{
 		/* If the program operation is completed, disable the PG Bit */
@@ -812,5 +811,7 @@ uint16_t Flash_WriteVariable(uint32_t Address, uint16_t Data)
 /**
   * @}
   */ 
+
+
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

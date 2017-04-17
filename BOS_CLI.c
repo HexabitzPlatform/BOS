@@ -203,7 +203,7 @@ portBASE_TYPE xReturned;
 						SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 						xReturned = pdFALSE;
 						/* Wait for response for a maximum of 1000msec */
-						ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
+						ulTaskNotifyTake(pdTRUE, 5000);		//cmd500ms
 						/* If timeout */
 						if (responseStatus != BOS_OK)
 							sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
