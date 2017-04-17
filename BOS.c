@@ -7,9 +7,8 @@
 		
 		Required MCU resources : 
 		
-			>> Timer 7 for micro-sec delay.
-			>> DMA1 Ch5, DMA1 Ch6, DMA2 Ch2 for port-to-memory messaging.
-			>> DMA1 Ch1, DMA1 Ch3, DMA2 Ch3 for port-to-port streaming.
+			>> Timer 3 for micro-sec delay.
+
 */
 	
 /* Includes ------------------------------------------------------------------*/
@@ -18,7 +17,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 uint16_t myPN = modulePN;
-TIM_HandleTypeDef htim7;	/* micro-second delay counter */
+TIM_HandleTypeDef htim3;	/* micro-second delay counter */
 uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
@@ -521,25 +520,25 @@ void PxMessagingTask(void * argument)
 
 /*-----------------------------------------------------------*/
 
-/* TIM7 init function - 1 usec timebase 16-bit 
+/*  Micro-seconds timebase init function - TIM3 (16-bit)
 */
-void MX_TIM7_Init(void)
+void MX_TIM_USEC_Init(void)
 {
   TIM_MasterConfigTypeDef sMasterConfig;
 	
 	/* Peripheral clock enable */
-	__TIM7_CLK_ENABLE();
+	__TIM3_CLK_ENABLE();
 
 	/* Peripheral configuration */
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 48;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_DOWN;
-  htim7.Init.Period = 1;
-  HAL_TIM_Base_Init(&htim7);
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 48;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim3.Init.Period = 1;
+  HAL_TIM_Base_Init(&htim3);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig);
+  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
 
 }
 
@@ -1033,7 +1032,7 @@ void BOS_Init(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
 	MX_DMA_Init();
-	MX_TIM7_Init();
+	MX_TIM_USEC_Init();
 	
 	/* Startup indicator sequence */
 	IND_blink(500);
@@ -1697,15 +1696,15 @@ void StartMicroDelay(uint16_t Delay)
 	
 	if (Delay)
 	{
-		htim7.Instance->ARR = Delay;
+		htim3.Instance->ARR = Delay;
 	
-		HAL_TIM_Base_Start(&htim7);	
+		HAL_TIM_Base_Start(&htim3);	
 
-		while(htim7.Instance->CNT != 0)
+		while(htim3.Instance->CNT != 0)
 		{
 		}
 		
-		HAL_TIM_Base_Stop(&htim7);
+		HAL_TIM_Base_Stop(&htim3);
 	}
 	
 	portEXIT_CRITICAL();
