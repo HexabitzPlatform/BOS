@@ -104,6 +104,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H08R0_uart.h"	
 	#include "H08R0_gpio.h"	
 	#include "H08R0_dma.h"			
+	#include "H08R0_spi.h"
 	#define	Module_Init							H08R0_Init
 	#define	Module_MessagingTask		H08R0_MessagingTask
 	#define Module_Status						H08R0_Status
