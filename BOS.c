@@ -7,7 +7,7 @@
 		
 		Required MCU resources : 
 		
-			>> Timer 3 for micro-sec delay.
+			>> Timer 14 for micro-sec delay.
 
 */
 	
@@ -17,7 +17,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 uint16_t myPN = modulePN;
-TIM_HandleTypeDef htim3;	/* micro-second delay counter */
+TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_off;
 
 /* Define module PN strings [available PNs+1][5 chars] */
@@ -118,6 +118,7 @@ void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t time
 void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
+extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -488,7 +489,7 @@ void PxMessagingTask(void * argument)
 							
 						default :
 							/* Process module tasks */
-							result = Module_MessagingTask(code, port, src, dst);
+							result = (BOS_Status) Module_MessagingTask(code, port, src, dst);
 							break;
 					}
 					
@@ -521,25 +522,25 @@ void PxMessagingTask(void * argument)
 
 /*-----------------------------------------------------------*/
 
-/*  Micro-seconds timebase init function - TIM3 (16-bit)
+/*  Micro-seconds timebase init function - TIM14 (16-bit)
 */
 void MX_TIM_USEC_Init(void)
 {
   TIM_MasterConfigTypeDef sMasterConfig;
 	
 	/* Peripheral clock enable */
-	__TIM3_CLK_ENABLE();
+	__TIM14_CLK_ENABLE();
 
 	/* Peripheral configuration */
-  htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 48;
-  htim3.Init.CounterMode = TIM_COUNTERMODE_DOWN;
-  htim3.Init.Period = 1;
-  HAL_TIM_Base_Init(&htim3);
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 48;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim14.Init.Period = 1;
+  HAL_TIM_Base_Init(&htim14);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
+  HAL_TIMEx_MasterConfigSynchronization(&htim14, &sMasterConfig);
 
 }
 
@@ -1924,15 +1925,15 @@ void StartMicroDelay(uint16_t Delay)
 	
 	if (Delay)
 	{
-		htim3.Instance->ARR = Delay;
+		htim14.Instance->ARR = Delay;
 	
-		HAL_TIM_Base_Start(&htim3);	
+		HAL_TIM_Base_Start(&htim14);	
 
-		while(htim3.Instance->CNT != 0)
+		while(htim14.Instance->CNT != 0)
 		{
 		}
 		
-		HAL_TIM_Base_Stop(&htim3);
+		HAL_TIM_Base_Stop(&htim14);
 	}
 	
 	portEXIT_CRITICAL();
