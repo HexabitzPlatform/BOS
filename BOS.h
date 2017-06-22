@@ -16,7 +16,7 @@
 		Tip: To avoid modifying this file each time you need to switch between these
     modules, you can define the module in your toolchain compiler preprocessor. 
 */
-#if !defined (H01R0) && !defined (H01R1) && !defined (H02R0) && !defined (H03R0) && !defined (H04R0) &&   \
+#if !defined (H01R0) && !defined (H02R0) && !defined (H03R0) && !defined (H04R0) &&   \
     !defined (H05R0) && !defined (H06R0) && !defined (H07R0) && !defined (H08R0)                             
 //  #define H01R0  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (GPIOs) */  
 //  #define H01R1  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (All LEDs are timer channels) */  
@@ -30,7 +30,7 @@
 enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
-enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H07R0, _H08R0, _H09R0, _H11R0};
+enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R0};
 enum IndMode{IND_off, IND_ping, IND_topology};
 enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 
@@ -89,6 +89,16 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#define	Module_MessagingTask		H04R0_MessagingTask
 	#define Module_Status						H04R0_Status
 #endif
+#ifdef H05R0
+	#include "H05R0.h"
+	#include "H05R0_uart.h"	
+	#include "H05R0_gpio.h"	
+	#include "H05R0_dma.h"		
+	#include "H05R0_spi.h"		
+	#define	Module_Init							H05R0_Init
+	#define	Module_MessagingTask		H05R0_MessagingTask
+	#define Module_Status						H05R0_Status
+#endif
 #ifdef H07R0
 	#include "H07R0.h"
 	#include "H07R0_uart.h"	
@@ -128,16 +138,10 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#define Module_Status						H11R0_Status
 #endif
 
-/* Number of ports (maximum port rank) >> Move inside module file */
-#if defined (H01R0) || defined (H01R1) || defined (H02R0) || defined (H04R0) || defined (H07R0) || defined (H08R0) || defined (H09R0) \
-|| defined (H11R0)
-	#define	NumOfPorts		6
-#endif
 #define P_LAST 								NumOfPorts
-#define P_PROG 								P2
 
 /* Firmware */
-#define	_firmVersion		"FOR001"
+#define	_firmVersion		"0.0.0"
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -188,123 +192,6 @@ typedef enum
 #define	SWDIO_PORT		GPIOA
 #define	SWCLK_PIN			GPIO_PIN_14
 #define	SWCLK_PORT		GPIOA
-
-
-/* Port-UART mapping */
-#if (H01R0 || H01R1)
-	#define P1uart &huart4	
-	#define P2uart &huart2
-	#define P3uart &huart6
-	#define P4uart &huart3
-	#define P5uart &huart1
-	#define P6uart &huart5
-#endif
-#if (H02R0)
-	#ifndef P1uart	
-		#define P1uart &huart4
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart2
-	#endif
-	#ifndef P3uart	
-		#define P3uart &huart6
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart1
-	#endif
-	#ifndef P6uart	
-		#define P6uart &huart5
-	#endif
-#endif
-#if (H04R0)
-	#ifndef P1uart	
-		#define P1uart &huart4
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart2
-	#endif
-	#ifndef P4uart	
-		#define P4uart &huart3
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart1
-	#endif
-	#ifndef P6uart	
-		#define P6uart &huart5
-	#endif
-#endif
-#if (H07R0)
-	#ifndef P1uart	
-		#define P1uart &huart4
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart2
-	#endif
-	#ifndef P4uart	
-		#define P4uart &huart3
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart1
-	#endif
-#endif
-#if (H08R0)
-	#ifndef P1uart	
-		#define P1uart &huart3
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart1
-	#endif
-	#ifndef P3uart	
-		#define P3uart &huart5
-	#endif
-	#ifndef P4uart	
-		#define P4uart &huart4
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart2
-	#endif
-	#ifndef P6uart	
-		#define P6uart &huart6
-	#endif
-#endif
-#if (H09R0)
-	#ifndef P1uart	
-		#define P1uart &huart5
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart2
-	#endif
-	#ifndef P3uart	
-		#define P3uart &huart6
-	#endif
-	#ifndef P4uart	
-		#define P4uart &huart3
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart1
-	#endif
-#endif
-#if (H11R0)
-	#ifndef P1uart	
-		#define P1uart &huart2
-	#endif
-	#ifndef P2uart	
-		#define P2uart &huart6
-	#endif
-	#ifndef P3uart	
-		#define P3uart &huart4
-		#define P_USBuart P3uart
-	#endif
-	#ifndef P4uart	
-		#define P4uart &huart3
-	#endif
-	#ifndef P5uart	
-		#define P5uart &huart1
-	#endif
-	#ifndef P6uart	
-		#define P6uart &huart5
-	#endif
-#endif
 
 
 /* External variables ---------------------------------------------------------*/
