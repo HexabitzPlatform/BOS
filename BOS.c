@@ -1381,116 +1381,6 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
-/* --- Get the port for a given UART. 
-*/
-uint8_t GetPort(UART_HandleTypeDef *huart)
-{
-#ifdef H01R0
-	if (huart->Instance == USART4)
-		return P1;
-	else if (huart->Instance == USART2)
-		return P2;
-	else if (huart->Instance == USART6)
-		return P3;
-	else if (huart->Instance == USART3)
-		return P4;
-	else if (huart->Instance == USART1)
-		return P5;
-	else if (huart->Instance == USART5)
-		return P6;
-#endif
-#if (H02R0)
-		if (huart->Instance == USART4)
-				return P1;
-		else if (huart->Instance == USART2)
-				return P2;
-		else if (huart->Instance == USART6)
-				return P3;
-		else if (huart->Instance == USART1)
-				return P5;
-		else if (huart->Instance == USART5)
-				return P6;
-#endif
-#if (H04R0)
-		if (huart->Instance == USART4)
-				return P1;
-		else if (huart->Instance == USART2)
-				return P2;
-		else if (huart->Instance == USART3)
-				return P4;
-		else if (huart->Instance == USART1)
-				return P5;
-		else if (huart->Instance == USART5)
-				return P6;
-#endif
-#if (H05R0)
-		if (huart->Instance == USART4)
-				return P1;
-		else if (huart->Instance == USART2)
-				return P2;
-		else if (huart->Instance == USART3)
-				return P3;
-		else if (huart->Instance == USART1)
-				return P4;
-		else if (huart->Instance == USART5)
-				return P5;
-#endif
-#if (H07R0)
-		if (huart->Instance == USART4)
-				return P1;
-		else if (huart->Instance == USART2)
-				return P2;
-		else if (huart->Instance == USART3)
-				return P4;
-		else if (huart->Instance == USART1)
-				return P5;
-#endif
-#if (H08R0)
-		if (huart->Instance == USART3)
-				return P1;
-		else if (huart->Instance == USART1)
-				return P2;
-		else if (huart->Instance == USART5)
-				return P3;
-		else if (huart->Instance == USART4)
-				return P4;
-		else if (huart->Instance == USART2)
-				return P5;
-		else if (huart->Instance == USART6)
-				return P6;
-#endif
-#if (H09R0)
-		if (huart->Instance == USART5)
-				return P1;
-		else if (huart->Instance == USART2)
-				return P2;
-		else if (huart->Instance == USART6)
-				return P3;
-		else if (huart->Instance == USART3)
-				return P4;
-		else if (huart->Instance == USART1)
-				return P5;
-#endif
-#if (H11R0)
-		if (huart->Instance == USART2)
-				return P1;
-		else if (huart->Instance == USART6)
-				return P2;
-		else if (huart->Instance == USART4)
-				return P3;
-		else if (huart->Instance == USART3)
-				return P4;
-		else if (huart->Instance == USART1)
-				return P5;
-		else if (huart->Instance == USART5)
-				return P6;
-#endif
-		
-	return 0;
-}
-
-/*-----------------------------------------------------------*/
-
 /* --- Send a message to another module 
 */
 BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfParams)
@@ -2258,7 +2148,7 @@ uint8_t GetID(char* string)
 	if(!strcmp(string, "me"))							/* Check keywords */
 		return myID;
 	else if(!strcmp(string, "all"))							
-		return 0xFF;				/* BOS_BROADCAST */
+		return BOS_BROADCAST;				/* BOS_BROADCAST */
 	else if (string[0] == '#') {					/* Check IDs */
 		id = atol(string+1);
 		if (id > 0 && id <= N)

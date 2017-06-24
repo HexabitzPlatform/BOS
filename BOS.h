@@ -66,18 +66,12 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H01R0_uart.h"	
 	#include "H01R0_gpio.h"	
 	#include "H01R0_dma.h"		
-	#define	Module_Init							H01R0_Init
-	#define	Module_MessagingTask		H01R0_MessagingTask
-	#define Module_Status						H01R0_Status
 #endif
 #ifdef H02R0
 	#include "H02R0.h"
 	#include "H02R0_uart.h"	
 	#include "H02R0_gpio.h"	
 	#include "H02R0_dma.h"		
-	#define	Module_Init							H02R0_Init
-	#define	Module_MessagingTask		H02R0_MessagingTask
-	#define Module_Status						H02R0_Status
 #endif
 #ifdef H04R0
 	#include "H04R0.h"
@@ -85,9 +79,6 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H04R0_gpio.h"	
 	#include "H04R0_dma.h"		
 	#include "H04R0_dac.h"		
-	#define	Module_Init							H04R0_Init
-	#define	Module_MessagingTask		H04R0_MessagingTask
-	#define Module_Status						H04R0_Status
 #endif
 #ifdef H05R0
 	#include "H05R0.h"
@@ -95,9 +86,6 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H05R0_gpio.h"	
 	#include "H05R0_dma.h"		
 	#include "H05R0_spi.h"		
-	#define	Module_Init							H05R0_Init
-	#define	Module_MessagingTask		H05R0_MessagingTask
-	#define Module_Status						H05R0_Status
 #endif
 #ifdef H07R0
 	#include "H07R0.h"
@@ -105,9 +93,6 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H07R0_gpio.h"	
 	#include "H07R0_dma.h"		
 	#include "H07R0_adc.h"		
-	#define	Module_Init							H07R0_Init
-	#define	Module_MessagingTask		H07R0_MessagingTask
-	#define Module_Status						H07R0_Status
 #endif
 #ifdef H08R0
 	#include "H08R0.h"
@@ -115,27 +100,18 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H08R0_gpio.h"	
 	#include "H08R0_dma.h"			
 	#include "H08R0_spi.h"
-	#define	Module_Init							H08R0_Init
-	#define	Module_MessagingTask		H08R0_MessagingTask
-	#define Module_Status						H08R0_Status
 #endif
 #ifdef H09R0
 	#include "H09R0.h"
 	#include "H09R0_uart.h"	
 	#include "H09R0_gpio.h"	
 	#include "H09R0_dma.h"			
-	#define	Module_Init							H09R0_Init
-	#define	Module_MessagingTask		H09R0_MessagingTask
-	#define Module_Status						H09R0_Status
 #endif
 #ifdef H11R0
 	#include "H11R0.h"
 	#include "H11R0_uart.h"	
 	#include "H11R0_gpio.h"	
 	#include "H11R0_dma.h"		
-	#define	Module_Init							H11R0_Init
-	#define	Module_MessagingTask		H11R0_MessagingTask
-	#define Module_Status						H11R0_Status
 #endif
 
 #define P_LAST 								NumOfPorts
@@ -160,6 +136,7 @@ typedef enum
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_BROADCAST = 255,
+	BOS_ERROR = 255
 } BOS_Status;
 
 /* BOS Parameters */ 
