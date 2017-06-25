@@ -118,6 +118,9 @@ void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t time
 void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
+
+/* Prototypes of private functions defined in modules */
+extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 /* Create CLI commands --------------------------------------------------------*/
@@ -1271,9 +1274,8 @@ void BOS_Init(void)
 	
 	
 	/* Initialize the module */
-#ifdef  Module_Init
 	Module_Init();
-#endif
+
 
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N
