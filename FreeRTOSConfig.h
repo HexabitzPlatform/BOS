@@ -101,8 +101,8 @@
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)128)		
-#define configTOTAL_HEAP_SIZE                    ((size_t)16240)
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)180)		
+#define configTOTAL_HEAP_SIZE                    ((size_t)18000)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -193,6 +193,9 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 #define	configTIMER_TASK_PRIORITY		1	
 #define configTIMER_QUEUE_LENGTH	4
 #define configTIMER_TASK_STACK_DEPTH		configMINIMAL_STACK_SIZE	
+
+/* USe uxTaskGetStackHighWaterMark */
+#define INCLUDE_uxTaskGetStackHighWaterMark 	1
 
 /* Place holder for calls to ioctl that don't use the value parameter. */
 #define cmdPARAMTER_NOT_USED		( ( void * ) 0 )
