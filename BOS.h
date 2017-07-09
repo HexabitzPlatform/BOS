@@ -66,16 +66,16 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #endif
 #ifdef H02R0
 	#include "H02R0.h"
-	#include "H02R0_uart.h"	
-	#include "H02R0_gpio.h"	
-	#include "H02R0_dma.h"		
+//	#include "H02R0_uart.h"	
+//	#include "H02R0_gpio.h"	
+//	#include "H02R0_dma.h"		
 #endif
 #ifdef H04R0
 	#include "H04R0.h"
-	#include "H04R0_uart.h"	
-	#include "H04R0_gpio.h"	
-	#include "H04R0_dma.h"		
-	#include "H04R0_dac.h"		
+//	#include "H04R0_uart.h"	
+//	#include "H04R0_gpio.h"	
+//	#include "H04R0_dma.h"		
+//	#include "H04R0_dac.h"		
 #endif
 #ifdef H05R0
 	#include "H05R0.h"	
