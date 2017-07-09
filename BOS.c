@@ -118,8 +118,10 @@ void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t time
 void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
-extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+
+/* Prototypes of private functions defined in modules */
 extern void Module_Init(void);
+extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 /* Create CLI commands --------------------------------------------------------*/
 
