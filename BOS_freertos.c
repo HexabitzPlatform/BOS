@@ -81,7 +81,6 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
 void FrontEndTask(void * argument);
-void RGBledTask(void * argument);
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
 

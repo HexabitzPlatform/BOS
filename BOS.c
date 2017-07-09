@@ -119,6 +119,7 @@ void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+extern void Module_Init(void);
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -1267,19 +1268,15 @@ void BOS_Init(void)
 		IND_blink(100);
 		HAL_Delay(100);
 		IND_blink(100);
-	}
-	
+	}	
 	
 	/* Initialize the module */
-#ifdef  Module_Init
 	Module_Init();
-#endif
 
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
-
 }
 
 /*-----------------------------------------------------------*/
