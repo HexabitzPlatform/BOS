@@ -63,9 +63,6 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 /* Module includes and initialization */
 #ifdef H01R0
 	#include "H01R0.h"
-	#include "H01R0_uart.h"	
-	#include "H01R0_gpio.h"	
-	#include "H01R0_dma.h"		
 #endif
 #ifdef H02R0
 	#include "H02R0.h"
