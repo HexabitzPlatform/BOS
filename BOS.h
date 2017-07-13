@@ -65,52 +65,33 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 	#include "H01R0.h"
 #endif
 #ifdef H02R0
-	#include "H02R0.h"
-//	#include "H02R0_uart.h"	
-//	#include "H02R0_gpio.h"	
-//	#include "H02R0_dma.h"		
+	#include "H02R0.h"	
 #endif
 #ifdef H04R0
-	#include "H04R0.h"
-//	#include "H04R0_uart.h"	
-//	#include "H04R0_gpio.h"	
-//	#include "H04R0_dma.h"		
-//	#include "H04R0_dac.h"		
+	#include "H04R0.h"	
 #endif
 #ifdef H05R0
 	#include "H05R0.h"	
 #endif
 #ifdef H07R0
-	#include "H07R0.h"
-//	#include "H07R0_uart.h"	
-//	#include "H07R0_gpio.h"	
-//	#include "H07R0_dma.h"		
-//	#include "H07R0_adc.h"		
+	#include "H07R0.h"	
 #endif
 #ifdef H08R0
 	#include "H08R0.h"
-	#include "H08R0_uart.h"	
-	#include "H08R0_gpio.h"	
-	#include "H08R0_dma.h"			
-	#include "H08R0_spi.h"
 #endif
 #ifdef H09R0
-	#include "H09R0.h"
-	#include "H09R0_uart.h"	
-	#include "H09R0_gpio.h"	
-	#include "H09R0_dma.h"			
+	#include "H09R0.h"		
 #endif
 #ifdef H11R0
-	#include "H11R0.h"
-	#include "H11R0_uart.h"	
-	#include "H11R0_gpio.h"	
-	#include "H11R0_dma.h"		
+	#include "H11R0.h"	
 #endif
 
 #define P_LAST 								NumOfPorts
 
 /* Firmware */
-#define	_firmVersion		"0.0.0"
+#define	_firmMajor			0
+#define	_firmMinor			0
+#define	_firmPatch			0
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 

@@ -2061,7 +2061,7 @@ void DisplayModuleStatus(uint8_t port)
 	strcat( (char *) pcOutputString, pcUserMessage);
 	
 	/* Firmware */
-	sprintf(pcUserMessage, "\n\rFirmware version: %s", _firmVersion);
+	sprintf(pcUserMessage, "\n\rFirmware version: %d.%d.%d", _firmMajor, _firmMinor, _firmPatch);
 	strcat( (char *) pcOutputString, pcUserMessage);
 	sprintf(pcUserMessage, "\n\rFirmware date:    %s", _firmDate);
 	strcat( (char *) pcOutputString, pcUserMessage);
