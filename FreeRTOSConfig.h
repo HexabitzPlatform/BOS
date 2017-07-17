@@ -101,8 +101,8 @@
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)180)		
-#define configTOTAL_HEAP_SIZE                    ((size_t)18000)
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)128)		
+#define configTOTAL_HEAP_SIZE                    ((size_t)16000)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -160,6 +160,7 @@ http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
 /* Hook function related definitions. */
 #define configUSE_MALLOC_FAILED_HOOK	1
 #define configCHECK_FOR_STACK_OVERFLOW	2
+//#define configCHECK_FOR_STACK_OVERFLOW	0
 
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */ 
