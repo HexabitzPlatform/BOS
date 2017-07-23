@@ -17,7 +17,7 @@
     modules, you can define the module in your toolchain compiler preprocessor. 
 */
 #if !defined (H01R0) && !defined (H02R0) && !defined (H03R0) && !defined (H04R0) &&   \
-    !defined (H05R0) && !defined (H06R0) && !defined (H07R0) && !defined (H08R0)                             
+    !defined (H05R0) && !defined (H06R0) && !defined (H07R0) && !defined (H08R0) && !defined (H12R0)                            
 //  #define H01R0  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (GPIOs) */  
 //  #define H01R1  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (All LEDs are timer channels) */  
 //  #define H02R0  /* RGB LED */  
@@ -30,7 +30,7 @@
 enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
 enum PortStatus{FREE, MSG, STREAM, CLI};
 enum UartDirection{NORMAL, REVERSED};
-enum modulePartNumbers{_H01R0=1, _H01R1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R0};
+enum modulePartNumbers{_H01R0=1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0};
 enum IndMode{IND_off, IND_ping, IND_topology};
 enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 
@@ -85,6 +85,10 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #ifdef H11R0
 	#include "H11R0.h"	
 #endif
+#ifdef H12R0
+	#include "H12R0.h"	
+#endif
+
 
 #define P_LAST 								NumOfPorts
 
@@ -151,7 +155,7 @@ extern uint8_t myID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[9][5];
+extern const char modulePNstring[10][5];
 extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
