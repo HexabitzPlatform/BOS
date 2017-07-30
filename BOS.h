@@ -27,13 +27,15 @@
 #endif
 
 /* Enumerations */
-enum PortNames{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
-enum PortStatus{FREE, MSG, STREAM, CLI};
-enum UartDirection{NORMAL, REVERSED};
-enum modulePartNumbers{_H01R0=1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0};
-enum IndMode{IND_off, IND_ping, IND_topology};
-enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
-
+enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
+enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
+enum UartDirection_e{NORMAL, REVERSED};
+enum modulePartNumbers_e{_H01R0=1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0};
+enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY};
+enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
+enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
+enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, RELEASED_FOR_Y1_SEC,\
+										PRESSED_FOR_X2_SEC, RELEASED_FOR_Y2_SEC, PRESSED_FOR_X3_SEC, RELEASED_FOR_Y3_SEC};
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -59,6 +61,7 @@ enum DMAStreamDirection{FORWARD, BACKWARD, BIDIRECTIONAL};
 #include <string.h>
 #include <ctype.h>
 #include <math.h>	 
+#include <limits.h>	
 
 /* Module includes and initialization */
 #ifdef H01R0
@@ -117,6 +120,22 @@ typedef enum
 	BOS_ERROR = 255
 } BOS_Status;
 
+
+/* Button Struct Type Definition */  
+typedef struct
+{
+	uint8_t state;
+	uint8_t type;
+	uint16_t debounce;
+	uint8_t pressedX1Sec;
+	uint8_t pressedX2Sec;
+	uint8_t pressedX3Sec;
+	uint8_t releasedY1Sec;
+	uint8_t releasedY2Sec;
+	uint8_t releasedY3Sec;
+} button_t;
+
+
 /* BOS Parameters */ 
 #define MAX_MESSAGE_SIZE			50
 #define cmdMAX_INPUT_SIZE			50
@@ -124,6 +143,10 @@ typedef enum
 #define MaxNumOfPorts					10
 #define MaxLengthOfAlias			10
 #define NumOfKeywords					2
+#define DEFAULT_DEBOUNCE			30			// Button debounce time in ms
+#define BUTTON_CLICK					80			// Button single click minimum time in ms
+
+
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
 #define _EE_NBase						1	
@@ -177,6 +200,8 @@ extern BOS_Status responseStatus;
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
 extern uint8_t route[];
+extern button_t button[NumOfPorts+1];
+
 
 /* -----------------------------------------------------------------------
 	|														Message Codes	 														 	|
@@ -213,9 +238,9 @@ extern uint8_t route[];
 /* Indicator LED */
 #define IND_toggle()		HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)		
 #define IND_on()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)		
-#define IND_off()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
-#define IND_blink(t)				IND_on();	HAL_Delay(t); IND_off()		/* Use before starting the scheduler */
-#define RTOS_IND_blink(t)		IND_on();	osDelay(t); IND_off()			/* Use after starting the scheduler */
+#define IND_OFF()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
+#define IND_blink(t)				IND_on();	HAL_Delay(t); IND_OFF()		/* Use before starting the scheduler */
+#define RTOS_IND_blink(t)		IND_on();	osDelay(t); IND_OFF()			/* Use after starting the scheduler */
 
 #define	NumberOfHops(i)		routeDist[i-1]
 
@@ -240,6 +265,12 @@ extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);
+extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
+																uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
+extern BOS_Status RemovePortButton(uint8_t port);
+
+
+
 
 
 #endif /* BOS_H */

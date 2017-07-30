@@ -81,9 +81,12 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
 void FrontEndTask(void * argument);
+
+/* BOS exported internal functions */
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
-
+extern void CheckAttachedButtons(void);
+	
 /*-----------------------------------------------------------*/
 
 /* Init FreeRTOS */
@@ -166,19 +169,22 @@ void StartDefaultTask(void * argument)
 		/* Switch indicator LED according to mode */
 		switch (indMode)
 		{
-			case IND_ping :
+			case IND_PING :
 				RTOS_IND_blink(200);
-				indMode = IND_off;
+				indMode = IND_OFF;
 				break;
 			
-			case IND_topology :
+			case IND_TOPOLOGY :
 				RTOS_IND_blink(100);
-				indMode = IND_off;
+				indMode = IND_OFF;
 				break;
 			
 			default:
 				break;
 		}
+		
+		/* Read button state */
+		CheckAttachedButtons();
 		
 		taskYIELD();
   }

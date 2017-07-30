@@ -18,7 +18,7 @@
 
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
-uint8_t indMode = IND_off;
+uint8_t indMode = IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
 const char modulePNstring[10][5] = {"", "H01R0", "H02R0", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0"};
@@ -56,7 +56,7 @@ uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 	uint8_t broadcastResponse[_N] = {0};
 #endif
 
-/* Dimension the buffer into which the input messages is placed. */
+/* Dimension the buffer into which the input messages are placed. */
 uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};
 uint8_t messageLength[NumOfPorts] = {0};
 uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)] = {0};
@@ -66,6 +66,10 @@ static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
 static char pcUserMessage[80];
 BOS_Status responseStatus = BOS_OK; 
 
+/* Buttons */
+button_t button[NumOfPorts+1] = {0};
+uint16_t pressCounter[NumOfPorts+1] = {0};
+uint16_t releaseCounter[NumOfPorts+1] = {0};
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -118,8 +122,11 @@ void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t time
 void StreamTimerCallback( TimerHandle_t xTimer );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
+BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
+BOS_Status CheckForTimedButtonPress(uint8_t port);
+BOS_Status CheckForTimedButtonRelease(uint8_t port);
 
-/* Prototypes of private functions defined in modules */
+/* Module exported internal functions */
 extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
@@ -306,7 +313,7 @@ void PxMessagingTask(void * argument)
 						
 						case CODE_ping :
 							SendMessageToModule(src, CODE_ping_response, 0);
-							indMode = IND_ping;
+							indMode = IND_PING;
 							break;
 
 						case CODE_ping_response :
@@ -400,7 +407,7 @@ void PxMessagingTask(void * argument)
 								/* Copy the scratchpad to array */
 								memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
 								longMessageLastPtr = 0;
-								indMode = IND_topology;
+								indMode = IND_TOPOLOGY;
 							}
 							break;
 							
@@ -511,7 +518,7 @@ void PxMessagingTask(void * argument)
 		/* Reset message buffer */
 		memset(cMessage[port-1], 0, (size_t) messageLength[port-1]);
 		messageLength[port-1] = 0;
-		if (portStatus[port] != STREAM && portStatus[port] != CLI) {
+		if (portStatus[port] != STREAM && portStatus[port] != CLI && portStatus[port] != PORTBUTTON) {
 			/* Free the port */
 			portStatus[port] = FREE;
 			/* Read this port again */
@@ -1222,6 +1229,335 @@ void EE_FormatForFactoryReset(void)
 }
 
 /*-----------------------------------------------------------*/	
+
+/* --- Port buttons state parser
+*/
+void CheckAttachedButtons(void)
+{
+	uint32_t TX_Port, RX_Port; 
+	uint16_t TX_Pin, RX_Pin;
+	uint8_t connected = GPIO_PIN_RESET, state = 0;
+	static uint8_t clicked;
+	
+	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
+	{
+		if (button[i].type)			// Only check defined butons
+		{
+			/* 1. Get button GPIOs */
+			GetPortGPIOs(i, &TX_Port, &TX_Pin, &RX_Port, &RX_Pin);
+			
+			/* 2. Check if port pins are connected */
+			HAL_GPIO_WritePin((GPIO_TypeDef *)TX_Port, TX_Pin, GPIO_PIN_RESET); Delay_us(10);
+			if (HAL_GPIO_ReadPin((GPIO_TypeDef *)RX_Port, RX_Pin) == GPIO_PIN_RESET) 
+			{
+				HAL_GPIO_WritePin((GPIO_TypeDef *)TX_Port, TX_Pin, GPIO_PIN_SET); Delay_us(10);
+				connected = HAL_GPIO_ReadPin((GPIO_TypeDef *)RX_Port, RX_Pin); 
+			}		
+			HAL_GPIO_WritePin((GPIO_TypeDef *)TX_Port, TX_Pin, GPIO_PIN_RESET);
+			
+			/* 3. Determine button state based on port reading and button type */
+			switch (button[i].type)
+      {
+      	case MOMENTARY_NO:
+					if (connected == GPIO_PIN_SET)	
+						state = CLOSED;
+					else if (connected == GPIO_PIN_RESET)
+						state = OPEN;			
+      		break;
+				
+      	case MOMENTARY_NC:
+					if (connected == GPIO_PIN_SET)	
+						state = CLOSED;
+					else if (connected == GPIO_PIN_RESET) 
+						state = OPEN;	
+      		break;
+				
+      	case ONOFF_NO:
+					if (connected == GPIO_PIN_SET)	
+						state = ON;
+					else if (connected == GPIO_PIN_RESET) 
+						state = OFF;
+      		break;
+				
+      	case ONOFF_NC:
+					if (connected == GPIO_PIN_SET)	
+						state = OFF;
+					else if (connected == GPIO_PIN_RESET) 
+						state = ON;
+      		break;
+				
+      	default:
+      		break;
+      }
+			
+			/* 4. Debounce this state and update button struct if needed */		
+			
+			/* 4.A. Possible change of state 1: OPEN > CLOSED or OFF >> ON */
+			if (state == CLOSED || state == ON)												
+			{
+				if (pressCounter[i] < 0xFFFF)	
+					++pressCounter[i];																			// Advance the debounce counter
+				else	
+					pressCounter[i] = 0;																		// Reset debounce counter					
+			}
+			
+			/* 4.B. Possible change of state 2: CLOSED > OPEN or ON >> OFF */
+			if (state == OPEN || state == OFF)												
+			{
+				if (releaseCounter[i] < 0xFFFF)
+					++releaseCounter[i];																		// Reduce the debounce counter
+				else	
+					releaseCounter[i] = 0;																	// Reset debounce counter		
+			}
+			
+			/* Analyze state */
+			
+			/* 4.C. On press: Record a click if pressed less than 1 second */
+			if (pressCounter[i] < button[i].debounce) 									
+			{
+				// This is noise. Ignore it
+			} 
+			else 
+			{
+				//button[i].state = PRESSED;																// Record a PRESSED event
+				if (releaseCounter[i] > button[i].debounce)									// Reset releaseCounter if needed
+					releaseCounter[i] = 0;					
+				
+				if (pressCounter[i] > BUTTON_CLICK && pressCounter[i] < configTICK_RATE_HZ)	
+				{
+					if (clicked == 0)
+						clicked = 1;																					// Record a possible single click 
+					else if (clicked == 2)
+						clicked = 3;																					// Record a possible double click 					
+				}								
+				else if (pressCounter[i] > configTICK_RATE_HZ && pressCounter[i] < 0xFFFF)	
+				{
+					if (clicked)	clicked = 0;																						// Cannot be a click
+					// Process PRESSED_FOR_X_SEC events
+					CheckForTimedButtonPress(i);
+				}	
+			}
+			
+			/* 4.D. On release: Record a click if pressed less than 1 second */
+			if (releaseCounter[i] < button[i].debounce) 							
+			{
+				// This is noise. Ignore it
+			} 	
+			else 
+			{
+				//button[i].state = RELEASED;																// Record a RELEASED event
+				if (pressCounter[i] > button[i].debounce)									// Reset pressCounter if needed
+					pressCounter[i] = 0;				
+				
+				if (releaseCounter[i] > BUTTON_CLICK && releaseCounter[i] < configTICK_RATE_HZ)	
+				{
+					if (clicked == 1)
+					{
+						button[i].state = CLICKED;														// Record a single button click event
+						clicked = 2;																					// Prepare for a double click
+					}
+					else if (clicked == 3)
+					{
+						button[i].state = DBL_CLICKED;												// Record a double button click event
+						clicked = 0;																					// Prepare for a single click					
+					}
+				}					
+				else if (releaseCounter[i] > configTICK_RATE_HZ && releaseCounter[i] < 0xFFFF)	
+				{
+					// Process RELEASED_FOR_Y_SEC events
+					CheckForTimedButtonRelease(i);
+				}	
+			}	
+			
+			/* 5. Run button callbacks if needed */
+			switch (button[i].state)
+      {
+      	case PRESSED :
+      		break;
+				
+      	case RELEASED :
+      		break;
+				
+      	case CLICKED :
+      		break;
+				
+      	case DBL_CLICKED :
+      		break;
+				
+      	case PRESSED_FOR_X1_SEC :
+				case PRESSED_FOR_X2_SEC :
+				case PRESSED_FOR_X3_SEC :
+      		break;
+				
+      	case RELEASED_FOR_Y1_SEC :
+				case RELEASED_FOR_Y2_SEC :
+				case RELEASED_FOR_Y3_SEC :
+      		break;
+				
+      	default:
+      		break;
+      }
+
+		}					// Done checking this button
+	}						// Done checking all buttons
+	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Check for timed press button events
+*/
+BOS_Status CheckForTimedButtonPress(uint8_t port)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t t1 = button[port].pressedX1Sec, t2 = button[port].pressedX2Sec, t3 = button[port].pressedX3Sec;
+	
+	/* If time is zero, ignore this event */
+	if (t1 == 0)	t1 = 0xFF;
+	if (t2 == 0)	t2 = 0xFF;
+	if (t3 == 0)	t3 = 0xFF;
+	
+	if (releaseCounter[port] > t1 && releaseCounter[port] < t2)	
+	{	
+		button[port].state = PRESSED_FOR_X1_SEC;
+	}
+	else if (releaseCounter[port] > t2 && releaseCounter[port] < t3)	
+	{	
+		button[port].state = PRESSED_FOR_X2_SEC;
+	}		
+	else if (releaseCounter[port] > t3)	
+	{	
+		button[port].state = PRESSED_FOR_X2_SEC;
+	}	
+	else
+		result = BOS_ERROR;
+
+	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Check for timed release button events
+*/
+BOS_Status CheckForTimedButtonRelease(uint8_t port)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t t1 = button[port].releasedY1Sec, t2 = button[port].releasedY2Sec, t3 = button[port].releasedY3Sec;
+	
+	/* If time is zero, ignore this event */
+	if (t1 == 0)	t1 = 0xFF;
+	if (t2 == 0)	t2 = 0xFF;
+	if (t3 == 0)	t3 = 0xFF;
+	
+	if (releaseCounter[port] > t1 && releaseCounter[port] < t2)	
+	{	
+		button[port].state = RELEASED_FOR_Y1_SEC;
+	}
+	else if (releaseCounter[port] > t2 && releaseCounter[port] < t3)	
+	{	
+		button[port].state = RELEASED_FOR_Y2_SEC;
+	}		
+	else if (releaseCounter[port] > t3)	
+	{	
+		button[port].state = RELEASED_FOR_Y2_SEC;
+	}	
+	else
+		result = BOS_ERROR;
+
+	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Get GPIO pins and ports of this array port
+*/
+BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin)
+{
+	BOS_Status result = BOS_OK;
+	
+	/* Get port UART */
+	UART_HandleTypeDef* huart = GetUart(port);
+	
+	if (huart->Instance == USART1) 
+	{	
+#ifdef _Usart1		
+		*TX_Port = (uint32_t)USART1_TX_PORT;
+		*TX_Pin = USART1_TX_PIN;
+		*RX_Port = (uint32_t)USART1_RX_PORT;
+		*RX_Pin = USART1_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART2) 
+	{	
+#ifdef _Usart2	
+		*TX_Port = (uint32_t)USART2_TX_PORT;
+		*TX_Pin = USART2_TX_PIN;
+		*RX_Port = (uint32_t)USART2_RX_PORT;
+		*RX_Pin = USART2_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART3) 
+	{	
+#ifdef _Usart3	
+		*TX_Port = (uint32_t)USART3_TX_PORT;
+		*TX_Pin = USART3_TX_PIN;
+		*RX_Port = (uint32_t)USART3_RX_PORT;
+		*RX_Pin = USART3_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART4) 
+	{	
+#ifdef _Usart4	
+		*TX_Port = (uint32_t)USART4_TX_PORT;
+		*TX_Pin = USART4_TX_PIN;
+		*RX_Port = (uint32_t)USART4_RX_PORT;
+		*RX_Pin = USART4_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART5) 
+	{	
+#ifdef _Usart5	
+		*TX_Port = (uint32_t)USART5_TX_PORT;
+		*TX_Pin = USART5_TX_PIN;
+		*RX_Port = (uint32_t)USART5_RX_PORT;
+		*RX_Pin = USART5_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART6) 
+	{	
+#ifdef _Usart6	
+		*TX_Port = (uint32_t)USART6_TX_PORT;
+		*TX_Pin = USART6_TX_PIN;
+		*RX_Port = (uint32_t)USART6_RX_PORT;
+		*RX_Pin = USART6_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART7) 
+	{	
+#ifdef _Usart7	
+		*TX_Port = (uint32_t)USART7_TX_PORT;
+		*TX_Pin = USART7_TX_PIN;
+		*RX_Port = (uint32_t)USART7_RX_PORT;
+		*RX_Pin = USART7_RX_PIN;
+#endif
+	} 
+	else if (huart->Instance == USART8) 
+	{	
+#ifdef _Usart8	
+		*TX_Port = (uint32_t)USART8_TX_PORT;
+		*TX_Pin = USART8_TX_PIN;
+		*RX_Port = (uint32_t)USART8_RX_PORT;
+		*RX_Pin = USART8_RX_PIN;
+#endif
+	} 
+	else
+		result = BOS_ERROR;	
+	
+	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
 
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
@@ -2364,7 +2700,143 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 
 /*-----------------------------------------------------------*/
 
- 
+/* --- Define a new button attached to one of array ports
+					buttonType: MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
+					port: array port (P1 - Px)
+					buttonDebounce: button debounce time in ms. 0 will use default time (DEFAULT_DEBOUNCE)
+					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds. Use 0 to disable the event. 
+					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds. Use 0 to disable the event. 
+						Note: Events time must be in ascending order.
+*/
+BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
+{
+	BOS_Status result = BOS_OK;
+	GPIO_InitTypeDef GPIO_InitStruct;
+	uint32_t TX_Port, RX_Port; 
+	uint16_t TX_Pin, RX_Pin;
+
+	
+	/* 1. Stop communication at this port */		
+	osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
+	osSemaphoreRelease(PxTxSemaphoreHandle[port]);
+	portStatus[port] = PORTBUTTON;
+	
+	
+	/* 2. Deinitialize UART */
+	HAL_UART_DeInit(GetUart(port));
+	
+	
+	/* 3. Initialize GPIOs */
+	GetPortGPIOs(port, &TX_Port, &TX_Pin, &RX_Port, &RX_Pin);		
+	/* Ouput (TXD) */
+	GPIO_InitStruct.Pin = TX_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+	HAL_GPIO_Init((GPIO_TypeDef *)TX_Port, &GPIO_InitStruct);
+	/* Input (RXD) */
+	GPIO_InitStruct.Pin = RX_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+	HAL_GPIO_Init((GPIO_TypeDef *)RX_Port, &GPIO_InitStruct);
+
+
+	/* 4. Update button struct */
+	button[port].type = buttonType;
+	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
+	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
+	if (buttonDebounce)
+		button[port].debounce = buttonDebounce;
+	else
+		button[port].debounce = DEFAULT_DEBOUNCE;
+	
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Undefine a button attached to one of array ports and restore the port to default state
+					port: array port (P1 - Px)
+*/
+BOS_Status RemovePortButton(uint8_t port)
+{
+	BOS_Status result = BOS_OK;
+	
+	/* 1. Remove from button struct */
+	button[port].type = NONE;
+	button[port].debounce = 0;
+	button[port].state = NONE;
+	button[port].pressedX1Sec = 0; button[port].pressedX2Sec = 0; button[port].pressedX3Sec = 0;
+	button[port].releasedY1Sec = 0; button[port].releasedY2Sec = 0; button[port].releasedY3Sec = 0;
+	
+	/* 2. Initialize UART at this port */
+	UART_HandleTypeDef* huart = GetUart(port);
+	
+	if (huart->Instance == USART1) 
+	{	
+#ifdef _Usart1		
+		MX_USART1_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART2) 
+	{	
+#ifdef _Usart2	
+		MX_USART2_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART3) 
+	{	
+#ifdef _Usart3	
+		MX_USART3_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART4) 
+	{	
+#ifdef _Usart4	
+		MX_USART4_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART5) 
+	{	
+#ifdef _Usart5	
+		MX_USART5_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART6) 
+	{	
+#ifdef _Usart6	
+		MX_USART6_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART7) 
+	{	
+#ifdef _Usart7	
+		MX_USART7_UART_Init();
+#endif
+	} 
+	else if (huart->Instance == USART8) 
+	{	
+#ifdef _Usart8	
+		MX_USART8_UART_Init();
+#endif
+	} 
+	else
+		result = BOS_ERROR;		
+	
+	
+	/* 3. Start scanning this port */
+	portStatus[port] = FREE;
+	/* Read this port again */
+	HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);	
+
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
