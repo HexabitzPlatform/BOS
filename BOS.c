@@ -70,6 +70,8 @@ BOS_Status responseStatus = BOS_OK;
 button_t button[NumOfPorts+1] = {0};
 uint16_t pressCounter[NumOfPorts+1] = {0};
 uint16_t releaseCounter[NumOfPorts+1] = {0};
+uint8_t dblCounter[NumOfPorts+1] = {0};
+
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -125,10 +127,16 @@ void EE_FormatForFactoryReset(void);
 BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
 BOS_Status CheckForTimedButtonPress(uint8_t port);
 BOS_Status CheckForTimedButtonRelease(uint8_t port);
+void buttonClickedCallback(uint8_t port);
+void buttonDblClickedCallback(uint8_t port);
+void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
+void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
+
 
 /* Module exported internal functions */
 extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+
 
 /* Create CLI commands --------------------------------------------------------*/
 
@@ -1238,6 +1246,7 @@ void CheckAttachedButtons(void)
 	uint16_t TX_Pin, RX_Pin;
 	uint8_t connected = GPIO_PIN_RESET, state = 0;
 	static uint8_t clicked;
+	static uint8_t oldState;
 	
 	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
 	{
@@ -1305,9 +1314,16 @@ void CheckAttachedButtons(void)
 			if (state == OPEN || state == OFF)												
 			{
 				if (releaseCounter[i] < 0xFFFF)
-					++releaseCounter[i];																		// Reduce the debounce counter
+					++releaseCounter[i];																		// Advance the debounce counter
 				else	
 					releaseCounter[i] = 0;																	// Reset debounce counter		
+				
+				if (clicked == 2 && dblCounter[i] <= BUTTON_MAX_INTER_CLICK)				// Advance the inter-click counter		
+					++dblCounter[i];			
+				else if (dblCounter[i] > BUTTON_MAX_INTER_CLICK)	{
+					clicked = 0;
+					dblCounter[i] = 0;																			// Reset the inter-click counter
+				}					
 			}
 			
 			/* Analyze state */
@@ -1319,20 +1335,24 @@ void CheckAttachedButtons(void)
 			} 
 			else 
 			{
-				//button[i].state = PRESSED;																// Record a PRESSED event
-				if (releaseCounter[i] > button[i].debounce)									// Reset releaseCounter if needed
+				//button[i].state = PRESSED;																// Record a PRESSED event (this masks other events!)
+				if (releaseCounter[i] > button[i].debounce)								// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
 					releaseCounter[i] = 0;					
 				
 				if (pressCounter[i] > BUTTON_CLICK && pressCounter[i] < configTICK_RATE_HZ)	
 				{
 					if (clicked == 0)
 						clicked = 1;																					// Record a possible single click 
-					else if (clicked == 2)
-						clicked = 3;																					// Record a possible double click 					
+					else if (clicked == 2) {
+						if (dblCounter[i] > BUTTON_MIN_INTER_CLICK && dblCounter[i] < BUTTON_MAX_INTER_CLICK) {
+							clicked = 3;																				// Record a possible double click 
+							dblCounter[i] = 0;																	// Reset the inter-click counter
+						}
+					}						
 				}								
 				else if (pressCounter[i] > configTICK_RATE_HZ && pressCounter[i] < 0xFFFF)	
 				{
-					if (clicked)	clicked = 0;																						// Cannot be a click
+					if (clicked)	clicked = 0;															// Cannot be a click
 					// Process PRESSED_FOR_X_SEC events
 					CheckForTimedButtonPress(i);
 				}	
@@ -1345,8 +1365,8 @@ void CheckAttachedButtons(void)
 			} 	
 			else 
 			{
-				//button[i].state = RELEASED;																// Record a RELEASED event
-				if (pressCounter[i] > button[i].debounce)									// Reset pressCounter if needed
+				//button[i].state = RELEASED;																// Record a RELEASED event (this masks other events!)
+				if (pressCounter[i] > button[i].debounce)									// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
 					pressCounter[i] = 0;				
 				
 				if (releaseCounter[i] > BUTTON_CLICK && releaseCounter[i] < configTICK_RATE_HZ)	
@@ -1379,20 +1399,66 @@ void CheckAttachedButtons(void)
       		break;
 				
       	case CLICKED :
+					if (button[i].events & BUTTON_EVENT_CLICKED) 
+					{
+						button[i].state = NONE;
+						buttonClickedCallback(i);
+					}
       		break;
 				
       	case DBL_CLICKED :
+					if (button[i].events & BUTTON_EVENT_DBL_CLICKED) 
+					{
+						button[i].state = NONE;
+						buttonDblClickedCallback(i);
+					}
       		break;
-				
-      	case PRESSED_FOR_X1_SEC :
+					
+				/* These are latching events so make sure you only execute once */
+      	case PRESSED_FOR_X1_SEC :		
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC && button[i].state != oldState) {	
+						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;
 				case PRESSED_FOR_X2_SEC :
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC && button[i].state != oldState) {	
+						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;
 				case PRESSED_FOR_X3_SEC :
-      		break;
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC && button[i].state != oldState) {	
+						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;
 				
-      	case RELEASED_FOR_Y1_SEC :
+				/* These are latching events so make sure you only execute once */
+      	case RELEASED_FOR_Y1_SEC :	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC && button[i].state != oldState) {	
+						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;					
 				case RELEASED_FOR_Y2_SEC :
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC && button[i].state != oldState) {	
+						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;					
 				case RELEASED_FOR_Y3_SEC :
-      		break;
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC && button[i].state != oldState) {	
+						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
+						oldState = button[i].state;
+						button[i].state = NONE;
+					}
+					break;
 				
       	default:
       		break;
@@ -1410,22 +1476,25 @@ void CheckAttachedButtons(void)
 BOS_Status CheckForTimedButtonPress(uint8_t port)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t t1 = button[port].pressedX1Sec, t2 = button[port].pressedX2Sec, t3 = button[port].pressedX3Sec;
+	uint32_t t1 = button[port].pressedX1Sec, t2 = button[port].pressedX2Sec, t3 = button[port].pressedX3Sec;
 	
 	/* If time is zero, ignore this event */
 	if (t1 == 0)	t1 = 0xFF;
 	if (t2 == 0)	t2 = 0xFF;
 	if (t3 == 0)	t3 = 0xFF;
 	
-	if (releaseCounter[port] > t1 && releaseCounter[port] < t2)	
+	/* Convert to ms */
+	t1 *= 1000; t2 *= 1000; t3 *= 1000;
+	
+	if (pressCounter[port] > t1 && pressCounter[port] < t2)	
 	{	
 		button[port].state = PRESSED_FOR_X1_SEC;
 	}
-	else if (releaseCounter[port] > t2 && releaseCounter[port] < t3)	
+	else if (pressCounter[port] > t2 && pressCounter[port] < t3)	
 	{	
 		button[port].state = PRESSED_FOR_X2_SEC;
 	}		
-	else if (releaseCounter[port] > t3)	
+	else if (pressCounter[port] > t3)	
 	{	
 		button[port].state = PRESSED_FOR_X2_SEC;
 	}	
@@ -1442,12 +1511,15 @@ BOS_Status CheckForTimedButtonPress(uint8_t port)
 BOS_Status CheckForTimedButtonRelease(uint8_t port)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t t1 = button[port].releasedY1Sec, t2 = button[port].releasedY2Sec, t3 = button[port].releasedY3Sec;
+	uint32_t t1 = button[port].releasedY1Sec, t2 = button[port].releasedY2Sec, t3 = button[port].releasedY3Sec;
 	
 	/* If time is zero, ignore this event */
 	if (t1 == 0)	t1 = 0xFF;
 	if (t2 == 0)	t2 = 0xFF;
 	if (t3 == 0)	t3 = 0xFF;
+
+	/* Convert to ms */
+	t1 *= 1000; t2 *= 1000; t3 *= 1000;
 	
 	if (releaseCounter[port] > t1 && releaseCounter[port] < t2)	
 	{	
@@ -1554,6 +1626,42 @@ BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint3
 		result = BOS_ERROR;	
 	
 	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button single click callback. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonClickedCallback(uint8_t port)
+{	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button double click callback. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonDblClickedCallback(uint8_t port)
+{	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button pressed_for_x callbacks. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonPressedForXCallback(uint8_t port, uint8_t eventType)
+{	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button released_for_y callbacks. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
+{	
 }
 
 /*-----------------------------------------------------------*/	
@@ -2704,12 +2812,8 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 					buttonType: MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
 					port: array port (P1 - Px)
 					buttonDebounce: button debounce time in ms. 0 will use default time (DEFAULT_DEBOUNCE)
-					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds. Use 0 to disable the event. 
-					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds. Use 0 to disable the event. 
-						Note: Events time must be in ascending order.
 */
-BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
+BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce)
 {
 	BOS_Status result = BOS_OK;
 	GPIO_InitTypeDef GPIO_InitStruct;
@@ -2744,8 +2848,6 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDeboun
 
 	/* 4. Update button struct */
 	button[port].type = buttonType;
-	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
-	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
 	if (buttonDebounce)
 		button[port].debounce = buttonDebounce;
 	else
@@ -2768,8 +2870,10 @@ BOS_Status RemovePortButton(uint8_t port)
 	button[port].type = NONE;
 	button[port].debounce = 0;
 	button[port].state = NONE;
+	button[port].events = 0;
 	button[port].pressedX1Sec = 0; button[port].pressedX2Sec = 0; button[port].pressedX3Sec = 0;
 	button[port].releasedY1Sec = 0; button[port].releasedY2Sec = 0; button[port].releasedY3Sec = 0;
+
 	
 	/* 2. Initialize UART at this port */
 	UART_HandleTypeDef* huart = GetUart(port);
@@ -2831,6 +2935,39 @@ BOS_Status RemovePortButton(uint8_t port)
 	/* Read this port again */
 	HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);	
 
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Setup button events and callbacks
+					port: array port (P1 - Px) where the button is attached 
+					clicked: Single click event (1: Enable, 0: Disable)
+					dbl_clicked: Double click event (1: Enable, 0: Disable)
+					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds (0-254). Use 0 to disable the event. 
+					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds (0-254). Use 0 to disable the event. 
+						Note: Events time must be in ascending order.
+*/
+BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
+{
+	BOS_Status result = BOS_OK;	
+	
+	if (button[port].type == NONE)
+		return BOS_ERR_BUTTON_NOT_DEFINED;
+	
+	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
+	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
+	
+	if (clicked)	button[port].events |= BUTTON_EVENT_CLICKED;
+	if (dbl_clicked)	button[port].events |= BUTTON_EVENT_DBL_CLICKED;
+	if (pressed_x1sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
+	if (pressed_x2sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
+	if (pressed_x3sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
+	if (released_y1sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
+	if (released_y2sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
+	if (released_y3sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
 	
 	return result;
 }

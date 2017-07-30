@@ -34,8 +34,8 @@ enum modulePartNumbers_e{_H01R0=1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R
 enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
-enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, RELEASED_FOR_Y1_SEC,\
-										PRESSED_FOR_X2_SEC, RELEASED_FOR_Y2_SEC, PRESSED_FOR_X3_SEC, RELEASED_FOR_Y3_SEC};
+enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
+										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -114,6 +114,7 @@ typedef enum
 	BOS_ERR_ExistingAlias = 7,
 	BOS_ERR_ExistingCmd = 8,
 	BOS_ERR_EEPROM = 10,
+	BOS_ERR_BUTTON_NOT_DEFINED = 11,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_BROADCAST = 255,
@@ -133,19 +134,33 @@ typedef struct
 	uint8_t releasedY1Sec;
 	uint8_t releasedY2Sec;
 	uint8_t releasedY3Sec;
-} button_t;
+	uint8_t events;
+} 
+button_t;
+
+/* Button Events  Definition */ 
+#define	BUTTON_EVENT_CLICKED									0x01
+#define	BUTTON_EVENT_DBL_CLICKED							0x02
+#define	BUTTON_EVENT_PRESSED_FOR_X1_SEC				0x04
+#define	BUTTON_EVENT_PRESSED_FOR_X2_SEC				0x05
+#define	BUTTON_EVENT_PRESSED_FOR_X3_SEC				0x10
+#define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
+#define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
+#define	BUTTON_EVENT_RELEASED_FOR_Y3_SEC			0x80
+
 
 
 /* BOS Parameters */ 
-#define MAX_MESSAGE_SIZE			50
-#define cmdMAX_INPUT_SIZE			50
-#define	MaxNumOfModules				25
-#define MaxNumOfPorts					10
-#define MaxLengthOfAlias			10
-#define NumOfKeywords					2
-#define DEFAULT_DEBOUNCE			30			// Button debounce time in ms
-#define BUTTON_CLICK					80			// Button single click minimum time in ms
-
+#define MAX_MESSAGE_SIZE					50
+#define cmdMAX_INPUT_SIZE					50
+#define	MaxNumOfModules						25
+#define MaxNumOfPorts							10
+#define MaxLengthOfAlias					10
+#define NumOfKeywords							2
+#define DEFAULT_DEBOUNCE					30				// Button debounce time in ms
+#define BUTTON_CLICK							80				// Button single click minimum time in ms
+#define BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
+#define BUTTON_MAX_INTER_CLICK		200				// Button max inter-click time (in ms) for double clicks (uint8_t size)
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
@@ -265,10 +280,10 @@ extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);
-extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-																uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
+extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce);
 extern BOS_Status RemovePortButton(uint8_t port);
-
+extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
 
 
 
