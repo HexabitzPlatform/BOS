@@ -121,13 +121,28 @@ typedef enum
 	BOS_ERROR = 255
 } BOS_Status;
 
+/* Button Configuration Struct Type Definition */  
+typedef struct
+{
+	uint16_t debounce;
+	uint16_t singleClickTime;
+	uint8_t minInterClickTime;
+	uint8_t maxInterClickTime;
+} 
+buttonsConfig_t;
+
+/* BOS Struct Type Definition */  
+typedef struct
+{
+	buttonsConfig_t buttons;
+} 
+BOS_t;
 
 /* Button Struct Type Definition */  
 typedef struct
 {
 	uint8_t state;
 	uint8_t type;
-	uint16_t debounce;
 	uint8_t pressedX1Sec;
 	uint8_t pressedX2Sec;
 	uint8_t pressedX3Sec;
@@ -138,7 +153,7 @@ typedef struct
 } 
 button_t;
 
-/* Button Events  Definition */ 
+/* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
 #define	BUTTON_EVENT_DBL_CLICKED							0x02
 #define	BUTTON_EVENT_PRESSED_FOR_X1_SEC				0x04
@@ -157,10 +172,10 @@ button_t;
 #define MaxNumOfPorts							10
 #define MaxLengthOfAlias					10
 #define NumOfKeywords							2
-#define DEFAULT_DEBOUNCE					30				// Button debounce time in ms
-#define BUTTON_CLICK							80				// Button single click minimum time in ms
-#define BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define BUTTON_MAX_INTER_CLICK		200				// Button max inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
+#define DEF_BUTTON_CLICK							80				// Button single click minimum time in ms
+#define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_BUTTON_MAX_INTER_CLICK		200				// Button max inter-click time (in ms) for double clicks (uint8_t size)
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
@@ -216,6 +231,7 @@ extern uint8_t routeDist[];
 extern uint8_t routePrev[]; 
 extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
+extern BOS_t BOS;
 
 
 /* -----------------------------------------------------------------------
@@ -280,7 +296,7 @@ extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);
-extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce);
+extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);

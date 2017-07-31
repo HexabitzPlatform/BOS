@@ -16,6 +16,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 
+BOS_t BOS;
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_OFF;
@@ -152,6 +153,8 @@ static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -246,6 +249,24 @@ static const CLI_Command_Definition_t scastCommandDefinition =
 destination module (4th par.), direction ('forward', 'backward', 'bidirectional') (5th par.), transfer count (bytes) (6th par.), transfer timeout (ms) (7th par.)\r\n\r\n",
 	scastCommand, /* The function to run. */
 	7 /* Seven parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : addbutton */
+static const CLI_Command_Definition_t addbuttonCommandDefinition =
+{
+	( const int8_t * ) "addbutton", /* The command string to type. */
+	( const int8_t * ) "addbutton:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n",
+	addbuttonCommand, /* The function to run. */
+	3 /* Three parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : addbutton */
+static const CLI_Command_Definition_t removebuttonCommandDefinition =
+{
+	( const int8_t * ) "removebutton", /* The command string to type. */
+	( const int8_t * ) "removebutton:\r\n Remove a button that was previously defined at this port port (1st par.)\r\n\r\n",
+	removebuttonCommand, /* The function to run. */
+	1 /* One parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 
@@ -1318,9 +1339,9 @@ void CheckAttachedButtons(void)
 				else	
 					releaseCounter[i] = 0;																	// Reset debounce counter		
 				
-				if (clicked == 2 && dblCounter[i] <= BUTTON_MAX_INTER_CLICK)				// Advance the inter-click counter		
+				if (clicked == 2 && dblCounter[i] <= BOS.buttons.maxInterClickTime)				// Advance the inter-click counter		
 					++dblCounter[i];			
-				else if (dblCounter[i] > BUTTON_MAX_INTER_CLICK)	{
+				else if (dblCounter[i] > BOS.buttons.maxInterClickTime)	{
 					clicked = 0;
 					dblCounter[i] = 0;																			// Reset the inter-click counter
 				}					
@@ -1329,22 +1350,22 @@ void CheckAttachedButtons(void)
 			/* Analyze state */
 			
 			/* 4.C. On press: Record a click if pressed less than 1 second */
-			if (pressCounter[i] < button[i].debounce) 									
+			if (pressCounter[i] < BOS.buttons.debounce) 									
 			{
 				// This is noise. Ignore it
 			} 
 			else 
 			{
 				//button[i].state = PRESSED;																// Record a PRESSED event (this masks other events!)
-				if (releaseCounter[i] > button[i].debounce)								// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
+				if (releaseCounter[i] > BOS.buttons.debounce)								// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
 					releaseCounter[i] = 0;					
 				
-				if (pressCounter[i] > BUTTON_CLICK && pressCounter[i] < configTICK_RATE_HZ)	
+				if (pressCounter[i] > BOS.buttons.singleClickTime && pressCounter[i] < configTICK_RATE_HZ)	
 				{
 					if (clicked == 0)
 						clicked = 1;																					// Record a possible single click 
 					else if (clicked == 2) {
-						if (dblCounter[i] > BUTTON_MIN_INTER_CLICK && dblCounter[i] < BUTTON_MAX_INTER_CLICK) {
+						if (dblCounter[i] > BOS.buttons.minInterClickTime && dblCounter[i] < BOS.buttons.maxInterClickTime) {
 							clicked = 3;																				// Record a possible double click 
 							dblCounter[i] = 0;																	// Reset the inter-click counter
 						}
@@ -1359,17 +1380,17 @@ void CheckAttachedButtons(void)
 			}
 			
 			/* 4.D. On release: Record a click if pressed less than 1 second */
-			if (releaseCounter[i] < button[i].debounce) 							
+			if (releaseCounter[i] < BOS.buttons.debounce) 							
 			{
 				// This is noise. Ignore it
 			} 	
 			else 
 			{
 				//button[i].state = RELEASED;																// Record a RELEASED event (this masks other events!)
-				if (pressCounter[i] > button[i].debounce)									// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
+				if (pressCounter[i] > BOS.buttons.debounce)									// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
 					pressCounter[i] = 0;				
 				
-				if (releaseCounter[i] > BUTTON_CLICK && releaseCounter[i] < configTICK_RATE_HZ)	
+				if (releaseCounter[i] > BOS.buttons.singleClickTime && releaseCounter[i] < configTICK_RATE_HZ)	
 				{
 					if (clicked == 1)
 					{
@@ -1678,6 +1699,12 @@ void BOS_Init(void)
 {
 	/* Unlock the Flash memory */
 	HAL_FLASH_Unlock();
+	
+	/* Load default BOS config >> Replace later with EEPROM load */
+	BOS.buttons.debounce = DEF_BUTTON_DEBOUNCE;
+	BOS.buttons.singleClickTime = DEF_BUTTON_CLICK;
+	BOS.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK;
+	BOS.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK;
 
 	/* EEPROM Init */
 	EE_Init();
@@ -1744,6 +1771,8 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &statusCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &infoCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &scastCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &addbuttonCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &removebuttonCommandDefinition );
 	
 	
 #ifdef H01R0	
@@ -2811,25 +2840,21 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 /* --- Define a new button attached to one of array ports
 					buttonType: MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
 					port: array port (P1 - Px)
-					buttonDebounce: button debounce time in ms. 0 will use default time (DEFAULT_DEBOUNCE)
 */
-BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDebounce)
+BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 {
 	BOS_Status result = BOS_OK;
 	GPIO_InitTypeDef GPIO_InitStruct;
 	uint32_t TX_Port, RX_Port; 
 	uint16_t TX_Pin, RX_Pin;
-
 	
 	/* 1. Stop communication at this port */		
 	osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
 	osSemaphoreRelease(PxTxSemaphoreHandle[port]);
-	portStatus[port] = PORTBUTTON;
-	
+	portStatus[port] = PORTBUTTON;	
 	
 	/* 2. Deinitialize UART */
 	HAL_UART_DeInit(GetUart(port));
-	
 	
 	/* 3. Initialize GPIOs */
 	GetPortGPIOs(port, &TX_Port, &TX_Pin, &RX_Port, &RX_Pin);		
@@ -2845,14 +2870,8 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port, uint16_t buttonDeboun
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;
 	HAL_GPIO_Init((GPIO_TypeDef *)RX_Port, &GPIO_InitStruct);
 
-
 	/* 4. Update button struct */
-	button[port].type = buttonType;
-	if (buttonDebounce)
-		button[port].debounce = buttonDebounce;
-	else
-		button[port].debounce = DEFAULT_DEBOUNCE;
-	
+	button[port].type = buttonType;	
 	
 	return result;
 }
@@ -2868,7 +2887,6 @@ BOS_Status RemovePortButton(uint8_t port)
 	
 	/* 1. Remove from button struct */
 	button[port].type = NONE;
-	button[port].debounce = 0;
 	button[port].state = NONE;
 	button[port].events = 0;
 	button[port].pressedX1Sec = 0; button[port].pressedX2Sec = 0; button[port].pressedX3Sec = 0;
@@ -3309,5 +3327,92 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 }
 
 /*-----------------------------------------------------------*/
+
+static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1, *pcParameterString2; 
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0; 
+	uint8_t port = 0, type = 0;
+	
+	static const int8_t *pcMessage = ( int8_t * ) "A new %s button named B%d was defined at port P%d\n\r";
+	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (!strncmp((const char *)pcParameterString1, "momentary-no", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "MOMENTARY-NO", xParameterStringLength1)) {
+		type = MOMENTARY_NO;
+	} else if (!strncmp((const char *)pcParameterString1, "momentary-nc", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "MOMENTARY-NC", xParameterStringLength1)) {
+		type = MOMENTARY_NC;
+	} else if (!strncmp((const char *)pcParameterString1, "onoff-no", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "ONOFF-NO", xParameterStringLength1)) {
+		type = ONOFF_NO;
+	} else if (!strncmp((const char *)pcParameterString1, "onoff-nc", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "ONOFF-NC", xParameterStringLength1)) {
+		type = ONOFF_NC;
+	}
+		
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	if (pcParameterString2[0] == 'P' || pcParameterString2[0] == 'p') {
+		port = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+	}
+	
+	result = AddPortButton(type, port);
+	
+	/* Respond to the command */
+	if (result == BOS_OK) 
+	{	
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, type, port, port);
+	}
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1; 
+	portBASE_TYPE xParameterStringLength1 = 0; 
+	uint8_t port = 0;
+	
+	static const int8_t *pcMessage = ( int8_t * ) "Button B%d was removed from port P%d\n\r";
+	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'P' || pcParameterString1[0] == 'p') {
+		port = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	}
+	
+	result = RemovePortButton(port);
+	
+	/* Respond to the command */
+	if (result == BOS_OK) 
+	{	
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, port, port);
+	}
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
