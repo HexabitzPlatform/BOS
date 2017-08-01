@@ -59,8 +59,13 @@
 #include "BOS.h"
 
 
-/*-----------------------------------------------------------*/
 
+
+
+
+/* Internal Variables --------------------------------------------------------*/
+
+uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
 
 static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
@@ -79,6 +84,11 @@ static char * pcNewLine = "\r\n";
 static char * pcEndOfCommandOutputString = "\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] = {0};
 
+/* Internal functions ---------------------------------------------------------*/
+
+BOS_Status AddCommandSnippet(uint8_t type, char *string);
+
+
 /*-----------------------------------------------------------*/
 
 void prvUARTCommandConsoleTask( void *pvParameters )
@@ -86,7 +96,7 @@ void prvUARTCommandConsoleTask( void *pvParameters )
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, m = 1;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; uint8_t id = 0; char idString[MaxLengthOfAlias] = {0};
-portBASE_TYPE xReturned;
+portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 
 	( void ) pvParameters;
 	
@@ -123,7 +133,7 @@ portBASE_TYPE xReturned;
 		
 		if( cRxedChar == '\r' )
 		{
-			/* The input command string is complete.  Ensure the previous
+			/* The input command string is complete. Ensure the previous
 			UART transmission has finished before sending any more data.
 			This task will be held in the Blocked state while the Tx completes,
 			if it has not already done so, so no CPU time will be wasted by
@@ -148,69 +158,106 @@ portBASE_TYPE xReturned;
 				in the Blocked state while the Tx completes, if it has not
 				already done so, so no CPU time	is wasted polling. */
 				
-				/* Check if command contains a dot */
-				loc = strchr( ( char * ) cInputString, '.');
-				if (loc != NULL) {					
-					/* Extract module ID */
-					strncpy(idString, ( char * ) cInputString, (size_t) (loc - (char*)cInputString));
-					id = GetID(idString);
-					if (id == myID) {
-						/* Extract and process the command */
-						xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );		
-					}	else if (id == BOS_ERR_WrongName) {		
-						sprintf( ( char * ) pcOutputString, "Wrong module name! Please try again.\n\r");
-						xReturned = pdFALSE;
-					}	else if (id == BOS_ERR_WrongID) {
-						sprintf( ( char * ) pcOutputString, "Wrong module ID! Please try again.\n\r");
-						xReturned = pdFALSE;						
-					}	else if (id == BOS_BROADCAST) {
-						/* Check if command is broadcastable */
-								
-						if (!(broadcastResponse[m-1]) ) {	
-							/* Execute locally */
-							if (m == myID) {
-								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );
-								if (xReturned == pdFALSE)	{
-									broadcastResponse[myID-1] = 1;
+				/* Convert input string to lower case */
+				StringToLowerCase(( char * )cInputString);
+				
+				
+				/* Check for a conditional statement (if) */
+				if (!recordSnippet && !strncmp((char *)cInputString, "if ", 3)) 
+				{
+					/* Add the condition to Command Snippets (after removing "if " */
+					AddCommandSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
+					/* Start recording Commands after the condition */
+					recordSnippet = SNIPPET_CONDITION_CMDS;
+					pcOutputString[0] = '\r';
+				} 
+				/* Check for the end of a conditional command (end if) */
+				else if (recordSnippet && !strncmp((char *)cInputString, "end if", 6))
+				{
+					/* Stop recording Commands for the conditional Command Snippet */
+					recordSnippet = 0;
+					/* Check memory */
+					
+					
+					/* Activate the Snippet */
+					
+					/* If snippet saved successfuly */
+					sprintf( ( char * ) pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
+				}
+				/* Should I record any Command Snippets? */
+				else if (recordSnippet == SNIPPET_CONDITION_CMDS)
+				{
+					/* Add this Command to Command Snippets */
+					AddCommandSnippet(SNIPPET_CONDITION_CMDS, ( char * ) cInputString);
+					pcOutputString[0] = '\r';
+				}
+				/* Parse a normal Command */
+				else 
+				{
+					/* Check if command contains a dot */
+					loc = strchr( ( char * ) cInputString, '.');
+					if (loc != NULL) {					
+						/* Extract module ID */
+						strncpy(idString, ( char * ) cInputString, (size_t) (loc - (char*)cInputString));
+						id = GetID(idString);
+						if (id == myID) {
+							/* Extract and process the command */
+							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );		
+						}	else if (id == BOS_ERR_WrongName) {		
+							sprintf( ( char * ) pcOutputString, "Wrong module name! Please try again.\n\r");
+							xReturned = pdFALSE;
+						}	else if (id == BOS_ERR_WrongID) {
+							sprintf( ( char * ) pcOutputString, "Wrong module ID! Please try again.\n\r");
+							xReturned = pdFALSE;						
+						}	else if (id == BOS_BROADCAST) {
+							/* Check if command is broadcastable */
+									
+							if (!(broadcastResponse[m-1]) ) {	
+								/* Execute locally */
+								if (m == myID) {
+									xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );
+									if (xReturned == pdFALSE)	{
+										broadcastResponse[myID-1] = 1;
+										/* Activate next message */
+										xReturned = pdTRUE; ++m;
+									}			
+								/* Broadcast the command */								
+								} else {
+									strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
+									SendMessageToModule(m, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+									/* Wait for response for a maximum of 1000msec */
+									ulTaskNotifyTake(pdTRUE, 1000);		
+									/* If timeout */
+									if (responseStatus != BOS_OK)	
+										sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);
+									else
+										broadcastResponse[m-1] = 1;
 									/* Activate next message */
 									xReturned = pdTRUE; ++m;
-								}			
-							/* Broadcast the command */								
-							} else {
-								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-								SendMessageToModule(m, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
-								/* Wait for response for a maximum of 1000msec */
-								ulTaskNotifyTake(pdTRUE, 1000);		
-								/* If timeout */
-								if (responseStatus != BOS_OK)	
-									sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);
-								else
-									broadcastResponse[m-1] = 1;
-								/* Activate next message */
-								xReturned = pdTRUE; ++m;
-								osDelay(50);
-							}
-							/* Is broadcast finished? */
-							if (m > N) {
-								xReturned = pdFALSE;
-								m = 1;
-								memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );			
-							}
-						}									
-					}	else {
-						/* Forward the command */
-						strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-						SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
-						xReturned = pdFALSE;
-						/* Wait for response for a maximum of 1000msec */
-						ulTaskNotifyTake(pdTRUE, 5000);		//cmd500ms
-						/* If timeout */
-						if (responseStatus != BOS_OK)
-							sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
-					}						
-				} else {
-					/* Process the command locally */
-					xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );		
+									osDelay(50);
+								}
+								/* Is broadcast finished? */
+								if (m > N) {
+									xReturned = pdFALSE;
+									m = 1;
+									memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );			
+								}
+							}									
+						}	else {
+							/* Forward the command */
+							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
+							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+							xReturned = pdFALSE;
+							/* Wait for response for a maximum of 1000msec */
+							ulTaskNotifyTake(pdTRUE, 5000);		//cmd500ms
+							/* If timeout */
+							if (responseStatus != BOS_OK)
+								sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
+						}						
+					} else {
+						/* Process the command locally */
+						xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );		
+					}
 				}
 				
 				/* Write the generated string to the UART. */
@@ -230,7 +277,8 @@ portBASE_TYPE xReturned;
 			memset( idString, 0x00, MaxLengthOfAlias );
 			
 			/* Start to transmit a line separator, just to make the output easier to read. */
-			writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms);
+			if(!recordSnippet)
+				writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms);
 		}
 		else
 		{
@@ -269,5 +317,47 @@ portBASE_TYPE xReturned;
 }
 /*-----------------------------------------------------------*/
 
+/* Convert a string to lower case
+*/
+void StringToLowerCase(char *string)
+{
+	for(int i = 0; string[i]; i++){
+		string[i] = tolower(string[i]);
+	}
+}
 
+/*-----------------------------------------------------------*/
+
+/* Convert a string to lower case
+*/
+BOS_Status AddCommandSnippet(uint8_t type, char *string)
+{
+	BOS_Status result = BOS_OK;
+	static uint16_t currentSize;
+	
+	if (currentSize >= SNIPPETS_BUF_SIZE)
+		return BOS_ERR_SNIP_MEM_FULL;	
+		
+	switch (type)
+  {
+  	case SNIPPET_CONDITION :
+			snippets[currentSize++] = SNIPPET_CONDITION;						// Add condition delimiter
+			strcpy((char *)&snippets[currentSize], string);					// Copy the condition
+			currentSize += (strlen(string)+1);
+  		break;
+		
+  	case SNIPPET_CONDITION_CMDS :
+			snippets[currentSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
+			strcpy((char *)&snippets[currentSize++], string);				// Copy the Command
+			currentSize += (strlen(string)+1);
+  		break;
+		
+  	default:
+  		break;
+  }
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
 

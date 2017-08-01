@@ -115,6 +115,7 @@ typedef enum
 	BOS_ERR_ExistingCmd = 8,
 	BOS_ERR_EEPROM = 10,
 	BOS_ERR_BUTTON_NOT_DEFINED = 11,
+	BOS_ERR_SNIP_MEM_FULL = 12,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_BROADCAST = 255,
@@ -178,6 +179,12 @@ button_t;
 #define DEF_BUTTON_MAX_INTER_CLICK		200				// Button max inter-click time (in ms) for double clicks (uint8_t size)
 
 
+/* Command Snippets */
+#define SNIPPETS_BUF_SIZE							1000
+#define SNIPPET_CONDITION							0xFE			// Conditional statement - condition delimiter
+#define SNIPPET_CONDITION_CMDS				0xFD			// Conditional statement - command delimiter
+
+
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
 #define _EE_NBase						1	
 #define _EE_topologyBase		2	
@@ -232,6 +239,10 @@ extern uint8_t routePrev[];
 extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
+
+
+/* Exported internal functions ---------------------------------------------------------*/
+void StringToLowerCase(char *string);
 
 
 /* -----------------------------------------------------------------------

@@ -264,7 +264,7 @@ static const CLI_Command_Definition_t addbuttonCommandDefinition =
 static const CLI_Command_Definition_t removebuttonCommandDefinition =
 {
 	( const int8_t * ) "removebutton", /* The command string to type. */
-	( const int8_t * ) "removebutton:\r\n Remove a button that was previously defined at this port port (1st par.)\r\n\r\n",
+	( const int8_t * ) "removebutton:\r\n Remove a button that was previously defined at this port (1st par.)\r\n\r\n",
 	removebuttonCommand, /* The function to run. */
 	1 /* One parameters is expected. */
 };
@@ -3285,7 +3285,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	
 	/* Obtain the 3rd parameter string. */
 	pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
-	if (pcParameterString3[0] == 'P' || pcParameterString3[0] == 'p') {
+	if (pcParameterString3[0] == 'p') {
 		dstP = ( uint8_t ) atol( ( char * ) pcParameterString3+1 );
 	}
 
@@ -3297,11 +3297,11 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	/* Obtain the 5th parameter string. */
 	pcParameterString5 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 5, &xParameterStringLength5);
 	/* Read the color value. */
-	if (!strncmp((const char *)pcParameterString5, "FORWARD", xParameterStringLength5) || !strncmp((const char *)pcParameterString5, "forward", xParameterStringLength5))
+	if (!strncmp((const char *)pcParameterString5, "forward", xParameterStringLength5))
 		direction = FORWARD;
-	else if (!strncmp((const char *)pcParameterString5, "BACKWARD", xParameterStringLength5) || !strncmp(( const char *)pcParameterString5, "backward", xParameterStringLength5))
+	else if (!strncmp(( const char *)pcParameterString5, "backward", xParameterStringLength5))
 		direction = BACKWARD;
-	else if (!strncmp((const char *)pcParameterString5, "BIDIRECTIONAL", xParameterStringLength5) || !strncmp((const char *)pcParameterString5, "bidirectional", xParameterStringLength5))
+	else if (!strncmp((const char *)pcParameterString5, "bidirectional", xParameterStringLength5))
 		direction = BIDIRECTIONAL;
 	strncpy(par3, ( char * ) pcParameterString5, xParameterStringLength5);
 	
@@ -3346,19 +3346,19 @@ static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 	
 	/* Obtain the 1st parameter string. */
 	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
-	if (!strncmp((const char *)pcParameterString1, "momentary-no", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "MOMENTARY-NO", xParameterStringLength1)) {
+	if (!strncmp((const char *)pcParameterString1, "momentary-no", xParameterStringLength1)) {
 		type = MOMENTARY_NO;
-	} else if (!strncmp((const char *)pcParameterString1, "momentary-nc", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "MOMENTARY-NC", xParameterStringLength1)) {
+	} else if (!strncmp((const char *)pcParameterString1, "momentary-nc", xParameterStringLength1)) {
 		type = MOMENTARY_NC;
-	} else if (!strncmp((const char *)pcParameterString1, "onoff-no", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "ONOFF-NO", xParameterStringLength1)) {
+	} else if (!strncmp((const char *)pcParameterString1, "onoff-no", xParameterStringLength1)) {
 		type = ONOFF_NO;
-	} else if (!strncmp((const char *)pcParameterString1, "onoff-nc", xParameterStringLength1) || !strncmp((const char *)pcParameterString1, "ONOFF-NC", xParameterStringLength1)) {
+	} else if (!strncmp((const char *)pcParameterString1, "onoff-nc", xParameterStringLength1)) {
 		type = ONOFF_NC;
 	}
 		
 	/* Obtain the 2nd parameter string. */
 	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
-	if (pcParameterString2[0] == 'P' || pcParameterString2[0] == 'p') {
+	if (pcParameterString2[0] == 'p') {
 		port = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
 	}
 	
@@ -3395,7 +3395,7 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 	
 	/* Obtain the 1st parameter string. */
 	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength1);
-	if (pcParameterString1[0] == 'P' || pcParameterString1[0] == 'p') {
+	if (pcParameterString1[0] == 'p') {
 		port = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
 	}
 	
