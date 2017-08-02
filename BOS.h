@@ -181,8 +181,8 @@ button_t;
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
-#define SNIPPET_CONDITION							0xFE			// Conditional statement - condition delimiter
-#define SNIPPET_CONDITION_CMDS				0xFD			// Conditional statement - command delimiter
+#define SNIPPET_CONDITION							0x80			// Conditional statement - condition delimiter
+#define SNIPPET_CONDITION_CMDS				0x82			// Conditional statement - command delimiter
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */

@@ -66,6 +66,7 @@
 /* Internal Variables --------------------------------------------------------*/
 
 uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
+uint16_t currentSnipSize = 0;
 
 static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
@@ -86,8 +87,8 @@ char pcWelcomePortMessage[40] = {0};
 
 /* Internal functions ---------------------------------------------------------*/
 
-BOS_Status AddCommandSnippet(uint8_t type, char *string);
-
+BOS_Status AddSnippet(uint8_t type, char *string);
+uint8_t ProcessSnippet(uint16_t location);
 
 /*-----------------------------------------------------------*/
 
@@ -166,7 +167,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				if (!recordSnippet && !strncmp((char *)cInputString, "if ", 3)) 
 				{
 					/* Add the condition to Command Snippets (after removing "if " */
-					AddCommandSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
+					AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
 					/* Start recording Commands after the condition */
 					recordSnippet = SNIPPET_CONDITION_CMDS;
 					pcOutputString[0] = '\r';
@@ -179,8 +180,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					/* Check memory */
 					
 					
-					/* Activate the Snippet */
-					
+					/* Activate the Snippet via the LSB */
+					AddSnippet((SNIPPET_CONDITION|0x01), "");				
 					/* If snippet saved successfuly */
 					sprintf( ( char * ) pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
 				}
@@ -188,7 +189,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				else if (recordSnippet == SNIPPET_CONDITION_CMDS)
 				{
 					/* Add this Command to Command Snippets */
-					AddCommandSnippet(SNIPPET_CONDITION_CMDS, ( char * ) cInputString);
+					AddSnippet(SNIPPET_CONDITION_CMDS, ( char * ) cInputString);
 					pcOutputString[0] = '\r';
 				}
 				/* Parse a normal Command */
@@ -328,36 +329,121 @@ void StringToLowerCase(char *string)
 
 /*-----------------------------------------------------------*/
 
-/* Convert a string to lower case
+/* Add a set of Commands to Command Snippets and activate
 */
-BOS_Status AddCommandSnippet(uint8_t type, char *string)
+BOS_Status AddSnippet(uint8_t type, char *string)
 {
 	BOS_Status result = BOS_OK;
-	static uint16_t currentSize;
 	
-	if (currentSize >= SNIPPETS_BUF_SIZE)
+	if (currentSnipSize >= SNIPPETS_BUF_SIZE)
 		return BOS_ERR_SNIP_MEM_FULL;	
-		
-	switch (type)
-  {
-  	case SNIPPET_CONDITION :
-			snippets[currentSize++] = SNIPPET_CONDITION;						// Add condition delimiter
-			strcpy((char *)&snippets[currentSize], string);					// Copy the condition
-			currentSize += (strlen(string)+1);
-  		break;
-		
-  	case SNIPPET_CONDITION_CMDS :
-			snippets[currentSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
-			strcpy((char *)&snippets[currentSize++], string);				// Copy the Command
-			currentSize += (strlen(string)+1);
-  		break;
-		
-  	default:
-  		break;
-  }
+	
+	/* Check for activation code */
+	if (type&0x01)
+	{
+		/* Search for last matching code */
+		for(int i=currentSnipSize ; i>=0 ; i--)
+    {
+			if ( (snippets[i]|0x01) == type) {
+				snippets[i] = type;																					// Snippet has been activated (via LSB)
+				break;
+			}
+    }
+	}
+	/* Normal code */
+	else
+	{
+		switch (type)
+		{
+			case SNIPPET_CONDITION :
+				snippets[currentSnipSize++] = SNIPPET_CONDITION;						// Add condition delimiter
+				strcpy((char *)&snippets[currentSnipSize], string);					// Copy the condition
+				currentSnipSize += (strlen(string)+1);
+				break;
+			
+			case SNIPPET_CONDITION_CMDS :
+				snippets[currentSnipSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
+				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the Command
+				currentSnipSize += (strlen(string)+1);
+				break;
+			
+			default:
+				break;
+		}
+	}
 	
 	return result;
 }
 
 /*-----------------------------------------------------------*/
 
+/* Process logical conditions in a Snippet
+*/
+uint8_t ProcessSnippet(uint16_t location)
+{
+	uint8_t result = 0;
+	
+	/* Parse condition text */
+	// Todo: This is done every time. It should be performed on Snippet activation only
+	
+	
+	
+	/* Check the state of logical condition */
+	
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* Execute activated Command Snippets
+*/
+BOS_Status ExecuteSnippet(void)
+{
+	BOS_Status result = BOS_OK;
+	portBASE_TYPE xReturned;
+	int8_t *cInputString, *pcOutputString;
+	
+	/* Go through activated Snippets */
+	for(int s=0 ; s<=currentSnipSize ; s++)
+  {
+		if (snippets[s]&0x01)									// Check the LSB (activated codes)
+		{	
+			switch (snippets[s]&0xFE)						// Go through actual codes
+      {
+      	case SNIPPET_CONDITION :
+					if (ProcessSnippet(s))					// Process Snippet Condition at this location
+					{
+						/* Condition is TRUE, execute Snippet Commands */
+						for(int c=s ; c<=currentSnipSize ; c++)
+						{
+							/* Extract the command */
+							if (snippets[c] == SNIPPET_CONDITION_CMDS)						
+							{	
+								cInputString = (signed char *) &snippets[c+1];
+								/* Pass the received command to the command interpreter.  The
+								command interpreter is called repeatedly until it returns
+								pdFALSE as it might generate more than one string. */
+								do
+								{
+									xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+								} while( xReturned != pdFALSE );
+							}
+						}
+						/* Disable this Snippet since conditionals are not latching */
+						snippets[s] &= 0xFE;
+					}
+																				
+      		break;
+
+      	default :													// This is not a code so exit
+      		break;
+      }
+			
+		}
+  }
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/

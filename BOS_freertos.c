@@ -86,7 +86,8 @@ void FrontEndTask(void * argument);
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
 extern void CheckAttachedButtons(void);
-	
+extern BOS_Status ExecuteSnippet(void);
+
 /*-----------------------------------------------------------*/
 
 /* Init FreeRTOS */
@@ -185,6 +186,9 @@ void StartDefaultTask(void * argument)
 		
 		/* Read button state */
 		CheckAttachedButtons();
+		
+		/* Executed activated Command Snippets */
+		ExecuteSnippet();
 		
 		taskYIELD();
   }
