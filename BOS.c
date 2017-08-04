@@ -257,7 +257,7 @@ static const CLI_Command_Definition_t addbuttonCommandDefinition =
 	( const int8_t * ) "addbutton", /* The command string to type. */
 	( const int8_t * ) "addbutton:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n",
 	addbuttonCommand, /* The function to run. */
-	3 /* Three parameters are expected. */
+	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : addbutton */
@@ -1422,7 +1422,6 @@ void CheckAttachedButtons(void)
       	case CLICKED :
 					if (button[i].events & BUTTON_EVENT_CLICKED) 
 					{
-						button[i].state = NONE;
 						buttonClickedCallback(i);
 					}
       		break;
@@ -1430,7 +1429,6 @@ void CheckAttachedButtons(void)
       	case DBL_CLICKED :
 					if (button[i].events & BUTTON_EVENT_DBL_CLICKED) 
 					{
-						button[i].state = NONE;
 						buttonDblClickedCallback(i);
 					}
       		break;
@@ -1440,21 +1438,18 @@ void CheckAttachedButtons(void)
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC && button[i].state != oldState) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;
 				case PRESSED_FOR_X2_SEC :
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC && button[i].state != oldState) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;
 				case PRESSED_FOR_X3_SEC :
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC && button[i].state != oldState) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;
 				
@@ -1463,21 +1458,18 @@ void CheckAttachedButtons(void)
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC && button[i].state != oldState) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;					
 				case RELEASED_FOR_Y2_SEC :
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC && button[i].state != oldState) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;					
 				case RELEASED_FOR_Y3_SEC :
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC && button[i].state != oldState) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
 						oldState = button[i].state;
-						button[i].state = NONE;
 					}
 					break;
 				
@@ -1558,6 +1550,20 @@ BOS_Status CheckForTimedButtonRelease(uint8_t port)
 		result = BOS_ERROR;
 
 	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Reset state of attached buttons to avoid recurring callbacks
+*/
+void ResetAttachedButtonStates(void)
+{
+	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
+  {
+		if(button[i].state != NONE)
+			button[i].state = NONE;
+  }
+	
 }
 
 /*-----------------------------------------------------------*/	
@@ -3367,7 +3373,8 @@ static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 	/* Respond to the command */
 	if (result == BOS_OK) 
 	{	
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, type, port, port);
+		pcParameterString1[xParameterStringLength1] = 0;		// Get rid of the remaining parameters
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, pcParameterString1, port, port);
 	}
 	
 	/* There is no more data to return after this single string, so return

@@ -86,6 +86,7 @@ void FrontEndTask(void * argument);
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
 extern void CheckAttachedButtons(void);
+extern void ResetAttachedButtonStates(void);
 extern BOS_Status ExecuteSnippet(void);
 
 /*-----------------------------------------------------------*/
@@ -189,6 +190,9 @@ void StartDefaultTask(void * argument)
 		
 		/* Executed activated Command Snippets */
 		ExecuteSnippet();
+		
+		/* Must reset state to prevent recurring callbacks */
+		ResetAttachedButtonStates();
 		
 		taskYIELD();
   }
