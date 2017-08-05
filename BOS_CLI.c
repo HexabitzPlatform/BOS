@@ -505,7 +505,7 @@ BOS_Status ExecuteSnippet(void)
 BOS_Status ActivateButtonSnippet(uint16_t location)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t temp = 0, port = snippets[location+1]-'0';
+	uint8_t port = snippets[location+1]-'0';
 
 	/* Make sure it's a conditional button Snippet */
 	if(snippets[location] == 'b' && snippets[location+2] == '.')
@@ -537,22 +537,6 @@ BOS_Status ActivateButtonSnippet(uint16_t location)
 				} else {
 					return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
 				}		
-//				/* Order press times in ascending order - Todo: get rid of this! */
-//				if (button[port].pressedX1Sec < button[port].pressedX2Sec && button[port].pressedX2Sec < button[port].pressedX3Sec ) {
-//					// Do nothing
-//				} else if (button[port].pressedX1Sec < button[port].pressedX3Sec && button[port].pressedX3Sec < button[port].pressedX2Sec ) {
-//					temp = button[port].pressedX2Sec;
-//					button[port].pressedX2Sec = button[port].pressedX3Sec;
-//					button[port].pressedX3Sec = temp;
-//				}	else if (button[port].pressedX2Sec < button[port].pressedX1Sec && button[port].pressedX1Sec < button[port].pressedX3Sec ) {
-//					temp = button[port].pressedX2Sec;
-//					button[port].pressedX2Sec = button[port].pressedX1Sec;
-//					button[port].pressedX1Sec = temp;
-//				}	else if (button[port].pressedX3Sec < button[port].pressedX2Sec && button[port].pressedX2Sec < button[port].pressedX1Sec ) {
-//					temp = button[port].pressedX1Sec;
-//					button[port].pressedX1Sec = button[port].pressedX3Sec;
-//					button[port].pressedX3Sec = temp;
-//				}			
 			}
 			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
 			{
@@ -569,22 +553,6 @@ BOS_Status ActivateButtonSnippet(uint16_t location)
 				} else {
 					return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
 				}				
-//				/* Order release times in ascending order - Todo: get rid of this! */
-//				if (button[port].releasedY1Sec < button[port].releasedY2Sec && button[port].releasedY2Sec < button[port].releasedY3Sec ) {
-//					// Do nothing
-//				} else if (button[port].releasedY1Sec < button[port].releasedY3Sec && button[port].releasedY3Sec < button[port].releasedY2Sec ) {
-//					temp = button[port].releasedY2Sec;
-//					button[port].releasedY2Sec = button[port].releasedY3Sec;
-//					button[port].releasedY3Sec = temp;
-//				}	else if (button[port].releasedY2Sec < button[port].releasedY1Sec && button[port].releasedY1Sec < button[port].releasedY3Sec ) {
-//					temp = button[port].releasedY2Sec;
-//					button[port].releasedY2Sec = button[port].releasedY1Sec;
-//					button[port].releasedY1Sec = temp;
-//				}	else if (button[port].releasedY3Sec < button[port].releasedY2Sec && button[port].releasedY2Sec < button[port].releasedY1Sec ) {
-//					temp = button[port].releasedY1Sec;
-//					button[port].releasedY1Sec = button[port].releasedY3Sec;
-//					button[port].releasedY3Sec = temp;
-//				}			
 			}
 		}
 	}

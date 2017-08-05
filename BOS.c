@@ -1267,7 +1267,6 @@ void CheckAttachedButtons(void)
 	uint16_t TX_Pin, RX_Pin;
 	uint8_t connected = GPIO_PIN_RESET, state = 0;
 	static uint8_t clicked;
-	static uint8_t oldState;
 	
 	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
 	{
@@ -1435,41 +1434,35 @@ void CheckAttachedButtons(void)
 					
 				/* These are latching events so make sure you only execute once */
       	case PRESSED_FOR_X1_SEC :		
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
-						oldState = button[i].state;
 					}
 					break;
 				case PRESSED_FOR_X2_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
-						oldState = button[i].state;
 					}
 					break;
 				case PRESSED_FOR_X3_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) {	
 						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
-						oldState = button[i].state;
 					}
 					break;
 				
 				/* These are latching events so make sure you only execute once */
       	case RELEASED_FOR_Y1_SEC :	
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
-						oldState = button[i].state;
 					}
 					break;					
 				case RELEASED_FOR_Y2_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
-						oldState = button[i].state;
 					}
 					break;					
 				case RELEASED_FOR_Y3_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC && button[i].state != oldState) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
-						oldState = button[i].state;
 					}
 					break;
 				
