@@ -176,16 +176,16 @@ button_t;
 #define MaxLengthOfAlias					10
 #define NumOfKeywords							2
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
-#define DEF_BUTTON_CLICK							80				// Button single click minimum time in ms
+#define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_BUTTON_MAX_INTER_CLICK		200				// Button max inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_BUTTON_MAX_INTER_CLICK		250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
 
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
 #define SNIPPET_CONDITION							0x80			// Conditional statement - condition delimiter
 #define SNIPPET_CONDITION_CMDS				0x82			// Conditional statement - command delimiter
-
+#define SNIPPET_END										0xF0			// End of Snippet delimiter
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
 #define _EE_NBase						1	

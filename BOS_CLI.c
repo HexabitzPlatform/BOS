@@ -89,6 +89,8 @@ char pcWelcomePortMessage[40] = {0};
 
 BOS_Status AddSnippet(uint8_t type, char *string);
 BOS_Status ProcessSnippet(uint16_t location);
+BOS_Status ActivateButtonSnippet(uint16_t location);
+
 
 /*-----------------------------------------------------------*/
 
@@ -170,7 +172,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
 					/* Start recording Commands after the condition */
 					recordSnippet = SNIPPET_CONDITION_CMDS;
-					memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+					pcOutputString[0] = '\r';
 				} 
 				/* Check for the end of a conditional command (end if) */
 				else if (recordSnippet && !strncmp((char *)cInputString, "end if", 6))
@@ -334,6 +336,7 @@ void StringToLowerCase(char *string)
 BOS_Status AddSnippet(uint8_t type, char *string)
 {
 	BOS_Status result = BOS_OK;
+	int16_t i = 0;
 	
 	if (currentSnipSize >= SNIPPETS_BUF_SIZE)
 		return BOS_ERR_SNIP_MEM_FULL;	
@@ -342,13 +345,17 @@ BOS_Status AddSnippet(uint8_t type, char *string)
 	if (type&0x01)
 	{
 		/* Search for last matching code */
-		for(int i=currentSnipSize ; i>=0 ; i--)
+		for(i=currentSnipSize ; i>=0 ; i--)
     {
 			if ( (snippets[i]|0x01) == type) {
 				snippets[i] = type;																					// Snippet has been activated (via LSB)
 				break;
 			}
     }
+		/* Add end of Snippet delimiter */
+		snippets[currentSnipSize++] = SNIPPET_END;
+		/* Activate button events if this is a conditional button Snippet */
+		ActivateButtonSnippet(i+1);
 	}
 	/* Normal code */
 	else
@@ -357,14 +364,14 @@ BOS_Status AddSnippet(uint8_t type, char *string)
 		{
 			case SNIPPET_CONDITION :
 				snippets[currentSnipSize++] = SNIPPET_CONDITION;						// Add condition delimiter
-				strcpy((char *)&snippets[currentSnipSize], string);					// Copy the condition
-				currentSnipSize += (strlen(string)+1);
+				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the condition
+				currentSnipSize += strlen(string);
 				break;
 			
 			case SNIPPET_CONDITION_CMDS :
 				snippets[currentSnipSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
 				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the Command
-				currentSnipSize += (strlen(string)+1);
+				currentSnipSize += strlen(string);
 				break;
 			
 			default:
@@ -395,66 +402,31 @@ BOS_Status ProcessSnippet(uint16_t location)
 		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
 		{
 			port = snippets[location+1]-'0';
+			/* Check if the event occured */
 			if (!strncmp((char *)&snippets[location+3], "clicked", 7))
 			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)
-					button[port].events |= BUTTON_EVENT_CLICKED;
-				/* Then check if the event occured */
 				if (button[port].state == CLICKED)	return BOS_OK;
 			}
 			else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
 			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-					button[port].events |= BUTTON_EVENT_DBL_CLICKED;
-				/* Then check if the event occured */
 				if (button[port].state == DBL_CLICKED)	return BOS_OK;				
 			}
 			else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
 			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) != BUTTON_EVENT_PRESSED_FOR_X1_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-					button[port].pressedX1Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) != BUTTON_EVENT_PRESSED_FOR_X2_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-					button[port].pressedX2Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) != BUTTON_EVENT_PRESSED_FOR_X3_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-					button[port].pressedX3Sec = atoi((char *)&snippets[location+16]);
-				} else {
-					return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
-				}
-				/* Then check if the event occured */
-				if (button[port].state == PRESSED_FOR_X1_SEC && button[port].pressedX1Sec == atoi((char *)&snippets[location+16]))	
+				if (button[port].state == PRESSED_FOR_X1_SEC && button[port].pressedX1Sec == atoi((char *)&snippets[location+15]))	
 					return BOS_OK;
-				else if (button[port].state == PRESSED_FOR_X2_SEC && button[port].pressedX2Sec == atoi((char *)&snippets[location+16]))	
+				else if (button[port].state == PRESSED_FOR_X2_SEC && button[port].pressedX2Sec == atoi((char *)&snippets[location+15]))	
 					return BOS_OK;		
-				else if (button[port].state == PRESSED_FOR_X3_SEC && button[port].pressedX3Sec == atoi((char *)&snippets[location+16]))	
+				else if (button[port].state == PRESSED_FOR_X3_SEC && button[port].pressedX3Sec == atoi((char *)&snippets[location+15]))	
 					return BOS_OK;					
 			}
 			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
 			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) != BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-					button[port].releasedY1Sec = atoi((char *)&snippets[location+17]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) != BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-					button[port].releasedY2Sec = atoi((char *)&snippets[location+17]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) != BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-					button[port].releasedY3Sec = atoi((char *)&snippets[location+17]);
-				} else {
-					return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
-				}
-				/* Then check if the event occured */
-				if (button[port].state == RELEASED_FOR_Y1_SEC && button[port].releasedY1Sec == atoi((char *)&snippets[location+17]))	
+				if (button[port].state == RELEASED_FOR_Y1_SEC && button[port].releasedY1Sec == atoi((char *)&snippets[location+16]))	
 					return BOS_OK;
-				else if (button[port].state == RELEASED_FOR_Y2_SEC && button[port].releasedY2Sec == atoi((char *)&snippets[location+17]))	
+				else if (button[port].state == RELEASED_FOR_Y2_SEC && button[port].releasedY2Sec == atoi((char *)&snippets[location+16]))	
 					return BOS_OK;		
-				else if (button[port].state == RELEASED_FOR_Y3_SEC && button[port].releasedY3Sec == atoi((char *)&snippets[location+17]))	
+				else if (button[port].state == RELEASED_FOR_Y3_SEC && button[port].releasedY3Sec == atoi((char *)&snippets[location+16]))	
 					return BOS_OK;					
 			}
 		}
@@ -490,7 +462,7 @@ BOS_Status ExecuteSnippet(void)
 					if (ProcessSnippet(s+1) == BOS_OK)				// Process Snippet Condition at this location
 					{
 						/* Condition is TRUE, execute Snippet Commands */
-						for(int c=s ; c<=currentSnipSize ; c++)
+						for(int c=s+1 ; c<=currentSnipSize ; c++)
 						{
 							/* Extract the command */
 							if (snippets[c] == SNIPPET_CONDITION_CMDS)						
@@ -503,7 +475,12 @@ BOS_Status ExecuteSnippet(void)
 								{
 									xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
 								} while( xReturned != pdFALSE );
+								/* Clear output buffer since we do not need it */
+								memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 							}
+							/* You reached the end of this Snippet so stop here */
+							else if (snippets[c] == SNIPPET_END)
+								break;
 						}
 						/* Disable the Snippet Move this to delete Snippets section */
 						//snippets[s] &= 0xFE;
@@ -519,6 +496,100 @@ BOS_Status ExecuteSnippet(void)
   }
 	
 	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* Activate button events for a conditional button Snippet
+*/
+BOS_Status ActivateButtonSnippet(uint16_t location)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t temp = 0, port = snippets[location+1]-'0';
+
+	/* Make sure it's a conditional button Snippet */
+	if(snippets[location] == 'b' && snippets[location+2] == '.')
+	{
+		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
+		{	
+			/* Check if appropriate events are enabled */
+			if (!strncmp((char *)&snippets[location+3], "clicked", 7))
+			{
+				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)
+					button[port].events |= BUTTON_EVENT_CLICKED;
+			}
+			else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
+			{
+				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
+					button[port].events |= BUTTON_EVENT_DBL_CLICKED;	
+			}
+			else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
+			{
+				if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) != BUTTON_EVENT_PRESSED_FOR_X1_SEC) {
+					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
+					button[port].pressedX1Sec = atoi((char *)&snippets[location+15]);
+				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) != BUTTON_EVENT_PRESSED_FOR_X2_SEC) {
+					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
+					button[port].pressedX2Sec = atoi((char *)&snippets[location+15]);
+				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) != BUTTON_EVENT_PRESSED_FOR_X3_SEC) {
+					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
+					button[port].pressedX3Sec = atoi((char *)&snippets[location+15]);
+				} else {
+					return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
+				}		
+//				/* Order press times in ascending order - Todo: get rid of this! */
+//				if (button[port].pressedX1Sec < button[port].pressedX2Sec && button[port].pressedX2Sec < button[port].pressedX3Sec ) {
+//					// Do nothing
+//				} else if (button[port].pressedX1Sec < button[port].pressedX3Sec && button[port].pressedX3Sec < button[port].pressedX2Sec ) {
+//					temp = button[port].pressedX2Sec;
+//					button[port].pressedX2Sec = button[port].pressedX3Sec;
+//					button[port].pressedX3Sec = temp;
+//				}	else if (button[port].pressedX2Sec < button[port].pressedX1Sec && button[port].pressedX1Sec < button[port].pressedX3Sec ) {
+//					temp = button[port].pressedX2Sec;
+//					button[port].pressedX2Sec = button[port].pressedX1Sec;
+//					button[port].pressedX1Sec = temp;
+//				}	else if (button[port].pressedX3Sec < button[port].pressedX2Sec && button[port].pressedX2Sec < button[port].pressedX1Sec ) {
+//					temp = button[port].pressedX1Sec;
+//					button[port].pressedX1Sec = button[port].pressedX3Sec;
+//					button[port].pressedX3Sec = temp;
+//				}			
+			}
+			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
+			{
+				/* First make sure this event is enabled */
+				if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) != BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {
+					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
+					button[port].releasedY1Sec = atoi((char *)&snippets[location+16]);
+				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) != BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {
+					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
+					button[port].releasedY2Sec = atoi((char *)&snippets[location+16]);
+				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) != BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {
+					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+					button[port].releasedY3Sec = atoi((char *)&snippets[location+16]);
+				} else {
+					return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
+				}				
+//				/* Order release times in ascending order - Todo: get rid of this! */
+//				if (button[port].releasedY1Sec < button[port].releasedY2Sec && button[port].releasedY2Sec < button[port].releasedY3Sec ) {
+//					// Do nothing
+//				} else if (button[port].releasedY1Sec < button[port].releasedY3Sec && button[port].releasedY3Sec < button[port].releasedY2Sec ) {
+//					temp = button[port].releasedY2Sec;
+//					button[port].releasedY2Sec = button[port].releasedY3Sec;
+//					button[port].releasedY3Sec = temp;
+//				}	else if (button[port].releasedY2Sec < button[port].releasedY1Sec && button[port].releasedY1Sec < button[port].releasedY3Sec ) {
+//					temp = button[port].releasedY2Sec;
+//					button[port].releasedY2Sec = button[port].releasedY1Sec;
+//					button[port].releasedY1Sec = temp;
+//				}	else if (button[port].releasedY3Sec < button[port].releasedY2Sec && button[port].releasedY2Sec < button[port].releasedY1Sec ) {
+//					temp = button[port].releasedY1Sec;
+//					button[port].releasedY1Sec = button[port].releasedY3Sec;
+//					button[port].releasedY3Sec = temp;
+//				}			
+			}
+		}
+	}
+	
+	return result;	
 }
 
 /*-----------------------------------------------------------*/

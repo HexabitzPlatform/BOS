@@ -69,8 +69,8 @@ BOS_Status responseStatus = BOS_OK;
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
-uint16_t pressCounter[NumOfPorts+1] = {0};
-uint16_t releaseCounter[NumOfPorts+1] = {0};
+uint32_t pressCounter[NumOfPorts+1] = {0};
+uint32_t releaseCounter[NumOfPorts+1] = {0};
 uint8_t dblCounter[NumOfPorts+1] = {0};
 
 
@@ -1491,28 +1491,21 @@ BOS_Status CheckForTimedButtonPress(uint8_t port)
 	BOS_Status result = BOS_OK;
 	uint32_t t1 = button[port].pressedX1Sec, t2 = button[port].pressedX2Sec, t3 = button[port].pressedX3Sec;
 	
-	/* If time is zero, ignore this event */
-	if (t1 == 0)	t1 = 0xFF;
-	if (t2 == 0)	t2 = 0xFF;
-	if (t3 == 0)	t3 = 0xFF;
-	
 	/* Convert to ms */
 	t1 *= 1000; t2 *= 1000; t3 *= 1000;
 	
-	if (pressCounter[port] > t1 && pressCounter[port] < t2)	
+	if (pressCounter[port] == t1)	
 	{	
 		button[port].state = PRESSED_FOR_X1_SEC;
 	}
-	else if (pressCounter[port] > t2 && pressCounter[port] < t3)	
+	else if (pressCounter[port] == t2)	
 	{	
 		button[port].state = PRESSED_FOR_X2_SEC;
 	}		
-	else if (pressCounter[port] > t3)	
+	else if (pressCounter[port] == t3)	
 	{	
 		button[port].state = PRESSED_FOR_X2_SEC;
 	}	
-	else
-		result = BOS_ERROR;
 
 	return result;	
 }
@@ -1525,29 +1518,22 @@ BOS_Status CheckForTimedButtonRelease(uint8_t port)
 {
 	BOS_Status result = BOS_OK;
 	uint32_t t1 = button[port].releasedY1Sec, t2 = button[port].releasedY2Sec, t3 = button[port].releasedY3Sec;
-	
-	/* If time is zero, ignore this event */
-	if (t1 == 0)	t1 = 0xFF;
-	if (t2 == 0)	t2 = 0xFF;
-	if (t3 == 0)	t3 = 0xFF;
 
 	/* Convert to ms */
 	t1 *= 1000; t2 *= 1000; t3 *= 1000;
 	
-	if (releaseCounter[port] > t1 && releaseCounter[port] < t2)	
+	if (releaseCounter[port] == t1)	
 	{	
 		button[port].state = RELEASED_FOR_Y1_SEC;
 	}
-	else if (releaseCounter[port] > t2 && releaseCounter[port] < t3)	
+	else if (releaseCounter[port] == t2)	
 	{	
 		button[port].state = RELEASED_FOR_Y2_SEC;
 	}		
-	else if (releaseCounter[port] > t3)	
+	else if (releaseCounter[port] == t3)	
 	{	
 		button[port].state = RELEASED_FOR_Y2_SEC;
 	}	
-	else
-		result = BOS_ERROR;
 
 	return result;	
 }
@@ -2969,9 +2955,8 @@ BOS_Status RemovePortButton(uint8_t port)
 					port: array port (P1 - Px) where the button is attached 
 					clicked: Single click event (1: Enable, 0: Disable)
 					dbl_clicked: Double click event (1: Enable, 0: Disable)
-					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds (0-254). Use 0 to disable the event. 
-					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds (0-254). Use 0 to disable the event. 
-						Note: Events time must be in ascending order.
+					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds. Use 0 to disable the event. 
+					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds. Use 0 to disable the event. 
 */
 BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
