@@ -39,24 +39,35 @@
 
 /* Exported constants --------------------------------------------------------*/
 /* Define the size of the sectors to be used */
+#define FLASH_SIZE						((uint32_t)0x20000)
 #define PAGE_SIZE             ((uint32_t)0x0800)  /* Page size = 2KByte for STM32F07x 
-																												and STM32F09x devices = 512 variables */
+																												and STM32F09x devices */
 																												
-/* EEPROM start address in Flash */
-#define EEPROM_START_ADDRESS  ((uint32_t)0x08019000) /* EEPROM emulation start address:
-                                                        from sector2, after 100KByte of used 
-                                                        Flash memory */
+/* Memory map:
+				- Application: 0x08000000 - 0x0801D800 >> 118 KB
+		 - Read-only (RO): 0x0801D800 - 0x0801E000 >> 2 KB, used to store topology information
+		- Emulated EEPROM: 0x0801E000 - 0x08020000 >> 8 KB, fits 1024 16-bit variables in 2 main-duplicate pages (A and B)
+*/
+#define APP_START_ADDRESS  		((uint32_t)0x08000000) 
+#define RO_START_ADDRESS  		((uint32_t)0x0801D800) 
+#define EEPROM_START_ADDRESS  ((uint32_t)0x0801E000) 
 
-/* Pages 0 and 1 base and end addresses */
-#define PAGE0_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))
-#define PAGE0_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (PAGE_SIZE - 1)))
 
-#define PAGE1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0800))
-#define PAGE1_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (2 * PAGE_SIZE - 1)))
+/* Pages A and B base and end addresses - Each page is extended into two pages 1 and 2 */
+#define PAGEA1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))
+#define PAGEA1_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (PAGE_SIZE - 1)))
+#define PAGEA2_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + PAGE_SIZE))
+#define PAGEA2_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (2 * PAGE_SIZE - 1)))
 
-/* Used Flash pages for EEPROM emulation */
-#define PAGE0                 ((uint16_t)0x0000)
-#define PAGE1                 ((uint16_t)0x0001)
+#define PAGEB1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + (2 * PAGE_SIZE)))
+#define PAGEB1_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (3 * PAGE_SIZE - 1)))
+#define PAGEB2_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + (3 * PAGE_SIZE)))
+#define PAGEB2_END_ADDRESS     ((uint32_t)(EEPROM_START_ADDRESS + (4 * PAGE_SIZE - 1)))
+
+
+/* Used Flash pages for EEPROM emulation - Each one is twice page size */
+#define PAGEA                 ((uint16_t)0x0000)
+#define PAGEB                 ((uint16_t)0x0002)
 
 /* No valid page define */
 #define NO_VALID_PAGE         ((uint16_t)0x00AB)
@@ -73,8 +84,22 @@
 /* Page full define */
 #define PAGE_FULL             ((uint8_t)0x80)
 
-/* EEPROM Variables' number (up to 512 16-bit variables) */ 
-#define NumOfEEPROMvar        512				
+/* EEPROM Variables' number (up to 1024 16-bit variables) */ 
+#define NumOfEEPROMvar        1024				
+
+
+/* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
+#define _EE_NBase						1	
+#define _EE_portDirBase			2					// Move to RO - 25 modules
+#define _EE_aliasBase				28				// 25 modules
+#define _EE_DMAStreamsBase	159				
+#define _EE_varBase					167
+
+
+#if MaxNumOfModules > 25						// Update
+ #warning "Only data for 25 modules will be stored in EEPROM."
+#endif
+
 
 /* Exported variables --------------------------------------------------------*/
 extern uint16_t VirtAddVarTab[NumOfEEPROMvar+1];

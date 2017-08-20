@@ -96,7 +96,7 @@ extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
 /* UARTcmd task */
-extern xTaskHandle xCommandConsoleTaskHandle;
+extern TaskHandle_t xCommandConsoleTaskHandle;
 
 /* Define CLI command list*/
 typedef struct xCOMMAND_INPUT_LIST
@@ -107,14 +107,20 @@ typedef struct xCOMMAND_INPUT_LIST
 CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
+/* Variables used for Erase pages under interruption */
+extern FLASH_ProcessTypeDef pFlash;
+
+
 /* Private function prototypes -----------------------------------------------*/	
 
 uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
 void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
-BOS_Status SaveEEtopology(void);
-BOS_Status LoadEEtopology(void);
+//BOS_Status SaveEEtopology(void);
+//BOS_Status LoadEEtopology(void);
+uint8_t SaveROtopology(void);
+uint8_t LoadROtopology(void);
 BOS_Status SaveEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
@@ -463,7 +469,7 @@ void PxMessagingTask(void * argument)
 
 						case CODE_exp_eeprom :
 						#ifndef _N
-							SaveEEtopology();
+							SaveROtopology();
 						#endif
 							SaveEEportsDir();
 							break;
@@ -730,7 +736,7 @@ void LoadEEvars(void)
 {
 	/* Load array topology */
 #ifndef _N
-	LoadEEtopology();
+	LoadROtopology();
 #endif	
 	/* Load port directions */
 	LoadEEportsDir();
@@ -748,16 +754,40 @@ void LoadEEvars(void)
 
 /*-----------------------------------------------------------*/
 #ifndef _N
-/* --- Save array topology in EEPROM --- 
+/* --- Save array topology in Flash RO --- 
 */
-BOS_Status SaveEEtopology(void)
+uint8_t SaveROtopology(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp = 0;
+	HAL_StatusTypeDef FlashStatus = HAL_OK;
+	uint16_t add = 2, temp = 0;
+
+	/* Erase RO area */
+	FLASH_PageErase(RO_START_ADDRESS);
+	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+	if(FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
+	else
+	{			
+		/* Operation is completed, disable the PER Bit */
+		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
+	}	
 	
 	/* Save number of modules and myID */
 	temp = (uint16_t) (N<<8) + myID;
-	EE_WriteVariable(VirtAddVarTab[_EE_NBase], temp);
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
+	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+	if (FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
+	else
+	{
+		/* If the program operation is completed, disable the PG Bit */
+		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+	}		
 	
 	/* Save topology */
 	for(uint8_t i=1 ; i<=N ; i++)
@@ -765,29 +795,54 @@ BOS_Status SaveEEtopology(void)
 		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
 		{
 			if (array[i-1][0]) {
-				EE_WriteVariable(VirtAddVarTab[_EE_topologyBase+add], array[i-1][j]);
-				add++;
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
+				add += 2;
 			}				
 		}
 	}
 	
-	if ((add+_EE_NBase) >= _EE_portDirBase)
-		result = BOS_ERR_EEPROM;
-	
 	return result;
 }
+///* --- Save array topology in EEPROM --- 
+//*/
+//BOS_Status SaveEEtopology(void)
+//{
+//	BOS_Status result = BOS_OK; 
+//	uint16_t add = 0, temp = 0;
+//	
+//	/* Save number of modules and myID */
+//	temp = (uint16_t) (N<<8) + myID;
+//	EE_WriteVariable(VirtAddVarTab[_EE_NBase], temp);
+//	
+//	/* Save topology */
+//	for(uint8_t i=1 ; i<=N ; i++)
+//	{
+//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+//		{
+//			if (array[i-1][0]) {
+//				EE_WriteVariable(VirtAddVarTab[_EE_topologyBase+add], array[i-1][j]);
+//				add++;
+//			}				
+//		}
+//	}
+//	
+//	if ((add+_EE_NBase) >= _EE_portDirBase)
+//		result = BOS_ERR_EEPROM;
+//	
+//	return result;
+//}
 #endif
 /*-----------------------------------------------------------*/
 #ifndef _N
-/* --- Load array topology stored in EEPROM --- 
+/* --- Load array topology stored in Flash RO --- 
 */
-BOS_Status LoadEEtopology(void)
+uint8_t LoadROtopology(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp = 0;
+	uint16_t add = 2, temp = 0;
 	
 	/* Load number of modules */
-	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
+	temp = (*(__IO uint16_t*)(RO_START_ADDRESS));
 	N = (uint8_t) (temp>>8);
 	if (N == 0)	N = 1;
 	myID = (uint8_t) temp;
@@ -797,13 +852,38 @@ BOS_Status LoadEEtopology(void)
 	{
 		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
 		{
-			EE_ReadVariable(VirtAddVarTab[_EE_topologyBase+add], &array[i-1][j]);
-			add++;			
+			array[i-1][j] = (*(__IO uint16_t*)(RO_START_ADDRESS+add));
+			add += 2;			
 		}
 	}	
 	
 	return result;
 }
+///* --- Load array topology stored in EEPROM --- 
+//*/
+//BOS_Status LoadEEtopology(void)
+//{
+//	BOS_Status result = BOS_OK; 
+//	uint16_t add = 0, temp = 0;
+//	
+//	/* Load number of modules */
+//	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
+//	N = (uint8_t) (temp>>8);
+//	if (N == 0)	N = 1;
+//	myID = (uint8_t) temp;
+//	
+//	/* Load topology */
+//	for(uint8_t i=1 ; i<=N ; i++)
+//	{
+//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+//		{
+//			EE_ReadVariable(VirtAddVarTab[_EE_topologyBase+add], &array[i-1][j]);
+//			add++;			
+//		}
+//	}	
+//	
+//	return result;
+//}
 #endif
 /*-----------------------------------------------------------*/
 
@@ -2232,7 +2312,7 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{
 		/* Save data in the master */
-		SaveEEtopology();
+		SaveROtopology();
 		SaveEEportsDir();
 		/* Ask other modules to save their data too */
 		//SendMessageToModule(0xFF, CODE_exp_eeprom, 0);

@@ -188,17 +188,6 @@ button_t;
 #define SNIPPET_CONDITION_CMDS				0x82			// Conditional statement - command delimiter
 #define SNIPPET_END										0xF0			// End of Snippet delimiter
 
-/* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
-#define _EE_NBase						1	
-#define _EE_topologyBase		2	
-#define _EE_portDirBase			277	
-#define _EE_aliasBase				303	
-#define _EE_DMAStreamsBase	434
-#define _EE_varBase					442
-
-#if MaxNumOfModules > 25
- #warning "Only data for 25 modules will be stored in EEPROM."
-#endif
 
 /* Delay macros */
 #define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
