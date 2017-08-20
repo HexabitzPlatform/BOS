@@ -28,6 +28,7 @@
 
 /* Enumerations */
 enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
+enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
 enum UartDirection_e{NORMAL, REVERSED};
 enum modulePartNumbers_e{_H01R0=1, _H02R0, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0};

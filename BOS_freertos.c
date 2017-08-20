@@ -49,7 +49,7 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
-xTaskHandle xCommandConsoleTask = NULL;
+TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
 #ifdef _P1
 	TaskHandle_t P1MsgTaskHandle = NULL;
@@ -99,7 +99,7 @@ void MX_FREERTOS_Init(void)
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &defaultTaskHandle);	
 
 	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (6*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
+	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
 	
   /* Create message parsing tasks for module ports */
 #ifdef _P1
@@ -151,7 +151,7 @@ void MX_FREERTOS_Init(void)
 	vRegisterCLICommands();
 	
 	/* Start the task that implements the command console on the UART */
-	xTaskCreate(prvUARTCommandConsoleTask, "UARTCmd",		(2*configMINIMAL_STACK_SIZE),	NULL,	osPriorityNormal, &xCommandConsoleTask);		
+	xTaskCreate(prvUARTCommandConsoleTask, "UARTCmd",		(2*configMINIMAL_STACK_SIZE),	NULL,	osPriorityNormal, &xCommandConsoleTaskHandle);		
 	
 }
 

@@ -96,7 +96,7 @@ extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
 /* UARTcmd task */
-extern xTaskHandle xCommandConsoleTask;
+extern xTaskHandle xCommandConsoleTaskHandle;
 
 /* Define CLI command list*/
 typedef struct xCOMMAND_INPUT_LIST
@@ -500,7 +500,6 @@ void PxMessagingTask(void * argument)
 								longMessageLastPtr = 0;
 								responseStatus = BOS_OK;
 								/* Wake up the UARTCmd task again */
-								xTaskNotifyGive(xCommandConsoleTask);
 							}							
 							break;
 							
