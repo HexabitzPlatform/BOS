@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.0.0 - Copyright (C) 2016 Hexabitz
+    BitzOS (BOS) V0.1.0 - Copyright (C) 2017 Hexabitz
     All rights reserved
 		
     File Name     : BOS.c
@@ -52,7 +52,6 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 #include "FreeRTOS_CLI.h"	 
 
 /* BOS */
-#include "BOS_CLI.h"
 #include "BOS_eeprom.h"
 
 /* C STD Library */
@@ -98,7 +97,7 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 
 /* Firmware */
 #define	_firmMajor			0
-#define	_firmMinor			0
+#define	_firmMinor			1
 #define	_firmPatch			0
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
