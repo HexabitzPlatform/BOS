@@ -120,6 +120,7 @@ typedef enum
 	BOS_ERR_SNIP_MEM_FULL = 14,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
+	BOS_MEM_ERASED = 250,
 	BOS_BROADCAST = 255,
 	BOS_ERROR = 255
 } BOS_Status;

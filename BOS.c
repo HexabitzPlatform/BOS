@@ -843,19 +843,29 @@ uint8_t LoadROtopology(void)
 	
 	/* Load number of modules */
 	temp = (*(__IO uint16_t*)(RO_START_ADDRESS));
-	N = (uint8_t) (temp>>8);
-	if (N == 0)	N = 1;
-	myID = (uint8_t) temp;
 	
-	/* Load topology */
-	for(uint8_t i=1 ; i<=N ; i++)
+	if (temp == 0xFFFF)				// Memory has been erased
 	{
-		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		N = 1;
+		myID = 0;
+		return BOS_MEM_ERASED;
+	}
+	else
+	{		
+		N = (uint8_t) (temp>>8);
+		if (N == 0)	N = 1;
+		myID = (uint8_t) temp;
+		
+		/* Load topology */
+		for(uint8_t i=1 ; i<=N ; i++)
 		{
-			array[i-1][j] = (*(__IO uint16_t*)(RO_START_ADDRESS+add));
-			add += 2;			
-		}
-	}	
+			for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+			{
+				array[i-1][j] = (*(__IO uint16_t*)(RO_START_ADDRESS+add));
+				add += 2;			
+			}
+		}	
+	}
 	
 	return result;
 }
