@@ -63,6 +63,9 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 #include <math.h>	 
 #include <limits.h>	
 
+/* Array topology */
+#include <topology_1.h>
+
 /* Module includes and initialization */
 #ifdef H01R0
 	#include "H01R0.h"
@@ -109,6 +112,7 @@ typedef enum
   BOS_OK = 0,
 	BOS_ERR_UnknownMessage = 1,
   BOS_ERR_NoResponse = 2,
+	BOS_ERR_MSG_Reflection = 3,
   BOS_ERR_UnIDedModule = 5,
 	BOS_ERR_Keyword = 6,
 	BOS_ERR_ExistingAlias = 7,
@@ -203,7 +207,7 @@ button_t;
 
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
-extern uint8_t myID;
+extern uint8_t myID, bcastID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
@@ -286,6 +290,7 @@ extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numbe
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
+extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
 extern BOS_Status Explore(void);
 extern BOS_Status ExploreNeighbors(uint8_t ignore);
