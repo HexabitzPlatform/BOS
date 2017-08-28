@@ -296,7 +296,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t port, src, dst, temp; uint16_t code; uint32_t count, timeout;
+	uint8_t port, src, dst, responseMode, temp; uint16_t code; uint32_t count, timeout;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	static uint8_t bcastLastID;
@@ -316,8 +316,11 @@ void PxMessagingTask(void * argument)
 			dst = cMessage[port-1][0]; 
 			src = cMessage[port-1][1];	
 			
-			/* Read message code */
-			code = ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3];	
+			/* Read message code (remove response options) */
+			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x9F;	
+			
+			/* Read response mode */
+			responseMode = (code & 0x60) >> 5;
 			
 			/* Is it a long message? Check MSB */
 			if (code>>15) {
@@ -360,7 +363,8 @@ void PxMessagingTask(void * argument)
 							
 							case CODE_ping :
 								indMode = IND_PING;
-								SendMessageToModule(src, CODE_ping_response, 0);	
+								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG)
+									SendMessageToModule(src, CODE_ping_response, 0);	
 								break;
 
 							case CODE_ping_response :
@@ -494,12 +498,15 @@ void PxMessagingTask(void * argument)
 								do 
 								{
 									/* Process the command locally */
-									xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );					
-									/* Copy the generated string to messageParams */
-									memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
-									/* Send command response */	
-									SendMessageToModule(src, CODE_CLI_response, strlen((char*) pcOutputString));
-									osDelay(10); 
+									xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+									if (responseMode == BOS_RESPONSE_ALL)
+									{
+										/* Copy the generated string to messageParams */
+										memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
+										/* Send command response */	
+										SendMessageToModule(src, CODE_CLI_response, strlen((char*) pcOutputString));
+										osDelay(10); 
+									}
 								} 
 								while( xReturned != pdFALSE );								
 								/* Reset the buffer */
@@ -1786,7 +1793,8 @@ void BOS_Init(void)
 	/* Unlock the Flash memory */
 	HAL_FLASH_Unlock();
 	
-	/* Load default BOS config >> Replace later with EEPROM load */
+	/* YOLO Load default BOS config >> Replace later with EEPROM load */
+	BOS.response = BOS_RESPONSE_ALL;
 	BOS.buttons.debounce = DEF_BUTTON_DEBOUNCE;
 	BOS.buttons.singleClickTime = DEF_BUTTON_CLICK;
 	BOS.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK;
@@ -1988,13 +1996,16 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	message[3] = (uint8_t) code;
 	message[2] = (uint8_t) (code >> 8);	
 	
+	/* Apply response options */
+	message[2] |= BOS.response;												/* 15th bit for Message response, 14th bit for CLI response */
+	
 	/* Copy parameters */
 	if (numberOfParams <= (MAX_MESSAGE_SIZE-5) ) {				
 		memcpy((char*)&message[4], (&messageParams[0]+ptrShift), numberOfParams);
 		/* Calculate message length */
 		length = numberOfParams + 5;
 	} else {
-		/* Toggle code MSB to inform receiver of a long message */
+		/* Toggle code MSB to inform receiver about a long message */
 		code |= 0x8000;		
 		totalNumberOfParams = numberOfParams;
 		numberOfParams = MAX_MESSAGE_SIZE-5;
