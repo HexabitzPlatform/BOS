@@ -40,6 +40,7 @@ const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[MaxNumOfPorts][2] = {0};
+uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 #ifndef _N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
 	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
@@ -2423,6 +2424,66 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 	return result;
 }
 #endif
+/*-----------------------------------------------------------*/
+
+/* --- Find array broadcast routes starting from a given module 
+*/
+BOS_Status FindBroadcastRoutes(uint8_t src)
+{
+	BOS_Status result = BOS_OK; 
+	uint8_t p = 0, m = 0, level = 0, untaged = 0; 
+	uint8_t  modules[N];			// Todo: Optimize to make bit-wise
+	
+	/* 1. Initialize modules list */
+	
+	for(m=0 ; m<N ; m++)
+	{	
+		modules[m] = 0;
+	}
+	modules[src-1] = ++level;					// Tag the source
+	
+	/* 2. Source module should send to all neighbors */
+	
+	++level;													// Move one level
+	
+	for(p=1 ; p<=NumOfPorts ; p++)
+	{
+		if (array[src-1][p]) 
+		{
+			bcastRoutes[src-1] |= (0x01 << (p-1));
+			modules[(array[src-1][p] >> 3)-1] = level;			// Tag this module as already broadcasted-to 
+		}
+	}
+	
+	/* 3. Starting from source neighbors, check all other modules we haven't broadcasted-to yet, one by one */
+	
+	do
+	{	
+		untaged = 0;																			// Reset the untaged counter
+		++level;																					// Move one level
+		
+		for(m=0 ; m<N ; m++)															// Scan all modules in the list
+		{
+			if (modules[m] == (level-1))										// This module is already broadcasted-to from the previous level 
+			{			
+				for(p=1 ; p<=NumOfPorts ; p++)								// Check all neighbors if they're not already broadcasted-to
+				{
+					if (array[m][p] && (modules[(array[m][p] >> 3)-1] == 0)) 			// Found an untaged module
+					{
+						bcastRoutes[m] |= (0x01 << (p-1));
+						modules[(array[m][p] >> 3)-1] = level;		// Tag this module as already broadcasted-to 
+						++untaged;
+					}
+				}			
+			}
+		}
+	} 
+	while (untaged);
+
+	
+	return result;
+}
+
 /*-----------------------------------------------------------*/
 
 /* --- Load and start micro-second delay counter --- 

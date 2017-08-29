@@ -298,6 +298,7 @@ extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t c
 extern void StartMicroDelay(uint16_t Delay);
 extern BOS_Status Explore(void);
 extern BOS_Status ExploreNeighbors(uint8_t ignore);
+extern BOS_Status FindBroadcastRoutes(uint8_t src);
 extern void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction);
 extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
 extern void DisplayTopology(uint8_t port);
