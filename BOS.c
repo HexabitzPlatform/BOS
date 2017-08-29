@@ -2105,14 +2105,34 @@ BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, ui
 	length = numberOfParams + 1 + 5;
 	
 	/* Transmit to all broadcast ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if (portStatus[port] == FREE && port != incomingPort) 		
-		{
-			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, 0xFF, code, length-5);	
-		}	
-	}
+//	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+//	{
+//		if (portStatus[port] == FREE && port != incomingPort) 		
+//		{
+//			/* Transmit the message from this port */
+//			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+//		}	
+//	}
+#if _module == 1
+	SendMessageFromPort(P4, src, BOS_BROADCAST, code, length-5);	
+	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
+#endif
+#if _module == 2
+	SendMessageFromPort(P3, src, BOS_BROADCAST, code, length-5);	
+#endif		
+#if _module == 3
+	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
+#endif
+#if _module == 4
+	SendMessageFromPort(P3, src, BOS_BROADCAST, code, length-5);	
+#endif
+#if _module == 5
+	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
+#endif
+#if _module == 6
+	SendMessageFromPort(P5, src, BOS_BROADCAST, code, length-5);	
+#endif
+
 
 	/* Reset messageParams buffer */
 	memset( messageParams, 0, numberOfParams );
