@@ -279,10 +279,10 @@ void StringToLowerCase(char *string);
 
 /* Indicator LED */
 #define IND_toggle()		HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)		
-#define IND_on()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)		
+#define IND_ON()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)		
 #define IND_OFF()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
-#define IND_blink(t)				IND_on();	HAL_Delay(t); IND_OFF()		/* Use before starting the scheduler */
-#define RTOS_IND_blink(t)		IND_on();	osDelay(t); IND_OFF()			/* Use after starting the scheduler */
+#define IND_blink(t)				IND_ON();	HAL_Delay(t); IND_OFF()		/* Use before starting the scheduler */
+#define RTOS_IND_blink(t)		IND_ON();	osDelay(t); IND_OFF()			/* Use after starting the scheduler */
 
 #define	NumberOfHops(i)		routeDist[i-1]
 

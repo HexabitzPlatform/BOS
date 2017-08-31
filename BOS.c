@@ -2105,35 +2105,18 @@ BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, ui
 	/* Calculate message length */
 	length = numberOfParams + 1 + 5;
 	
-	/* Transmit to all broadcast ports */
-//	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-//	{
-//		if (portStatus[port] == FREE && port != incomingPort) 		
-//		{
-//			/* Transmit the message from this port */
-//			SendMessageFromPort(port, src, 0xFF, code, length-5);	
-//		}	
-//	}
-#if _module == 1
-	SendMessageFromPort(P4, src, BOS_BROADCAST, code, length-5);	
-	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
-#endif
-#if _module == 2
-	SendMessageFromPort(P3, src, BOS_BROADCAST, code, length-5);	
-#endif		
-#if _module == 3
-	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
-#endif
-#if _module == 4
-	SendMessageFromPort(P3, src, BOS_BROADCAST, code, length-5);	
-#endif
-#if _module == 5
-	SendMessageFromPort(P6, src, BOS_BROADCAST, code, length-5);	
-#endif
-#if _module == 6
-	SendMessageFromPort(P5, src, BOS_BROADCAST, code, length-5);	
-#endif
-
+	/* Get broadcast routes */
+	FindBroadcastRoutes(src);
+	
+	/* Send to all my broadcast ports */
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	{
+		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
+		{
+			/* Transmit the message from this port */
+			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+		}	
+	}
 
 	/* Reset messageParams buffer */
 	memset( messageParams, 0, numberOfParams );
@@ -2427,6 +2410,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 /*-----------------------------------------------------------*/
 
 /* --- Find array broadcast routes starting from a given module 
+				(Takes about 50 usec)
 */
 BOS_Status FindBroadcastRoutes(uint8_t src)
 {
@@ -2434,11 +2418,12 @@ BOS_Status FindBroadcastRoutes(uint8_t src)
 	uint8_t p = 0, m = 0, level = 0, untaged = 0; 
 	uint8_t  modules[N];			// Todo: Optimize to make bit-wise
 	
-	/* 1. Initialize modules list */
+	/* 1. Initialize modules list and broadcast routes */
 	
 	for(m=0 ; m<N ; m++)
 	{	
 		modules[m] = 0;
+		bcastRoutes[m] = 0;
 	}
 	modules[src-1] = ++level;					// Tag the source
 	
