@@ -163,6 +163,8 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -274,7 +276,25 @@ static const CLI_Command_Definition_t removebuttonCommandDefinition =
 	( const int8_t * ) "removebutton", /* The command string to type. */
 	( const int8_t * ) "removebutton:\r\n Remove a button that was previously defined at this port (1st par.)\r\n\r\n",
 	removebuttonCommand, /* The function to run. */
-	1 /* One parameters is expected. */
+	1 /* One parameter is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : set */
+static const CLI_Command_Definition_t setCommandDefinition =
+{
+	( const int8_t * ) "set", /* The command string to type. */
+	( const int8_t * ) "set:\r\n Set a parameter (1st par.) with a given value (2nd par.)\r\n\r\n",
+	setCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : get */
+static const CLI_Command_Definition_t getCommandDefinition =
+{
+	( const int8_t * ) "get", /* The command string to type. */
+	( const int8_t * ) "get:\r\n Get the current value of a parameter (1st par.)\r\n\r\n",
+	getCommand, /* The function to run. */
+	1 /* One parameter is expected. */
 };
 /*-----------------------------------------------------------*/
 
@@ -1868,6 +1888,8 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &scastCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &addbuttonCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &removebuttonCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &setCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &getCommandDefinition );
 	
 	
 #ifdef H01R0	
@@ -2070,7 +2092,7 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 	BOS_Status result = BOS_OK;
 	uint8_t length = 0, src = 0; uint16_t code = 0;
 	
-	/* Use broadcast plans */
+	/* Broadcast ID is already there. Don't add a new one */
 	
 	/* Message length */
 	length = messageLength[incomingPort-1];
@@ -2080,9 +2102,19 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
 	/* Message parameters */
 	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
+
+	/* Get broadcast routes */
+	FindBroadcastRoutes(src);
 	
-	/* Broadcast */
-	BroadcastMessage(incomingPort, src, code, length-5);
+	/* Send to all my broadcast ports */
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	{
+		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
+		{
+			/* Transmit the message from this port */
+			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+		}	
+	}
 	
 	return result;
 }
@@ -3586,6 +3618,146 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 	{	
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, port, port);
 	}
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1, *pcParameterString2; 
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	
+	static const int8_t *pcMessageOK = ( int8_t * ) "%s was set to %s\n\r";	
+	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";	
+	static const int8_t *pcMessageWrongValue = ( int8_t * ) "Wrong value!\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string: The set parameter */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (!strncmp((const char *)pcParameterString1, "bos.", 4)) 
+	{
+		/* Obtain the 2nd parameter string: the value to set */
+		pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	
+		if (!strncmp((const char *)pcParameterString1+4, "response", xParameterStringLength1-4)) 
+		{
+			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2))
+				BOS.response = BOS_RESPONSE_ALL;
+			else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2))
+				BOS.response = BOS_RESPONSE_MSG;
+			else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2))
+				BOS.response = BOS_RESPONSE_NONE;
+			else
+				result = BOS_ERR_WrongValue;
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "singleclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "mininterclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 		
+		else if (!strncmp((const char *)pcParameterString1+4, "maxinterclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else	
+			result = BOS_ERR_WrongParam;
+	}
+	else	
+		result = BOS_ERR_WrongParam;
+		
+	/* Respond to the command */
+	if (result == BOS_OK) 
+	{
+		pcParameterString1[xParameterStringLength1] = 0;		// Get rid of the remaining parameters
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, pcParameterString1, pcParameterString2);
+	}
+	else if (result == BOS_ERR_WrongParam)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongParam );
+	else if (result == BOS_ERR_WrongValue)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue );
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1; 
+	portBASE_TYPE xParameterStringLength1 = 0;
+	
+	static const int8_t *pcMessageOK = ( int8_t * ) "%s\n\r";	
+	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";		
+	static const int8_t *pcMessageWrongValue = ( int8_t * ) "%s is set to a wrong value!\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string: The set parameter */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (!strncmp((const char *)pcParameterString1, "bos.", 4)) 
+	{
+		if (!strncmp((const char *)pcParameterString1+4, "response", xParameterStringLength1-4)) 
+		{
+			if (BOS.response == BOS_RESPONSE_ALL)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "all");
+			else if (BOS.response == BOS_RESPONSE_MSG)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg only");
+			else if (BOS.response == BOS_RESPONSE_NONE)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
+			else
+				result = BOS_ERR_WrongValue;
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "singleclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "mininterclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 		
+		else if (!strncmp((const char *)pcParameterString1+4, "maxinterclicktime", xParameterStringLength1-4)) 
+		{
+			
+		} 
+		else	
+			result = BOS_ERR_WrongParam;
+	}
+	else	
+		result = BOS_ERR_WrongParam;
+		
+	/* Respond to the command */
+	if (result == BOS_ERR_WrongParam)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongParam );
+	else if (result == BOS_ERR_WrongValue)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue, pcParameterString1);
 	
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */

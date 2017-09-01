@@ -96,7 +96,7 @@ BOS_Status ActivateButtonSnippet(uint16_t location);
 
 void prvUARTCommandConsoleTask( void *pvParameters )
 {
-char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, m = 1;
+char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; uint8_t id = 0; char idString[MaxLengthOfAlias] = {0};
 portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
@@ -197,9 +197,10 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				/* Parse a normal Command */
 				else 
 				{
-					/* Check if command contains a dot */
+					/* Check if command contains a dot and it's not "BOS." */
 					loc = strchr( ( char * ) cInputString, '.');
-					if (loc != NULL) {					
+					if (loc != NULL && strncmp((char *)loc-3, "bos", 3)) 
+					{					
 						/* Extract module ID */
 						strncpy(idString, ( char * ) cInputString, (size_t) (loc - (char*)cInputString));
 						id = GetID(idString);
@@ -213,51 +214,35 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							sprintf( ( char * ) pcOutputString, "Wrong module ID! Please try again.\n\r");
 							xReturned = pdFALSE;						
 						}	else if (id == BOS_BROADCAST) {
-							/* Check if command is broadcastable */
-									
-							if (!(broadcastResponse[m-1]) ) {	
-								/* Execute locally */
-								if (m == myID) {
-									xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );
-									if (xReturned == pdFALSE)	{
-										broadcastResponse[myID-1] = 1;
-										/* Activate next message */
-										xReturned = pdTRUE; ++m;
-									}			
-								/* Broadcast the command */								
-								} else {
-									strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-									SendMessageToModule(m, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
-									/* Wait for response for a maximum of 1000msec */
-									ulTaskNotifyTake(pdTRUE, 1000);		
-									/* If timeout */
-									if (responseStatus != BOS_OK)	
-										sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);
-									else
-										broadcastResponse[m-1] = 1;
-									/* Activate next message */
-									xReturned = pdTRUE; ++m;
-									osDelay(50);
-								}
-								/* Is broadcast finished? */
-								if (m > N) {
-									xReturned = pdFALSE;
-									m = 1;
-									memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );			
-								}
-							}									
-						}	else {
+							/* Check if command is broadcastable */									
+
+							/* Broadcast the command */								
+							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
+							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
+							BroadcastMessage(0, myID, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+							/* Execute locally */
+							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );						
+							/* Todo: check module response if needed */
+							//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);													
+						}	
+						else 
+						{
 							/* Forward the command */
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 							xReturned = pdFALSE;
-							/* Wait for response for a maximum of 1000msec */
-							ulTaskNotifyTake(pdTRUE, 5000);		//cmd500ms
-							/* If timeout */
-							if (responseStatus != BOS_OK)
-								sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
+							/* Wait for response if needed */
+							if (BOS.response == BOS_RESPONSE_ALL)
+							{
+								ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
+								/* If timeout */
+								if (responseStatus != BOS_OK)
+									sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
+							}
 						}						
-					} else {
+					} 
+					else 
+					{
 						/* Process the command locally */
 						xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );		
 					}
