@@ -230,7 +230,6 @@ static char pcUserMessage[80];
 extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 #ifndef _N
-	extern uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];
 	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
 #else
@@ -243,6 +242,7 @@ extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
 extern uint32_t CLI_baudrate;
+extern uint8_t PcPort;
 
 /* Exported internal functions ---------------------------------------------------------*/
 void StringToLowerCase(char *string);
