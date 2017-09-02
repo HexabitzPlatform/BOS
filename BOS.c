@@ -1409,7 +1409,7 @@ uint8_t IsLowerCLIbaud(void)
 	
 	/* P1 RXD */
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;	
+	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
 	GPIO_InitStruct.Pin = P1_RX_Pin;
 	HAL_GPIO_Init((GPIO_TypeDef *)P1_RX_Port, &GPIO_InitStruct);	
 	
@@ -1891,6 +1891,20 @@ void BOS_Init(void)
   MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_TIM_USEC_Init();
+
+	/* Startup indicator sequence - Note: DOn't move out after Module_Init. It hangs out */
+	if (myID == 0)		/* Native module */
+	{
+		IND_blink(500);
+	}
+	else							/* Non-native module */
+	{
+		IND_blink(500);
+		HAL_Delay(100);
+		IND_blink(100);
+		HAL_Delay(100);
+		IND_blink(100);
+	}	
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -1910,6 +1924,7 @@ void BOS_Init(void)
 	/* Check if booting at lower CLI baudrate */
 	if (IsLowerCLIbaud())
 	{
+		CLI_baudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 		{	
@@ -1919,20 +1934,6 @@ void BOS_Init(void)
 	else	
 		/* Initialize the module at default baudrate */
 		Module_Init();
-	
-	/* Startup indicator sequence */
-	if (myID == 0)		/* Native module */
-	{
-		IND_blink(500);
-	}
-	else							/* Non-native module */
-	{
-		IND_blink(500);
-		HAL_Delay(100);
-		IND_blink(100);
-		HAL_Delay(100);
-		IND_blink(100);
-	}	
 	
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N

@@ -121,10 +121,13 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	//configASSERT( xReturned );
 
 	/* Set baudrate back to default for all other ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{	
-		if (port != PcPort)
-			UpdateBaudrate(port, DEF_ARRAY_BAUDRATE);
+	if (CLI_baudrate != DEF_ARRAY_BAUDRATE)
+	{
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+		{	
+			if (port != PcPort)
+				UpdateBaudrate(port, DEF_ARRAY_BAUDRATE);
+		}
 	}
 	
 	/* Send the welcome message. */
