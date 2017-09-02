@@ -70,6 +70,8 @@ static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
 static char pcUserMessage[80];
 BOS_Status responseStatus = BOS_OK; 
 uint8_t bcastID = 0;			// Counter for unique broadcast ID
+uint8_t PcPort = 0;
+uint32_t CLI_baudrate = DEF_CLI_BAUDRATE;
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
