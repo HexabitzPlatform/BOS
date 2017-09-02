@@ -63,9 +63,6 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 #include <math.h>	 
 #include <limits.h>	
 
-/* Array topology */
-#include <topology_1.h>
-
 /* Module includes and initialization */
 #ifdef H01R0
 	#include "H01R0.h"
