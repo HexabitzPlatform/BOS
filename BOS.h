@@ -183,6 +183,7 @@ button_t;
 #define MaxNumOfPorts							10
 #define MaxLengthOfAlias					10
 #define NumOfKeywords							2
+#define NumOfParamsHelpStrings		5
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
@@ -190,7 +191,9 @@ button_t;
 #define BOS_RESPONSE_ALL							0x60			// Send response messages for both Messaging and CLI
 #define BOS_RESPONSE_MSG							0x40			// Send response messages for Messaging only (no CLI)
 #define BOS_RESPONSE_NONE							0x00			// Do not send any response messages
-
+#define DEF_ARRAY_BAUDRATE						921600
+#define DEF_CLI_BAUDRATE							921600
+#define CLI_BAUDRATE_1								115200
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
@@ -227,6 +230,7 @@ extern uint8_t messageLength[NumOfPorts];
 extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
 extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 static char pcUserMessage[80];
+extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 #ifndef _N
 	extern uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];
@@ -241,11 +245,11 @@ extern uint8_t routePrev[];
 extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
-
+extern uint32_t CLI_baudrate;
 
 /* Exported internal functions ---------------------------------------------------------*/
 void StringToLowerCase(char *string);
-
+extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
 
 /* -----------------------------------------------------------------------
 	|														Message Codes	 														 	|

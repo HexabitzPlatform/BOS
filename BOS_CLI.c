@@ -120,11 +120,18 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	//xReturned = FreeRTOS_ioctl( xConsoleUART, ioctlSET_INTERRUPT_PRIORITY, ( void * ) ( configLIBRARY_LOWEST_INTERRUPT_PRIORITY - 1 ) );
 	//configASSERT( xReturned );
 
+	/* Set baudrate back to default for all other ports */
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	{	
+		if (port != PcPort)
+			UpdateBaudrate(port, DEF_ARRAY_BAUDRATE);
+	}
+	
 	/* Send the welcome message. */
 	sprintf(pcWelcomePortMessage, "Connected to module %d, port P%d.\n\n\r>", myID, port);
 	writePxITMutex(port, pcWelcomeMessage, strlen(pcWelcomeMessage), cmd50ms);
 	writePxITMutex(port, pcWelcomePortMessage, strlen(pcWelcomePortMessage), cmd50ms);
-	
+
 	
 	for( ;; )
 	{

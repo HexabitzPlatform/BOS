@@ -89,11 +89,18 @@
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
-#define _EE_NBase						1	
-#define _EE_portDirBase			2					// Move to RO - 25 modules
-#define _EE_aliasBase				28				// 25 modules
-#define _EE_DMAStreamsBase	159				
-#define _EE_varBase					167
+#define _EE_NBase								1	
+#define _EE_portDirBase					2					// Move to RO - 25 modules
+#define _EE_aliasBase						28				// 25 modules
+#define _EE_DMAStreamsBase			159				
+#define _EE_ButtonBase					167				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
+																					// pressed_for_x_1 (8 bits), released_for_y_1 (8 bits), etc.
+#define _EE_EmptyVarBase				207
+#define _EE_ParamsBase					500				// Parameter base: BOS response
+#define _EE_ParamsDebounce			501				// Parameter: Button debounce
+#define _EE_ParamsSinClick			502				// Parameter: Button single click
+#define _EE_ParamsDblClick			503				// Parameter: Button double click (inter-click min and max)
+
 
 
 #if MaxNumOfModules > 25						// Update

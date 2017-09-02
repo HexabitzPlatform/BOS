@@ -16,7 +16,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-BOS_t BOS;
+BOS_t BOS; 
+BOS_t BOS_default = { .response = BOS_RESPONSE_ALL, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
+											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_OFF;
@@ -128,6 +130,9 @@ BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
 BOS_Status LoadEEstreams(void);
+BOS_Status LoadEEparams(void);
+BOS_Status SaveEEparams(void);
+BOS_Status LoadEEbuttons(void);
 void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
 	uint8_t dst2, uint8_t src3, uint8_t dst3);
 void StreamTimerCallback( TimerHandle_t xTimer );
@@ -145,6 +150,12 @@ void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
 /* Module exported internal functions */
 extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+
+const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
+																															 "BOS.debounce: 1 ... 65536 msec\r\n",
+																															 "BOS.singleclicktime: 1 ... 65536 msec\r\n",
+																															 "BOS.mininterclicktime: 1 ... 255 msec\r\n",
+																															 "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
 
 
 /* Create CLI commands --------------------------------------------------------*/
@@ -165,6 +176,7 @@ static portBASE_TYPE addbuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -294,6 +306,15 @@ static const CLI_Command_Definition_t getCommandDefinition =
 	( const int8_t * ) "get", /* The command string to type. */
 	( const int8_t * ) "get:\r\n Get the current value of a parameter (1st par.)\r\n\r\n",
 	getCommand, /* The function to run. */
+	1 /* One parameter is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : default */
+static const CLI_Command_Definition_t defaultCommandDefinition =
+{
+	( const int8_t * ) "default", /* The command string to type. */
+	( const int8_t * ) "default:\r\n Type 'default params' to set all parameters to default values\r\n\r\n",
+	defaultCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
 /*-----------------------------------------------------------*/
@@ -787,9 +808,11 @@ void LoadEEvars(void)
 	/* Load DMA streams */
 	LoadEEstreams();
 	
-	/* Load other variables */
-
+	/* Load parameters. If not found, load defaults */
+	LoadEEparams();	
 	
+	/* Load buttons */
+	LoadEEbuttons();	
 }
 
 /*-----------------------------------------------------------*/
@@ -996,9 +1019,6 @@ BOS_Status SaveEEalias(void)
 		}			
 	}
 	
-	if ((add+_EE_aliasBase) >= _EE_varBase)
-		result = BOS_ERR_EEPROM;
-	
 	return result;
 }
 
@@ -1083,6 +1103,115 @@ BOS_Status LoadEEstreams(void)
 	
 	/* Activate the DMA streams */
 	SetupDMAStreamsFromMessage(direction, count, timeout, src1, dst1, src2, dst2, src3, dst3);
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Load module parameters from emulated EEPROM. If erased, loade defualts --- 
+*/
+BOS_Status LoadEEparams(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t temp1 = 0, status1 = 0; 
+	
+	/* Read params base - BOS response */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsBase], &temp1);
+	/* Found the variable (EEPROM is not cleared) */
+	if (!status1) 
+		BOS.response = (uint8_t)temp1;
+	/* Couldn't find the variable, load default config */
+	else
+		BOS.response = BOS_default.response;
+		
+	/* Read Button debounce */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDebounce], &temp1);
+	if (!status1) 
+		BOS.buttons.debounce = temp1;
+	else
+		BOS.buttons.debounce = BOS_default.buttons.debounce;
+
+	/* Read Button single click time */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsSinClick], &temp1);
+	if (!status1) 
+		BOS.buttons.singleClickTime = temp1;
+	else
+		BOS.buttons.singleClickTime = BOS_default.buttons.singleClickTime;	
+
+	/* Read Button double click time (min and max inter-click) */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDblClick], &temp1);
+	if (!status1) {
+		BOS.buttons.minInterClickTime = (uint8_t)temp1;
+		BOS.buttons.maxInterClickTime = (uint8_t)(temp1>>8);
+	} else {
+		BOS.buttons.minInterClickTime = BOS_default.buttons.minInterClickTime;	
+		BOS.buttons.maxInterClickTime = BOS_default.buttons.maxInterClickTime;	
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Save module parameters to emulated EEPROM. --- 
+*/
+BOS_Status SaveEEparams(void)
+{
+	BOS_Status result = BOS_OK; 
+	
+	/* Save params base - BOS response */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS.response);
+		
+	/* Save Button debounce */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], BOS.buttons.debounce);
+
+	/* Save Button single click time */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], BOS.buttons.singleClickTime);
+
+	/* Save Button double click time (min and max inter-click) */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Load button definitions and events from EEPROM --- 
+*/
+BOS_Status LoadEEbuttons(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t temp16 = 0, status1 = 0; 
+	uint8_t temp8 = 0;
+	
+	for(uint8_t i=0 ; i<=NumOfPorts ; i++)
+	{
+		status1 = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)], &temp16);
+		
+		if(!status1)																												// This variable exists
+		{
+			temp8 = (uint8_t)(temp16 >> 8);
+			if ( ((temp8 >> 4) == i+1) && ((temp8 & 0x0F) != NONE) )					// This is same port and button type is not none
+			{
+				button[i+1].type = temp8 & 0x0F;
+				button[i+1].events = (uint8_t)temp16;
+				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+1], &temp16);
+				button[i+1].pressedX1Sec = (uint8_t)(temp16 >> 8);
+				button[i+1].releasedY1Sec = (uint8_t)temp16;
+				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+2], &temp16);
+				button[i+1].pressedX2Sec = (uint8_t)(temp16 >> 8);
+				button[i+1].releasedY2Sec = (uint8_t)temp16;
+				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+3], &temp16);
+				button[i+1].pressedX3Sec = (uint8_t)(temp16 >> 8);
+				button[i+1].releasedY3Sec = (uint8_t)temp16;
+				/* Setup the button and its events */
+				AddPortButton(button[i+1].type, i+1);
+				SetButtonEvents(i+1, (button[i+1].events & BUTTON_EVENT_CLICKED), ((button[i+1].events & BUTTON_EVENT_DBL_CLICKED)>>1), button[i+1].pressedX1Sec,\
+												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY1Sec, button[i+1].releasedY1Sec);
+			}
+		}
+	}
 	
 	return result;
 }
@@ -1184,14 +1313,15 @@ void StreamTimerCallback( TimerHandle_t xTimer )
 
 /*-----------------------------------------------------------*/	
 
-/* --- Check for factory reset condition: First port TXD is connected to last port RXD   
-					or to programming port RXD   
+/* --- Check for factory reset condition: 
+				- P1 TXD is connected to last port RXD   
+				-	or P1 TXD is connected to programming port RXD   
 */
 uint8_t IsFactoryReset(void)
 {
 	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_TypeDef *P1_TX_Port = 0, *P_last_RX_Port = 0, *P_prog_RX_Port = 0;
-	uint16_t P1_TX_Pin = 0, P_last_RX_Pin = 0, P_prog_RX_Pin = 0;
+	uint32_t P1_TX_Port, P1_RX_Port, P_last_TX_Port, P_last_RX_Port, P_prog_TX_Port, P_prog_RX_Port;
+	uint16_t P1_TX_Pin, P1_RX_Pin, P_last_TX_Pin, P_last_RX_Pin, P_prog_TX_Pin, P_prog_RX_Pin;
 	
 	/* -- Setup GPIOs -- */
 	
@@ -1201,161 +1331,51 @@ uint8_t IsFactoryReset(void)
   __GPIOC_CLK_ENABLE();
 	__GPIOD_CLK_ENABLE();
 	
-	/* UART pins */
-#ifdef _Usart1
-	if(GetUart(P1) == &huart1) {
-		P1_TX_Port = USART1_TX_PORT;
-		P1_TX_Pin = USART1_TX_PIN;
-	}
-#endif
-#ifdef _Usart2
-	if(GetUart(P1) == &huart2) {
-		P1_TX_Port = USART2_TX_PORT;
-		P1_TX_Pin = USART2_TX_PIN;
-	}
-#endif
-#ifdef _Usart3
-	if(GetUart(P1) == &huart3) {
-		P1_TX_Port = USART3_TX_PORT;
-		P1_TX_Pin = USART3_TX_PIN;
-	}
-#endif
-#ifdef _Usart4
-	if(GetUart(P1) == &huart4) {
-		P1_TX_Port = USART4_TX_PORT;
-		P1_TX_Pin = USART4_TX_PIN;
-	}
-#endif
-#ifdef _Usart5
-	if(GetUart(P1) == &huart5) {
-		P1_TX_Port = USART5_TX_PORT;
-		P1_TX_Pin = USART5_TX_PIN;
-	}
-#endif
-#ifdef _Usart6
-	if(GetUart(P1) == &huart6) {
-		P1_TX_Port = USART6_TX_PORT;
-		P1_TX_Pin = USART6_TX_PIN;
-	}
-#endif
-	
-	/* RXD of last port */
-#ifdef _Usart1
-	if(GetUart(P_LAST) == &huart1) {
-		P_last_RX_Port = USART1_RX_PORT;
-		P_last_RX_Pin = USART1_RX_PIN;
-	}
-#endif
-#ifdef _Usart2
-	if(GetUart(P_LAST) == &huart2) {
-		P_last_RX_Port = USART2_RX_PORT;
-		P_last_RX_Pin = USART2_RX_PIN;
-	}
-#endif
-#ifdef _Usart3
-	if(GetUart(P_LAST) == &huart3) {
-		P_last_RX_Port = USART3_RX_PORT;
-		P_last_RX_Pin = USART3_RX_PIN;
-	}
-#endif
-#ifdef _Usart4
-	if(GetUart(P_LAST) == &huart4) {
-		P_last_RX_Port = USART4_RX_PORT;
-		P_last_RX_Pin = USART4_RX_PIN;
-	}
-#endif
-#ifdef _Usart5
-	if(GetUart(P_LAST) == &huart5) {
-		P_last_RX_Port = USART5_RX_PORT;
-		P_last_RX_Pin = USART5_RX_PIN;
-	}
-#endif
-#ifdef _Usart6
-	if(GetUart(P_LAST) == &huart6) {
-		P_last_RX_Port = USART6_RX_PORT;
-		P_last_RX_Pin = USART6_RX_PIN;
-	}
-#endif	
-	
-	/* RXD of programming port */
-#ifdef _Usart1
-	if(GetUart(P_PROG) == &huart1) {
-		P_prog_RX_Port = USART1_RX_PORT;
-		P_prog_RX_Pin = USART1_RX_PIN;
-	}
-#endif
-#ifdef _Usart2
-	if(GetUart(P_PROG) == &huart2) {
-		P_prog_RX_Port = USART2_RX_PORT;
-		P_prog_RX_Pin = USART2_RX_PIN;
-	}
-#endif
-#ifdef _Usart3
-	if(GetUart(P_PROG) == &huart3) {
-		P_prog_RX_Port = USART3_RX_PORT;
-		P_prog_RX_Pin = USART3_RX_PIN;
-	}
-#endif
-#ifdef _Usart4
-	if(GetUart(P_PROG) == &huart4) {
-		P_prog_RX_Port = USART4_RX_PORT;
-		P_prog_RX_Pin = USART4_RX_PIN;
-	}
-#endif
-#ifdef _Usart5
-	if(GetUart(P_PROG) == &huart5) {
-		P_prog_RX_Port = USART5_RX_PORT;
-		P_prog_RX_Pin = USART5_RX_PIN;
-	}
-#endif
-#ifdef _Usart6
-	if(GetUart(P_PROG) == &huart6) {
-		P_prog_RX_Port = USART6_RX_PORT;
-		P_prog_RX_Pin = USART6_RX_PIN;
-	}
-#endif	
+	/* Get GPIOs */
+	GetPortGPIOs(P1, &P1_TX_Port, &P1_TX_Pin, &P1_RX_Port, &P1_RX_Pin);
+	GetPortGPIOs(P_LAST, &P_last_TX_Port, &P_last_TX_Pin, &P_last_RX_Port, &P_last_RX_Pin);
+	GetPortGPIOs(P_PROG, &P_prog_TX_Port, &P_prog_TX_Pin, &P_prog_RX_Port, &P_prog_RX_Pin);
 	
 	/* TXD of first port */
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Pin = P1_TX_Pin;
-	HAL_GPIO_Init(P1_TX_Port, &GPIO_InitStruct);
+	HAL_GPIO_Init((GPIO_TypeDef *)P1_TX_Port, &GPIO_InitStruct);
 	
 	/* RXD of last port */
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
 	GPIO_InitStruct.Pin = P_last_RX_Pin;
-	HAL_GPIO_Init(P_last_RX_Port, &GPIO_InitStruct);	
+	HAL_GPIO_Init((GPIO_TypeDef *)P_last_RX_Port, &GPIO_InitStruct);	
 	
 	/* RXD of programming port */
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
 	GPIO_InitStruct.Pin = P_prog_RX_Pin;
-	HAL_GPIO_Init(P_prog_RX_Port, &GPIO_InitStruct);	
+	HAL_GPIO_Init((GPIO_TypeDef *)P_prog_RX_Port, &GPIO_InitStruct);	
 	
 	/* Check for factory reset conditions */
-	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms(1);
-	if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == RESET)
+	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(5);
+	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == RESET)
 	{
-		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms(1);
-		if (HAL_GPIO_ReadPin(P_prog_RX_Port,P_prog_RX_Pin) == SET) {
+		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(5);
+		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == SET) {
 			return 1;
 		}
 	}
-	HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms(1);
-	if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == RESET)
+	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(5);
+	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_last_RX_Port,P_last_RX_Pin) == RESET)
 	{
-		HAL_GPIO_WritePin(P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms(1);
-		if (HAL_GPIO_ReadPin(P_last_RX_Port,P_last_RX_Pin) == SET) {
+		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(5);
+		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_last_RX_Port,P_last_RX_Pin) == SET) {
 			return 1;
 		}
 	}
 
-	
 	/* Clear flag for formated EEPROM if it was already set */
 	/* Flag address (STM32F09x) - Last 4 words of SRAM */
 	*((unsigned long *)0x20007FF0) = 0xFFFFFFFF; 
@@ -1364,7 +1384,55 @@ uint8_t IsFactoryReset(void)
 }
 
 /*-----------------------------------------------------------*/	
- 
+
+/* --- Check if booting into lower CLI baudrate:
+				- Connect P1 TXD and RXD to boot CLI at 115200
+*/
+uint8_t IsLowerCLIbaud(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	uint32_t P1_TX_Port, P1_RX_Port;
+	uint16_t P1_TX_Pin, P1_RX_Pin;
+	
+	/* -- Setup GPIOs -- */
+	
+	/* Get GPIOs */
+	GetPortGPIOs(P1, &P1_TX_Port, &P1_TX_Pin, &P1_RX_Port, &P1_RX_Pin);
+	
+	/* P1 TXD */
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Pin = P1_TX_Pin;
+	HAL_GPIO_Init((GPIO_TypeDef *)P1_TX_Port, &GPIO_InitStruct);
+	
+	/* P1 RXD */
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;	
+	GPIO_InitStruct.Pin = P1_RX_Pin;
+	HAL_GPIO_Init((GPIO_TypeDef *)P1_RX_Port, &GPIO_InitStruct);	
+	
+	/* Check for lower CLI baudrate conditions */
+	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
+	Delay_ms(5);
+	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == RESET)
+	{
+		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
+		Delay_ms(5);
+		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == SET) 
+		{
+			/* restore this port to default */
+			Module_Init();
+			return 1;
+		}
+	}
+
+	/* restore this port to default */
+	Module_Init();	
+	return 0;
+}
+
+/*-----------------------------------------------------------*/	
+
 /* --- Format emulated EEPROM for a factory reset
 */
 void EE_FormatForFactoryReset(void)
@@ -1685,7 +1753,7 @@ BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint3
 	/* Get port UART */
 	UART_HandleTypeDef* huart = GetUart(port);
 	
-	if (huart->Instance == USART1) 
+	if (huart == &huart1) 
 	{	
 #ifdef _Usart1		
 		*TX_Port = (uint32_t)USART1_TX_PORT;
@@ -1694,69 +1762,69 @@ BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint3
 		*RX_Pin = USART1_RX_PIN;
 #endif
 	} 
-	else if (huart->Instance == USART2) 
-	{	
 #ifdef _Usart2	
+	else if (huart == &huart2) 
+	{	
 		*TX_Port = (uint32_t)USART2_TX_PORT;
 		*TX_Pin = USART2_TX_PIN;
 		*RX_Port = (uint32_t)USART2_RX_PORT;
 		*RX_Pin = USART2_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART3) 
-	{	
+#endif
 #ifdef _Usart3	
+	else if (huart == &huart3) 
+	{	
 		*TX_Port = (uint32_t)USART3_TX_PORT;
 		*TX_Pin = USART3_TX_PIN;
 		*RX_Port = (uint32_t)USART3_RX_PORT;
 		*RX_Pin = USART3_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART4) 
-	{	
+#endif
 #ifdef _Usart4	
+	else if (huart == &huart4) 
+	{	
 		*TX_Port = (uint32_t)USART4_TX_PORT;
 		*TX_Pin = USART4_TX_PIN;
 		*RX_Port = (uint32_t)USART4_RX_PORT;
 		*RX_Pin = USART4_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART5) 
-	{	
+#endif
 #ifdef _Usart5	
+	else if (huart == &huart5) 
+	{	
 		*TX_Port = (uint32_t)USART5_TX_PORT;
 		*TX_Pin = USART5_TX_PIN;
 		*RX_Port = (uint32_t)USART5_RX_PORT;
 		*RX_Pin = USART5_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART6) 
-	{	
+#endif
 #ifdef _Usart6	
+	else if (huart == &huart6) 
+	{	
 		*TX_Port = (uint32_t)USART6_TX_PORT;
 		*TX_Pin = USART6_TX_PIN;
 		*RX_Port = (uint32_t)USART6_RX_PORT;
 		*RX_Pin = USART6_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART7) 
-	{	
-#ifdef _Usart7	
+#endif
+#ifdef _Usart7
+	else if (huart == &huart7) 
+	{		
 		*TX_Port = (uint32_t)USART7_TX_PORT;
 		*TX_Pin = USART7_TX_PIN;
 		*RX_Port = (uint32_t)USART7_RX_PORT;
 		*RX_Pin = USART7_RX_PIN;
-#endif
 	} 
-	else if (huart->Instance == USART8) 
-	{	
+#endif
 #ifdef _Usart8	
+	else if (huart == &huart8) 
+	{	
 		*TX_Port = (uint32_t)USART8_TX_PORT;
 		*TX_Pin = USART8_TX_PIN;
 		*RX_Port = (uint32_t)USART8_RX_PORT;
 		*RX_Pin = USART8_RX_PIN;
-#endif
 	} 
+#endif
 	else
 		result = BOS_ERROR;	
 	
@@ -1813,16 +1881,14 @@ void BOS_Init(void)
 {
 	/* Unlock the Flash memory */
 	HAL_FLASH_Unlock();
-	
-	/* YOLO Load default BOS config >> Replace later with EEPROM load */
-	BOS.response = BOS_RESPONSE_ALL;
-	BOS.buttons.debounce = DEF_BUTTON_DEBOUNCE;
-	BOS.buttons.singleClickTime = DEF_BUTTON_CLICK;
-	BOS.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK;
-	BOS.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK;
 
 	/* EEPROM Init */
 	EE_Init();
+	
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_TIM_USEC_Init();
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -1839,10 +1905,18 @@ void BOS_Init(void)
 		LoadEEvars();
 	}
 	
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_TIM_USEC_Init();
+	/* Check if booting at lower CLI baudrate */
+	if (IsLowerCLIbaud())
+	{
+		/* Update all ports to lower baudrate */
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+		{	
+			UpdateBaudrate(port, CLI_BAUDRATE_1);
+		}
+	}
+	else	
+		/* Initialize the module at default baudrate */
+		Module_Init();
 	
 	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */
@@ -1858,13 +1932,11 @@ void BOS_Init(void)
 		IND_blink(100);
 	}	
 	
-	/* Initialize the module */
-	Module_Init();
-
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
+
 }
 
 /*-----------------------------------------------------------*/
@@ -1890,6 +1962,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &removebuttonCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &setCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &getCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &defaultCommandDefinition );
 	
 	
 #ifdef H01R0	
@@ -3058,7 +3131,8 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	BOS_Status result = BOS_OK;
 	GPIO_InitTypeDef GPIO_InitStruct;
 	uint32_t TX_Port, RX_Port; 
-	uint16_t TX_Pin, RX_Pin;
+	uint16_t TX_Pin, RX_Pin, temp16, res;
+	uint8_t temp8 = 0;
 	
 	/* 1. Stop communication at this port */		
 	osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
@@ -3085,6 +3159,33 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	/* 4. Update button struct */
 	button[port].type = buttonType;	
 	
+	/* 5. Add to EEPROM if not already there */
+	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	if(!res)																														// This variable exists
+	{
+		temp8 = (uint8_t)(temp16 >> 8);
+		if ( ((temp8 >> 4) == port) && ((temp8 & 0x0F) == buttonType) )		// This is same port and same type, do not update
+			return BOS_OK;
+		else 																															// Update the variable
+		{																														
+			temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+			/* Reset times */
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+		}
+	}
+	else																																// Variable does not exist. Create a new one
+	{
+		temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);		
+		/* Reset times */
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+	}
+	
 	return result;
 }
 
@@ -3096,6 +3197,7 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 BOS_Status RemovePortButton(uint8_t port)
 {
 	BOS_Status result = BOS_OK;
+	uint16_t res, temp16;
 	
 	/* 1. Remove from button struct */
 	button[port].type = NONE;
@@ -3103,9 +3205,19 @@ BOS_Status RemovePortButton(uint8_t port)
 	button[port].events = 0;
 	button[port].pressedX1Sec = 0; button[port].pressedX2Sec = 0; button[port].pressedX3Sec = 0;
 	button[port].releasedY1Sec = 0; button[port].releasedY2Sec = 0; button[port].releasedY3Sec = 0;
-
 	
-	/* 2. Initialize UART at this port */
+	/* 2. Remove from EEPROM if it's already there */
+	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	if(!res)																														// This variable exists, reset all to zeros
+	{
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], 0);
+		/* Reset times */
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);		
+	}
+	
+	/* 3. Initialize UART at this port */
 	UART_HandleTypeDef* huart = GetUart(port);
 	
 	if (huart->Instance == USART1) 
@@ -3157,14 +3269,12 @@ BOS_Status RemovePortButton(uint8_t port)
 #endif
 	} 
 	else
-		result = BOS_ERROR;		
+		result = BOS_ERROR;			
 	
-	
-	/* 3. Start scanning this port */
+	/* 4. Start scanning this port */
 	portStatus[port] = FREE;
 	/* Read this port again */
 	HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);	
-
 	
 	return result;
 }
@@ -3182,6 +3292,7 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
 {
 	BOS_Status result = BOS_OK;	
+	uint16_t res, temp16; uint8_t temp8;
 	
 	if (button[port].type == NONE)
 		return BOS_ERR_BUTTON_NOT_DEFINED;
@@ -3189,14 +3300,31 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
 	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
 	
-	if (clicked)	button[port].events |= BUTTON_EVENT_CLICKED;
-	if (dbl_clicked)	button[port].events |= BUTTON_EVENT_DBL_CLICKED;
+	if (clicked)				button[port].events |= BUTTON_EVENT_CLICKED;
+	if (dbl_clicked)		button[port].events |= BUTTON_EVENT_DBL_CLICKED;
 	if (pressed_x1sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
 	if (pressed_x2sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
 	if (pressed_x3sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
 	if (released_y1sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
 	if (released_y2sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
 	if (released_y3sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+	
+	/* Add to EEPROM - Todo: Don't add if it's already there */
+	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	if(!res)																														// This variable exists
+	{
+		temp8 = (uint8_t)(temp16 >> 8);																		// Keep upper byte
+		/* Store event flags */
+		temp16 = ((uint16_t)temp8 << 8) | (uint16_t)button[port].events;
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+		/* Store times */
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
+		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
+	}
+	else																																// Variable does not exist. Return error
+		return BOS_ERR_BUTTON_NOT_DEFINED;	
+		
 	
 	return result;
 }
@@ -3631,6 +3759,7 @@ static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 	BOS_Status result = BOS_OK; 
 	static int8_t *pcParameterString1, *pcParameterString2; 
 	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	uint16_t temp = 0;
 	
 	static const int8_t *pcMessageOK = ( int8_t * ) "%s was set to %s\n\r";	
 	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";	
@@ -3651,30 +3780,53 @@ static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 	
 		if (!strncmp((const char *)pcParameterString1+4, "response", xParameterStringLength1-4)) 
 		{
-			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2))
+			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-			else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2))
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_ALL);
+			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-			else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2))
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_MSG);
+		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-			else
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_NONE);
+			} else
 				result = BOS_ERR_WrongValue;
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
 		{
-			
+			temp = atoi((const char *)pcParameterString2);
+			if (temp >= 1 && temp <= USHRT_MAX) {
+				BOS.buttons.debounce = temp;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], temp);
+			} else
+				result = BOS_ERR_WrongValue;
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "singleclicktime", xParameterStringLength1-4)) 
 		{
-			
+			temp = atoi((const char *)pcParameterString2);
+			if (temp >= 1 && temp <= USHRT_MAX) {
+				BOS.buttons.singleClickTime = temp;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], temp);
+			} else
+				result = BOS_ERR_WrongValue;			
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "mininterclicktime", xParameterStringLength1-4)) 
 		{
-			
+			temp = atoi((const char *)pcParameterString2);
+			if (temp >= 1 && temp <= UCHAR_MAX) {
+				BOS.buttons.minInterClickTime = temp;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+			} else
+				result = BOS_ERR_WrongValue;			
 		} 		
 		else if (!strncmp((const char *)pcParameterString1+4, "maxinterclicktime", xParameterStringLength1-4)) 
 		{
-			
+			temp = atoi((const char *)pcParameterString2);
+			if (temp >= 1 && temp <= UCHAR_MAX) {
+				BOS.buttons.maxInterClickTime = temp;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+			} else
+				result = BOS_ERR_WrongValue;					
 		} 
 		else	
 			result = BOS_ERR_WrongParam;
@@ -3725,7 +3877,7 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 			if (BOS.response == BOS_RESPONSE_ALL)
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "all");
 			else if (BOS.response == BOS_RESPONSE_MSG)
-				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg only");
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg");
 			else if (BOS.response == BOS_RESPONSE_NONE)
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
 			else
@@ -3733,19 +3885,19 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
 		{
-			
+			sprintf( ( char * ) pcWriteBuffer, "%d\n\r", BOS.buttons.debounce);
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "singleclicktime", xParameterStringLength1-4)) 
 		{
-			
+			sprintf( ( char * ) pcWriteBuffer, "%d\n\r", BOS.buttons.singleClickTime);
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "mininterclicktime", xParameterStringLength1-4)) 
 		{
-			
+			sprintf( ( char * ) pcWriteBuffer, "%d\n\r", BOS.buttons.minInterClickTime);
 		} 		
 		else if (!strncmp((const char *)pcParameterString1+4, "maxinterclicktime", xParameterStringLength1-4)) 
 		{
-			
+			sprintf( ( char * ) pcWriteBuffer, "%d\n\r", BOS.buttons.maxInterClickTime);
 		} 
 		else	
 			result = BOS_ERR_WrongParam;
@@ -3758,6 +3910,44 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongParam );
 	else if (result == BOS_ERR_WrongValue)
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue, pcParameterString1);
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1; 
+	portBASE_TYPE xParameterStringLength1 = 0;
+	
+	static const int8_t *pcMessageOK = ( int8_t * ) "All parameters set to default values\n\r";	
+	static const int8_t *pcMessageWrongValue = ( int8_t * ) "Wrong value!\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string: The set parameter */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (!strncmp((const char *)pcParameterString1, "params", xParameterStringLength1)) 
+	{
+		memcpy(&BOS, &BOS_default, sizeof(BOS_default));
+		SaveEEparams();
+	}
+	else
+		result = BOS_ERR_WrongValue;
+
+	/* Respond to the command */
+	if (result == BOS_OK)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	else if (result == BOS_ERR_WrongValue)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue );
 	
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */
