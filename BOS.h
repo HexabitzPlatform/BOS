@@ -2,7 +2,7 @@
     BitzOS (BOS) V0.1.0 - Copyright (C) 2017 Hexabitz
     All rights reserved
 		
-    File Name     : BOS.c
+    File Name     : BOS.h
     Description   : Header file for Bitz Operating System (BOS).
 */
 	
@@ -42,6 +42,9 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 
 /* STM HAL */
 #include "stm32f0xx_hal.h" 
+										 
+/* Project Header File */
+#include "project.h" 
 
 /* RTOS */
 #include "cmsis_os.h"
