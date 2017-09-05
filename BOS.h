@@ -203,9 +203,10 @@ button_t;
 
 
 /* Delay macros */
-#define	Delay_us(t)			StartMicroDelay(t)		/* RTOS safe */
-#define	Delay_ms(t)			HAL_Delay(t)					/* Non-RTOS safe */
-#define	Delay_s(t)			HAL_Delay(1000*t)			/* Non-RTOS safe */
+#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+#define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
 /* Serial Wire Interface */
 #define SWDIO_PIN			GPIO_PIN_13
@@ -287,7 +288,7 @@ extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
 #define IND_toggle()		HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)		
 #define IND_ON()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)		
 #define IND_OFF()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
-#define IND_blink(t)				IND_ON();	HAL_Delay(t); IND_OFF()		/* Use before starting the scheduler */
+#define IND_blink(t)				IND_ON();	HAL_Delay(t); IND_OFF()		/* Use after starting the scheduler */
 #define RTOS_IND_blink(t)		IND_ON();	osDelay(t); IND_OFF()			/* Use after starting the scheduler */
 
 #define	NumberOfHops(i)		routeDist[i-1]
@@ -302,6 +303,7 @@ extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
+extern void StartMilliDelay(uint16_t Delay);
 extern BOS_Status Explore(void);
 extern BOS_Status ExploreNeighbors(uint8_t ignore);
 extern BOS_Status FindBroadcastRoutes(uint8_t src);

@@ -640,8 +640,8 @@ void MX_TIM_USEC_Init(void)
 
 	/* Peripheral configuration */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = 48;
-  htim14.Init.CounterMode = TIM_COUNTERMODE_DOWN;
+  htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim14.Init.Period = 1;
   HAL_TIM_Base_Init(&htim14);
 
@@ -1358,21 +1358,21 @@ uint8_t IsFactoryReset(void)
 	
 	/* Check for factory reset conditions */
 	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms(5);
+	Delay_ms_no_rtos(5);
 	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == RESET)
 	{
 		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms(5);
+		Delay_ms_no_rtos(5);
 		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == SET) {
 			return 1;
 		}
 	}
 	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms(5);
+	Delay_ms_no_rtos(5);
 	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_last_RX_Port,P_last_RX_Pin) == RESET)
 	{
 		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms(5);
+		Delay_ms_no_rtos(5);
 		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_last_RX_Port,P_last_RX_Pin) == SET) {
 			return 1;
 		}
@@ -1415,21 +1415,17 @@ uint8_t IsLowerCLIbaud(void)
 	
 	/* Check for lower CLI baudrate conditions */
 	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms(5);
+	Delay_ms_no_rtos(5);		
 	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == RESET)
 	{
 		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms(5);
+		Delay_ms_no_rtos(5);		
 		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == SET) 
 		{
-			/* restore this port to default */
-			Module_Init();
 			return 1;
 		}
 	}
 
-	/* restore this port to default */
-	Module_Init();	
 	return 0;
 }
 
@@ -1891,20 +1887,6 @@ void BOS_Init(void)
   MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_TIM_USEC_Init();
-
-	/* Startup indicator sequence - Note: DOn't move out after Module_Init. It hangs out */
-	if (myID == 0)		/* Native module */
-	{
-		IND_blink(500);
-	}
-	else							/* Non-native module */
-	{
-		IND_blink(500);
-		HAL_Delay(100);
-		IND_blink(100);
-		HAL_Delay(100);
-		IND_blink(100);
-	}	
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -1924,6 +1906,9 @@ void BOS_Init(void)
 	/* Check if booting at lower CLI baudrate */
 	if (IsLowerCLIbaud())
 	{
+		/* Initialize the module */
+		Module_Init();	
+		
 		CLI_baudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
@@ -1931,15 +1916,30 @@ void BOS_Init(void)
 			UpdateBaudrate(port, CLI_BAUDRATE_1);
 		}
 	}
-	else	
-		/* Initialize the module at default baudrate */
-		Module_Init();
+	else
+	{
+		/* Initialize the module with default baudrate */
+		Module_Init();				
+	}
 	
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
 
+	/* Startup indicator sequence - Note: DOn't move out after Module_Init. It hangs out */
+	if (myID == 0)		/* Native module */
+	{
+		IND_ON();	Delay_ms_no_rtos(500); IND_OFF();
+	}
+	else							/* Non-native module */
+	{
+		IND_ON();	Delay_ms_no_rtos(500); IND_OFF();
+		Delay_ms_no_rtos(100);
+		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
+		Delay_ms_no_rtos(100);
+		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
+	}	
 }
 
 /*-----------------------------------------------------------*/
@@ -2478,11 +2478,6 @@ BOS_Status Explore(void)
 		SaveEEportsDir();
 		/* Ask other modules to save their data too */
 		SendMessageToModule(0xFF, CODE_exp_eeprom, 0);
-//		for (uint8_t i=2 ; i<=N ; i++) 
-//		{
-//			SendMessageToModule(i, CODE_exp_eeprom, 0);	
-//			osDelay(50);
-//		}
 	}	
 
 	return result;
@@ -2585,15 +2580,43 @@ void StartMicroDelay(uint16_t Delay)
 {
 	portENTER_CRITICAL();
 	
+	/* Setup the timer to 1-usec base */
+	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
+	HAL_TIM_Base_Init(&htim14);
+	
 	if (Delay)
 	{
 		htim14.Instance->ARR = Delay;
-	
+
 		HAL_TIM_Base_Start(&htim14);	
 
-		while(htim14.Instance->CNT != 0)
-		{
-		}
+		while(htim14.Instance->CNT < Delay) {};
+		
+		HAL_TIM_Base_Stop(&htim14);
+	}
+	
+	portEXIT_CRITICAL();
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load and start milli-second delay counter --- 
+*/
+void StartMilliDelay(uint16_t Delay)
+{
+	portENTER_CRITICAL();
+	
+	/* Setup the timer to 1-msec base */
+	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000;
+	HAL_TIM_Base_Init(&htim14);
+	
+	if (Delay)
+	{
+		htim14.Instance->ARR = Delay;
+		
+		HAL_TIM_Base_Start(&htim14);	
+
+		while(htim14.Instance->CNT < Delay) {};
 		
 		HAL_TIM_Base_Stop(&htim14);
 	}
@@ -2988,7 +3011,7 @@ BOS_Status ReadPortsDir(void)
 	{
 		if (i != myID) {
 			SendMessageToModule(i, CODE_read_port_dir, 0);
-			osDelay(50);
+			Delay_ms_no_rtos(50);
 			if (responseStatus != BOS_OK)	{
 				result = BOS_ERR_NoResponse;
 			} 	
