@@ -86,7 +86,7 @@ void FrontEndTask(void * argument);
 extern void PxMessagingTask(void * argument);
 extern void prvUARTCommandConsoleTask( void *pvParameters );
 extern void CheckAttachedButtons(void);
-extern void ResetAttachedButtonStates(void);
+extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 
 /*-----------------------------------------------------------*/
@@ -186,7 +186,7 @@ void StartDefaultTask(void * argument)
 		}
 
 		/* Must reset state to prevent recurring callbacks */
-		//ResetAttachedButtonStates();
+		ResetAttachedButtonStates(&deferButtonReset);
 		
 		/* Read button state */
 		CheckAttachedButtons();

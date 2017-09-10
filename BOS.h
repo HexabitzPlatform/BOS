@@ -247,6 +247,7 @@ extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
 extern uint32_t CLI_baudrate;
 extern uint8_t PcPort;
+extern uint8_t deferButtonReset;
 
 /* Exported internal functions ---------------------------------------------------------*/
 void StringToLowerCase(char *string);

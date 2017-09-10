@@ -78,7 +78,7 @@ button_t button[NumOfPorts+1] = {0};
 uint32_t pressCounter[NumOfPorts+1] = {0};
 uint32_t releaseCounter[NumOfPorts+1] = {0};
 uint8_t dblCounter[NumOfPorts+1] = {0};
-
+uint8_t deferButtonReset = 0;
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -1554,7 +1554,7 @@ void CheckAttachedButtons(void)
 				if (releaseCounter[i] > BOS.buttons.debounce)								// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
 					releaseCounter[i] = 0;					
 				
-				if (pressCounter[i] > BOS.buttons.singleClickTime && pressCounter[i] < configTICK_RATE_HZ)	
+				if (pressCounter[i] > BOS.buttons.singleClickTime && pressCounter[i] < 500)	
 				{
 					if (clicked == 0)
 						clicked = 1;																					// Record a possible single click 
@@ -1565,7 +1565,7 @@ void CheckAttachedButtons(void)
 						}
 					}						
 				}								
-				else if (pressCounter[i] > configTICK_RATE_HZ && pressCounter[i] < 0xFFFF)	
+				else if (pressCounter[i] >= 500 && pressCounter[i] < 0xFFFF)	
 				{
 					if (clicked)	clicked = 0;															// Cannot be a click
 					// Process PRESSED_FOR_X_SEC events
@@ -1584,7 +1584,7 @@ void CheckAttachedButtons(void)
 				if (pressCounter[i] > BOS.buttons.debounce)									// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
 					pressCounter[i] = 0;				
 				
-				if (releaseCounter[i] > BOS.buttons.singleClickTime && releaseCounter[i] < configTICK_RATE_HZ)	
+				if (releaseCounter[i] > BOS.buttons.singleClickTime && releaseCounter[i] < 500)	
 				{
 					if (clicked == 1)
 					{
@@ -1597,7 +1597,7 @@ void CheckAttachedButtons(void)
 						clicked = 0;																					// Prepare for a single click					
 					}
 				}					
-				else if (releaseCounter[i] > configTICK_RATE_HZ && releaseCounter[i] < 0xFFFF)	
+				else if (releaseCounter[i] >= 500 && releaseCounter[i] < 0xFFFF)	
 				{
 					// Process RELEASED_FOR_Y_SEC events
 					CheckForTimedButtonRelease(i);
@@ -1620,7 +1620,7 @@ void CheckAttachedButtons(void)
 					}
       		break;
 				
-      	case DBL_CLICKED :
+      	case DBL_CLICKED :				
 					if (button[i].events & BUTTON_EVENT_DBL_CLICKED) 
 					{
 						buttonDblClickedCallback(i);
@@ -1629,34 +1629,40 @@ void CheckAttachedButtons(void)
 					
 				/* These are latching events so make sure you only execute once */
       	case PRESSED_FOR_X1_SEC :		
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) 
+					{				
 						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X2_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) 
+					{
 						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X3_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) {	
+					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) 
+					{
 						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
 					}
 					break;
 				
 				/* These are latching events so make sure you only execute once */
       	case RELEASED_FOR_Y1_SEC :	
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) 
+					{
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
 					}
 					break;					
 				case RELEASED_FOR_Y2_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) 
+					{	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
 					}
 					break;					
 				case RELEASED_FOR_Y3_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {	
+					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) 
+					{	
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
 					}
 					break;
@@ -1730,14 +1736,17 @@ BOS_Status CheckForTimedButtonRelease(uint8_t port)
 
 /* --- Reset state of attached buttons to avoid recurring callbacks
 */
-void ResetAttachedButtonStates(void)
+void ResetAttachedButtonStates(uint8_t *deferReset)
 {
-	for(uint8_t i=1 ; i<=NumOfPorts ; i++)
-  {
-		if(button[i].state != NONE)
-			button[i].state = NONE;
-  }
-	
+	if (!*deferReset)
+	{
+		for(uint8_t i=1 ; i<=NumOfPorts ; i++)
+		{
+			if(button[i].state != NONE)
+				button[i].state = NONE;
+		}
+	}	
+	//*deferReset = 0;
 }
 
 /*-----------------------------------------------------------*/	
