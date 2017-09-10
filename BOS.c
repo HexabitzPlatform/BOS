@@ -813,8 +813,8 @@ void LoadEEvars(void)
 	/* Load parameters. If not found, load defaults */
 	LoadEEparams();	
 	
-	/* Load buttons */
-	LoadEEbuttons();	
+	/* Load buttons - TODO >> move this after starting the scheduler */
+	//LoadEEbuttons();	
 }
 
 /*-----------------------------------------------------------*/

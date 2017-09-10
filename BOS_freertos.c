@@ -99,7 +99,7 @@ void MX_FREERTOS_Init(void)
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &defaultTaskHandle);	
 
 	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
+	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
 	
   /* Create message parsing tasks for module ports */
 #ifdef _P1
@@ -184,15 +184,15 @@ void StartDefaultTask(void * argument)
 			default:
 				break;
 		}
+
+		/* Must reset state to prevent recurring callbacks */
+		//ResetAttachedButtonStates();
 		
 		/* Read button state */
 		CheckAttachedButtons();
 		
 		/* Executed activated Command Snippets */
 		ExecuteSnippet();
-		
-		/* Must reset state to prevent recurring callbacks */
-		ResetAttachedButtonStates();
 		
 		taskYIELD();
   }
