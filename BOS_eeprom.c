@@ -25,7 +25,7 @@
   ******************************************************************************
   */ 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.0 - Copyright (C) 2017 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.1 - Copyright (C) 2017 Hexabitz
     All rights reserved
 */
 	
