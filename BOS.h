@@ -101,7 +101,7 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
-#define	_firmPatch			0
+#define	_firmPatch			1
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
