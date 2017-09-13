@@ -72,6 +72,7 @@ BOS_Status responseStatus = BOS_OK;
 uint8_t bcastID = 0;			// Counter for unique broadcast ID
 uint8_t PcPort = 0;
 uint32_t CLI_baudrate = DEF_CLI_BAUDRATE;
+uint8_t BOS_initialized = 0;
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -813,8 +814,8 @@ void LoadEEvars(void)
 	/* Load parameters. If not found, load defaults */
 	LoadEEparams();	
 	
-	/* Load buttons - TODO >> move this after starting the scheduler */
-	//LoadEEbuttons();	
+	/* Load buttons */
+	LoadEEbuttons();	
 }
 
 /*-----------------------------------------------------------*/
@@ -1210,7 +1211,7 @@ BOS_Status LoadEEbuttons(void)
 				/* Setup the button and its events */
 				AddPortButton(button[i+1].type, i+1);
 				SetButtonEvents(i+1, (button[i+1].events & BUTTON_EVENT_CLICKED), ((button[i+1].events & BUTTON_EVENT_DBL_CLICKED)>>1), button[i+1].pressedX1Sec,\
-												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY1Sec, button[i+1].releasedY1Sec);
+												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY2Sec, button[i+1].releasedY3Sec);
 			}
 		}
 	}
@@ -1948,7 +1949,9 @@ void BOS_Init(void)
 		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
 		Delay_ms_no_rtos(100);
 		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
-	}	
+	}
+
+	BOS_initialized = 1;
 }
 
 /*-----------------------------------------------------------*/
@@ -3169,13 +3172,17 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	uint16_t TX_Pin, RX_Pin, temp16, res;
 	uint8_t temp8 = 0;
 	
-	/* 1. Stop communication at this port */		
-	osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
-	osSemaphoreRelease(PxTxSemaphoreHandle[port]);
+	/* 1. Stop communication at this port (only if the scheduler is running) */
+	if (BOS_initialized) {
+		osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
+		osSemaphoreRelease(PxTxSemaphoreHandle[port]);
+	}
 	portStatus[port] = PORTBUTTON;	
 	
-	/* 2. Deinitialize UART */
-	HAL_UART_DeInit(GetUart(port));
+	/* 2. Deinitialize UART (only if module is initialized) */
+	if (BOS_initialized) {
+		HAL_UART_DeInit(GetUart(port));
+	}
 	
 	/* 3. Initialize GPIOs */
 	GetPortGPIOs(port, &TX_Port, &TX_Pin, &RX_Port, &RX_Pin);		
@@ -3344,19 +3351,30 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	if (released_y2sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
 	if (released_y3sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
 	
-	/* Add to EEPROM - Todo: Don't add if it's already there */
+	/* Add to EEPROM */
 	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
 	if(!res)																														// This variable exists
 	{
 		temp8 = (uint8_t)(temp16 >> 8);																		// Keep upper byte
 		/* Store event flags */
-		temp16 = ((uint16_t)temp8 << 8) | (uint16_t)button[port].events;
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
-		/* Store times */
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
-	}
+		if ((uint8_t)(temp16) != button[port].events) {										// Update only if different
+			temp16 = ((uint16_t)temp8 << 8) | (uint16_t)button[port].events;
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+		}
+		
+		/* Store times - only if different */
+		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], &temp16);
+		if ( temp16 != (((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec) )
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
+		
+		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], &temp16);
+		if ( temp16 != (((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec) )
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
+		
+		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], &temp16);
+		if ( temp16 != (((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec) )
+			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
+	}	// TODO - var does not exist after adding button!
 	else																																// Variable does not exist. Return error
 		return BOS_ERR_BUTTON_NOT_DEFINED;	
 		

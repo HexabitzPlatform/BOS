@@ -248,6 +248,7 @@ extern BOS_t BOS;
 extern uint32_t CLI_baudrate;
 extern uint8_t PcPort;
 extern uint8_t deferButtonReset;
+extern uint8_t BOS_initialized;
 
 /* Exported internal functions ---------------------------------------------------------*/
 void StringToLowerCase(char *string);
