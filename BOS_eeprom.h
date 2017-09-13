@@ -100,7 +100,7 @@
 #define _EE_ParamsDebounce			501				// Parameter: Button debounce
 #define _EE_ParamsSinClick			502				// Parameter: Button single click
 #define _EE_ParamsDblClick			503				// Parameter: Button double click (inter-click min and max)
-
+#define _EE_CLIBaud							504				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
 
 
 #if MaxNumOfModules > 25						// Update

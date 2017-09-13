@@ -17,7 +17,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 BOS_t BOS; 
-BOS_t BOS_default = { .response = BOS_RESPONSE_ALL, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
+BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
 											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
@@ -71,7 +71,6 @@ static char pcUserMessage[80];
 BOS_Status responseStatus = BOS_OK; 
 uint8_t bcastID = 0;			// Counter for unique broadcast ID
 uint8_t PcPort = 0;
-uint32_t CLI_baudrate = DEF_CLI_BAUDRATE;
 uint8_t BOS_initialized = 0;
 
 /* Buttons */
@@ -155,6 +154,8 @@ extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
+"BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
+you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n",
 																															 "BOS.debounce: 1 ... 65536 msec\r\n",
 																															 "BOS.singleclicktime: 1 ... 65536 msec\r\n",
 																															 "BOS.mininterclicktime: 1 ... 255 msec\r\n",
@@ -1117,7 +1118,7 @@ BOS_Status LoadEEstreams(void)
 BOS_Status LoadEEparams(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t temp1 = 0, status1 = 0; 
+	uint16_t temp1, temp2, status1, status2; 
 	
 	/* Read params base - BOS response */
 	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsBase], &temp1);
@@ -1152,6 +1153,16 @@ BOS_Status LoadEEparams(void)
 		BOS.buttons.maxInterClickTime = BOS_default.buttons.maxInterClickTime;	
 	}
 	
+	/* Read CLI baudrate */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud], &temp1);
+	status2 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud+1], &temp2);
+	if (!status1 && !status2) 
+	{
+		BOS.clibaudrate = (uint32_t)temp1 | (((uint32_t)temp2)<<16);
+	}
+	else
+		BOS.clibaudrate = BOS_default.clibaudrate;
+	
 	return result;
 }
 
@@ -1174,6 +1185,10 @@ BOS_Status SaveEEparams(void)
 
 	/* Save Button double click time (min and max inter-click) */
 	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+
+	/* Save CLI baudrate */
+	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
+	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
 	
 	return result;
 }
@@ -1919,11 +1934,11 @@ void BOS_Init(void)
 		/* Initialize the module */
 		Module_Init();	
 		
-		CLI_baudrate = CLI_BAUDRATE_1;
+		BOS.clibaudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 		{	
-			UpdateBaudrate(port, CLI_BAUDRATE_1);
+			UpdateBaudrate(port, BOS.clibaudrate);
 		}
 	}
 	else
@@ -3812,11 +3827,15 @@ static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 	BOS_Status result = BOS_OK; 
 	static int8_t *pcParameterString1, *pcParameterString2; 
 	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
-	uint16_t temp = 0;
+	uint16_t temp = 0; uint32_t temp2 = 0; uint8_t extraMessage = 0;
 	
 	static const int8_t *pcMessageOK = ( int8_t * ) "%s was set to %s\n\r";	
 	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";	
 	static const int8_t *pcMessageWrongValue = ( int8_t * ) "Wrong value!\n\r";	
+	static const int8_t *pcMessageCLI1 = ( int8_t * ) "\nYou must restart to enable the new baudrate.\n\r";
+	static const int8_t *pcMessageCLI2 = ( int8_t * ) "This affects all ports. If you change this value from default, \
+you must connect to a CLI port on each startup to restore other array ports into default baudrate\n\r";
+	
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -3845,6 +3864,17 @@ static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "clibaudrate", xParameterStringLength1-4)) 
+		{
+			temp2 = atoi((const char *)pcParameterString2);
+			if (temp2 <= DEF_CLI_BAUDRATE) {
+				BOS.clibaudrate = temp2;
+				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
+				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+				extraMessage = 1;
+			} else
+				result = BOS_ERR_WrongValue;			
+		}
 		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
 		{
 			temp = atoi((const char *)pcParameterString2);
@@ -3892,6 +3922,10 @@ static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 	{
 		pcParameterString1[xParameterStringLength1] = 0;		// Get rid of the remaining parameters
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, pcParameterString1, pcParameterString2);
+		if (extraMessage == 1) {
+			strcat(( char * ) pcWriteBuffer, ( char * ) pcMessageCLI1);
+			strcat(( char * ) pcWriteBuffer, ( char * ) pcMessageCLI2);
+		}
 	}
 	else if (result == BOS_ERR_WrongParam)
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongParam );
@@ -3935,6 +3969,10 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
 			else
 				result = BOS_ERR_WrongValue;
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "clibaudrate", xParameterStringLength1-4)) 
+		{
+			sprintf( ( char * ) pcWriteBuffer, "%d\n\r", BOS.clibaudrate);
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
 		{

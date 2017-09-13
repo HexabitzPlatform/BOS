@@ -146,6 +146,7 @@ typedef struct
 {
 	buttonsConfig_t buttons;
 	uint8_t response;
+	uint32_t clibaudrate;
 } 
 BOS_t;
 
@@ -183,7 +184,7 @@ button_t;
 #define MaxNumOfPorts							10
 #define MaxLengthOfAlias					10
 #define NumOfKeywords							2
-#define NumOfParamsHelpStrings		5
+#define NumOfParamsHelpStrings		6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
@@ -245,7 +246,6 @@ extern uint8_t routePrev[];
 extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
-extern uint32_t CLI_baudrate;
 extern uint8_t PcPort;
 extern uint8_t deferButtonReset;
 extern uint8_t BOS_initialized;
