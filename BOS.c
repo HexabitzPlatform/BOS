@@ -577,10 +577,10 @@ void PxMessagingTask(void * argument)
 							case CODE_DMA_channel :
 								/* Save stream paramters in EEPROM */
 								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low word */
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high half-word */
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low half-word */
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high half-word */
+								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low half-word */
 								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
 								if (messageLength[port-1] == 18)
 									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
@@ -1470,6 +1470,79 @@ void EE_FormatForFactoryReset(void)
 
 /*-----------------------------------------------------------*/	
 
+/* --- Broadcast a received message to all connected modules 
+*/
+BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t length = 0, src = 0; uint16_t code = 0;
+	
+	/* Broadcast ID is already there. Don't add a new one */
+	
+	/* Message length */
+	length = messageLength[incomingPort-1];
+	/* Message source */
+	src = cMessage[incomingPort-1][1];
+	/* Message code */
+	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
+	/* Message parameters */
+	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
+
+	/* Get broadcast routes */
+	FindBroadcastRoutes(src);
+	
+	/* Send to all my broadcast ports */
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	{
+		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
+		{
+			/* Transmit the message from this port */
+			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+		}	
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Broadcast a message to all connected modules 
+*/
+BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t length = 0;
+	
+	/* Add unique broadcast ID after Message parameters */
+	if (numberOfParams < (MAX_MESSAGE_SIZE-5))
+		messageParams[numberOfParams] = ++bcastID;
+	else
+		messageParams[numberOfParams-1] = ++bcastID;
+	
+	/* Calculate message length */
+	length = numberOfParams + 1 + 5;
+	
+	/* Get broadcast routes */
+	FindBroadcastRoutes(src);
+	
+	/* Send to all my broadcast ports */
+	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	{
+		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
+		{
+			/* Transmit the message from this port */
+			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+		}	
+	}
+
+	/* Reset messageParams buffer */
+	memset( messageParams, 0, numberOfParams );
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Port buttons state parser
 */
 void CheckAttachedButtons(void)
@@ -2182,79 +2255,6 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 
 	/* Read this port again */
 	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a received message to all connected modules 
-*/
-BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t length = 0, src = 0; uint16_t code = 0;
-	
-	/* Broadcast ID is already there. Don't add a new one */
-	
-	/* Message length */
-	length = messageLength[incomingPort-1];
-	/* Message source */
-	src = cMessage[incomingPort-1][1];
-	/* Message code */
-	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
-	/* Message parameters */
-	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
-
-	/* Get broadcast routes */
-	FindBroadcastRoutes(src);
-	
-	/* Send to all my broadcast ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
-		{
-			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, 0xFF, code, length-5);	
-		}	
-	}
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a message to all connected modules 
-*/
-BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t length = 0;
-	
-	/* Add unique broadcast ID after Message parameters */
-	if (numberOfParams < (MAX_MESSAGE_SIZE-5))
-		messageParams[numberOfParams] = ++bcastID;
-	else
-		messageParams[numberOfParams-1] = ++bcastID;
-	
-	/* Calculate message length */
-	length = numberOfParams + 1 + 5;
-	
-	/* Get broadcast routes */
-	FindBroadcastRoutes(src);
-	
-	/* Send to all my broadcast ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
-		{
-			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, 0xFF, code, length-5);	
-		}	
-	}
-
-	/* Reset messageParams buffer */
-	memset( messageParams, 0, numberOfParams );
 	
 	return result;
 }
