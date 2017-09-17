@@ -363,10 +363,10 @@ void PxMessagingTask(void * argument)
 			src = cMessage[port-1][1];	
 			
 			/* Read message code (remove response options) */
-			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x9F;	
+			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x9FFF;	
 			
 			/* Read response mode */
-			responseMode = (code & 0x60) >> 5;
+			responseMode = (cMessage[port-1][2] & 0x60) >> 5;
 			
 			/* Is it a long message? Check MSB */
 			if (code>>15) {

@@ -240,6 +240,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Forward the command */
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
 							xReturned = pdFALSE;
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
