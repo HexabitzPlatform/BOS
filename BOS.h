@@ -37,6 +37,7 @@ enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
+typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT } varFormat_t;
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -183,6 +184,7 @@ button_t;
 #define	MaxNumOfModules						25
 #define MaxNumOfPorts							10
 #define MaxLengthOfAlias					10
+#define MAX_BOS_VARS							128
 #define NumOfKeywords							2
 #define NumOfParamsHelpStrings		6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
@@ -249,8 +251,11 @@ extern BOS_t BOS;
 extern uint8_t PcPort;
 extern uint8_t deferButtonReset;
 extern uint8_t BOS_initialized;
+extern float BOSvars[];
+
 
 /* Exported internal functions ---------------------------------------------------------*/
+
 void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
 
@@ -258,27 +263,32 @@ extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
 	|														Message Codes	 														 	|
    ----------------------------------------------------------------------- 
 */
-#define	CODE_unknown_message			0
-#define	CODE_ping									1
-#define	CODE_ping_response				2
+#define	CODE_unknown_message							0
+#define	CODE_ping													1
+#define	CODE_ping_response								2
+				
+#define	CODE_IND_toggle										5
 
-#define	CODE_IND_toggle						5
+#define	CODE_hi														10
+#define	CODE_hi_response									11
+#define	CODE_explore_adj									12
+#define	CODE_explore_adj_response					13
+#define	CODE_port_dir											14
+#define	CODE_module_id										15
+#define	CODE_topology											16
+#define	CODE_broadcast_plan								17
+#define	CODE_read_port_dir								18
+#define	CODE_read_port_dir_response				19
+#define	CODE_exp_eeprom	 									20
+#define	CODE_CLI_command 									21
+#define	CODE_CLI_response  								22
+#define	CODE_DMA_channel  								23
+#define	CODE_DMA_scast_stream  						24
 
-#define	CODE_hi										10
-#define	CODE_hi_response					11
-#define	CODE_explore_adj					12
-#define	CODE_explore_adj_response	13
-#define	CODE_port_dir							14
-#define	CODE_module_id						15
-#define	CODE_topology							16
-#define	CODE_broadcast_plan				17
-#define	CODE_read_port_dir				18
-#define	CODE_read_port_dir_response		19
-#define	CODE_exp_eeprom	 					20
-#define	CODE_CLI_command 					21
-#define	CODE_CLI_response  				22
-#define	CODE_DMA_channel  				23
-#define	CODE_DMA_scast_stream  		24
+#define	CODE_read_remote  								30
+#define	CODE_read_remote_response  				31
+#define	CODE_write_remote  								32
+#define	CODE_write_remote_response  			33
 
 
 /* -----------------------------------------------------------------------
@@ -323,8 +333,8 @@ extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
-
-
+extern void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t format);
+extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format);
 
 
 #endif /* BOS_H */
