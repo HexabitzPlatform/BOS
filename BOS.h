@@ -184,7 +184,7 @@ button_t;
 #define	MaxNumOfModules						25
 #define MaxNumOfPorts							10
 #define MaxLengthOfAlias					10
-#define MAX_BOS_VARS							128
+#define MAX_BOS_VARS							100
 #define NumOfKeywords							2
 #define NumOfParamsHelpStrings		6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
@@ -251,7 +251,7 @@ extern BOS_t BOS;
 extern uint8_t PcPort;
 extern uint8_t deferButtonReset;
 extern uint8_t BOS_initialized;
-extern float BOSvars[];
+extern uint8_t BOS_var_reg[MAX_BOS_VARS];
 
 
 /* Exported internal functions ---------------------------------------------------------*/
@@ -333,7 +333,7 @@ extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
-extern void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t format);
+extern void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t *format);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format);
 
 
