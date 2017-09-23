@@ -73,7 +73,7 @@ uint8_t bcastID = 0;			// Counter for unique broadcast ID
 uint8_t PcPort = 0;
 uint8_t BOS_initialized = 0;
 uint8_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register. Higher 4 bits: status. Lower 4 bits: format.
-float remoteBuffer = 0;
+uint64_t remoteBuffer = 0;
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -677,16 +677,53 @@ void PxMessagingTask(void * argument)
 								break;			
 
 							case CODE_read_remote_response :
-								if (remoteBuffer)				// We requested a BOS variable
+								if (remoteBuffer == 0)				// We requested a BOS variable
 								{
-									
+									// Read variable according to its format
+									switch (cMessage[port-1][4])											// Remote format
+                  {
+                  	case FMT_UINT8: 
+											remoteBuffer = *(__IO uint8_t *)&cMessage[port-1][5]; break;
+										case FMT_INT8:
+											remoteBuffer = *(__IO int8_t *)&cMessage[port-1][5]; break;
+                  	case FMT_UINT16: 
+											remoteBuffer = *(__IO uint16_t *)&cMessage[port-1][5]; break;
+                  	case FMT_INT16: 
+											remoteBuffer = *(__IO int16_t *)&cMessage[port-1][5]; break;
+                  	case FMT_UINT32: 
+											remoteBuffer = *(__IO uint32_t *)&cMessage[port-1][5]; break;
+										case FMT_INT32:
+											remoteBuffer = *(__IO int32_t *)&cMessage[port-1][5]; break;									
+                  	case FMT_FLOAT:
+											remoteBuffer = *(__IO float *)&cMessage[port-1][5]; break;
+                  	default:
+                  		break;
+                  }										
 								}
 								else										// We requested a memory location
 								{
-									
-									
+									// Read variable according to requested format
+									switch (remoteBuffer)															// Requested format
+                  {
+                  	case FMT_UINT8: 
+											remoteBuffer = *(__IO uint8_t *)&cMessage[port-1][4]; break;
+										case FMT_INT8:
+											remoteBuffer = *(__IO int8_t *)&cMessage[port-1][4]; break;
+                  	case FMT_UINT16: 
+											remoteBuffer = *(__IO uint16_t *)&cMessage[port-1][4]; break;
+                  	case FMT_INT16: 
+											remoteBuffer = *(__IO int16_t *)&cMessage[port-1][4]; break;
+                  	case FMT_UINT32: 
+											remoteBuffer = *(__IO uint32_t *)&cMessage[port-1][4]; break;
+										case FMT_INT32:
+											remoteBuffer = *(__IO int32_t *)&cMessage[port-1][4]; break;									
+                  	case FMT_FLOAT:
+											remoteBuffer = *(__IO float *)&cMessage[port-1][4]; break;
+                  	default:
+                  		break;
+                  }															
 								}
-
+								responseStatus = BOS_OK;
 								break;	
 
 							case CODE_write_remote :
@@ -3510,12 +3547,15 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 */
 void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t *format)
 {
+	/* Reset local buffer */
+	remoteBuffer = 0;
+	
 	/* Check if reading a BOS variable or memory location */
 	if (remoteAddress <= MAX_BOS_VARS)
 	{
 		messageParams[0] = remoteAddress;			// Send BOS variable number
 		SendMessageToModule(module, CODE_read_remote, 1);
-		remoteBuffer = 1;											// Set a flag that we requested a BOS var
+		remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	}
 	else
 	{
@@ -3525,16 +3565,14 @@ void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t *format)
 		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); 
 		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 		
 		SendMessageToModule(module, CODE_read_remote, 6);
-		remoteBuffer = 0;											// Set a flag that we requested a memory location
+		remoteBuffer = *format;								// Set a flag that we requested a memory location
 	}
 	
 	/* Wait until read is complete */
-	
-	
+	while (responseStatus != BOS_OK) { osDelay(1); };
 	
 	/* Return the read value */
-	
-	return NULL;
+	return ((void *)&remoteBuffer);	
 }
 
 /*-----------------------------------------------------------*/
