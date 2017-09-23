@@ -253,6 +253,7 @@ extern uint8_t BOS_initialized;
 /* Exported internal functions ---------------------------------------------------------*/
 void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
+extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
 
 /* -----------------------------------------------------------------------
 	|														Message Codes	 														 	|
@@ -301,9 +302,6 @@ extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern void vRegisterCLICommands(void);
 extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
-extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
-extern BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
-extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
 extern void StartMilliDelay(uint16_t Delay);
 extern BOS_Status Explore(void);

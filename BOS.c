@@ -147,7 +147,8 @@ void buttonClickedCallback(uint8_t port);
 void buttonDblClickedCallback(uint8_t port);
 void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
 void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
-
+BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
+BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
 
 /* Module exported internal functions */
 extern void Module_Init(void);
