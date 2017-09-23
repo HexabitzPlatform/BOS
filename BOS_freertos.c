@@ -184,9 +184,6 @@ void StartDefaultTask(void * argument)
 			default:
 				break;
 		}
-
-		/* Must reset state to prevent recurring callbacks */
-		ResetAttachedButtonStates(&deferButtonReset);
 		
 		/* Read button state */
 		CheckAttachedButtons();

@@ -80,7 +80,6 @@ button_t button[NumOfPorts+1] = {0};
 uint32_t pressCounter[NumOfPorts+1] = {0};
 uint32_t releaseCounter[NumOfPorts+1] = {0};
 uint8_t dblCounter[NumOfPorts+1] = {0};
-uint8_t deferButtonReset = 0;
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -1897,6 +1896,9 @@ void CheckAttachedButtons(void)
       	default:
       		break;
       }
+			
+			/* 6. Reset button state */
+			button[i].state = NONE;			
 
 		}					// Done checking this button
 	}						// Done checking all buttons
@@ -3495,14 +3497,38 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
 	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
 	
-	if (clicked)				button[port].events |= BUTTON_EVENT_CLICKED;
-	if (dbl_clicked)		button[port].events |= BUTTON_EVENT_DBL_CLICKED;
-	if (pressed_x1sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-	if (pressed_x2sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-	if (pressed_x3sec)	button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-	if (released_y1sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-	if (released_y2sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-	if (released_y3sec)	button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+	if (clicked)				
+		button[port].events |= BUTTON_EVENT_CLICKED;
+	else								
+		button[port].events &= ~BUTTON_EVENT_CLICKED;
+	if (dbl_clicked)		
+		button[port].events |= BUTTON_EVENT_DBL_CLICKED;
+	else								
+		button[port].events &= ~BUTTON_EVENT_DBL_CLICKED;
+	if (pressed_x1sec)	
+		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X1_SEC;
+	if (pressed_x2sec)	
+		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X2_SEC;
+	if (pressed_x3sec)	
+		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X3_SEC;
+	if (released_y1sec)	
+		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
+	if (released_y2sec)	
+		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
+	if (released_y3sec)	
+		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+	else								
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
 	
 	/* Add to EEPROM */
 	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);

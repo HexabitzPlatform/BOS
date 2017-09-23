@@ -170,7 +170,7 @@ button_t;
 #define	BUTTON_EVENT_CLICKED									0x01
 #define	BUTTON_EVENT_DBL_CLICKED							0x02
 #define	BUTTON_EVENT_PRESSED_FOR_X1_SEC				0x04
-#define	BUTTON_EVENT_PRESSED_FOR_X2_SEC				0x05
+#define	BUTTON_EVENT_PRESSED_FOR_X2_SEC				0x08
 #define	BUTTON_EVENT_PRESSED_FOR_X3_SEC				0x10
 #define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
 #define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
@@ -249,7 +249,6 @@ extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
 extern uint8_t PcPort;
-extern uint8_t deferButtonReset;
 extern uint8_t BOS_initialized;
 extern uint8_t BOS_var_reg[MAX_BOS_VARS];
 
