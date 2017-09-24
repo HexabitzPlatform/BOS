@@ -38,12 +38,8 @@
 #include "BOS.h"
 
 /* Exported constants --------------------------------------------------------*/
-/* Define the size of the sectors to be used */
-#define FLASH_SIZE						((uint32_t)0x20000)
-#define PAGE_SIZE             ((uint32_t)0x0800)  /* Page size = 2KByte for STM32F07x 
-																												and STM32F09x devices */
-																												
-/* Memory map:
+
+/* Memory map: - STM32F091CB
 				- Application: 0x08000000 - 0x0801D800 >> 118 KB
 		 - Read-only (RO): 0x0801D800 - 0x0801E000 >> 2 KB, used to store topology information
 		- Emulated EEPROM: 0x0801E000 - 0x08020000 >> 8 KB, fits 1024 16-bit variables in 2 main-duplicate pages (A and B)
@@ -51,7 +47,9 @@
 #define APP_START_ADDRESS  		((uint32_t)0x08000000) 
 #define RO_START_ADDRESS  		((uint32_t)0x0801D800) 
 #define EEPROM_START_ADDRESS  ((uint32_t)0x0801E000) 
-
+#define FLASH_SIZE						((uint32_t)0x20000)			
+#define SRAM_SIZE							((uint32_t)0x8000)
+#define PAGE_SIZE             ((uint32_t)0x0800)  		/* Page size = 2KByte for STM32F07x and STM32F09x devices */
 
 /* Pages A and B base and end addresses - Each page is extended into two pages 1 and 2 */
 #define PAGEA1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))
