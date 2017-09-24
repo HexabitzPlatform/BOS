@@ -616,23 +616,23 @@ void PxMessagingTask(void * argument)
 												messageParams[1] = *(__IO int8_t *)temp32; 
 												SendMessageToModule(src, CODE_read_remote_response, 2); break;
 											case FMT_UINT16: 
-												messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); messageParams[2] = (uint8_t)(*(__IO uint16_t *)temp32); 
+												messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); 
 												SendMessageToModule(src, CODE_read_remote_response, 3); break;
 											case FMT_INT16: 
-												messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); messageParams[2] = (uint8_t)(*(__IO int16_t *)temp32); 
+												messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
 												SendMessageToModule(src, CODE_read_remote_response, 3); break;
 											case FMT_UINT32: 
-												messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); 
-												messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); messageParams[4] = (uint8_t)(*(__IO uint32_t *)temp32); 
+												messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+												messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
 												SendMessageToModule(src, CODE_read_remote_response, 5); break;
 											case FMT_INT32: 
-												messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>24); messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); 
-												messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>8); messageParams[4] = (uint8_t)(*(__IO int32_t *)temp32);
+												messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+												messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
 												SendMessageToModule(src, CODE_read_remote_response, 5); break;										
 											case FMT_FLOAT:
-												messageParams[1] = *(__IO uint8_t *)(temp32+7); messageParams[2] = *(__IO uint8_t *)(temp32+6); messageParams[3] = *(__IO uint8_t *)(temp32+5); 
-												messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+3); messageParams[6] = *(__IO uint8_t *)(temp32+2); 
-												messageParams[7] = *(__IO uint8_t *)(temp32+1); messageParams[8] = *(__IO uint8_t *)temp32; 			// You cannot bitwise floats	
+												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
+												messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
+												messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
 												SendMessageToModule(src, CODE_read_remote_response, 9); break;
 											default:
 												break;
@@ -653,23 +653,23 @@ void PxMessagingTask(void * argument)
 											messageParams[0] = *(__IO int8_t *)temp32; 
 											SendMessageToModule(src, CODE_read_remote_response, 1); break;
                   	case FMT_UINT16: 
-											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); messageParams[1] = (uint8_t)(*(__IO uint16_t *)temp32); 
+											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8);  
 											SendMessageToModule(src, CODE_read_remote_response, 2); break;
                   	case FMT_INT16: 
-											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>8); messageParams[1] = (uint8_t)(*(__IO int16_t *)temp32); 
+											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
 											SendMessageToModule(src, CODE_read_remote_response, 2); break;
                   	case FMT_UINT32: 
-											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); 
-											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); messageParams[3] = (uint8_t)(*(__IO uint32_t *)temp32); 
+											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
 											SendMessageToModule(src, CODE_read_remote_response, 4); break;
                   	case FMT_INT32: 
-											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>24); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>16); 
-											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>8); messageParams[3] = (uint8_t)(*(__IO int32_t *)temp32);
+											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
 											SendMessageToModule(src, CODE_read_remote_response, 4); break;										
                   	case FMT_FLOAT:
-											messageParams[0] = *(__IO uint8_t *)(temp32+7); messageParams[1] = *(__IO uint8_t *)(temp32+6); messageParams[2] = *(__IO uint8_t *)(temp32+5); 
-											messageParams[3] = *(__IO uint8_t *)(temp32+4); messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+2); 
-											messageParams[6] = *(__IO uint8_t *)(temp32+1); messageParams[7] = *(__IO uint8_t *)temp32; 			// You cannot bitwise floats	
+											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); messageParams[2] = *(__IO uint8_t *)(temp32+2); 
+											messageParams[3] = *(__IO uint8_t *)(temp32+3); messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+5); 
+											messageParams[6] = *(__IO uint8_t *)(temp32+6); messageParams[7] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
 											SendMessageToModule(src, CODE_read_remote_response, 8); break;
                   	default:
                   		break;
@@ -683,21 +683,22 @@ void PxMessagingTask(void * argument)
 									// Read variable according to its format
 									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
 									switch (cMessage[port-1][4])											// Remote format
-                  {
+                  {																									// Note that cMessage[port-1][4] can be unaligned. That's why we cannot use simple memory access
                   	case FMT_UINT8: 
-											remoteBuffer = *(__IO uint8_t *)&cMessage[port-1][5]; break;
+											remoteBuffer = cMessage[port-1][5]; break;
 										case FMT_INT8:
-											remoteBuffer = *(__IO int8_t *)&cMessage[port-1][5]; break;
+											remoteBuffer = (int8_t)cMessage[port-1][5]; break;
                   	case FMT_UINT16: 
-											remoteBuffer = *(__IO uint16_t *)&cMessage[port-1][5]; break;
+											remoteBuffer = ((uint16_t)cMessage[port-1][5]<<0) + ((uint16_t)cMessage[port-1][6]<<8); break;
                   	case FMT_INT16: 
-											remoteBuffer = *(__IO int16_t *)&cMessage[port-1][5]; break;
+											remoteBuffer = ((int16_t)cMessage[port-1][5]<<0) + ((int16_t)cMessage[port-1][6]<<8); break;
                   	case FMT_UINT32: 
-											remoteBuffer = *(__IO uint32_t *)&cMessage[port-1][5]; break;
+											remoteBuffer = ((uint32_t)cMessage[port-1][5]<<0) + ((uint32_t)cMessage[port-1][6]<<8) + ((uint32_t)cMessage[port-1][7]<<16) + ((uint32_t)cMessage[port-1][8]<<24); break;
 										case FMT_INT32:
-											remoteBuffer = *(__IO int32_t *)&cMessage[port-1][5]; break;									
+											remoteBuffer = ((int32_t)cMessage[port-1][5]<<0) + ((int32_t)cMessage[port-1][6]<<8) + ((int32_t)cMessage[port-1][7]<<16) + ((int32_t)cMessage[port-1][8]<<24); break;									
                   	case FMT_FLOAT:
-											remoteBuffer = *(__IO float *)&cMessage[port-1][5]; break;
+											remoteBuffer = ((uint64_t)cMessage[port-1][5]<<0) + ((uint64_t)cMessage[port-1][6]<<8) + ((uint64_t)cMessage[port-1][7]<<16) + ((uint64_t)cMessage[port-1][8]<<24) + \
+																		 ((uint64_t)cMessage[port-1][9]<<32) + ((uint64_t)cMessage[port-1][10]<<40) + ((uint64_t)cMessage[port-1][11]<<48) + ((uint64_t)cMessage[port-1][12]<<56); break;
                   	default:
                   		break;
                   }										
@@ -706,21 +707,22 @@ void PxMessagingTask(void * argument)
 								{
 									// Read variable according to requested format
 									switch (remoteBuffer)															// Requested format
-                  {
+                  {																									// Note that cMessage[port-1][4] can be unaligned. That's why we cannot use simple memory access
                   	case FMT_UINT8: 
-											remoteBuffer = *(__IO uint8_t *)&cMessage[port-1][4]; break;
+											remoteBuffer = cMessage[port-1][4]; break;
 										case FMT_INT8:
-											remoteBuffer = *(__IO int8_t *)&cMessage[port-1][4]; break;
+											remoteBuffer = (int8_t)cMessage[port-1][4]; break;
                   	case FMT_UINT16: 
-											remoteBuffer = *(__IO uint16_t *)&cMessage[port-1][4]; break;
+											remoteBuffer = ((uint16_t)cMessage[port-1][4]<<0) + ((uint16_t)cMessage[port-1][5]<<8); break;
                   	case FMT_INT16: 
-											remoteBuffer = *(__IO int16_t *)&cMessage[port-1][4]; break;
+											remoteBuffer = ((int16_t)cMessage[port-1][4]<<0) + ((int16_t)cMessage[port-1][5]<<8); break;
                   	case FMT_UINT32: 
-											remoteBuffer = *(__IO uint32_t *)&cMessage[port-1][4]; break;
+											remoteBuffer = ((uint32_t)cMessage[port-1][4]<<0) + ((uint32_t)cMessage[port-1][5]<<8) + ((uint32_t)cMessage[port-1][6]<<16) + ((uint32_t)cMessage[port-1][7]<<24); break;
 										case FMT_INT32:
-											remoteBuffer = *(__IO int32_t *)&cMessage[port-1][4]; break;									
+											remoteBuffer = ((int32_t)cMessage[port-1][4]<<0) + ((int32_t)cMessage[port-1][5]<<8) + ((int32_t)cMessage[port-1][6]<<16) + ((int32_t)cMessage[port-1][7]<<24); break;									
                   	case FMT_FLOAT:
-											remoteBuffer = *(__IO float *)&cMessage[port-1][4]; break;
+											remoteBuffer = ((uint64_t)cMessage[port-1][4]<<0) + ((uint64_t)cMessage[port-1][5]<<8) + ((uint64_t)cMessage[port-1][6]<<16) + ((uint64_t)cMessage[port-1][7]<<24) + \
+																		 ((uint64_t)cMessage[port-1][8]<<32) + ((uint64_t)cMessage[port-1][9]<<40) + ((uint64_t)cMessage[port-1][10]<<48) + ((uint64_t)cMessage[port-1][11]<<56); break;
                   	default:
                   		break;
                   }															
@@ -2375,6 +2377,9 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		}
 	}	
 	
+	/* if length is 0xD = 13, append by one byte */
+	++length;
+	
 	/* 0x75 End of message */
 	message[length-1] = 0x75;		
 	
@@ -3567,14 +3572,14 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 /*-----------------------------------------------------------*/
 
 /* --- Read a variable from a remote module. 
-			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
+			 This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
 					module: Remote module ID. 
 					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
 					remoteFormat (output): Pointer to format of remote BOS variable 					
 					timeout: Read timeout in msec.
 */
-void *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout)
+uint32_t ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
 	remoteBuffer = 0;
@@ -3592,13 +3597,16 @@ void *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteF
 	*remoteFormat = remoteVarFormat;
 	
 	/* Return the read value */
-	return ((void *)&remoteBuffer);	
+	if (responseStatus == BOS_OK)
+		return ((uint32_t)&remoteBuffer);	
+	else 
+		return BOS_ERR_REMOTE_READ_TIMEOUT;
 }
 
 /*-----------------------------------------------------------*/
 
 /* --- Read a memory address from a remote module. 
-			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
+			 This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
 					module: Remote module ID. 
 					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
@@ -3606,7 +3614,7 @@ void *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteF
 									(FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT)
 					timeout: Read timeout in msec.
 */
-void *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
+uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
 	remoteBuffer = 0;
@@ -3621,10 +3629,13 @@ void *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t reque
 	
 	/* Wait until read is complete */
 	uint32_t t0 = HAL_GetTick();
-	while ( (responseStatus != BOS_OK) || ((HAL_GetTick()-t0) < timeout) ) { };
+	while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
 	
 	/* Return the read value */
-	return ((void *)&remoteBuffer);	
+	if (responseStatus == BOS_OK)
+		return ((uint32_t *)&remoteBuffer);	
+	else 
+		return NULL;
 }
 
 /*-----------------------------------------------------------*/
