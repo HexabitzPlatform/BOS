@@ -74,6 +74,7 @@ uint8_t PcPort = 0;
 uint8_t BOS_initialized = 0;
 uint8_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register. Higher 4 bits: status. Lower 4 bits: format.
 uint64_t remoteBuffer = 0;
+varFormat_t remoteVarFormat = FMT_UINT8;
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -680,6 +681,7 @@ void PxMessagingTask(void * argument)
 								if (remoteBuffer == 0)				// We requested a BOS variable
 								{
 									// Read variable according to its format
+									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
 									switch (cMessage[port-1][4])											// Remote format
                   {
                   	case FMT_UINT8: 
@@ -3564,39 +3566,62 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 
 /*-----------------------------------------------------------*/
 
-/* --- Read a value from a remote module. 
+/* --- Read a variable from a remote module. 
 			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
 					module: Remote module ID. 
 					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
-					format: Pointer to returned format of remote BOS variable or requested format of remote memory location 
-									(FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT)
+					remoteFormat (output): Pointer to format of remote BOS variable 					
+					timeout: Read timeout in msec.
 */
-void *ReadRemote(uint8_t module, uint32_t remoteAddress, varFormat_t *format)
+void *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
 	remoteBuffer = 0;
 	
-	/* Check if reading a BOS variable or memory location */
-	if (remoteAddress <= MAX_BOS_VARS)
-	{
-		messageParams[0] = remoteAddress;			// Send BOS variable number
-		SendMessageToModule(module, CODE_read_remote, 1);
-		remoteBuffer = 0;											// Set a flag that we requested a BOS var
-	}
-	else
-	{
-		messageParams[0] = 0;
-		messageParams[1] = *format;						// Requested format
-		// Remote address
-		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); 
-		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 		
-		SendMessageToModule(module, CODE_read_remote, 6);
-		remoteBuffer = *format;								// Set a flag that we requested a memory location
-	}
+	/* Send the Message */
+	messageParams[0] = remoteAddress;			// Send BOS variable number
+	SendMessageToModule(module, CODE_read_remote, 1);
+	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
 	/* Wait until read is complete */
-	while (responseStatus != BOS_OK) { osDelay(1); };
+	uint32_t t0 = HAL_GetTick();
+	while ( (responseStatus != BOS_OK) || ((HAL_GetTick()-t0) < timeout) ) { };
+	
+	/* Return the remote var format */
+	*remoteFormat = remoteVarFormat;
+	
+	/* Return the read value */
+	return ((void *)&remoteBuffer);	
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Read a memory address from a remote module. 
+			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
+			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
+					module: Remote module ID. 
+					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
+					requestedFormat (input): Requested format of remote memory location 
+									(FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT)
+					timeout: Read timeout in msec.
+*/
+void *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
+{
+	/* Reset local buffer */
+	remoteBuffer = 0;
+	
+	/* Send the Message */
+	messageParams[0] = 0;
+	messageParams[1] = requestedFormat;						// Requested format
+	messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
+	messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 		
+	SendMessageToModule(module, CODE_read_remote, 6);
+	remoteBuffer = requestedFormat;								// Set a flag that we requested a memory location
+	
+	/* Wait until read is complete */
+	uint32_t t0 = HAL_GetTick();
+	while ( (responseStatus != BOS_OK) || ((HAL_GetTick()-t0) < timeout) ) { };
 	
 	/* Return the read value */
 	return ((void *)&remoteBuffer);	
