@@ -37,7 +37,7 @@ enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
-typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT } varFormat_t;
+typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -63,6 +63,7 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdbool.h>
 #include <ctype.h>
 #include <math.h>	 
 #include <limits.h>	
@@ -124,6 +125,7 @@ typedef enum
 	BOS_ERR_BUTTON_RELEASE_EVENT_FULL = 13,
 	BOS_ERR_SNIP_MEM_FULL = 14,
 	BOS_ERR_REMOTE_READ_TIMEOUT = 15,
+	BOS_ERR_REMOTE_READ_NO_VAR = 16,
 	BOS_ERR_WrongName = 100,
 	BOS_ERR_WrongID = 101,
 	BOS_ERR_WrongParam = 102,
@@ -167,6 +169,7 @@ typedef struct
 } 
 button_t;
 
+
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
 #define	BUTTON_EVENT_DBL_CLICKED							0x02
@@ -180,14 +183,14 @@ button_t;
 
 
 /* BOS Parameters */ 
-#define MAX_MESSAGE_SIZE					50
-#define cmdMAX_INPUT_SIZE					50
-#define	MaxNumOfModules						25
-#define MaxNumOfPorts							10
-#define MaxLengthOfAlias					10
-#define MAX_BOS_VARS							100
-#define NumOfKeywords							2
-#define NumOfParamsHelpStrings		6
+#define MAX_MESSAGE_SIZE							50
+#define cmdMAX_INPUT_SIZE							50
+#define	MaxNumOfModules								25
+#define MaxNumOfPorts									10
+#define MaxLengthOfAlias							10
+#define MAX_BOS_VARS									100
+#define NumOfKeywords									2
+#define NumOfParamsHelpStrings				6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
@@ -251,7 +254,7 @@ extern button_t button[NumOfPorts+1];
 extern BOS_t BOS;
 extern uint8_t PcPort;
 extern uint8_t BOS_initialized;
-extern uint8_t BOS_var_reg[MAX_BOS_VARS];
+extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 
 
 /* Exported internal functions ---------------------------------------------------------*/
@@ -334,6 +337,7 @@ extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_cli
 extern uint32_t ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format);
+extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 
 
 #endif /* BOS_H */

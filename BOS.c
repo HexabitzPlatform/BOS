@@ -72,7 +72,7 @@ BOS_Status responseStatus = BOS_OK;
 uint8_t bcastID = 0;			// Counter for unique broadcast ID
 uint8_t PcPort = 0;
 uint8_t BOS_initialized = 0;
-uint8_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register. Higher 4 bits: status. Lower 4 bits: format.
+uint32_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register: Bits 31-16: variable RAM address shift from 0x20000000, Bits 15-8: status. Bits 7-0: format.
 uint64_t remoteBuffer = 0;
 varFormat_t remoteVarFormat = FMT_UINT8;
 
@@ -602,13 +602,16 @@ void PxMessagingTask(void * argument)
 							case CODE_read_remote :								
 								if(cMessage[port-1][4])			// request for a BOS var
 								{
-									messageParams[0] = BOS_var_reg[(cMessage[port-1][4]-1)&0x0F];					// send variable format (lower 4 bits)
+									messageParams[0] = BOS_var_reg[cMessage[port-1][4]-1]&0x000F;					// send variable format (lower 4 bits)
 									if (messageParams[0] == 0) {																					// Variable does not exist
 										SendMessageToModule(src, CODE_read_remote_response, 1);							
 									} else {
-										// Variable exists. Send variable according to its format
+										// Variable exists. Get its memory address
+										temp32 = (BOS_var_reg[cMessage[port-1][4]-1]>>16) + 0x20000000;
+										// Send variable according to its format
 										switch (messageParams[0])											// requested format
 										{
+											case FMT_BOOL:
 											case FMT_UINT8: 
 												messageParams[1] = *(__IO uint8_t *)temp32; 
 												SendMessageToModule(src, CODE_read_remote_response, 2); break;
@@ -633,7 +636,7 @@ void PxMessagingTask(void * argument)
 												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
 												messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
 												messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
-												SendMessageToModule(src, CODE_read_remote_response, 9); break;
+												SendMessageToModule(src, CODE_read_remote_response, 9); break;			
 											default:
 												break;
 										}											
@@ -646,6 +649,7 @@ void PxMessagingTask(void * argument)
 									// Get variable according to requested format
 									switch (cMessage[port-1][5])											// requested format
                   {
+										case FMT_BOOL:
                   	case FMT_UINT8: 
 											messageParams[0] = *(__IO uint8_t *)temp32; 
 											SendMessageToModule(src, CODE_read_remote_response, 1); break;
@@ -683,8 +687,11 @@ void PxMessagingTask(void * argument)
 									// Read variable according to its format
 									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
 									switch (cMessage[port-1][4])											// Remote format
-                  {																									// Note that cMessage[port-1][4] can be unaligned. That's why we cannot use simple memory access
-                  	case FMT_UINT8: 
+                  {																									// Note that cMessage[port-1][5] can be unaligned. That's why we cannot use simple memory access
+                  	case 0:																					// This variable does not exist
+											responseStatus = BOS_ERR_REMOTE_READ_NO_VAR; break;
+										case FMT_BOOL:
+										case FMT_UINT8: 
 											remoteBuffer = cMessage[port-1][5]; break;
 										case FMT_INT8:
 											remoteBuffer = (int8_t)cMessage[port-1][5]; break;
@@ -708,7 +715,8 @@ void PxMessagingTask(void * argument)
 									// Read variable according to requested format
 									switch (remoteBuffer)															// Requested format
                   {																									// Note that cMessage[port-1][4] can be unaligned. That's why we cannot use simple memory access
-                  	case FMT_UINT8: 
+                  	case FMT_BOOL:
+										case FMT_UINT8: 
 											remoteBuffer = cMessage[port-1][4]; break;
 										case FMT_INT8:
 											remoteBuffer = (int8_t)cMessage[port-1][4]; break;
@@ -727,7 +735,8 @@ void PxMessagingTask(void * argument)
                   		break;
                   }															
 								}
-								responseStatus = BOS_OK;
+								// Remote read status
+								if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
 								break;	
 
 							case CODE_write_remote :
@@ -3585,22 +3594,24 @@ uint32_t ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remo
 	remoteBuffer = 0;
 	
 	/* Send the Message */
-	messageParams[0] = remoteAddress;			// Send BOS variable number
+	messageParams[0] = remoteAddress;			// Send BOS variable index
 	SendMessageToModule(module, CODE_read_remote, 1);
 	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
 	/* Wait until read is complete */
 	uint32_t t0 = HAL_GetTick();
-	while ( (responseStatus != BOS_OK) || ((HAL_GetTick()-t0) < timeout) ) { };
+	while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
 	
-	/* Return the remote var format */
-	*remoteFormat = remoteVarFormat;
-	
-	/* Return the read value */
-	if (responseStatus == BOS_OK)
-		return ((uint32_t)&remoteBuffer);	
+	/* Return the read value address */
+	if (responseStatus == BOS_OK) 
+	{
+		/* Return the remote var format */
+		*remoteFormat = remoteVarFormat;
+		
+		return ((uint32_t)&remoteBuffer);		
+	}
 	else 
-		return BOS_ERR_REMOTE_READ_TIMEOUT;
+		return NULL;
 }
 
 /*-----------------------------------------------------------*/
@@ -3610,8 +3621,7 @@ uint32_t ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remo
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
 					module: Remote module ID. 
 					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
-					requestedFormat (input): Requested format of remote memory location 
-									(FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT)
+					requestedFormat (input): Requested format of remote memory location (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
 					timeout: Read timeout in msec.
 */
 uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
@@ -3631,7 +3641,7 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 	uint32_t t0 = HAL_GetTick();
 	while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
 	
-	/* Return the read value */
+	/* Return the read value address */
 	if (responseStatus == BOS_OK)
 		return ((uint32_t *)&remoteBuffer);	
 	else 
@@ -3646,7 +3656,7 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 					module: Remote module ID. 
 					localAddress: Local value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables with unknown addresses.
 					remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables with unknown addresses.
-					format: Local value format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT)
+					format: Local value format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
 */
 BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format)
 {
@@ -3655,6 +3665,25 @@ BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAdd
 }
 
 /*-----------------------------------------------------------*/
+
+/* --- Assign an index to a new BOS variable
+*/
+uint8_t AddBOSvar(varFormat_t format, uint32_t address)
+{
+	for( uint8_t v=0 ; v<MAX_BOS_VARS ; v++)
+  {
+		if((BOS_var_reg[v]&0x000F) == 0)		// Index not assigned yet
+		{
+			BOS_var_reg[v] = format + ((address-0x20000000)<<16);
+			return (v+1);
+		}
+  }
+	
+	return 0;			// Memory full
+}
+
+/*-----------------------------------------------------------*/
+
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
