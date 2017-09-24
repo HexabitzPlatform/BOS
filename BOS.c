@@ -3666,7 +3666,7 @@ BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAdd
 
 /*-----------------------------------------------------------*/
 
-/* --- Assign an index to a new BOS variable
+/* --- Assign an index to a new BOS variable. BOS variables must be global or static to ensure we don't refernce a stack address.
 */
 uint8_t AddBOSvar(varFormat_t format, uint32_t address)
 {
