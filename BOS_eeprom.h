@@ -50,6 +50,7 @@
 #define FLASH_SIZE						((uint32_t)0x20000)			
 #define SRAM_SIZE							((uint32_t)0x8000)
 #define PAGE_SIZE             ((uint32_t)0x0800)  		/* Page size = 2KByte for STM32F07x and STM32F09x devices */
+#define NumOfPages						(FLASH_SIZE/PAGE_SIZE)
 
 /* Pages A and B base and end addresses - Each page is extended into two pages 1 and 2 */
 #define PAGEA1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))

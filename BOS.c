@@ -151,6 +151,7 @@ void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
 void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
+BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 
 /* Module exported internal functions */
 extern void Module_Init(void);
@@ -741,6 +742,7 @@ void PxMessagingTask(void * argument)
 								break;	
 
 							case CODE_write_remote :
+							case CODE_write_remote_force :
 								responseStatus = BOS_OK;		// Initialize response
 								if(cMessage[port-1][4])			// request for a BOS var
 								{
@@ -866,7 +868,7 @@ void PxMessagingTask(void * argument)
 									// Get the requested address
 									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
 									// Write data to Flash or SRAM based on requested format
-									if ( temp32 >= SRAM_BASE && temp32 < (SRAM_BASE+SRAM_SIZE) )
+									if ( temp32 >= SRAM_BASE && temp32 < (SRAM_BASE+SRAM_SIZE) )			// SRAM
 									{
 										switch (cMessage[port-1][5])															// Requested format
 										{																									
@@ -891,33 +893,60 @@ void PxMessagingTask(void * argument)
 												break;
 										}												
 									}
-									else if ( temp32 >= FLASH_BASE && temp32 < (FLASH_BASE+FLASH_SIZE) )
+									else if ( temp32 >= FLASH_BASE && temp32 < (FLASH_BASE+FLASH_SIZE) )			// Flash
 									{								
 										HAL_FLASH_Unlock();
-										switch (cMessage[port-1][5])															// Requested format
-										{																									
-											case FMT_BOOL:
-											case FMT_UINT8: 
-											case FMT_INT8:
-												remoteBuffer = cMessage[port-1][10]; status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
-											
-											case FMT_UINT16: 
-											case FMT_INT16:
-												remoteBuffer = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);
-												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
-									
-											case FMT_UINT32: 
-											case FMT_INT32:
-												remoteBuffer = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); 
-												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
-																				
-											case FMT_FLOAT:
-												remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
-																			 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
-												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
-											default:
-												break;
-										}												
+										/* Erase page if force write is requested */
+										if (code == CODE_write_remote_force)
+										{
+											FLASH_EraseInitTypeDef erase; uint32_t eraseError;
+											erase.TypeErase = FLASH_TYPEERASE_PAGES;
+											erase.PageAddress = temp32;
+											erase.NbPages = 1;
+											status = HAL_FLASHEx_Erase(&erase, &eraseError);
+											if (status != HAL_OK || eraseError != 0xFFFFFFFF) responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;							
+										}
+										/* Write new value */
+										if (responseStatus == BOS_OK)
+										{
+											switch (cMessage[port-1][5])															// Requested format
+											{																									
+												case FMT_BOOL:
+												case FMT_UINT8: 
+												case FMT_INT8:
+													if (*(__IO uint16_t *)temp32 != 0xFFFF) {
+														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+													} else {
+														remoteBuffer = cMessage[port-1][10]; status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+													}
+												case FMT_UINT16: 
+												case FMT_INT16:
+													if (*(__IO uint16_t *)temp32 != 0xFFFF) {
+														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+													} else {
+														remoteBuffer = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);
+														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+													}
+												case FMT_UINT32: 
+												case FMT_INT32:
+													if (*(__IO uint32_t *)temp32 != 0xFFFFFFFF) {
+														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+													} else {
+														remoteBuffer = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); 
+														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
+													}				
+												case FMT_FLOAT:
+													if (*(__IO uint64_t *)temp32 != 0xFFFFFFFFFFFFFFFF) {
+														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+													} else {
+														remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
+																					 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
+														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
+													}
+												default:
+													break;
+											}		
+										}										
 										HAL_FLASH_Lock();
 										if (status != HAL_OK)	responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;
 									}	
@@ -2307,6 +2336,128 @@ __weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
 }
 
 /*-----------------------------------------------------------*/	
+
+/* --- Read a value from a remote module. 
+			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
+			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
+					module: Remote module ID. 
+					localAddress: Local memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+					remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+					format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+					timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+					force: Put 1 to force full-page erase before writing to Flash.
+*/
+BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force)
+{
+	uint8_t response; uint16_t code;
+	
+	/* Check whether response is enabled or disabled */
+	response = BOS.response;
+	if (timeout)
+		BOS.response = BOS_RESPONSE_MSG;
+	else
+		BOS.response = BOS_RESPONSE_NONE;
+	
+	/* Check if a force write is needed */
+	if (force)
+		code = CODE_write_remote_force;
+	else
+		code = CODE_write_remote;
+	
+	/* Writing to a BOS var */
+	if (remoteAddress < FLASH_BASE)
+	{
+		messageParams[0] = remoteAddress;			// Send BOS variable index
+		messageParams[1] = format;						// Send local format
+		/* Send variable value based on local format */
+		switch (format)											
+		{
+			case FMT_BOOL:
+			case FMT_UINT8: 
+				messageParams[2] = *(__IO uint8_t *)localAddress; 
+				SendMessageToModule(module, CODE_write_remote, 3); break;
+			case FMT_INT8: 
+				messageParams[2] = *(__IO int8_t *)localAddress; 
+				SendMessageToModule(module, CODE_write_remote, 3); break;
+			case FMT_UINT16: 
+				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
+				SendMessageToModule(module, CODE_write_remote, 4); break;
+			case FMT_INT16: 
+				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
+				SendMessageToModule(module, CODE_write_remote, 4); break;
+			case FMT_UINT32: 
+				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
+				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
+				SendMessageToModule(module, CODE_write_remote, 6); break;
+			case FMT_INT32: 
+				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
+				messageParams[4] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
+				SendMessageToModule(module, CODE_write_remote, 6); break;										
+			case FMT_FLOAT:
+				messageParams[2] = *(__IO uint8_t *)(localAddress+0); messageParams[3] = *(__IO uint8_t *)(localAddress+1); messageParams[4] = *(__IO uint8_t *)(localAddress+2); 
+				messageParams[5] = *(__IO uint8_t *)(localAddress+3); messageParams[6] = *(__IO uint8_t *)(localAddress+4); messageParams[7] = *(__IO uint8_t *)(localAddress+5); 
+				messageParams[8] = *(__IO uint8_t *)(localAddress+6); messageParams[9] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
+				SendMessageToModule(module, CODE_write_remote, 10); break;			
+			default:
+				break;
+		}					
+	}
+	/* Writing to a memory address */
+	else
+	{
+		messageParams[0] = 0;													
+		messageParams[1] = format;						// Local format
+		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
+		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 				
+		/* Send variable value based on local format */
+		switch (format)											
+		{
+			case FMT_BOOL:
+			case FMT_UINT8: 
+				messageParams[6] = *(__IO uint8_t *)localAddress; 
+				SendMessageToModule(module, code, 7); break;
+			case FMT_INT8: 
+				messageParams[6] = *(__IO int8_t *)localAddress; 
+				SendMessageToModule(module, code, 7); break;
+			case FMT_UINT16: 
+				messageParams[6] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
+				SendMessageToModule(module, code, 8); break;
+			case FMT_INT16: 
+				messageParams[6] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
+				SendMessageToModule(module, code, 8); break;
+			case FMT_UINT32: 
+				messageParams[6] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
+				messageParams[8] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
+				SendMessageToModule(module, code, 10); break;
+			case FMT_INT32: 
+				messageParams[6] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
+				messageParams[8] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
+				SendMessageToModule(module, code, 10); break;										
+			case FMT_FLOAT:
+				messageParams[6] = *(__IO uint8_t *)(localAddress+0); messageParams[7] = *(__IO uint8_t *)(localAddress+1); messageParams[8] = *(__IO uint8_t *)(localAddress+2); 
+				messageParams[9] = *(__IO uint8_t *)(localAddress+3); messageParams[10] = *(__IO uint8_t *)(localAddress+4); messageParams[11] = *(__IO uint8_t *)(localAddress+5); 
+				messageParams[12] = *(__IO uint8_t *)(localAddress+6); messageParams[13] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
+				SendMessageToModule(module, code, 14); break;			
+			default:
+				break;
+		}			
+	}
+	
+	/* Restore response settings to default */
+	BOS.response = response;
+
+	/* If confirmation is requested, wait for it until timeout */
+	if (timeout)
+	{
+		uint32_t t0 = HAL_GetTick();
+		while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };	
+		return responseStatus;
+	}
+	
+	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
 
 
 /* -----------------------------------------------------------------------
@@ -3839,117 +3990,30 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 
 /*-----------------------------------------------------------*/
 
-/* --- Read a value from a remote module. 
-			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
-			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
+/* --- Write a value to a remote module. 
 					module: Remote module ID. 
-					localAddress: Local memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+					localAddress: Local memory address (RAM or Flash). 
 					remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
 					format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
 					timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
 */
 BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout)
 {
-	uint8_t response;
-	
-	/* Check whether response is enabled or disabled */
-	response = BOS.response;
-	if (timeout)
-		BOS.response = BOS_RESPONSE_MSG;
-	else
-		BOS.response = BOS_RESPONSE_NONE;
-	
-	/* Writing to a BOS var */
-	if (remoteAddress < FLASH_BASE)
-	{
-		messageParams[0] = remoteAddress;			// Send BOS variable index
-		messageParams[1] = format;						// Send local format
-		/* Send variable value based on local format */
-		switch (format)											
-		{
-			case FMT_BOOL:
-			case FMT_UINT8: 
-				messageParams[2] = *(__IO uint8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 3); break;
-			case FMT_INT8: 
-				messageParams[2] = *(__IO int8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 3); break;
-			case FMT_UINT16: 
-				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 4); break;
-			case FMT_INT16: 
-				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 4); break;
-			case FMT_UINT32: 
-				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
-				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
-				SendMessageToModule(module, CODE_write_remote, 6); break;
-			case FMT_INT32: 
-				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
-				messageParams[4] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_write_remote, 6); break;										
-			case FMT_FLOAT:
-				messageParams[2] = *(__IO uint8_t *)(localAddress+0); messageParams[3] = *(__IO uint8_t *)(localAddress+1); messageParams[4] = *(__IO uint8_t *)(localAddress+2); 
-				messageParams[5] = *(__IO uint8_t *)(localAddress+3); messageParams[6] = *(__IO uint8_t *)(localAddress+4); messageParams[7] = *(__IO uint8_t *)(localAddress+5); 
-				messageParams[8] = *(__IO uint8_t *)(localAddress+6); messageParams[9] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_write_remote, 10); break;			
-			default:
-				break;
-		}					
-	}
-	/* Writing to a memory address */
-	else
-	{
-		messageParams[0] = 0;													
-		messageParams[1] = format;						// Local format
-		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
-		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 				
-		/* Send variable value based on local format */
-		switch (format)											
-		{
-			case FMT_BOOL:
-			case FMT_UINT8: 
-				messageParams[6] = *(__IO uint8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 7); break;
-			case FMT_INT8: 
-				messageParams[6] = *(__IO int8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 7); break;
-			case FMT_UINT16: 
-				messageParams[6] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 8); break;
-			case FMT_INT16: 
-				messageParams[6] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 8); break;
-			case FMT_UINT32: 
-				messageParams[6] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
-				messageParams[8] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
-				SendMessageToModule(module, CODE_write_remote, 10); break;
-			case FMT_INT32: 
-				messageParams[6] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
-				messageParams[8] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_write_remote, 10); break;										
-			case FMT_FLOAT:
-				messageParams[6] = *(__IO uint8_t *)(localAddress+0); messageParams[7] = *(__IO uint8_t *)(localAddress+1); messageParams[8] = *(__IO uint8_t *)(localAddress+2); 
-				messageParams[9] = *(__IO uint8_t *)(localAddress+3); messageParams[10] = *(__IO uint8_t *)(localAddress+4); messageParams[11] = *(__IO uint8_t *)(localAddress+5); 
-				messageParams[12] = *(__IO uint8_t *)(localAddress+6); messageParams[13] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_write_remote, 14); break;			
-			default:
-				break;
-		}			
-	}
-	
-	/* Restore response settings to default */
-	BOS.response = response;
+	return WriteToRemote(module, localAddress, remoteAddress, format, timeout, 0);
+}
 
-	/* If confirmation is requested, wait for it until timeout */
-	if (timeout)
-	{
-		uint32_t t0 = HAL_GetTick();
-		while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };	
-		return responseStatus;
-	}
-	
-	return BOS_OK;
+/*-----------------------------------------------------------*/
+
+/* --- Write a value to a remote module and force full-page erase when writing to Flash. 
+					module: Remote module ID. 
+					localAddress: Local memory address (RAM or Flash). 
+					remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+					format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+					timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+*/
+BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout)
+{
+	return WriteToRemote(module, localAddress, remoteAddress, format, timeout, 1);
 }
 
 /*-----------------------------------------------------------*/

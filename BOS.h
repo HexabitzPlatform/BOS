@@ -299,6 +299,7 @@ extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t c
 #define	CODE_read_remote_response  				31
 #define	CODE_write_remote  								32
 #define	CODE_write_remote_response  			33
+#define	CODE_write_remote_force						34
 
 
 /* -----------------------------------------------------------------------
@@ -343,6 +344,7 @@ extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_cli
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
+extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 
 
