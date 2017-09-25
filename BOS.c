@@ -370,7 +370,7 @@ void PxMessagingTask(void * argument)
 			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x9FFF;	
 			
 			/* Read response mode */
-			responseMode = (cMessage[port-1][2] & 0x60) >> 5;
+			responseMode = cMessage[port-1][2] & 0x60;
 			
 			/* Is it a long message? Check MSB */
 			if (code>>15) {
@@ -842,7 +842,7 @@ void PxMessagingTask(void * argument)
 												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) {			// Write remote value
 													remoteBuffer = ((uint64_t)cMessage[port-1][6]<<0) + ((uint64_t)cMessage[port-1][7]<<8) + ((uint64_t)cMessage[port-1][8]<<16) + ((uint64_t)cMessage[port-1][9]<<24) + \
 																				 ((uint64_t)cMessage[port-1][10]<<32) + ((uint64_t)cMessage[port-1][11]<<40) + ((uint64_t)cMessage[port-1][12]<<48) + ((uint64_t)cMessage[port-1][13]<<56);
-													*(float *)temp32 = (float)remoteBuffer;																		
+													*(float *)temp32 = *(float *)&remoteBuffer;																		
 												}
 												break;												
 														
@@ -929,12 +929,12 @@ void PxMessagingTask(void * argument)
 								/* Send confirmation back */
 								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG) {
 									messageParams[0] = responseStatus;
-									SendMessageToModule(src, CODE_read_remote_response, 1);											
+									SendMessageToModule(src, CODE_write_remote_response, 1);											
 								}
 								break;	
 
 							case CODE_write_remote_response :
-
+								responseStatus = (BOS_Status) cMessage[port-1][4];
 								break;	
 							
 							default :
@@ -3851,40 +3851,49 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 */
 BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout)
 {
+	uint8_t response;
+	
+	/* Check whether response is enabled or disabled */
+	response = BOS.response;
+	if (timeout)
+		BOS.response = BOS_RESPONSE_MSG;
+	else
+		BOS.response = BOS_RESPONSE_NONE;
+	
 	/* Writing to a BOS var */
 	if (remoteAddress < FLASH_BASE)
 	{
 		messageParams[0] = remoteAddress;			// Send BOS variable index
 		messageParams[1] = format;						// Send local format
-		// Send variable value based on local format
+		/* Send variable value based on local format */
 		switch (format)											
 		{
 			case FMT_BOOL:
 			case FMT_UINT8: 
 				messageParams[2] = *(__IO uint8_t *)localAddress; 
-				SendMessageToModule(module, CODE_read_remote_response, 3); break;
+				SendMessageToModule(module, CODE_write_remote, 3); break;
 			case FMT_INT8: 
 				messageParams[2] = *(__IO int8_t *)localAddress; 
-				SendMessageToModule(module, CODE_read_remote_response, 3); break;
+				SendMessageToModule(module, CODE_write_remote, 3); break;
 			case FMT_UINT16: 
 				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_read_remote_response, 4); break;
+				SendMessageToModule(module, CODE_write_remote, 4); break;
 			case FMT_INT16: 
 				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_read_remote_response, 4); break;
+				SendMessageToModule(module, CODE_write_remote, 4); break;
 			case FMT_UINT32: 
 				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
 				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
-				SendMessageToModule(module, CODE_read_remote_response, 6); break;
+				SendMessageToModule(module, CODE_write_remote, 6); break;
 			case FMT_INT32: 
 				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
 				messageParams[4] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_read_remote_response, 6); break;										
+				SendMessageToModule(module, CODE_write_remote, 6); break;										
 			case FMT_FLOAT:
 				messageParams[2] = *(__IO uint8_t *)(localAddress+0); messageParams[3] = *(__IO uint8_t *)(localAddress+1); messageParams[4] = *(__IO uint8_t *)(localAddress+2); 
 				messageParams[5] = *(__IO uint8_t *)(localAddress+3); messageParams[6] = *(__IO uint8_t *)(localAddress+4); messageParams[7] = *(__IO uint8_t *)(localAddress+5); 
 				messageParams[8] = *(__IO uint8_t *)(localAddress+6); messageParams[9] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_read_remote_response, 10); break;			
+				SendMessageToModule(module, CODE_write_remote, 10); break;			
 			default:
 				break;
 		}					
@@ -3896,39 +3905,42 @@ BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAdd
 		messageParams[1] = format;						// Local format
 		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
 		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 				
-		// Send variable value based on local format
+		/* Send variable value based on local format */
 		switch (format)											
 		{
 			case FMT_BOOL:
 			case FMT_UINT8: 
 				messageParams[6] = *(__IO uint8_t *)localAddress; 
-				SendMessageToModule(module, CODE_read_remote_response, 7); break;
+				SendMessageToModule(module, CODE_write_remote, 7); break;
 			case FMT_INT8: 
 				messageParams[6] = *(__IO int8_t *)localAddress; 
-				SendMessageToModule(module, CODE_read_remote_response, 7); break;
+				SendMessageToModule(module, CODE_write_remote, 7); break;
 			case FMT_UINT16: 
 				messageParams[6] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_read_remote_response, 8); break;
+				SendMessageToModule(module, CODE_write_remote, 8); break;
 			case FMT_INT16: 
 				messageParams[6] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_read_remote_response, 8); break;
+				SendMessageToModule(module, CODE_write_remote, 8); break;
 			case FMT_UINT32: 
 				messageParams[6] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
 				messageParams[8] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
-				SendMessageToModule(module, CODE_read_remote_response, 10); break;
+				SendMessageToModule(module, CODE_write_remote, 10); break;
 			case FMT_INT32: 
 				messageParams[6] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
 				messageParams[8] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_read_remote_response, 10); break;										
+				SendMessageToModule(module, CODE_write_remote, 10); break;										
 			case FMT_FLOAT:
 				messageParams[6] = *(__IO uint8_t *)(localAddress+0); messageParams[7] = *(__IO uint8_t *)(localAddress+1); messageParams[8] = *(__IO uint8_t *)(localAddress+2); 
 				messageParams[9] = *(__IO uint8_t *)(localAddress+3); messageParams[10] = *(__IO uint8_t *)(localAddress+4); messageParams[11] = *(__IO uint8_t *)(localAddress+5); 
 				messageParams[12] = *(__IO uint8_t *)(localAddress+6); messageParams[13] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_read_remote_response, 14); break;			
+				SendMessageToModule(module, CODE_write_remote, 14); break;			
 			default:
 				break;
 		}			
 	}
+	
+	/* Restore response settings to default */
+	BOS.response = response;
 
 	/* If confirmation is requested, wait for it until timeout */
 	if (timeout)
