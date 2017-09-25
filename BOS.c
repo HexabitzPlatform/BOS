@@ -740,7 +740,130 @@ void PxMessagingTask(void * argument)
 								break;	
 
 							case CODE_write_remote :
+								if(cMessage[port-1][4])			// request for a BOS var
+								{
+									// Check variable index is within the limit of MAX_BOS_VARS
+									if(cMessage[port-1][4] <= MAX_BOS_VARS)
+									{
+										temp32 = (BOS_var_reg[cMessage[port-1][4]-1]>>16) + SRAM_BASE;				// Get var memory addres
+										// Modify the variable or create a new one if it does not exist
+										switch (cMessage[port-1][5])											// requested format
+										{
+											case FMT_BOOL:
+											case FMT_UINT8: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(uint8_t));							// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO uint8_t *)temp32 = cMessage[port-1][6];					
+												break;
+												
+											case FMT_INT8: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(int8_t));							// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][6];		
+												break;
+												
+											case FMT_UINT16: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(uint16_t));						// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][6]<<0) + ((uint16_t)cMessage[port-1][7]<<8);					
+												break;
+												
+											case FMT_INT16: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(int16_t));							// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][6]<<0) + ((int16_t)cMessage[port-1][7]<<8);					
+												break;
+												
+											case FMT_UINT32: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(uint32_t));						// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][6]<<0) + ((uint32_t)cMessage[port-1][7]<<8) + ((uint32_t)cMessage[port-1][8]<<16) + ((uint32_t)cMessage[port-1][9]<<24);					
+												break;
+												
+											case FMT_INT32: 
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(int32_t));							// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+													*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][6]<<0) + ((int32_t)cMessage[port-1][7]<<8) + ((int32_t)cMessage[port-1][8]<<16) + ((int32_t)cMessage[port-1][9]<<24);					
+												break;
+												
+											case FMT_FLOAT:
+												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
+													temp32 = (uint32_t)malloc(sizeof(float));								// Create a new one
+													if (temp32 != 0) {
+														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
+													} else {																								// Cannot alocate memory
+														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+													}
+												}
+												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) {			// Write remote value
+													remoteBuffer = ((uint64_t)cMessage[port-1][6]<<0) + ((uint64_t)cMessage[port-1][7]<<8) + ((uint64_t)cMessage[port-1][8]<<16) + ((uint64_t)cMessage[port-1][9]<<24) + \
+																				 ((uint64_t)cMessage[port-1][10]<<32) + ((uint64_t)cMessage[port-1][11]<<40) + ((uint64_t)cMessage[port-1][12]<<48) + ((uint64_t)cMessage[port-1][13]<<56);
+													*(float *)temp32 = (float)remoteBuffer;																		
+												}
+												break;												
+														
+											default:
+												break;
+										}			
+										
+										/* Update local format if needed - Todo give local warning later */
+										if ( (BOS_var_reg[cMessage[port-1][4]-1] & 0x000F) != cMessage[port-1][5] ) {		
+											BOS_var_reg[cMessage[port-1][4]-1] &= (0xFFF0+cMessage[port-1][5]);
+											responseStatus = BOS_ERR_LOCAL_FORMAT_UPDATED;
+										}
+									}		
+									else
+									{		
+										responseStatus = BOS_ERR_REMOTE_WRITE_INDEX;		// BOS var index out of range
+									}											
+								}
+								else												// request for a memory address
+								{
 
+									
+								}
 								break;	
 
 							case CODE_write_remote_response :
