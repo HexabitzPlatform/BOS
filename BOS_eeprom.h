@@ -26,7 +26,7 @@
   ******************************************************************************
   */ 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.1 - Copyright (C) 2017 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.2 - Copyright (C) 2017 Hexabitz
     All rights reserved
 */
 	
@@ -83,8 +83,9 @@
 /* Page full define */
 #define PAGE_FULL             ((uint8_t)0x80)
 
-/* EEPROM Variables' number (up to 1024 16-bit variables) */ 
-#define NumOfEEPROMvar        1024				
+/* EEPROM Variables' number (up to 1024 16-bit variables) */
+#define MaxNumOfEEPROMvar       1024	
+#define NumOfEEPROMvar        	320				
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
@@ -95,11 +96,12 @@
 #define _EE_ButtonBase					167				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
 																					// pressed_for_x_1 (8 bits), released_for_y_1 (8 bits), etc.
 #define _EE_EmptyVarBase				207
-#define _EE_ParamsBase					500				// Parameter base: BOS response
-#define _EE_ParamsDebounce			501				// Parameter: Button debounce
-#define _EE_ParamsSinClick			502				// Parameter: Button single click
-#define _EE_ParamsDblClick			503				// Parameter: Button double click (inter-click min and max)
-#define _EE_CLIBaud							504				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
+
+#define _EE_ParamsBase					307				// Parameter base: BOS response
+#define _EE_ParamsDebounce			308				// Parameter: Button debounce
+#define _EE_ParamsSinClick			309				// Parameter: Button single click
+#define _EE_ParamsDblClick			310				// Parameter: Button double click (inter-click min and max)
+#define _EE_CLIBaud							311				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
 
 
 #if MaxNumOfModules > 25						// Update

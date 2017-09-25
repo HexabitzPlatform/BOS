@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.1 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.2 - Copyright (C) 2017 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -601,6 +601,7 @@ void PxMessagingTask(void * argument)
 								StartScastDMAStream(cMessage[port-1][13], myID, cMessage[port-1][15], cMessage[port-1][14], cMessage[port-1][12], count, timeout);
 								break;								
 							
+							
 							case CODE_read_remote :								
 								if(cMessage[port-1][4])			// request for a BOS var
 								{
@@ -683,6 +684,7 @@ void PxMessagingTask(void * argument)
 								}
 								break;			
 
+								
 							case CODE_read_remote_response :
 								if (remoteBuffer == 0)				// We requested a BOS variable
 								{
@@ -741,8 +743,10 @@ void PxMessagingTask(void * argument)
 								if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
 								break;	
 
+								
 							case CODE_write_remote :
 							case CODE_write_remote_force :
+								
 								responseStatus = BOS_OK;		// Initialize response
 								if(cMessage[port-1][4])			// request for a BOS var
 								{
@@ -961,9 +965,11 @@ void PxMessagingTask(void * argument)
 								}
 								break;	
 
+								
 							case CODE_write_remote_response :
 								responseStatus = (BOS_Status) cMessage[port-1][4];
 								break;	
+							
 							
 							default :
 								/* Process module tasks */

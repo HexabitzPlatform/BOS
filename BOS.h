@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.1 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.2 - Copyright (C) 2017 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -10,21 +10,12 @@
 #ifndef BOS_H
 #define BOS_H
 
-
-/* Module part number */
-/*  Uncomment the line below according to the module used in your application.
-		Tip: To avoid modifying this file each time you need to switch between these
-    modules, you can define the module in your toolchain compiler preprocessor. 
-*/
-#if !defined (H01R0) && !defined (H02R0) && !defined (H03R0) && !defined (H04R0) &&   \
-    !defined (H05R0) && !defined (H06R0) && !defined (H07R0) && !defined (H08R0) && !defined (H12R0)                            
-//  #define H01R0  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (GPIOs) */  
-//  #define H01R1  /* RGB LED (Cree CLVBA-FKA-CC1F1L1BB7R3R3) (All LEDs are timer channels) */  
-//  #define H02R0  /* RGB LED */  
-//  #define H03R0  /* RGB LED */  
-//  #define H04R0  /* RGB LED */  
-//  #define H05R0  /* RGB LED */  	                                        
-#endif
+/* Firmware */
+#define	_firmMajor			0
+#define	_firmMinor			1
+#define	_firmPatch			2
+#define _firmDate				__DATE__
+#define _firmTime				__TIME__
 
 /* Enumerations */
 enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
@@ -96,16 +87,6 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #ifdef H12R0
 	#include "H12R0.h"	
 #endif
-
-
-#define P_LAST 								NumOfPorts
-
-/* Firmware */
-#define	_firmMajor			0
-#define	_firmMinor			1
-#define	_firmPatch			1
-#define _firmDate				__DATE__
-#define _firmTime				__TIME__
 
 
 /* BOS_Status Type Definition */  
@@ -188,7 +169,8 @@ button_t;
 
 
 
-/* BOS Parameters */ 
+/* BOS Parameters and constants */ 
+#define P_LAST 												NumOfPorts
 #define MAX_MESSAGE_SIZE							50
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								25
