@@ -344,8 +344,9 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 */
 void PxMessagingTask(void * argument)
 {
-	BOS_Status result = BOS_OK;
-	uint8_t port, src, dst, responseMode, temp; uint16_t code; uint32_t count, timeout, temp32;
+	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
+	uint8_t port, src, dst, responseMode, temp; uint16_t code; 
+	uint32_t count, timeout, temp32;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	static uint8_t bcastLastID;
@@ -740,6 +741,7 @@ void PxMessagingTask(void * argument)
 								break;	
 
 							case CODE_write_remote :
+								responseStatus = BOS_OK;		// Initialize response
 								if(cMessage[port-1][4])			// request for a BOS var
 								{
 									// Check variable index is within the limit of MAX_BOS_VARS
@@ -852,17 +854,82 @@ void PxMessagingTask(void * argument)
 										if ( (BOS_var_reg[cMessage[port-1][4]-1] & 0x000F) != cMessage[port-1][5] ) {		
 											BOS_var_reg[cMessage[port-1][4]-1] &= (0xFFF0+cMessage[port-1][5]);
 											responseStatus = BOS_ERR_LOCAL_FORMAT_UPDATED;
-										}
+										}								
 									}		
 									else
 									{		
 										responseStatus = BOS_ERR_REMOTE_WRITE_INDEX;		// BOS var index out of range
-									}											
+									}	
 								}
 								else												// request for a memory address
 								{
-
+									// Get the requested address
+									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
+									// Write data to Flash or SRAM based on requested format
+									if ( temp32 >= SRAM_BASE && temp32 < (SRAM_BASE+SRAM_SIZE) )
+									{
+										switch (cMessage[port-1][5])															// Requested format
+										{																									
+											case FMT_BOOL:
+											case FMT_UINT8: 
+												*(__IO uint8_t *)temp32 = cMessage[port-1][10]; break;
+											case FMT_INT8:
+												*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][10]; break;
+											case FMT_UINT16: 
+												*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);	break;
+											case FMT_INT16: 
+												*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][10]<<0) + ((int16_t)cMessage[port-1][11]<<8);	break;
+											case FMT_UINT32: 
+												*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); break;
+											case FMT_INT32:
+												*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][10]<<0) + ((int32_t)cMessage[port-1][11]<<8) + ((int32_t)cMessage[port-1][12]<<16) + ((int32_t)cMessage[port-1][13]<<24); break; 									
+											case FMT_FLOAT:
+												remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
+																			 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
+												*(float *)temp32 = (float)remoteBuffer;	break;
+											default:
+												break;
+										}												
+									}
+									else if ( temp32 >= FLASH_BASE && temp32 < (FLASH_BASE+FLASH_SIZE) )
+									{								
+										HAL_FLASH_Unlock();
+										switch (cMessage[port-1][5])															// Requested format
+										{																									
+											case FMT_BOOL:
+											case FMT_UINT8: 
+											case FMT_INT8:
+												remoteBuffer = *(__IO uint16_t *)temp32; remoteBuffer &= (0xFFFFFFFFFFFFFF00 + cMessage[port-1][10]);
+												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+											
+											case FMT_UINT16: 
+											case FMT_INT16:
+												remoteBuffer &= (0xFFFFFFFFFFFF0000 + ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8));
+												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
 									
+											case FMT_UINT32: 
+											case FMT_INT32:
+												remoteBuffer &= (0xFFFFFFFF00000000 + ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24)); 
+												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
+																				
+											case FMT_FLOAT:
+												remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
+																			 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
+												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
+											default:
+												break;
+										}												
+										HAL_FLASH_Lock();
+										if (status != HAL_OK)	responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;
+									}	
+									else	
+										responseStatus = BOS_ERR_REMOTE_WRITE_ADDRESS;
+								}
+								
+								/* Send confirmation back */
+								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG) {
+									messageParams[0] = responseStatus;
+									SendMessageToModule(src, CODE_read_remote_response, 1);											
 								}
 								break;	
 
