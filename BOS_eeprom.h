@@ -40,9 +40,9 @@
 /* Exported constants --------------------------------------------------------*/
 
 /* Memory map: - STM32F091CB
-				- Application: 0x08000000 - 0x0801D800 >> 118 KB
-		 - Read-only (RO): 0x0801D800 - 0x0801E000 >> 2 KB, used to store topology information
-		- Emulated EEPROM: 0x0801E000 - 0x08020000 >> 8 KB, fits 1024 16-bit variables in 2 main-duplicate pages (A and B)
+				- Application: 0x08000000 - 0x0801D7FF >> 118 KB
+		 - Read-only (RO): 0x0801D800 - 0x0801DFFF >> 2 KB, used to store topology information
+		- Emulated EEPROM: 0x0801E000 - 0x0801FFFF >> 8 KB, fits 1024 16-bit variables in 2 main-duplicate pages (A and B)
 */
 #define APP_START_ADDRESS  		((uint32_t)0x08000000) 
 #define RO_START_ADDRESS  		((uint32_t)0x0801D800) 

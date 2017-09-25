@@ -886,7 +886,7 @@ void PxMessagingTask(void * argument)
 											case FMT_FLOAT:
 												remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
 																			 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
-												*(float *)temp32 = (float)remoteBuffer;	break;
+												*(float *)temp32 = *(float *)&remoteBuffer;	break;
 											default:
 												break;
 										}												
@@ -899,17 +899,16 @@ void PxMessagingTask(void * argument)
 											case FMT_BOOL:
 											case FMT_UINT8: 
 											case FMT_INT8:
-												remoteBuffer = *(__IO uint16_t *)temp32; remoteBuffer &= (0xFFFFFFFFFFFFFF00 + cMessage[port-1][10]);
-												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+												remoteBuffer = cMessage[port-1][10]; status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
 											
 											case FMT_UINT16: 
 											case FMT_INT16:
-												remoteBuffer &= (0xFFFFFFFFFFFF0000 + ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8));
+												remoteBuffer = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);
 												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
 									
 											case FMT_UINT32: 
 											case FMT_INT32:
-												remoteBuffer &= (0xFFFFFFFF00000000 + ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24)); 
+												remoteBuffer = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); 
 												status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
 																				
 											case FMT_FLOAT:
