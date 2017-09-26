@@ -2080,6 +2080,7 @@ void CheckAttachedButtons(void)
       	case CLICKED :
 					if (button[i].events & BUTTON_EVENT_CLICKED) 
 					{
+						Delay_ms(1);		// Give the scheduler a chance to run other tasks that might read button state
 						buttonClickedCallback(i);
 					}
       		break;
@@ -2087,6 +2088,7 @@ void CheckAttachedButtons(void)
       	case DBL_CLICKED :				
 					if (button[i].events & BUTTON_EVENT_DBL_CLICKED) 
 					{
+						Delay_ms(1);
 						buttonDblClickedCallback(i);
 					}
       		break;
@@ -2094,19 +2096,22 @@ void CheckAttachedButtons(void)
 				/* These are latching events so make sure you only execute once */
       	case PRESSED_FOR_X1_SEC :		
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) 
-					{				
+					{			
+						Delay_ms(1);	
 						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X2_SEC :
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) 
 					{
+						Delay_ms(1);
 						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X3_SEC :
 					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) 
 					{
+						Delay_ms(1);
 						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
 					}
 					break;
@@ -2115,18 +2120,21 @@ void CheckAttachedButtons(void)
       	case RELEASED_FOR_Y1_SEC :	
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) 
 					{
+						Delay_ms(1);
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
 					}
 					break;					
 				case RELEASED_FOR_Y2_SEC :
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) 
-					{	
+					{
+						Delay_ms(1);						
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
 					}
 					break;					
 				case RELEASED_FOR_Y3_SEC :
 					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) 
-					{	
+					{
+						Delay_ms(1);
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
 					}
 					break;
