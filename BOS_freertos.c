@@ -191,6 +191,9 @@ void StartDefaultTask(void * argument)
 		/* Executed activated Command Snippets */
 		ExecuteSnippet();
 		
+		/* Reset button state if no delay is needed by this module */
+		if(needToDelayButtonStateReset != true)	delayButtonStateReset = false;
+				
 		taskYIELD();
   }
 	

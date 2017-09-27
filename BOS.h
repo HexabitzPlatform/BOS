@@ -239,6 +239,7 @@ extern uint8_t routeDist[];
 extern uint8_t routePrev[]; 
 extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
+extern bool delayButtonStateReset, needToDelayButtonStateReset;
 extern BOS_t BOS;
 extern uint8_t PcPort;
 extern uint8_t BOS_initialized;

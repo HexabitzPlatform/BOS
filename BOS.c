@@ -81,6 +81,7 @@ button_t button[NumOfPorts+1] = {0};
 uint32_t pressCounter[NumOfPorts+1] = {0};
 uint32_t releaseCounter[NumOfPorts+1] = {0};
 uint8_t dblCounter[NumOfPorts+1] = {0};
+bool needToDelayButtonStateReset = false, delayButtonStateReset = false;
 
 /* Messaging tasks */
 extern TaskHandle_t FrontEndTaskHandle;
@@ -1931,10 +1932,13 @@ void CheckAttachedButtons(void)
 	{
 		if (button[i].type)			// Only check defined butons
 		{
-			/* 1. Get button GPIOs */
+			/* 1. Reset button state */
+			if (delayButtonStateReset == false)	button[i].state = NONE;		
+
+			/* 2. Get button GPIOs */
 			GetPortGPIOs(i, &TX_Port, &TX_Pin, &RX_Port, &RX_Pin);
 			
-			/* 2. Check if port pins are connected */
+			/* 3. Check if port pins are connected */
 			HAL_GPIO_WritePin((GPIO_TypeDef *)TX_Port, TX_Pin, GPIO_PIN_RESET); Delay_us(10);
 			if (HAL_GPIO_ReadPin((GPIO_TypeDef *)RX_Port, RX_Pin) == GPIO_PIN_RESET) 
 			{
@@ -1943,7 +1947,7 @@ void CheckAttachedButtons(void)
 			}		
 			HAL_GPIO_WritePin((GPIO_TypeDef *)TX_Port, TX_Pin, GPIO_PIN_RESET);
 			
-			/* 3. Determine button state based on port reading and button type */
+			/* 4. Determine button state based on port reading and button type */
 			switch (button[i].type)
       {
       	case MOMENTARY_NO:
@@ -1978,9 +1982,9 @@ void CheckAttachedButtons(void)
       		break;
       }
 			
-			/* 4. Debounce this state and update button struct if needed */		
+			/* 5. Debounce this state and update button struct if needed */		
 			
-			/* 4.A. Possible change of state 1: OPEN > CLOSED or OFF >> ON */
+			/* 5.A. Possible change of state 1: OPEN > CLOSED or OFF >> ON */
 			if (state == CLOSED || state == ON)												
 			{
 				if (pressCounter[i] < 0xFFFF)	
@@ -1989,7 +1993,7 @@ void CheckAttachedButtons(void)
 					pressCounter[i] = 0;																		// Reset debounce counter					
 			}
 			
-			/* 4.B. Possible change of state 2: CLOSED > OPEN or ON >> OFF */
+			/* 5.B. Possible change of state 2: CLOSED > OPEN or ON >> OFF */
 			if (state == OPEN || state == OFF)												
 			{
 				if (releaseCounter[i] < 0xFFFF)
@@ -2007,7 +2011,7 @@ void CheckAttachedButtons(void)
 			
 			/* Analyze state */
 			
-			/* 4.C. On press: Record a click if pressed less than 1 second */
+			/* 5.C. On press: Record a click if pressed less than 1 second */
 			if (pressCounter[i] < BOS.buttons.debounce) 									
 			{
 				// This is noise. Ignore it
@@ -2037,7 +2041,7 @@ void CheckAttachedButtons(void)
 				}	
 			}
 			
-			/* 4.D. On release: Record a click if pressed less than 1 second */
+			/* 5.D. On release: Record a click if pressed less than 1 second */
 			if (releaseCounter[i] < BOS.buttons.debounce) 							
 			{
 				// This is noise. Ignore it
@@ -2068,7 +2072,7 @@ void CheckAttachedButtons(void)
 				}	
 			}	
 			
-			/* 5. Run button callbacks if needed */
+			/* 6. Run button callbacks if needed */
 			switch (button[i].state)
       {
       	case PRESSED :
@@ -2078,74 +2082,70 @@ void CheckAttachedButtons(void)
       		break;
 				
       	case CLICKED :
-					if (button[i].events & BUTTON_EVENT_CLICKED) 
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_CLICKED)) 
 					{
-						Delay_ms(1);		// Give the scheduler a chance to run other tasks that might read button state
+						delayButtonStateReset = true;
 						buttonClickedCallback(i);
 					}
       		break;
 				
       	case DBL_CLICKED :				
-					if (button[i].events & BUTTON_EVENT_DBL_CLICKED) 
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_DBL_CLICKED)) 
 					{
-						Delay_ms(1);
+						delayButtonStateReset = true;
 						buttonDblClickedCallback(i);
 					}
       		break;
 					
-				/* These are latching events so make sure you only execute once */
       	case PRESSED_FOR_X1_SEC :		
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) 
-					{			
-						Delay_ms(1);	
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC)) 
+					{				
+						delayButtonStateReset = true;
 						buttonPressedForXCallback(i, PRESSED_FOR_X1_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X2_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) 
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC)) 
 					{
-						Delay_ms(1);
+						delayButtonStateReset = true;
 						buttonPressedForXCallback(i, PRESSED_FOR_X2_SEC-8);
 					}
 					break;
 				case PRESSED_FOR_X3_SEC :
-					if (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) 
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC)) 
 					{
-						Delay_ms(1);
+						delayButtonStateReset = true;
 						buttonPressedForXCallback(i, PRESSED_FOR_X3_SEC-8);
 					}
 					break;
 				
-				/* These are latching events so make sure you only execute once */
       	case RELEASED_FOR_Y1_SEC :	
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) 
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC)) 
 					{
-						Delay_ms(1);
+						delayButtonStateReset = true;
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y1_SEC-11);
 					}
-					break;					
+					break;		
+					
 				case RELEASED_FOR_Y2_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) 
-					{
-						Delay_ms(1);						
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC)) 
+					{	
+						delayButtonStateReset = true;
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y2_SEC-11);
 					}
-					break;					
+					break;			
+					
 				case RELEASED_FOR_Y3_SEC :
-					if (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) 
-					{
-						Delay_ms(1);
+					if (!delayButtonStateReset && (button[i].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC)) 
+					{	
+						delayButtonStateReset = true;
 						buttonReleasedForYCallback(i, RELEASED_FOR_Y3_SEC-11);
 					}
 					break;
 				
       	default:
       		break;
-      }
-			
-			/* 6. Reset button state */
-			button[i].state = NONE;			
-
+      }	
 		}					// Done checking this button
 	}						// Done checking all buttons
 	
