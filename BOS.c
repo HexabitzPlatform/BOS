@@ -2676,7 +2676,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 	/* Broadcast message */
 	else
 	{
-		BroadcastMessage(0, myID, code, numberOfParams);
+		BroadcastMessage(0, myID, code, numberOfParams+1);
 	}
 	
 	return result;
@@ -2741,7 +2741,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	}	
 	
 	/* if length is 0xD = 13, append by one byte */
-	++length;
+	if (length == 13)	++length;
 	
 	/* 0x75 End of message */
 	message[length-1] = 0x75;		
