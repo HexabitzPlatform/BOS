@@ -1912,7 +1912,7 @@ BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, ui
 	}
 
 	/* Reset messageParams buffer */
-	memset( messageParams, 0, numberOfParams );
+	memset( messageParams, 0, numberOfParams+1 );
 	
 	return result;
 }
@@ -2676,7 +2676,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 	/* Broadcast message */
 	else
 	{
-		BroadcastMessage(0, myID, code, numberOfParams+1);
+		BroadcastMessage(0, myID, code, numberOfParams);
 	}
 	
 	return result;
