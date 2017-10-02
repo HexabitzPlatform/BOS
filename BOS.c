@@ -2516,6 +2516,7 @@ void BOS_Init(void)
 	if (IsLowerCLIbaud())
 	{
 		/* Initialize the module */
+		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();	
 		
 		BOS.clibaudrate = CLI_BAUDRATE_1;
@@ -2528,6 +2529,7 @@ void BOS_Init(void)
 	else
 	{
 		/* Initialize the module with default baudrate */
+		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();				
 	}
 	
