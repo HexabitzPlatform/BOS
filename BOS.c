@@ -401,7 +401,7 @@ void PxMessagingTask(void * argument)
 						BroadcastReceivedMessage(port);
 						cMessage[port-1][messageLength[port-1]-2] = 0;								/* Reset bcastID location */
 					/* Reflection of last broadcast message! */
-					} else if (dst == BOS_BROADCAST && cMessage[port-1][4] == bcastLastID) {
+					} else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) {
 						result = BOS_ERR_MSG_Reflection;
 					}
 					
@@ -1876,6 +1876,9 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 			SendMessageFromPort(port, src, 0xFF, code, length-5);	
 		}	
 	}
+
+	/* Reset messageParams buffer */
+	memset( messageParams, 0, length-5 );
 	
 	return result;
 }
@@ -1907,7 +1910,7 @@ BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, ui
 		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
 		{
 			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+			SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);	
 		}	
 	}
 
@@ -2662,7 +2665,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 	uint8_t port = 0; 
 	
 	/* Singlecast message */
-	if (dst != 0xFF)
+	if (dst != BOS_BROADCAST)
 	{
 		/* Find best output port for destination module */
 		port = FindRoute(myID, dst); 
@@ -2740,8 +2743,11 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		}
 	}	
 	
-	/* if length is 0xD = 13, append by one byte */
-	if (length == 13)	++length;
+	/* if length is 0xD = 13, append by one zero byte. If it's a broadcast, append before bcastID */
+	if (length == 13) {
+		++length;
+		if (dst == BOS_BROADCAST) message[length-2] = message[length-3];		// Move bcastID to last byte before End of Message
+	}		
 	
 	/* 0x75 End of message */
 	message[length-1] = 0x75;		
