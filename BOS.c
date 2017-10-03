@@ -146,6 +146,8 @@ void EE_FormatForFactoryReset(void);
 BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
 BOS_Status CheckForTimedButtonPress(uint8_t port);
 BOS_Status CheckForTimedButtonRelease(uint8_t port);
+void buttonPressedCallback(uint8_t port);
+void buttonReleasedCallback(uint8_t port);
 void buttonClickedCallback(uint8_t port);
 void buttonDblClickedCallback(uint8_t port);
 void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
@@ -2021,8 +2023,13 @@ void CheckAttachedButtons(void)
 			} 
 			else 
 			{
-				//button[i].state = PRESSED;																// Record a PRESSED event (this masks other events!)
-				if (releaseCounter[i] > BOS.buttons.debounce)								// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
+				if (pressCounter[i] == BOS.buttons.debounce)
+				{
+					button[i].state = PRESSED;															// Record a PRESSED event. This event is always reset on next tick.
+					++pressCounter[i];
+				}
+				
+				if (releaseCounter[i] > BOS.buttons.debounce)							// Reset releaseCounter if needed - to avoid masking pressCounter on NO switches
 					releaseCounter[i] = 0;					
 				
 				if (pressCounter[i] > BOS.buttons.singleClickTime && pressCounter[i] < 500)	
@@ -2051,8 +2058,13 @@ void CheckAttachedButtons(void)
 			} 	
 			else 
 			{
-				//button[i].state = RELEASED;																// Record a RELEASED event (this masks other events!)
-				if (pressCounter[i] > BOS.buttons.debounce)									// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
+				if (releaseCounter[i] == BOS.buttons.debounce)
+				{
+					button[i].state = RELEASED;															// Record a RELEASED event. This event is always reset on next tick.
+					++releaseCounter[i];
+				}
+				
+				if (pressCounter[i] > BOS.buttons.debounce)								// Reset pressCounter if needed - to avoid masking releaseCounter on NC switches
 					pressCounter[i] = 0;				
 				
 				if (releaseCounter[i] > BOS.buttons.singleClickTime && releaseCounter[i] < 500)	
@@ -2079,9 +2091,13 @@ void CheckAttachedButtons(void)
 			switch (button[i].state)
       {
       	case PRESSED :
+					buttonPressedCallback(i);
+					button[i].state = NONE;
       		break;
 				
       	case RELEASED :
+					buttonReleasedCallback(i);
+					button[i].state = NONE;
       		break;
 				
       	case CLICKED :
@@ -2314,6 +2330,24 @@ BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint3
 		result = BOS_ERROR;	
 	
 	return result;	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button press callback. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonPressedCallback(uint8_t port)
+{	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Button release callback. DO NOT MODIFY THIS CALLBACK. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonReleasedCallback(uint8_t port)
+{	
 }
 
 /*-----------------------------------------------------------*/	
