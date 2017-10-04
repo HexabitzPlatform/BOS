@@ -2631,6 +2631,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &ledModeCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pwmCommandDefinition );
 #endif
 }
 
