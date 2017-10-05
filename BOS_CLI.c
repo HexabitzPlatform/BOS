@@ -207,9 +207,9 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				/* Parse a normal Command */
 				else 
 				{
-					/* Check if command contains a dot and it's not "BOS." */
+					/* Check if command contains a dot and it's not "BOS." or a decimal number */
 					loc = strchr( ( char * ) cInputString, '.');
-					if (loc != NULL && strncmp((char *)loc-3, "bos", 3)) 
+					if ( loc != NULL && strncmp((char *)loc-3, "bos", 3) && !isdigit(*(loc+1)) ) 
 					{					
 						/* Extract module ID */
 						strncpy(idString, ( char * ) cInputString, (size_t) (loc - (char*)cInputString));

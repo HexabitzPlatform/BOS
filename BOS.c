@@ -399,7 +399,7 @@ void PxMessagingTask(void * argument)
 				{				
 					/* Is it a broadcast message with unique ID? */
 					if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) {
-						bcastLastID = cMessage[port-1][messageLength[port-1]-2];			/* Store bcastID */		
+						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			/* Store bcastID */		
 						BroadcastReceivedMessage(port);
 						cMessage[port-1][messageLength[port-1]-2] = 0;								/* Reset bcastID location */
 					/* Reflection of last broadcast message! */
