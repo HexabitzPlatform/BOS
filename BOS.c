@@ -2626,6 +2626,15 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
 #endif	
+#ifdef H05R0	
+	FreeRTOS_CLIRegisterCommand( &addLogCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &deleteLogCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &logVarommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &startCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &stopCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pauseCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &resumeCommandDefinition );
+#endif
 #ifdef H09R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
