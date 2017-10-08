@@ -28,7 +28,15 @@ enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
+enum bootStatus_e{POWER_ON_BOOT, RESET_BOOT};
+/* RTC Enums */
+enum rtc_ampm_e{RTC_AM = 0, RTC_PM};
+enum rtc_daylight_e{DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1};
+enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER};
+enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
+/* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
+
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -241,7 +249,7 @@ extern uint8_t route[];
 extern button_t button[NumOfPorts+1];
 extern bool delayButtonStateReset, needToDelayButtonStateReset;
 extern BOS_t BOS;
-extern uint8_t PcPort;
+extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 
@@ -329,6 +337,8 @@ extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFor
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
+extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t weekday, uint8_t seconds, \
+															uint8_t minutes, uint8_t hours, uint8_t AMPM, int8_t daylightsaving);
 
 
 #endif /* BOS_H */
