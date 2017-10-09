@@ -18,7 +18,7 @@
 
 BOS_t BOS; 
 BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
-											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK };
+											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_OFF;
@@ -30,6 +30,7 @@ const char modulePNstring[10][5] = {"", "H01R0", "H02R0", "H04R0", "H05R0", "H07
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
 
 const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 	
 /* Number of modules in the array */
 #ifndef _N
@@ -196,6 +197,8 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -316,7 +319,7 @@ static const CLI_Command_Definition_t setCommandDefinition =
 	( const int8_t * ) "set", /* The command string to type. */
 	( const int8_t * ) "set:\r\n Set a parameter (1st par.) with a given value (2nd par.)\r\n\r\n",
 	setCommand, /* The function to run. */
-	2 /* Two parameters are expected. */
+	-1 /* Variable number of parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : get */
@@ -337,7 +340,24 @@ static const CLI_Command_Definition_t defaultCommandDefinition =
 	1 /* One parameter is expected. */
 };
 /*-----------------------------------------------------------*/
-
+/* CLI command structure : time */
+static const CLI_Command_Definition_t timeCommandDefinition =
+{
+	( const int8_t * ) "time", /* The command string to type. */
+	( const int8_t * ) "time:\r\n Display current time in HH:MM:SS-msec format\r\n\r\n",
+	timeCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : date */
+static const CLI_Command_Definition_t dateCommandDefinition =
+{
+	( const int8_t * ) "date", /* The command string to type. */
+	( const int8_t * ) "date:\r\n Display current date in Weekday MM/DD/YYYY format\r\n\r\n",
+	dateCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
 
 /* Define long messages -------------------------------------------------------*/
 
@@ -1549,6 +1569,16 @@ BOS_Status LoadEEparams(void)
 	else
 		BOS.clibaudrate = BOS_default.clibaudrate;
 	
+	/* Read RTC hourformat and daylightsaving */
+	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsRTC], &temp1);
+	if (!status1) {
+		BOS.daylightsaving = (int8_t)temp1;
+		BOS.hourformat = (uint8_t)(temp1>>8);
+	} else {
+		BOS.hourformat = 24;
+		BOS.daylightsaving = DAYLIGHT_NONE;
+	}		
+	
 	return result;
 }
 
@@ -1570,11 +1600,14 @@ BOS_Status SaveEEparams(void)
 	EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], BOS.buttons.singleClickTime);
 
 	/* Save Button double click time (min and max inter-click) */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.daylightsaving);
 
 	/* Save CLI baudrate */
 	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
 	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+	
+	/* Save RTC hourformat and daylightsaving */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 	
 	return result;
 }
@@ -2528,14 +2561,14 @@ BOS_Status RTC_Init(void)
 	/* Configure the RTC 
 		f_ckspre = f_rtcclk / ((PREDIV_S+1) * (PREDIV_A+1))
 			- f_rtcclk is HSE 8 MHz / 32 = 250 kHz
-			- f_ckspre should be 1 kHz 
+			- f_ckspre should be 1 Hz 
 			- PREDIV_A should be as high as possible to minimize power consumption
-					>> Choose PREDIV_A = 124 and PREDIV_S = 1
+					>> Choose PREDIV_A = 124 and PREDIV_S = 1999
 	*/
 	RtcHandle.Instance = RTC; 
   RtcHandle.Init.HourFormat = RTC_HOURFORMAT_24;
   RtcHandle.Init.AsynchPrediv = 124;
-  RtcHandle.Init.SynchPrediv = 1;
+  RtcHandle.Init.SynchPrediv = 1999;
   RtcHandle.Init.OutPut = RTC_OUTPUT_DISABLE;
   RtcHandle.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   RtcHandle.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -2610,10 +2643,10 @@ BOS_Status RTC_CalendarConfig(void)
   stimestructure.Hours = hours;
   stimestructure.Minutes = minutes;
   stimestructure.Seconds = seconds;
-  stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
+  stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;	BOS.hourformat = 24;
   stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
   stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;
-
+	
   if (HAL_RTC_SetTime(&RtcHandle, &stimestructure, RTC_FORMAT_BIN) != HAL_OK)
 		return BOS_ERROR;
 
@@ -2637,6 +2670,7 @@ void BOS_Init(void)
 {
 	/* Initialize and configure RTC */
 	RTC_Init();
+	GetTimeDate();
 	
 	/* Unlock the Flash memory */
 	HAL_FLASH_Unlock();
@@ -2731,6 +2765,8 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &setCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &getCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &defaultCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &timeCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &dateCommandDefinition );
 	
 	
 #ifdef H01R0	
@@ -4243,20 +4279,29 @@ BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t
   stimestructure.Seconds = seconds; 
 	stimestructure.StoreOperation = RTC_STOREOPERATION_RESET;		// Todo - Use this to make sure user does not change daylight settings again
 	
-	if (daylightsaving == DAYLIGHT_NONE) 
-		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-	else if (daylightsaving == DAYLIGHT_ADD1H)
-		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
-	else if (daylightsaving == DAYLIGHT_SUB1H)
-		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_SUB1H;
+//	if (daylightsaving == DAYLIGHT_NONE) 											// Todo
+//		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+//	else if (daylightsaving == DAYLIGHT_ADD1H)
+//		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_ADD1H;
+//	else if (daylightsaving == DAYLIGHT_SUB1H)
+//		stimestructure.DayLightSaving = RTC_DAYLIGHTSAVING_SUB1H;
 	
-	if (AMPM == RTC_AM)
+	if (hours > 12)	BOS.hourformat = 24;
+	
+	if (AMPM == RTC_AM) {
 		stimestructure.TimeFormat = RTC_HOURFORMAT12_AM;
-	else if (AMPM == RTC_PM)
+		BOS.hourformat = 12;
+	} else if (AMPM == RTC_PM) {
 		stimestructure.TimeFormat = RTC_HOURFORMAT12_PM;
+		BOS.hourformat = 12;
+	} else
+		BOS.hourformat = 24;
 	
   if (HAL_RTC_SetTime(&RtcHandle, &stimestructure, RTC_FORMAT_BIN) != HAL_OK)
 		return BOS_ERROR;
+	
+	/* Save RTC hourformat and daylightsaving to EEPROM */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 
   /* Writes a data in a RTC Backup data Register1 */
   HAL_RTCEx_BKUPWrite(&RtcHandle, RTC_BKP_DR1, 0x32F2);
@@ -4266,6 +4311,26 @@ BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t
 
 /*-----------------------------------------------------------*/
 
+/* --- Get current RTC time and date.
+*/
+void GetTimeDate(void)
+{
+	RTC_DateTypeDef sdatestructureget;
+  RTC_TimeTypeDef stimestructureget;
+	
+  HAL_RTC_GetTime(&RtcHandle, &stimestructureget, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(&RtcHandle, &sdatestructureget, RTC_FORMAT_BIN);
+	
+	BOS.time.ampm = (stimestructureget.TimeFormat >> 7) + 1;
+	BOS.time.msec = stimestructureget.SubSeconds / 2;
+	BOS.time.seconds = stimestructureget.Seconds;
+	BOS.time.minutes = stimestructureget.Minutes;
+	BOS.time.hours = stimestructureget.Hours;
+	BOS.date.day = sdatestructureget.Date;
+	BOS.date.month = sdatestructureget.Month;
+	BOS.date.weekday = sdatestructureget.WeekDay;
+	BOS.date.year = sdatestructureget.Year + 2000;
+}
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
@@ -4693,9 +4758,10 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 static portBASE_TYPE setCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	BOS_Status result = BOS_OK; 
-	static int8_t *pcParameterString1, *pcParameterString2; 
-	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
-	uint16_t temp = 0; uint32_t temp2 = 0; uint8_t extraMessage = 0;
+	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3, *pcParameterString4, *pcParameterString5; 
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0, xParameterStringLength3 = 0;
+	portBASE_TYPE xParameterStringLength4 = 0, xParameterStringLength5 = 0;
+	uint16_t temp16 = 0; uint32_t temp2 = 0; uint8_t extraMessage = 0, temp81, temp82, temp83, temp84;
 	
 	static const int8_t *pcMessageOK = ( int8_t * ) "%s was set to %s\n\r";	
 	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";	
@@ -4745,42 +4811,134 @@ you must connect to a CLI port on each startup to restore other array ports into
 		}
 		else if (!strncmp((const char *)pcParameterString1+4, "debounce", xParameterStringLength1-4)) 
 		{
-			temp = atoi((const char *)pcParameterString2);
-			if (temp >= 1 && temp <= USHRT_MAX) {
-				BOS.buttons.debounce = temp;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], temp);
+			temp16 = atoi((const char *)pcParameterString2);
+			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
+				BOS.buttons.debounce = temp16;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], temp16);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "singleclicktime", xParameterStringLength1-4)) 
 		{
-			temp = atoi((const char *)pcParameterString2);
-			if (temp >= 1 && temp <= USHRT_MAX) {
-				BOS.buttons.singleClickTime = temp;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], temp);
+			temp16 = atoi((const char *)pcParameterString2);
+			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
+				BOS.buttons.singleClickTime = temp16;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], temp16);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "mininterclicktime", xParameterStringLength1-4)) 
 		{
-			temp = atoi((const char *)pcParameterString2);
-			if (temp >= 1 && temp <= UCHAR_MAX) {
-				BOS.buttons.minInterClickTime = temp;
+			temp16 = atoi((const char *)pcParameterString2);
+			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
+				BOS.buttons.minInterClickTime = temp16;
 				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 		
 		else if (!strncmp((const char *)pcParameterString1+4, "maxinterclicktime", xParameterStringLength1-4)) 
 		{
-			temp = atoi((const char *)pcParameterString2);
-			if (temp >= 1 && temp <= UCHAR_MAX) {
-				BOS.buttons.maxInterClickTime = temp;
+			temp16 = atoi((const char *)pcParameterString2);
+			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
+				BOS.buttons.maxInterClickTime = temp16;
 				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;					
 		} 
 		else	
 			result = BOS_ERR_WrongParam;
+	}
+	else if (!strncmp((const char *)pcParameterString1, "time", 4))
+	{
+		pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+		pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
+		pcParameterString4 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 4, &xParameterStringLength4);
+		pcParameterString5 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 5, &xParameterStringLength5);
+		temp81 = atoi((const char *)pcParameterString2);		// Hours
+		temp82 = atoi((const char *)pcParameterString3);		// Minutes
+		temp83 = atoi((const char *)pcParameterString4);		// Seconds
+		
+		if (pcParameterString5 != NULL) {
+			if (!strncmp((const char *)pcParameterString5, "am", 2))
+				temp84 = RTC_AM;
+			else if (!strncmp((const char *)pcParameterString5, "pm", 2))
+				temp84 = RTC_PM;
+			else
+				result = BOS_ERR_WrongValue;
+		}
+		
+		if (result == BOS_OK) 
+		{
+			if (temp81 > 23 || temp82 > 59 || temp83 > 59)
+				result = BOS_ERR_WrongValue;
+			else {
+				GetTimeDate();				
+				result = BOS_CalendarConfig(BOS.date.month, BOS.date.day, BOS.date.year, BOS.date.weekday, temp83, temp82, temp81, temp84, BOS.daylightsaving);
+			}
+		}
+	}
+	else if (!strncmp((const char *)pcParameterString1, "date", 4))
+	{
+		pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+		pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
+		pcParameterString4 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 4, &xParameterStringLength4);
+		pcParameterString5 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 5, &xParameterStringLength5);
+		temp83 = atoi((const char *)pcParameterString4);		// day
+		temp16 = atoi((const char *)pcParameterString5);		// year	
+		
+		if (!strncmp((const char *)pcParameterString2, "monday", 6))
+			temp81 = MONDAY;
+		else if (!strncmp((const char *)pcParameterString2, "tuesday", 7))
+			temp81 = TUESDAY;
+		else if (!strncmp((const char *)pcParameterString2, "wednesday", 9))
+			temp81 = WEDNESDAY;
+		else if (!strncmp((const char *)pcParameterString2, "thursday", 8))
+			temp81 = THURSDAY;
+		else if (!strncmp((const char *)pcParameterString2, "friday", 6))
+			temp81 = FRIDAY;
+		else if (!strncmp((const char *)pcParameterString2, "saturday", 8))
+			temp81 = SATURDAY;
+		else if (!strncmp((const char *)pcParameterString2, "sunday", 6))
+			temp81 = SUNDAY;
+		else
+			result = BOS_ERR_WrongValue;		
+		
+		if (!strncmp((const char *)pcParameterString3, "january", 7))
+			temp82 = JANUARY;
+		else if (!strncmp((const char *)pcParameterString3, "february", 8))
+			temp82 = FEBRUARY;
+		else if (!strncmp((const char *)pcParameterString3, "march", 5))
+			temp82 = MARCH;
+		else if (!strncmp((const char *)pcParameterString3, "april", 5))
+			temp82 = APRIL;
+		else if (!strncmp((const char *)pcParameterString3, "may", 3))
+			temp82 = MAY;
+		else if (!strncmp((const char *)pcParameterString3, "june", 4))
+			temp82 = JUNE;
+		else if (!strncmp((const char *)pcParameterString3, "july", 4))
+			temp82 = JULY;
+		else if (!strncmp((const char *)pcParameterString3, "august", 5))
+			temp82 = AUGUST;
+		else if (!strncmp((const char *)pcParameterString3, "september", 9))
+			temp82 = SEPTEMBER;
+		else if (!strncmp((const char *)pcParameterString3, "october", 7))
+			temp82 = OCTOBER;
+		else if (!strncmp((const char *)pcParameterString3, "november", 8))
+			temp82 = NOVEMBER;
+		else if (!strncmp((const char *)pcParameterString3, "december", 8))
+			temp82 = DECEMBER;
+		else
+			result = BOS_ERR_WrongValue;	
+		
+		if (result == BOS_OK) 
+		{
+			if (temp83 < 1 || temp83 > 31 || temp16 < 2000 || temp16 > 2100)
+				result = BOS_ERR_WrongValue;
+			else {
+				GetTimeDate();
+				result = BOS_CalendarConfig(temp82, temp83, temp16, temp81, BOS.time.seconds, BOS.time.minutes, BOS.time.hours, BOS.time.ampm, BOS.daylightsaving);
+			}
+		}
 	}
 	else	
 		result = BOS_ERR_WrongParam;
@@ -4915,5 +5073,55 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 
 /*-----------------------------------------------------------*/
 
+static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	static const int8_t *pcMessage24 = ( int8_t * ) "Current time is %2d:%2d:%2d-%3d\n\r";	
+	static const int8_t *pcMessage12 = ( int8_t * ) "Current time is %2d:%2d:%2d-%3d %s\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	GetTimeDate();
+	/* Respond to the command */
+	if (BOS.hourformat == 24)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage24, BOS.time.hours, BOS.time.minutes, BOS.time.seconds, BOS.time.msec );
+	else if (BOS.hourformat == 12)
+	{
+		if (BOS.time.ampm == RTC_AM)
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage12, BOS.time.hours, BOS.time.minutes, BOS.time.seconds, BOS.time.msec, "AM" );
+		else if (BOS.time.ampm == RTC_PM)
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage12, BOS.time.hours, BOS.time.minutes, BOS.time.seconds, BOS.time.msec, "PM" );
+	}
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	static const int8_t *pcMessageDate = ( int8_t * ) "Current date is %s %2d/%2d/%4d\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	GetTimeDate();
+	/* Respond to the command */
+	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDate, weekdayString[BOS.date.weekday-1], BOS.date.month, BOS.date.day, BOS.date.year );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

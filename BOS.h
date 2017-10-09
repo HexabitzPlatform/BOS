@@ -30,7 +30,7 @@ enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEA
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
 enum bootStatus_e{POWER_ON_BOOT, RESET_BOOT};
 /* RTC Enums */
-enum rtc_ampm_e{RTC_AM = 0, RTC_PM};
+enum rtc_ampm_e{RTC_AM = 1, RTC_PM};
 enum rtc_daylight_e{DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1};
 enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER};
 enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
@@ -140,12 +140,35 @@ typedef struct
 } 
 buttonsConfig_t;
 
+/* Time/Date Struct Type Definition */  
+typedef struct
+{
+	uint16_t msec;
+	uint8_t seconds;
+	uint8_t minutes;
+	uint8_t hours;
+	uint8_t ampm;
+} 
+time_t;
+typedef struct
+{
+	uint8_t weekday;
+	uint8_t day;
+	uint8_t month;
+	uint16_t year;
+} 
+date_t;
+
 /* BOS Struct Type Definition */  
 typedef struct
 {
 	buttonsConfig_t buttons;
 	uint8_t response;
 	uint32_t clibaudrate;
+	uint8_t daylightsaving;
+	uint8_t hourformat;
+	time_t time;						// Not saved with BOS parameters
+	date_t date;						// Not saved with BOS parameters
 } 
 BOS_t;
 
@@ -339,6 +362,7 @@ extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t weekday, uint8_t seconds, \
 															uint8_t minutes, uint8_t hours, uint8_t AMPM, int8_t daylightsaving);
+extern void GetTimeDate(void);
 
 
 #endif /* BOS_H */

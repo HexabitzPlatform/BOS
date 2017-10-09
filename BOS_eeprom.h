@@ -102,6 +102,7 @@
 #define _EE_ParamsSinClick			309				// Parameter: Button single click
 #define _EE_ParamsDblClick			310				// Parameter: Button double click (inter-click min and max)
 #define _EE_CLIBaud							311				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
+#define _EE_ParamsRTC						313				// Parameter: RTC hourformat | RTC daylightsaving
 
 
 #if MaxNumOfModules > 25						// Update
