@@ -4903,29 +4903,29 @@ you must connect to a CLI port on each startup to restore other array ports into
 		else
 			result = BOS_ERR_WrongValue;		
 		
-		if (!strncmp((const char *)pcParameterString3, "january", 7))
+		if (!strncmp((const char *)pcParameterString3, "january", 7) || !strncmp((const char *)pcParameterString3, "1", 1))
 			temp82 = JANUARY;
-		else if (!strncmp((const char *)pcParameterString3, "february", 8))
+		else if (!strncmp((const char *)pcParameterString3, "february", 8) || !strncmp((const char *)pcParameterString3, "2", 1))
 			temp82 = FEBRUARY;
-		else if (!strncmp((const char *)pcParameterString3, "march", 5))
+		else if (!strncmp((const char *)pcParameterString3, "march", 5) || !strncmp((const char *)pcParameterString3, "3", 1))
 			temp82 = MARCH;
-		else if (!strncmp((const char *)pcParameterString3, "april", 5))
+		else if (!strncmp((const char *)pcParameterString3, "april", 5) || !strncmp((const char *)pcParameterString3, "4", 1))
 			temp82 = APRIL;
-		else if (!strncmp((const char *)pcParameterString3, "may", 3))
+		else if (!strncmp((const char *)pcParameterString3, "may", 3) || !strncmp((const char *)pcParameterString3, "5", 1))
 			temp82 = MAY;
-		else if (!strncmp((const char *)pcParameterString3, "june", 4))
+		else if (!strncmp((const char *)pcParameterString3, "june", 4) || !strncmp((const char *)pcParameterString3, "6", 1))
 			temp82 = JUNE;
-		else if (!strncmp((const char *)pcParameterString3, "july", 4))
+		else if (!strncmp((const char *)pcParameterString3, "july", 4) || !strncmp((const char *)pcParameterString3, "7", 1))
 			temp82 = JULY;
-		else if (!strncmp((const char *)pcParameterString3, "august", 5))
+		else if (!strncmp((const char *)pcParameterString3, "august", 5) || !strncmp((const char *)pcParameterString3, "8", 1))
 			temp82 = AUGUST;
-		else if (!strncmp((const char *)pcParameterString3, "september", 9))
+		else if (!strncmp((const char *)pcParameterString3, "september", 9) || !strncmp((const char *)pcParameterString3, "9", 1))
 			temp82 = SEPTEMBER;
-		else if (!strncmp((const char *)pcParameterString3, "october", 7))
+		else if (!strncmp((const char *)pcParameterString3, "october", 7) || !strncmp((const char *)pcParameterString3, "10", 2))
 			temp82 = OCTOBER;
-		else if (!strncmp((const char *)pcParameterString3, "november", 8))
+		else if (!strncmp((const char *)pcParameterString3, "november", 8) || !strncmp((const char *)pcParameterString3, "11", 2))
 			temp82 = NOVEMBER;
-		else if (!strncmp((const char *)pcParameterString3, "december", 8))
+		else if (!strncmp((const char *)pcParameterString3, "december", 8) || !strncmp((const char *)pcParameterString3, "12", 2))
 			temp82 = DECEMBER;
 		else
 			result = BOS_ERR_WrongValue;	
