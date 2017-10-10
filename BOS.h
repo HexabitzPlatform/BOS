@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.2 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.3 - Copyright (C) 2017 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -13,7 +13,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
-#define	_firmPatch			2
+#define	_firmPatch			3
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -279,9 +279,12 @@ extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 
 /* Exported internal functions ---------------------------------------------------------*/
 
-void StringToLowerCase(char *string);
+extern void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
 extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
+extern void SystemClock_Config(void);
+extern void MX_FREERTOS_Init(void);
+extern void SystemClock_Config(void);
 
 /* -----------------------------------------------------------------------
 	|														Message Codes	 														 	|
