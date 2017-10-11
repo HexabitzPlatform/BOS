@@ -24,7 +24,7 @@ TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[10][5] = {"", "H01R0", "H02R0", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0"};
+const char modulePNstring[11][5] = {"", "H01R0", "H02R0", "H02R1", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0"};
 
 /* Define BOS keywords */
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
@@ -5137,8 +5137,8 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 
 static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	static const int8_t *pcMessage24 = ( int8_t * ) "Current time is %2d:%2d:%2d-%3d\n\r";	
-	static const int8_t *pcMessage12 = ( int8_t * ) "Current time is %2d:%2d:%2d-%3d %s\n\r";	
+	static const int8_t *pcMessage24 = ( int8_t * ) "Current time is %02d:%02d:%02d-%03d\n\r";	
+	static const int8_t *pcMessage12 = ( int8_t * ) "Current time is %02d:%02d:%02d-%03d %s\n\r";	
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -5167,7 +5167,7 @@ static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 
 static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	static const int8_t *pcMessageDate = ( int8_t * ) "Current date is %s %2d/%2d/%4d\n\r";	
+	static const int8_t *pcMessageDate = ( int8_t * ) "Current date is %s %02d/%02d/%04d\n\r";	
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
