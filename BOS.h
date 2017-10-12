@@ -22,7 +22,7 @@ enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
 enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
 enum UartDirection_e{NORMAL, REVERSED};
-enum modulePartNumbers_e{_H01R0=1, _H02R0, _H02R1, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0};
+enum modulePartNumbers_e{_H01R0=1, _H02R0, _H02R1, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0, _H17R0};
 enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
@@ -97,6 +97,9 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #endif
 #ifdef H12R0
 	#include "H12R0.h"	
+#endif
+#ifdef H17R0
+	#include "H17R0.h"	
 #endif
 
 
@@ -250,7 +253,7 @@ extern uint8_t myID, bcastID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[11][5];
+extern const char modulePNstring[12][5];
 extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
