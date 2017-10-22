@@ -253,7 +253,7 @@ extern uint8_t myID, bcastID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[12][5];
+extern const char modulePNstring[12][6];
 extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
