@@ -3675,6 +3675,8 @@ void DisplayModuleStatus(uint8_t port)
 						sprintf(pcUserMessage, "Streaming\n\r"); break;
 				case CLI :
 						sprintf(pcUserMessage, "Receiving user commands\n\r"); break;
+				case PORTBUTTON :
+						sprintf(pcUserMessage, "Connected to a button/switch\n\r"); break;
 				default:
 						break;
 		}		
@@ -4965,23 +4967,23 @@ you must connect to a CLI port on each startup to restore other array ports into
 		else
 			result = BOS_ERR_WrongValue;		
 		
-		if (!strncmp((const char *)pcParameterString3, "january", 7) || !strncmp((const char *)pcParameterString3, "1", 1))
+		if (!strncmp((const char *)pcParameterString3, "january", 7) || !strncmp((const char *)pcParameterString3, "1 ", 2))
 			temp82 = JANUARY;
-		else if (!strncmp((const char *)pcParameterString3, "february", 8) || !strncmp((const char *)pcParameterString3, "2", 1))
+		else if (!strncmp((const char *)pcParameterString3, "february", 8) || !strncmp((const char *)pcParameterString3, "2 ", 2))
 			temp82 = FEBRUARY;
-		else if (!strncmp((const char *)pcParameterString3, "march", 5) || !strncmp((const char *)pcParameterString3, "3", 1))
+		else if (!strncmp((const char *)pcParameterString3, "march", 5) || !strncmp((const char *)pcParameterString3, "3 ", 2))
 			temp82 = MARCH;
-		else if (!strncmp((const char *)pcParameterString3, "april", 5) || !strncmp((const char *)pcParameterString3, "4", 1))
+		else if (!strncmp((const char *)pcParameterString3, "april", 5) || !strncmp((const char *)pcParameterString3, "4 ", 2))
 			temp82 = APRIL;
-		else if (!strncmp((const char *)pcParameterString3, "may", 3) || !strncmp((const char *)pcParameterString3, "5", 1))
+		else if (!strncmp((const char *)pcParameterString3, "may", 3) || !strncmp((const char *)pcParameterString3, "5 ", 2))
 			temp82 = MAY;
-		else if (!strncmp((const char *)pcParameterString3, "june", 4) || !strncmp((const char *)pcParameterString3, "6", 1))
+		else if (!strncmp((const char *)pcParameterString3, "june", 4) || !strncmp((const char *)pcParameterString3, "6 ", 2))
 			temp82 = JUNE;
-		else if (!strncmp((const char *)pcParameterString3, "july", 4) || !strncmp((const char *)pcParameterString3, "7", 1))
+		else if (!strncmp((const char *)pcParameterString3, "july", 4) || !strncmp((const char *)pcParameterString3, "7 ", 2))
 			temp82 = JULY;
-		else if (!strncmp((const char *)pcParameterString3, "august", 5) || !strncmp((const char *)pcParameterString3, "8", 1))
+		else if (!strncmp((const char *)pcParameterString3, "august", 5) || !strncmp((const char *)pcParameterString3, "8 ", 2))
 			temp82 = AUGUST;
-		else if (!strncmp((const char *)pcParameterString3, "september", 9) || !strncmp((const char *)pcParameterString3, "9", 1))
+		else if (!strncmp((const char *)pcParameterString3, "september", 9) || !strncmp((const char *)pcParameterString3, "9 ", 2))
 			temp82 = SEPTEMBER;
 		else if (!strncmp((const char *)pcParameterString3, "october", 7) || !strncmp((const char *)pcParameterString3, "10", 2))
 			temp82 = OCTOBER;

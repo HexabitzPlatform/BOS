@@ -131,7 +131,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	}
 	
 	/* Send the welcome message. */
-	sprintf(pcWelcomePortMessage, "Connected to module %d, port P%d.\n\n\r>", myID, port);
+	sprintf(pcWelcomePortMessage, "Connected to module %d (%s), port P%d.\n\n\r>", myID, modulePNstring[myPN], port);
 	writePxITMutex(port, pcWelcomeMessage, strlen(pcWelcomeMessage), cmd50ms);
 	writePxITMutex(port, pcWelcomePortMessage, strlen(pcWelcomePortMessage), cmd50ms);
 
