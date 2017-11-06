@@ -495,8 +495,7 @@ void PxMessagingTask(void * argument)
 										temp += 5;		
 									}
 								}
-								/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
-								SendMessageFromPort(port, 0, 0, CODE_explore_adj_response, temp);
+								SendMessageToModule(src, CODE_explore_adj_response, temp);
 								break;
 							
 							case CODE_explore_adj_response :
@@ -3046,7 +3045,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 BOS_Status Explore(void)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0;
+	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, p = 0, port = 0;
 	uint16_t temp16 = 0;
 	
 	myID = 1; 		/* Master ID */
@@ -3063,7 +3062,7 @@ BOS_Status Explore(void)
 	
 	/* Step 2a - Assign IDs to new modules */
 	currentID = 1;
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	for (port=1 ; port<=NumOfPorts ; port++) 
 	{
 		if (neighbors[port-1][0])
 		{
@@ -3081,7 +3080,7 @@ BOS_Status Explore(void)
 	
 	/* Step 2b - Update master topology array */
 	array[0][0]	= myPN;					
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
+	for (port=1 ; port<=NumOfPorts ; port++) 
 	{
 		if (neighbors[port-1][0])
 		{
@@ -3096,6 +3095,13 @@ BOS_Status Explore(void)
 		}
 	}		
 	
+	/* Step 2c - Ask neighbors to update their topology array */
+	for (i=2 ; i<=currentID ; i++) 
+	{
+		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+		SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+		osDelay(60);
+	}
 	
 	/* >>> Step 3 - Ask each new module to explore and repeat */
 	
@@ -3105,7 +3111,7 @@ BOS_Status Explore(void)
 		lastID = currentID;
 		
 		/* Scan all discovered modules */
-		for (uint8_t i=2 ; i<=currentID ; i++) 
+		for (i=2 ; i<=currentID ; i++) 
 		{
 			/* Step 3a - Ask the module to reverse ports */
 			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) {
@@ -3120,7 +3126,7 @@ BOS_Status Explore(void)
 			osDelay(100);		
 		
 			/* Step 3c - Assign IDs to new modules */
-			for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
+			for (j=1 ; j<=MaxNumOfPorts ; j++) 
 			{
 				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 				temp1 = (uint8_t)(temp16>>8);											
@@ -3140,7 +3146,7 @@ BOS_Status Explore(void)
 			}
 			
 			/* Step 3d - Update master topology array */
-			for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
+			for (j=1 ; j<=MaxNumOfPorts ; j++) 
 			{
 				if (neighbors2[j-1][0])
 				{	
@@ -3165,10 +3171,13 @@ BOS_Status Explore(void)
 			/* Reset neighbors2 array */
 			memset(neighbors2, 0, sizeof(neighbors2) );
 			
-			/* Step 3e - Ask the module to update its topology array */
-			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-			SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-			osDelay(60);
+			/* Step 3e - Ask all discovered modules to update their topology array */
+			for (j=2 ; j<=currentID ; j++) 
+			{
+				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+				SendMessageToModule(j, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+				osDelay(60);
+			}
 		}
 	}
 
@@ -3177,7 +3186,7 @@ BOS_Status Explore(void)
 	
 	ExploreNeighbors(PcPort);
 	/* Check for any unIDed neighbors */
-	for (uint8_t i=1 ; i<=NumOfPorts ; i++) 
+	for (i=1 ; i<=NumOfPorts ; i++) 
 	{
 		temp16 = neighbors[i-1][0];		/* Neighbor ID */
 		temp1 = (uint8_t)(temp16>>8);											
@@ -3186,12 +3195,12 @@ BOS_Status Explore(void)
 		}		
 	}
 	/* Ask other modules for any unIDed neighbors */
-	for (uint8_t i=2 ; i<=currentID ; i++) 
+	for (i=2 ; i<=currentID ; i++) 
 	{
 		SendMessageToModule(i, CODE_explore_adj, 0);
 		osDelay(100);	
 		/* Check for any unIDed neighbors */
-		for (uint8_t j=1 ; j<=MaxNumOfPorts ; j++) 
+		for (j=1 ; j<=MaxNumOfPorts ; j++) 
 		{
 			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 			temp1 = (uint8_t)(temp16>>8);											
@@ -3207,14 +3216,14 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{	
 		/* Step 5a - Virtually reset the state of master ports to Normal */
-		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+		for (port=1 ; port<=NumOfPorts ; port++) {
 			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
 		}
 		
 		/* Step 5b - Update other modules ports starting from the last one */
-		for (uint8_t i=currentID ; i>=2 ; i--) 
+		for (i=currentID ; i>=2 ; i--) 
 		{
-			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) 
+			for (p=1 ; p<=MaxNumOfPorts ; p++) 
 			{		
 				if (!array[i-1][p])	{
 					/* If empty port leave normal */
@@ -3253,7 +3262,7 @@ BOS_Status Explore(void)
 		}			
 	
 		/* Step 5e - Update master ports > all normal */
-		for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+		for (port=1 ; port<=NumOfPorts ; port++) {
 			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
 		}
 	}
