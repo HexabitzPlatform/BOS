@@ -483,7 +483,7 @@ void PxMessagingTask(void * argument)
 								break;
 						#ifndef _N
 							case CODE_explore_adj :
-								ExploreNeighbors(port);
+								ExploreNeighbors(port);	indMode = IND_TOPOLOGY;
 								osDelay(10); temp = 0;
 								/* Exploration response message */
 								for (uint8_t p=1 ; p<=NumOfPorts ; p++)  
@@ -539,7 +539,7 @@ void PxMessagingTask(void * argument)
 									/* Copy the scratchpad to array */
 									memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
 									longMessageLastPtr = 0;
-									indMode = IND_TOPOLOGY;
+									//indMode = IND_TOPOLOGY;
 								}
 								break;
 								
@@ -569,6 +569,7 @@ void PxMessagingTask(void * argument)
 								SaveROtopology();
 							#endif
 								SaveEEportsDir();
+								indMode = IND_PING;
 								break;
 							
 							case CODE_CLI_command :
@@ -3055,7 +3056,7 @@ BOS_Status Explore(void)
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(PcPort);
+	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
 
 	
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
@@ -3102,6 +3103,7 @@ BOS_Status Explore(void)
 		SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
 		osDelay(60);
 	}
+	
 	
 	/* >>> Step 3 - Ask each new module to explore and repeat */
 	
@@ -3272,6 +3274,7 @@ BOS_Status Explore(void)
 	
 	if (result == BOS_OK) 
 	{		
+		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
 		for (uint8_t i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
@@ -3284,7 +3287,7 @@ BOS_Status Explore(void)
 		}
 	}
 	
-	/* >>> Step 9 - Save all (topology and port directions) in RO/EEPROM */
+	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
 	
 	if (result == BOS_OK)
 	{
