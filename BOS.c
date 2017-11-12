@@ -1235,6 +1235,8 @@ uint8_t SaveROtopology(void)
 	HAL_StatusTypeDef FlashStatus = HAL_OK;
 	uint16_t add = 2, temp = 0;
 
+	HAL_FLASH_Unlock();
+	
 	/* Erase RO area */
 	FLASH_PageErase(RO_START_ADDRESS);
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
@@ -1273,6 +1275,8 @@ uint8_t SaveROtopology(void)
 			}				
 		}
 	}
+	
+	HAL_FLASH_Lock();
 	
 	return result;
 }
@@ -3274,12 +3278,13 @@ BOS_Status Explore(void)
 	
 	if (result == BOS_OK) 
 	{		
+		osDelay(100);
 		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
 		for (uint8_t i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			//osDelay(100*NumberOfHops(i));	
-			osDelay(100);
+			osDelay(70*NumberOfHops(i));	
+			//osDelay(100);
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
 			else if (responseStatus == BOS_ERR_NoResponse)
