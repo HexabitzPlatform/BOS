@@ -27,7 +27,7 @@ uint8_t indMode = IND_OFF;
 const char modulePNstring[12][6] = {"", "H01R0", "H02R0", "H02R1", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0", "H17R0"};
 
 /* Define BOS keywords */
-const char BOSkeywords[NumOfKeywords][4] = {"me", "all"};
+const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if"};
 
 const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
@@ -46,6 +46,7 @@ uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
+char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 #ifndef _N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
 	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
@@ -54,6 +55,7 @@ uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 	uint8_t route[MaxNumOfModules] = {0};
 	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1] = {0};		/* moduleAlias[0] used to store alias for module 0 */
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
+	uint16_t groupModules[MaxNumOfModules] = {0};			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
 	uint16_t arrayPortsDir[_N]= {0};
 	uint8_t routeDist[_N] = {0}; 
@@ -61,6 +63,7 @@ uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 	uint8_t route[_N] = {0};
 	char moduleAlias[_N+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[_N] = {0};
+	uint16_t groupModules[_N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
 /* Dimension the buffer into which the input messages are placed. */
@@ -140,6 +143,8 @@ BOS_Status SaveEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
+BOS_Status SaveEEgroup(void);
+BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
 BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
@@ -1438,6 +1443,17 @@ BOS_Status SaveEEalias(void)
 
 /*-----------------------------------------------------------*/
 
+/* --- Save module groups in EEPROM --- 
+*/
+BOS_Status SaveEEgroup(void)
+{
+	BOS_Status result = BOS_OK;
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Load module alias stored in EEPROM --- 
 */
 BOS_Status LoadEEalias(void)
@@ -1459,6 +1475,17 @@ BOS_Status LoadEEalias(void)
 	
 	if ((add+_EE_aliasBase) >= _EE_DMAStreamsBase)
 		result = BOS_ERR_EEPROM;
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load module groups stored in EEPROM --- 
+*/
+BOS_Status LoadEEgroup(void)
+{
+	BOS_Status result = BOS_OK;
 	
 	return result;
 }
@@ -3781,26 +3808,33 @@ uint8_t GetID(char* string)
 */
 BOS_Status NameModule(uint8_t module, char* alias)
 {
-	BOS_Status result = BOS_OK; 
+	BOS_Status result = BOS_OK; int i = 0;
 	static const CLI_Definition_List_Item_t *pxCommand = NULL;
 	const int8_t *pcRegisteredCommandString;
 	size_t xCommandStringLength;
 
-	/* Check alias with keywords */
-	for(int i=0 ; i<NumOfKeywords ; i++)
+	/* 1. Check module alias with keywords */
+	for(i=0 ; i<NumOfKeywords ; i++)
 	{
 		if (!strcmp(alias, BOSkeywords[i]))	
 			return BOS_ERR_Keyword;
 	}
 	
-	/* Check alias with other aliases */
-	for(int i=1 ; i<N ; i++)
+	/* 2. Check module alias with other module aliases */
+	for(i=1 ; i<N ; i++)
 	{
 		if (!strcmp(alias, moduleAlias[i]))	
 			return BOS_ERR_ExistingAlias;
 	}
+
+	/* 3. Check module alias with group aliases */
+	for(i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		if (!strcmp(alias, groupAlias[i]))	
+			return BOS_ERR_ExistingAlias;
+	}
 	
-	/* Check alias with BOS and module commands */
+	/* 4. Check alias with BOS and module commands */
 	for( pxCommand = &xRegisteredCommands; pxCommand != NULL; pxCommand = pxCommand->pxNext )
 	{
 		pcRegisteredCommandString = pxCommand->pxCommandLineDefinition->pcCommand;
@@ -3811,14 +3845,85 @@ BOS_Status NameModule(uint8_t module, char* alias)
 		}
 	}
 	
-	/* Alias is unique */
+	/* 5. Module alias is unique */
 	strcpy(moduleAlias[module], alias);
 	
-	/* Share new alias with other modules */
+	/* 6. Share new module alias with other modules */
 	
 	
-	/* Save new alias to Flash */
+	/* 7. Save new alias to emulated EEPROM */
 	result = SaveEEalias();
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Add a module to this group --- 
+*/
+BOS_Status AddModuleToGroup(uint8_t module, char* group)
+{
+	BOS_Status result = BOS_OK; int i = 0, j = 0;
+	static const CLI_Definition_List_Item_t *pxCommand = NULL;
+	const int8_t *pcRegisteredCommandString;
+	size_t xCommandStringLength;
+
+	/* Check alias with other group aliases */
+	for(i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		/* This group already exists */
+		if (!strcmp(group, groupAlias[i]))	
+		{
+			/* 1. Add this module to the group */
+			groupModules[module-1] |= (0x0001<<i);	
+
+			/* 2. Save group to emulated EEPROM */
+			result = SaveEEgroup();			
+		}
+		/* This is a new group - Verify alias and create the group */
+		else
+		{
+			/* 1. Check group alias with keywords */
+			for(j=0 ; j<NumOfKeywords ; j++)
+			{
+				if (!strcmp(group, BOSkeywords[j]))	
+					return BOS_ERR_Keyword;
+			}	
+
+			/* 2. Check group alias with module aliases */
+			for(j=1 ; j<N ; j++)
+			{
+				if (!strcmp(group, moduleAlias[j]))	
+					return BOS_ERR_ExistingAlias;
+			}		
+			
+			/* 3. Check group alias with BOS and module commands */
+			for( pxCommand = &xRegisteredCommands; pxCommand != NULL; pxCommand = pxCommand->pxNext )
+			{
+				pcRegisteredCommandString = pxCommand->pxCommandLineDefinition->pcCommand;
+				xCommandStringLength = strlen( ( const char * ) pcRegisteredCommandString );
+				
+				if( !strncmp(group, (const char *) pcRegisteredCommandString, xCommandStringLength ) ) {
+					return BOS_ERR_ExistingCmd;
+				}
+			}			
+			
+			/* 4. Group alias is unique */
+			strcpy(groupAlias[i], group);		
+			
+			/* 5. Add this module to the new group */
+			groupModules[module-1] |= (0x0001<<i);
+			
+			/* 6. Share new group with other modules */
+	
+	
+			/* 7. Save new group to emulated EEPROM */
+			result = SaveEEalias();
+			if (result == BOS_OK)
+				result = SaveEEgroup();			
+					
+		}			
+	}
 	
 	return result;
 }

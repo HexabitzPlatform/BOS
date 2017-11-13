@@ -211,10 +211,11 @@ button_t;
 #define MAX_MESSAGE_SIZE							50
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								25
+#define	MaxNumOfGroups								10
 #define MaxNumOfPorts									10
 #define MaxLengthOfAlias							10
 #define MAX_BOS_VARS									100
-#define NumOfKeywords									2
+#define NumOfKeywords									3
 #define NumOfParamsHelpStrings				6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
@@ -265,12 +266,15 @@ extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 static char pcUserMessage[80];
 extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
+extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
 #ifndef _N
 	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
+	extern uint16_t groupModules[MaxNumOfModules];
 #else
 	extern char moduleAlias[_N+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[_N];
+	extern uint16_t groupModules[_N];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
