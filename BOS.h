@@ -215,7 +215,7 @@ button_t;
 #define MaxNumOfPorts									10
 #define MaxLengthOfAlias							10
 #define MAX_BOS_VARS									100
-#define NumOfKeywords									3
+#define NumOfKeywords									4
 #define NumOfParamsHelpStrings				6
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms

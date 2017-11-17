@@ -27,7 +27,7 @@ uint8_t indMode = IND_OFF;
 const char modulePNstring[12][6] = {"", "H01R0", "H02R0", "H02R1", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0", "H17R0"};
 
 /* Define BOS keywords */
-const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if"};
+const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
 
 const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
