@@ -362,6 +362,7 @@ extern void DisplayPortsDir(uint8_t port);
 extern void DisplayModuleStatus(uint8_t port);
 extern uint8_t GetID(char* string);
 extern BOS_Status NameModule(uint8_t module, char* alias);
+extern BOS_Status AddModuleToGroup(uint8_t module, char* group);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);

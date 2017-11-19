@@ -85,24 +85,25 @@
 
 /* EEPROM Variables' number (up to 1024 16-bit variables) */
 #define MaxNumOfEEPROMvar       1024	
-#define NumOfEEPROMvar        	320				
+#define NumOfEEPROMvar        	410				
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
 #define _EE_NBase								1	
 #define _EE_portDirBase					2					// Move to RO - 25 modules
 #define _EE_aliasBase						28				// 25 modules
-#define _EE_DMAStreamsBase			159				
-#define _EE_ButtonBase					167				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
+#define _EE_groupAliasBase			154				// 10 groups
+#define _EE_DMAStreamsBase			280				
+#define _EE_ButtonBase					288				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
 																					// pressed_for_x_1 (8 bits), released_for_y_1 (8 bits), etc.
-#define _EE_EmptyVarBase				207
+#define _EE_ParamsBase					328				// Parameter base: BOS response
+#define _EE_ParamsDebounce			329				// Parameter: Button debounce
+#define _EE_ParamsSinClick			330				// Parameter: Button single click
+#define _EE_ParamsDblClick			331				// Parameter: Button double click (inter-click min and max)
+#define _EE_CLIBaud							332				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
+#define _EE_ParamsRTC						334				// Parameter: RTC hourformat | RTC daylightsaving
 
-#define _EE_ParamsBase					307				// Parameter base: BOS response
-#define _EE_ParamsDebounce			308				// Parameter: Button debounce
-#define _EE_ParamsSinClick			309				// Parameter: Button single click
-#define _EE_ParamsDblClick			310				// Parameter: Button double click (inter-click min and max)
-#define _EE_CLIBaud							311				// Parameter: CLI baudrate (two variables) - LSB halfword, MSB halfword
-#define _EE_ParamsRTC						313				// Parameter: RTC hourformat | RTC daylightsaving
+#define _EE_EmptyVarBase				400
 
 
 #if MaxNumOfModules > 25						// Update

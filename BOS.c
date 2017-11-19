@@ -143,6 +143,8 @@ BOS_Status SaveEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
+BOS_Status SaveEEgroupAlias(void);
+BOS_Status LoadEEgroupAlias(void);
 BOS_Status SaveEEgroup(void);
 BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
@@ -1443,6 +1445,31 @@ BOS_Status SaveEEalias(void)
 
 /*-----------------------------------------------------------*/
 
+/* --- Save group alias in EEPROM --- 
+*/
+BOS_Status SaveEEgroupAlias(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp = 0;
+	
+	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		if (groupAlias[i][0]) 
+		{
+			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
+			{
+				temp = (uint16_t) (groupAlias[i][j-1]<<8) + groupAlias[i][j];
+				EE_WriteVariable(VirtAddVarTab[_EE_groupAliasBase+add], temp);
+				add++;			
+			}
+		}			
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Save module groups in EEPROM --- 
 */
 BOS_Status SaveEEgroup(void)
@@ -1473,8 +1500,29 @@ BOS_Status LoadEEalias(void)
 		moduleAlias[i][MaxLengthOfAlias] = '\0';
 	}
 	
-	if ((add+_EE_aliasBase) >= _EE_DMAStreamsBase)
-		result = BOS_ERR_EEPROM;
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load group alias stored in EEPROM --- 
+*/
+BOS_Status LoadEEgroupAlias(void)
+{
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0, temp = 0;
+	
+	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
+		{
+			EE_ReadVariable(VirtAddVarTab[_EE_groupAliasBase+add], &temp);
+			groupAlias[i][j] = (uint8_t) temp;
+			groupAlias[i][j-1] = (uint8_t) (temp>>8);
+			add++;			
+		}
+		groupAlias[i][MaxLengthOfAlias] = '\0';
+	}
 	
 	return result;
 }
@@ -3869,6 +3917,7 @@ BOS_Status AddModuleToGroup(uint8_t module, char* group)
 	size_t xCommandStringLength;
 
 	/* Check alias with other group aliases */
+	
 	for(i=0 ; i<MaxNumOfGroups ; i++)
 	{
 		/* This group already exists */
@@ -3879,51 +3928,57 @@ BOS_Status AddModuleToGroup(uint8_t module, char* group)
 
 			/* 2. Save group to emulated EEPROM */
 			result = SaveEEgroup();			
+			
+			return result;
 		}
-		/* This is a new group - Verify alias and create the group */
-		else
-		{
-			/* 1. Check group alias with keywords */
-			for(j=0 ; j<NumOfKeywords ; j++)
-			{
-				if (!strcmp(group, BOSkeywords[j]))	
-					return BOS_ERR_Keyword;
-			}	
-
-			/* 2. Check group alias with module aliases */
-			for(j=1 ; j<N ; j++)
-			{
-				if (!strcmp(group, moduleAlias[j]))	
-					return BOS_ERR_ExistingAlias;
-			}		
-			
-			/* 3. Check group alias with BOS and module commands */
-			for( pxCommand = &xRegisteredCommands; pxCommand != NULL; pxCommand = pxCommand->pxNext )
-			{
-				pcRegisteredCommandString = pxCommand->pxCommandLineDefinition->pcCommand;
-				xCommandStringLength = strlen( ( const char * ) pcRegisteredCommandString );
-				
-				if( !strncmp(group, (const char *) pcRegisteredCommandString, xCommandStringLength ) ) {
-					return BOS_ERR_ExistingCmd;
-				}
-			}			
-			
-			/* 4. Group alias is unique */
-			strcpy(groupAlias[i], group);		
-			
-			/* 5. Add this module to the new group */
-			groupModules[module-1] |= (0x0001<<i);
-			
-			/* 6. Share new group with other modules */
-	
-	
-			/* 7. Save new group to emulated EEPROM */
-			result = SaveEEalias();
-			if (result == BOS_OK)
-				result = SaveEEgroup();			
-					
-		}			
 	}
+	
+	/* This is a new group - Verify alias and create the group */
+	
+	/* 1. Check group alias with keywords */
+	for(j=0 ; j<NumOfKeywords ; j++)
+	{
+		if (!strcmp(group, BOSkeywords[j]))	
+			return BOS_ERR_Keyword;
+	}	
+
+	/* 2. Check group alias with module aliases */
+	for(j=1 ; j<N ; j++)
+	{
+		if (!strcmp(group, moduleAlias[j]))	
+			return BOS_ERR_ExistingAlias;
+	}		
+	
+	/* 3. Check group alias with BOS and module commands */
+	for( pxCommand = &xRegisteredCommands; pxCommand != NULL; pxCommand = pxCommand->pxNext )
+	{
+		pcRegisteredCommandString = pxCommand->pxCommandLineDefinition->pcCommand;
+		xCommandStringLength = strlen( ( const char * ) pcRegisteredCommandString );
+		
+		if( !strncmp(group, (const char *) pcRegisteredCommandString, xCommandStringLength ) ) {
+			return BOS_ERR_ExistingCmd;
+		}
+	}			
+	
+	/* 4. Group alias is unique - copy to first empty location */
+	for(i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		if (!groupAlias[i][0]) {	
+			strcpy(groupAlias[i], group);	
+			break;
+		}
+	}		
+	
+	/* 5. Add this module to the new group */
+	groupModules[module-1] |= (0x0001<<i);
+	
+	/* 6. Share new group with other modules */
+
+
+	/* 7. Save new group to emulated EEPROM */
+	result = SaveEEgroupAlias();
+	if (result == BOS_OK)
+		result = SaveEEgroup();			
 	
 	return result;
 }
