@@ -1221,6 +1221,12 @@ void LoadEEvars(void)
 	
 	/* Load module alias */
 	LoadEEalias();
+
+	/* Load group alias */
+	LoadEEgroupAlias();
+
+	/* Load group modules */
+	LoadEEgroup();
 	
 	/* Load DMA streams */
 	LoadEEstreams();
@@ -1427,9 +1433,9 @@ BOS_Status SaveEEalias(void)
 	BOS_Status result = BOS_OK; 
 	uint16_t add = 0, temp = 0;
 	
-	for(uint8_t i=0 ; i<=N ; i++)
+	for(uint8_t i=0 ; i<=N ; i++)				// N+1 module aliases
 	{
-		if (moduleAlias[i][0]) 
+		if (moduleAlias[i][0]) 				
 		{
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
@@ -1451,10 +1457,10 @@ BOS_Status SaveEEgroupAlias(void)
 {
 	BOS_Status result = BOS_OK; 
 	uint16_t add = 0, temp = 0;
-	
-	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
+		
+	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
 	{
-		if (groupAlias[i][0]) 
+		if (groupAlias[i][0]) 				
 		{
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
@@ -1475,6 +1481,16 @@ BOS_Status SaveEEgroupAlias(void)
 BOS_Status SaveEEgroup(void)
 {
 	BOS_Status result = BOS_OK;
+	uint16_t add = 0;
+	
+	for(uint8_t i=0 ; i<N ; i++)			// N modules
+	{
+		if (groupModules[i]) 
+		{
+			EE_WriteVariable(VirtAddVarTab[_EE_groupModulesBase+add], groupModules[i]);
+			add++;			
+		}			
+	}
 	
 	return result;
 }
@@ -1488,7 +1504,7 @@ BOS_Status LoadEEalias(void)
 	BOS_Status result = BOS_OK; 
 	uint16_t add = 0, temp = 0;
 	
-	for(uint8_t i=0 ; i<=N ; i++)
+	for(uint8_t i=0 ; i<=N ; i++)				// N+1 module aliases
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
@@ -1512,7 +1528,7 @@ BOS_Status LoadEEgroupAlias(void)
 	BOS_Status result = BOS_OK; 
 	uint16_t add = 0, temp = 0;
 	
-	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
+	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
@@ -1533,7 +1549,14 @@ BOS_Status LoadEEgroupAlias(void)
 */
 BOS_Status LoadEEgroup(void)
 {
-	BOS_Status result = BOS_OK;
+	BOS_Status result = BOS_OK; 
+	uint16_t add = 0;
+	
+	for(uint8_t i=0 ; i<N ; i++)			// N modules
+	{
+		EE_ReadVariable(VirtAddVarTab[_EE_groupModulesBase+add], &groupModules[i]);
+		add++;
+	}
 	
 	return result;
 }
