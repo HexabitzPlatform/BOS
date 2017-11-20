@@ -229,7 +229,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Broadcast the command */								
 							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							BroadcastMessage(0, myID, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 							/* Execute locally */
 							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );						
 							/* Todo: check module response if needed */

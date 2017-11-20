@@ -128,10 +128,13 @@ typedef enum
 	BOS_ERR_REMOTE_WRITE_ADDRESS = 21,
 	BOS_ERR_REMOTE_WRITE_FLASH = 22,
 	BOS_ERR_WrongName = 100,
-	BOS_ERR_WrongID = 101,
-	BOS_ERR_WrongParam = 102,
-	BOS_ERR_WrongValue = 103,
+	BOS_ERR_WrongGroup = 101,
+	BOS_ERR_WrongID = 102,
+	BOS_ERR_WrongParam = 103,
+	BOS_ERR_WrongValue = 104,
+	BOS_ERR_MSG_DOES_NOT_FIT = 105,
 	BOS_MEM_ERASED = 250,
+	BOS_MULTICAST = 254,
 	BOS_BROADCAST = 255,
 	BOS_ERROR = 255
 } BOS_Status;
@@ -292,7 +295,7 @@ extern const char *weekdayString[];
 
 extern void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
-extern BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams);
+extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams);
 extern void SystemClock_Config(void);
 extern void MX_FREERTOS_Init(void);
 extern void SystemClock_Config(void);
@@ -349,6 +352,7 @@ extern UART_HandleTypeDef* GetUart(uint8_t port);
 extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern void vRegisterCLICommands(void);
 extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfParams);
+extern BOS_Status SendMessageToGroup(char* group, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
 extern void StartMilliDelay(uint16_t Delay);

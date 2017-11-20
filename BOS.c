@@ -166,7 +166,7 @@ void buttonDblClickedCallback(uint8_t port);
 void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
 void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
-BOS_Status BroadcastReceivedMessage(uint8_t IncomingPort);
+BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
@@ -384,7 +384,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, temp; uint16_t code; 
+	uint8_t port, src, dst, responseMode, temp, i; uint16_t code; 
 	uint32_t count, timeout, temp32;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
@@ -429,16 +429,42 @@ void PxMessagingTask(void * argument)
 					/* Forward the message to its destination */		
 					ForwardReceivedMessage(port);
 				}
-				/* Either broadcast or local message */
+				/* Either broadcast or multicast local message */
 				else 
 				{				
 					/* Is it a broadcast message with unique ID? */
-					if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) {
-						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			/* Store bcastID */		
-						BroadcastReceivedMessage(port);
-						cMessage[port-1][messageLength[port-1]-2] = 0;								/* Reset bcastID location */
+					if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+					{
+						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
+						BroadcastReceivedMessage(BOS_BROADCAST, port);
+						cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
+					} 
 					/* Reflection of last broadcast message! */
-					} else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) {
+					else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
+					{
+						result = BOS_ERR_MSG_Reflection;
+					}
+									
+					/* Is it a multicast message with unique ID? */
+					if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+					{
+						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
+						BroadcastReceivedMessage(BOS_MULTICAST, port);
+						cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
+						temp = cMessage[port-1][messageLength[port-1]-3];							// Number of members in this multicast group
+						/* Am I part of this multicast group? */
+						result = BOS_ERR_WrongID;
+						for(i=0 ; i<temp ; i++)
+            {
+							if (myID == cMessage[port-1][messageLength[port-1]-3-temp+i]) {
+								result = BOS_OK;
+								break;
+							}
+            }
+					} 
+					/* Reflection of last broadcast message! */
+					else if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
+					{
 						result = BOS_ERR_MSG_Reflection;
 					}
 					
@@ -1993,7 +2019,7 @@ void EE_FormatForFactoryReset(void)
 
 /* --- Broadcast a received message to all connected modules 
 */
-BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
+BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t incomingPort)
 {
 	BOS_Status result = BOS_OK;
 	uint8_t length = 0, src = 0; uint16_t code = 0;
@@ -2018,7 +2044,10 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
 		{
 			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, 0xFF, code, length-5);	
+			if (dstType == BOS_BROADCAST)
+				SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);
+			else if (dstType == BOS_MULTICAST)
+				SendMessageFromPort(port, src, BOS_MULTICAST, code, length-5);
 		}	
 	}
 
@@ -2032,19 +2061,40 @@ BOS_Status BroadcastReceivedMessage(uint8_t incomingPort)
 
 /* --- Broadcast a message to all connected modules 
 */
-BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, uint16_t numberOfParams)
+BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams)
 {
-	BOS_Status result = BOS_OK;
-	uint8_t length = 0;
+	uint8_t length = 0, i = 0, groupMembers = 0;
 	
-	/* Add unique broadcast ID after Message parameters */
-	if (numberOfParams < (MAX_MESSAGE_SIZE-5))
-		messageParams[numberOfParams] = ++bcastID;
+	/* 1. Add group members if it's a multicast */
+	if (dstGroup < BOS_BROADCAST)
+	{
+		/* Extract and add group member IDs to the Message */
+		for(i=0 ; i<N ; i++)						// N modules
+		{
+			if ((groupModules[i] >> dstGroup) & 0x0001)
+			{
+				++groupMembers;							// Add this member
+				if ((numberOfParams+groupMembers+1) < (MAX_MESSAGE_SIZE-5))
+					messageParams[numberOfParams+groupMembers-1] = i;
+				else
+					return BOS_ERR_MSG_DOES_NOT_FIT;
+			}
+		}
+		/* Add number of members */
+		messageParams[numberOfParams+groupMembers] = groupMembers;
+	}
+
+	/* 2. Add unique broadcast ID */
+	if ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5))
+		messageParams[numberOfParams+groupMembers+1] = ++bcastID;
 	else
-		messageParams[numberOfParams-1] = ++bcastID;
+		return BOS_ERR_MSG_DOES_NOT_FIT;
 	
 	/* Calculate message length */
-	length = numberOfParams + 1 + 5;
+	if (dstGroup == BOS_BROADCAST)
+		length = numberOfParams + 1 + 5;
+	else
+		length = numberOfParams + (groupMembers + 1) + 1 + 5;
 	
 	/* Get broadcast routes */
 	FindBroadcastRoutes(src);
@@ -2055,14 +2105,17 @@ BOS_Status BroadcastMessage(uint8_t incomingPort, uint8_t src, uint16_t code, ui
 		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
 		{
 			/* Transmit the message from this port */
-			SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);	
+			if (dstGroup == BOS_BROADCAST)
+				SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);
+			else
+				SendMessageFromPort(port, src, BOS_MULTICAST, code, length-5);
 		}	
 	}
 
 	/* Reset messageParams buffer */
 	memset( messageParams, 0, numberOfParams+1 );
 	
-	return result;
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -3043,10 +3096,37 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 	/* Broadcast message */
 	else
 	{
-		BroadcastMessage(0, myID, code, numberOfParams);
+		BroadcastMessage(myID, BOS_BROADCAST, code, numberOfParams);
 	}
 	
 	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
+*/
+BOS_Status SendMessageToGroup(char* group, uint16_t code, uint16_t numberOfParams)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t i = 0; 
+	
+	/* Search for group alias*/
+
+	for(i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		/* This group exists */
+		if (!strcmp(group, groupAlias[i]))	
+		{
+			/* Multicast the message to this group */
+			result = BroadcastMessage(myID, i, code, numberOfParams);
+			
+			return result;
+		}
+	}	
+	
+	/* This group does not exist */
+	return BOS_ERR_WrongGroup;
 }
 
 /*-----------------------------------------------------------*/
