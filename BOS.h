@@ -364,7 +364,7 @@ extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
 extern void DisplayTopology(uint8_t port);
 extern void DisplayPortsDir(uint8_t port);
 extern void DisplayModuleStatus(uint8_t port);
-extern uint8_t GetID(char* string);
+extern int16_t GetID(char* string);
 extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status AddModuleToGroup(uint8_t module, char* group);
 extern BOS_Status ReadPortsDir(void);

@@ -98,7 +98,7 @@ void prvUARTCommandConsoleTask( void *pvParameters )
 {
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
-char* loc = 0; uint8_t id = 0; char idString[MaxLengthOfAlias] = {0};
+char* loc = 0; int16_t id = 0; char idString[MaxLengthOfAlias] = {0};
 portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 
 	( void ) pvParameters;

@@ -196,6 +196,7 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 #endif
 static portBASE_TYPE resetCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
@@ -272,6 +273,15 @@ static const CLI_Command_Definition_t nameCommandDefinition =
 	( const int8_t * ) "name:\r\n Name the module with an alias (1st par.)\r\n\r\n",
 	nameCommand, /* The function to run. */
 	1 /* One parameter is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : group */
+static const CLI_Command_Definition_t groupCommandDefinition =
+{
+	( const int8_t * ) "group", /* The command string to type. */
+	( const int8_t * ) "group:\r\n Group multiple modules (2nd+ par.) into a new or existing group (1st par.)\r\n\r\n",
+	groupCommand, /* The function to run. */
+	-1 /* Variable number of parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : status */
@@ -2974,6 +2984,7 @@ void vRegisterCLICommands(void)
 #endif
 	FreeRTOS_CLIRegisterCommand( &resetCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &nameCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &groupCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &statusCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &infoCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &scastCommandDefinition );
@@ -3461,7 +3472,7 @@ BOS_Status Explore(void)
 		for (uint8_t i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			osDelay(70*NumberOfHops(i));	
+			osDelay(100*NumberOfHops(i));	
 			//osDelay(100);
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
@@ -3478,7 +3489,7 @@ BOS_Status Explore(void)
 		SaveROtopology();
 		SaveEEportsDir();
 		/* Ask other modules to save their data too */
-		SendMessageToModule(0xFF, CODE_exp_eeprom, 0);
+		SendMessageToModule(BOS_BROADCAST, CODE_exp_eeprom, 0);
 	}	
 
 	return result;
@@ -3927,7 +3938,7 @@ void DisplayModuleStatus(uint8_t port)
 
 /* --- Extract module ID from it's alias, ID string or keyword --- 
 */
-uint8_t GetID(char* string)
+int16_t GetID(char* string)
 {
 	uint8_t id = 0;
 	
@@ -3948,7 +3959,7 @@ uint8_t GetID(char* string)
 			if(!strcmp(string, moduleAlias[i]) && (*string != 0))
 				return i;	
 		}
-		return 100;			/* BOS_ERR_WrongName */
+		return -1;			/* BOS_ERR_WrongName */
 	}
 	
 }
@@ -4882,6 +4893,93 @@ static portBASE_TYPE nameCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 
 /*-----------------------------------------------------------*/
 
+static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK; 
+	static int8_t *pcParameterString1, *pcParameterString, count; 
+	static portBASE_TYPE xParameterStringLength1, xParameterStringLength;
+	char module[MaxLengthOfAlias+30] = {0}; int16_t modID = 0, type = 0;
+	
+	static const int8_t *pcMessageWrongModule = ( int8_t * ) "%s is a wrong module ID or alias\n\r";
+	static const int8_t *pcMessageOKnew = ( int8_t * ) "] added to new group %s\n\r";
+	static const int8_t *pcMessageOKexist = ( int8_t * ) "] added to existing group %s\n\r";
+	static const int8_t *pcMessageKey = ( int8_t * ) "%s is a reserved BOS keyword! Please use a different alias\n\r";
+	static const int8_t *pcMessageAlias = ( int8_t * ) "%s is already used! Please use a different alias\n\r";
+	static const int8_t *pcMessageCmd = ( int8_t * ) "%s is an existing CLI command! Please use a different alias\n\r";
+	static const int8_t *pcMessageNoModules = ( int8_t * ) "Please enter some module IDs to add to %s\n\r";
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Obtain the 1st parameter string - Group name */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+
+	/* Check group alias length */
+	if (xParameterStringLength1 > MaxLengthOfAlias) {
+		pcParameterString1[MaxLengthOfAlias] = '\0';
+	}
+	
+	/* Is it new or existing group? */
+	type = 1;
+	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		/* This group already exists */
+		if (!strcmp( ( char * ) pcParameterString1, groupAlias[i]))	
+		{
+			type = 0;
+		}
+	}	
+	
+	/* Extract modules and add them to group */
+	count = 2;
+	strcpy( ( char * ) pcWriteBuffer, "Modules [");
+	pcParameterString = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, count, &xParameterStringLength);
+	while (pcParameterString != NULL)
+	{
+		strncpy(module, ( char * ) pcParameterString, xParameterStringLength);
+		modID = GetID(module);
+		
+		if (modID < 0)	break;
+		
+		result = AddModuleToGroup(modID, (char*) pcParameterString1);
+		
+		if (result != BOS_OK)	break;
+		
+		strcat( ( char * ) pcWriteBuffer, "module, ");
+		
+		/* Extract next module */
+		pcParameterString = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, ++count, &xParameterStringLength);	
+	}
+		
+	/* Respond to the update command */
+	if (modID < 0) 
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongModule, module);
+	else if (result == BOS_OK && type) {
+		sprintf( module, ( char * ) pcMessageOKnew, pcParameterString1); 
+		strcat( ( char * ) pcWriteBuffer, module);
+	} else if (result == BOS_OK && !type) {
+		sprintf( module, ( char * ) pcMessageOKexist, pcParameterString1);
+		strcat( ( char * ) pcWriteBuffer, module);
+	} else if (result == BOS_ERR_Keyword)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageKey, pcParameterString1);
+	else if (result == BOS_ERR_ExistingAlias)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageAlias, pcParameterString1);	
+	else if (result == BOS_ERR_ExistingCmd)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmd, pcParameterString1);	
+	else if (count == 2)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageNoModules, pcParameterString1);
+	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
 static portBASE_TYPE statusCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	/* Remove compile time warnings about unused parameters, and check the
@@ -4965,7 +5063,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	/* Obtain the 2nd parameter string. */
 	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
 	strncpy(par1, ( char * ) pcParameterString2, xParameterStringLength2);
-	srcM = GetID(par1);
+	srcM = (uint8_t) GetID(par1);
 	
 	/* Obtain the 3rd parameter string. */
 	pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
@@ -4976,7 +5074,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	/* Obtain the 4th parameter string. */
 	pcParameterString4 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 4, &xParameterStringLength4);
 	strncpy(par2, ( char * ) pcParameterString4, xParameterStringLength4);
-	dstM = GetID(par2);
+	dstM = (uint8_t) GetID(par2);
 	
 	/* Obtain the 5th parameter string. */
 	pcParameterString5 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 5, &xParameterStringLength5);
