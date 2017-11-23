@@ -143,8 +143,6 @@ BOS_Status SaveEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
-BOS_Status SaveEEgroupAlias(void);
-BOS_Status LoadEEgroupAlias(void);
 BOS_Status SaveEEgroup(void);
 BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
@@ -1258,9 +1256,6 @@ void LoadEEvars(void)
 	/* Load module alias */
 	LoadEEalias();
 
-	/* Load group alias */
-	LoadEEgroupAlias();
-
 	/* Load group modules */
 	LoadEEgroup();
 	
@@ -1487,14 +1482,25 @@ BOS_Status SaveEEalias(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Save group alias in EEPROM --- 
+/* --- Save module groups in EEPROM --- 
 */
-BOS_Status SaveEEgroupAlias(void)
+BOS_Status SaveEEgroup(void)
 {
-	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp = 0;
-		
-	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
+	BOS_Status result = BOS_OK;
+	uint16_t add = 0, temp = 0; uint8_t i=0;
+	
+	/* Save group members */
+	for(i=0 ; i<N ; i++)			// N modules
+	{
+		if (groupModules[i]) 
+		{
+			EE_WriteVariable(VirtAddVarTab[_EE_groupModulesBase+add], groupModules[i]);
+			add++;			
+		}			
+	}
+
+	/* Save group alias */
+	for(i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
 	{
 		if (groupAlias[i][0]) 				
 		{
@@ -1504,27 +1510,6 @@ BOS_Status SaveEEgroupAlias(void)
 				EE_WriteVariable(VirtAddVarTab[_EE_groupAliasBase+add], temp);
 				add++;			
 			}
-		}			
-	}
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Save module groups in EEPROM --- 
-*/
-BOS_Status SaveEEgroup(void)
-{
-	BOS_Status result = BOS_OK;
-	uint16_t add = 0;
-	
-	for(uint8_t i=0 ; i<N ; i++)			// N modules
-	{
-		if (groupModules[i]) 
-		{
-			EE_WriteVariable(VirtAddVarTab[_EE_groupModulesBase+add], groupModules[i]);
-			add++;			
 		}			
 	}
 	
@@ -1557,14 +1542,22 @@ BOS_Status LoadEEalias(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Load group alias stored in EEPROM --- 
+/* --- Load module groups stored in EEPROM --- 
 */
-BOS_Status LoadEEgroupAlias(void)
+BOS_Status LoadEEgroup(void)
 {
 	BOS_Status result = BOS_OK; 
-	uint16_t add = 0, temp = 0;
+	uint16_t add = 0, temp = 0; uint8_t i=0;
 	
-	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
+	/* Load group members */
+	for(i=0 ; i<N ; i++)			// N modules
+	{
+		EE_ReadVariable(VirtAddVarTab[_EE_groupModulesBase+add], &groupModules[i]);
+		add++;
+	}
+
+	/* Load group alias */
+	for(i=0 ; i<MaxNumOfGroups ; i++)		// MaxNumOfGroups group aliases
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
@@ -1574,24 +1567,6 @@ BOS_Status LoadEEgroupAlias(void)
 			add++;			
 		}
 		groupAlias[i][MaxLengthOfAlias] = '\0';
-	}
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Load module groups stored in EEPROM --- 
-*/
-BOS_Status LoadEEgroup(void)
-{
-	BOS_Status result = BOS_OK; 
-	uint16_t add = 0;
-	
-	for(uint8_t i=0 ; i<N ; i++)			// N modules
-	{
-		EE_ReadVariable(VirtAddVarTab[_EE_groupModulesBase+add], &groupModules[i]);
-		add++;
 	}
 	
 	return result;
@@ -4040,8 +4015,8 @@ BOS_Status AddModuleToGroup(uint8_t module, char* group)
 			/* 1. Add this module to the group */
 			groupModules[module-1] |= (0x0001<<i);	
 
-			/* 2. Save group to emulated EEPROM */
-			result = SaveEEgroup();			
+			/* 2. Save group to emulated EEPROM -- Should call this manually */
+			//result = SaveEEgroup();			
 			
 			return result;
 		}
@@ -4089,10 +4064,8 @@ BOS_Status AddModuleToGroup(uint8_t module, char* group)
 	/* 6. Share new group with other modules */
 
 
-	/* 7. Save new group to emulated EEPROM */
-	result = SaveEEgroupAlias();
-	if (result == BOS_OK)
-		result = SaveEEgroup();			
+	/* 7. Save new group to emulated EEPROM - Should call this manually */
+	//result = SaveEEgroup();			
 	
 	return result;
 }
