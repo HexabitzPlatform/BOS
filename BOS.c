@@ -3928,7 +3928,7 @@ int16_t GetID(char* string)
 		else if (id == myID)
 			return myID;
 		else
-			return 101;				/* BOS_ERR_WrongID */
+			return -2;				/* BOS_ERR_WrongID */
 	} else {															/* Check alias */
 		for (int8_t i=N ; i>=0 ; i--) {
 			if(!strcmp(string, moduleAlias[i]) && (*string != 0))
@@ -4871,7 +4871,7 @@ static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	BOS_Status result = BOS_OK; 
 	static int8_t *pcParameterString1, *pcParameterString, count; 
 	static portBASE_TYPE xParameterStringLength1, xParameterStringLength;
-	char module[MaxLengthOfAlias+30] = {0}; int16_t modID = 0, type = 0;
+	char module[MaxLengthOfAlias+30] = {0}; int16_t modID = 0, type = 0; char alias[MaxLengthOfAlias+1] = {0};
 	
 	static const int8_t *pcMessageWrongModule = ( int8_t * ) "%s is a wrong module ID or alias\n\r";
 	static const int8_t *pcMessageOKnew = ( int8_t * ) "] added to new group %s\n\r";
@@ -4889,20 +4889,16 @@ static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 
 	/* Obtain the 1st parameter string - Group name */
 	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
-
-	/* Check group alias length */
-	if (xParameterStringLength1 > MaxLengthOfAlias) {
-		pcParameterString1[MaxLengthOfAlias] = '\0';
-	}
+	strncpy( alias, ( char * ) pcParameterString1, xParameterStringLength1);
 	
 	/* Is it new or existing group? */
 	type = 1;
 	for(uint8_t i=0 ; i<MaxNumOfGroups ; i++)
 	{
 		/* This group already exists */
-		if (!strcmp( ( char * ) pcParameterString1, groupAlias[i]))	
+		if (!strcmp(alias, groupAlias[i]))	
 		{
-			type = 0;
+			type = 0; break;
 		}
 	}	
 	
@@ -4912,16 +4908,19 @@ static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	pcParameterString = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, count, &xParameterStringLength);
 	while (pcParameterString != NULL)
 	{
-		strncpy(module, ( char * ) pcParameterString, xParameterStringLength);
+		strncpy(module, ( char * ) pcParameterString, xParameterStringLength); module[xParameterStringLength] = '\0';
 		modID = GetID(module);
 		
 		if (modID < 0)	break;
 		
-		result = AddModuleToGroup(modID, (char*) pcParameterString1);
+		result = AddModuleToGroup(modID, alias);
 		
 		if (result != BOS_OK)	break;
 		
-		strcat( ( char * ) pcWriteBuffer, "module, ");
+		if (count > 2)
+			strcat( ( char * ) pcWriteBuffer, ", "); 
+		
+		strcat( ( char * ) pcWriteBuffer, module);
 		
 		/* Extract next module */
 		pcParameterString = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, ++count, &xParameterStringLength);	
@@ -4930,20 +4929,20 @@ static portBASE_TYPE groupCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	/* Respond to the update command */
 	if (modID < 0) 
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongModule, module);
+	else if (count == 2)
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageNoModules, alias);
 	else if (result == BOS_OK && type) {
-		sprintf( module, ( char * ) pcMessageOKnew, pcParameterString1); 
+		sprintf( module, ( char * ) pcMessageOKnew, alias); 
 		strcat( ( char * ) pcWriteBuffer, module);
 	} else if (result == BOS_OK && !type) {
-		sprintf( module, ( char * ) pcMessageOKexist, pcParameterString1);
+		sprintf( module, ( char * ) pcMessageOKexist, alias);
 		strcat( ( char * ) pcWriteBuffer, module);
 	} else if (result == BOS_ERR_Keyword)
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageKey, pcParameterString1);
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageKey, alias);
 	else if (result == BOS_ERR_ExistingAlias)
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageAlias, pcParameterString1);	
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageAlias, alias);	
 	else if (result == BOS_ERR_ExistingCmd)
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmd, pcParameterString1);	
-	else if (count == 2)
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageNoModules, pcParameterString1);
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmd, alias);	
 	
 	
 	/* There is no more data to return after this single string, so return
