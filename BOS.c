@@ -431,8 +431,8 @@ void PxMessagingTask(void * argument)
 			if (cMessage[port-1][messageLength[port-1]-1] == 0x75)
 			{
 				/* Is it a transit message? Check for the case when module is being IDed */
-				if ( ( dst && (dst != BOS_BROADCAST) && (dst != myID) && (myID != 1) ) || 
-						 ( dst && (dst != BOS_BROADCAST) && (dst != myID) && (myID == 1) && (code != CODE_module_id) ) )
+				if ( ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1) ) || 
+						 ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_module_id) ) )
 				{
 					/* Forward the message to its destination */		
 					ForwardReceivedMessage(port);
@@ -459,7 +459,7 @@ void PxMessagingTask(void * argument)
 						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
 						BroadcastReceivedMessage(BOS_MULTICAST, port);
 						cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
-						temp = cMessage[port-1][messageLength[port-1]-3];							// Number of members in this multicast group
+						temp = cMessage[port-1][messageLength[port-1]-3];							// Number of members in this multicast group - TODO breaks when message is 14 length and padded
 						/* Am I part of this multicast group? */
 						result = BOS_ERR_WrongID;
 						for(i=0 ; i<temp ; i++)
@@ -617,7 +617,12 @@ void PxMessagingTask(void * argument)
 								/* Obtain the address of the output buffer */
 								pcOutputString = FreeRTOS_CLIGetOutputBuffer();
 								/* Copy the command */
-								memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
+								if (dst == BOS_BROADCAST)
+									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5-1));					// remove bcastID
+								else if (dst == BOS_MULTICAST)
+									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5-temp-2));		// remove bcastID + groupm members + group count
+								else
+									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
 								do 
 								{
 									/* Process the command locally */
@@ -2054,9 +2059,9 @@ BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16
 	if (dstGroup < BOS_BROADCAST)
 	{
 		/* Extract and add group member IDs to the Message */
-		for(i=0 ; i<N ; i++)						// N modules
+		for(i=1 ; i<=N ; i++)						// N modules
 		{
-			if ((groupModules[i] >> dstGroup) & 0x0001)
+			if (InGroup(i, dstGroup))
 			{
 				++groupMembers;							// Add this member
 				if ((numberOfParams+groupMembers+1) < (MAX_MESSAGE_SIZE-5))
@@ -3176,7 +3181,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* if length is 0xD = 13, append by one zero byte. If it's a broadcast, append before bcastID */
 	if (length == 13) {
 		++length;
-		if (dst == BOS_BROADCAST) message[length-2] = message[length-3];		// Move bcastID to last byte before End of Message
+		if (dst == BOS_BROADCAST || dst == BOS_MULTICAST) 
+			message[length-2] = message[length-3];		// Move bcastID to last byte before End of Message
 	}		
 	
 	/* 0x75 End of message */
@@ -3915,26 +3921,35 @@ void DisplayModuleStatus(uint8_t port)
 */
 int16_t GetID(char* string)
 {
-	uint8_t id = 0;
+	uint8_t id = 0, i = 0;
 	
 	if(!strcmp(string, "me"))							/* Check keywords */
 		return myID;
 	else if(!strcmp(string, "all"))							
-		return BOS_BROADCAST;				/* BOS_BROADCAST */
-	else if (string[0] == '#') {					/* Check IDs */
+		return BOS_BROADCAST;				
+	else if (string[0] == '#') 						/* Check IDs */
+	{					
 		id = atol(string+1);
 		if (id > 0 && id <= N)
 			return id;
 		else if (id == myID)
 			return myID;
 		else
-			return -2;				/* BOS_ERR_WrongID */
-	} else {															/* Check alias */
-		for (int8_t i=N ; i>=0 ; i--) {
-			if(!strcmp(string, moduleAlias[i]) && (*string != 0))
-				return i;	
+			return BOS_ERR_WrongID;				
+	} 
+	else 																	/* Check alias */
+	{															
+		/* Check module alias */
+		for (i=0 ; i<N ; i++) {
+			if(!strcmp(string, moduleAlias[i]) && (*string != 0))	return (i+1);	
 		}
-		return -1;			/* BOS_ERR_WrongName */
+		
+		/* Check group alias */
+		for(i=0 ; i<MaxNumOfGroups ; i++) {
+			if (!strcmp(string, groupAlias[i]))	return (BOS_MULTICAST|(i<<8));
+		}			
+		
+		return BOS_ERR_WrongName;			
 	}
 	
 }

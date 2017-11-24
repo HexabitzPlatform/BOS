@@ -96,7 +96,7 @@ BOS_Status ActivateButtonSnippet(uint16_t location);
 
 void prvUARTCommandConsoleTask( void *pvParameters )
 {
-char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port;
+char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, group;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; int16_t id = 0; char idString[MaxLengthOfAlias] = {0};
 portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
@@ -211,7 +211,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					loc = strchr( ( char * ) cInputString, '.');
 					if ( loc != NULL && strncmp((char *)loc-3, "bos", 3) && !isdigit(*(loc+1)) ) 
 					{					
-						/* Extract module ID */
+						/* Extract module ID/alias or group alias */
 						strncpy(idString, ( char * ) cInputString, (size_t) (loc - (char*)cInputString));
 						id = GetID(idString);
 						if (id == myID) {
@@ -229,11 +229,22 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Broadcast the command */								
 							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
+							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 							/* Execute locally */
 							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );						
 							/* Todo: check module response if needed */
-							//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);													
+							//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);	
+						}	else if ((uint8_t)id == BOS_MULTICAST) {	
+							group = id >> 8;
+							/* Check if command is broadcastable */									
+
+							/* Multicast the command */								
+							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
+							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
+							BroadcastMessage(myID, group, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
+							/* Do I need to execute locally? */
+							if (InGroup(myID, group))
+								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );								
 						}	
 						else 
 						{

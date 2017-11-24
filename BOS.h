@@ -127,9 +127,9 @@ typedef enum
 	BOS_ERR_LOCAL_FORMAT_UPDATED = 20,
 	BOS_ERR_REMOTE_WRITE_ADDRESS = 21,
 	BOS_ERR_REMOTE_WRITE_FLASH = 22,
-	BOS_ERR_WrongName = 100,
-	BOS_ERR_WrongGroup = 101,
-	BOS_ERR_WrongID = 102,
+	BOS_ERR_WrongName = -1,
+	BOS_ERR_WrongGroup = -3,
+	BOS_ERR_WrongID = -2,
 	BOS_ERR_WrongParam = 103,
 	BOS_ERR_WrongValue = 104,
 	BOS_ERR_MSG_DOES_NOT_FIT = 105,
@@ -243,6 +243,9 @@ button_t;
 #define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 #define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+
+/* Misc macros */
+#define	InGroup(module, group)	( (groupModules[module-1] >> group) & 0x0001 )
 
 /* Serial Wire Interface */
 #define SWDIO_PIN			GPIO_PIN_13
