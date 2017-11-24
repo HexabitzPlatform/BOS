@@ -23,7 +23,7 @@ enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
 enum UartDirection_e{NORMAL, REVERSED};
 enum modulePartNumbers_e{_H01R0=1, _H02R0, _H02R1, _H04R0, _H05R0, _H07R0, _H08R0, _H09R0, _H11R2, _H12R0, _H17R0};
-enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY};
+enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\

@@ -436,6 +436,7 @@ void PxMessagingTask(void * argument)
 				{
 					/* Forward the message to its destination */		
 					ForwardReceivedMessage(port);
+					indMode = IND_SHORT_BLINK;
 				}
 				/* Either broadcast or multicast local message */
 				else 
@@ -3450,10 +3451,10 @@ BOS_Status Explore(void)
 	{		
 		osDelay(100);
 		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
-		for (uint8_t i=2 ; i<=N ; i++) 
+		for (i=2 ; i<=N ; i++) 
 		{
 			SendMessageToModule(i, CODE_ping, 0);
-			osDelay(100*NumberOfHops(i));	
+			osDelay(300*NumberOfHops(i));	
 			//osDelay(100);
 			if (responseStatus == BOS_OK)
 				result = BOS_OK;
@@ -3469,6 +3470,7 @@ BOS_Status Explore(void)
 		/* Save data in the master */
 		SaveROtopology();
 		SaveEEportsDir();
+		osDelay(100);
 		/* Ask other modules to save their data too */
 		SendMessageToModule(BOS_BROADCAST, CODE_exp_eeprom, 0);
 	}	
