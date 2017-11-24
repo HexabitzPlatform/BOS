@@ -231,7 +231,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 							/* Execute locally */
-							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );						
+							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+							strcat( ( char * ) pcOutputString, "Command broadcasted to all\n\r");
 							/* Todo: check module response if needed */
 							//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);	
 						}	else if ((uint8_t)id == BOS_MULTICAST) {	
@@ -244,7 +245,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							BroadcastMessage(myID, group, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 							/* Do I need to execute locally? */
 							if (InGroup(myID, group))
-								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );								
+								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+							sprintf( ( char * ) pcOutputString, "%sMulticast Command forwarded to group %s\n\r", pcOutputString, idString);
 						}	
 						else 
 						{

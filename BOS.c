@@ -343,7 +343,7 @@ static const CLI_Command_Definition_t getCommandDefinition =
 	( const int8_t * ) "get", /* The command string to type. */
 	( const int8_t * ) "get:\r\n Get the current value of a parameter (1st par.)\r\n\r\n",
 	getCommand, /* The function to run. */
-	1 /* One parameter is expected. */
+	-1 /* Variable number of parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : default */
@@ -5397,12 +5397,15 @@ you must connect to a CLI port on each startup to restore other array ports into
 static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	BOS_Status result = BOS_OK; 
-	static int8_t *pcParameterString1; 
-	portBASE_TYPE xParameterStringLength1 = 0;
+	static int8_t *pcParameterString1, *pcParameterString2; 
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	uint8_t temp8 = 0, i = 0, j = 0;
 	
 	static const int8_t *pcMessageOK = ( int8_t * ) "%s\n\r";	
 	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\n\r";		
 	static const int8_t *pcMessageWrongValue = ( int8_t * ) "%s is set to a wrong value!\n\r";	
+	static const int8_t *pcMessageGroupDoesNotExist = ( int8_t * ) "%s group does not exist!\n\r";	
+	static const int8_t *pcMessageGroupExists = ( int8_t * ) "Group %s members:\n\r";
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -5447,6 +5450,37 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 		} 
 		else	
 			result = BOS_ERR_WrongParam;
+	}
+	else if (!strncmp((const char *)pcParameterString1, "group", 5))
+	{
+		pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+		temp8 = 0;
+		/* Check group exists */
+		for(i=0 ; i<MaxNumOfGroups ; i++)
+		{
+			if (!strcmp( ( char * ) pcParameterString2, groupAlias[i]))	
+			{
+				temp8 = 1; break;
+			}
+		}	
+		/* Group does not exist*/
+		if (!temp8)
+		{
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageGroupDoesNotExist, ( char * ) pcParameterString2 );
+			return pdFALSE;
+		}
+		else
+		{
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageGroupExists, ( char * ) pcParameterString2 );
+			/* Extract group members */
+			for(j=1 ; j<=N ; j++)						// N modules
+			{
+				if (InGroup(j, i))
+				{
+					sprintf( ( char * ) pcWriteBuffer, "%s#%d\n\r", ( char * ) pcWriteBuffer, j );
+				}
+			}		
+		}	
 	}
 	else	
 		result = BOS_ERR_WrongParam;
