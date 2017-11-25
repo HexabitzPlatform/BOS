@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.3 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.4 - Copyright (C) 2017 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -13,7 +13,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
-#define	_firmPatch			3
+#define	_firmPatch			4
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
