@@ -182,7 +182,7 @@ void StartDefaultTask(void * argument)
 				break;
 			
 			case IND_SHORT_BLINK :
-				RTOS_IND_blink(50);
+				RTOS_IND_blink(30);
 				indMode = IND_OFF;
 				break;
 			

@@ -486,7 +486,7 @@ void PxMessagingTask(void * argument)
 								break;
 							
 							case CODE_ping :
-								indMode = IND_PING;
+								indMode = IND_PING;	osDelay(10);
 								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG)
 									SendMessageToModule(src, CODE_ping_response, 0);	
 								break;
@@ -2076,9 +2076,13 @@ BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16
 	}
 
 	/* 2. Add unique broadcast ID */
-	if ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5))
+	if ( (dstGroup == BOS_MULTICAST) && ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5)) )
 		messageParams[numberOfParams+groupMembers+1] = ++bcastID;
-	else
+	else if (dstGroup == BOS_MULTICAST)
+		return BOS_ERR_MSG_DOES_NOT_FIT;
+	else if ( (dstGroup == BOS_BROADCAST) && ((numberOfParams+1) < (MAX_MESSAGE_SIZE-5)) )
+		messageParams[numberOfParams] = ++bcastID;
+	else if (dstGroup == BOS_BROADCAST)
 		return BOS_ERR_MSG_DOES_NOT_FIT;
 	
 	/* Calculate message length */
@@ -2879,9 +2883,6 @@ void BOS_Init(void)
 	/* Initialize and configure RTC */
 	RTC_Init();
 	GetTimeDate();
-	
-	/* Unlock the Flash memory */
-	HAL_FLASH_Unlock();
 
 	/* EEPROM Init */
 	EE_Init();
