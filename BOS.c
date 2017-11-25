@@ -17,7 +17,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 BOS_t BOS; 
-BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
+BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = TRACE_NONE, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
 											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
@@ -175,6 +175,7 @@ extern void Module_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
+"\r\nBOS.trace: true, false\r\n",
 "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
 you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n",
 																															 "BOS.debounce: 1 ... 65536 msec\r\n",
@@ -392,7 +393,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, temp, i; uint16_t code; 
+	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i; uint16_t code;
 	uint32_t count, timeout, temp32;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
@@ -413,11 +414,14 @@ void PxMessagingTask(void * argument)
 			dst = cMessage[port-1][0]; 
 			src = cMessage[port-1][1];	
 			
-			/* Read message code (remove response options) */
-			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x9FFF;	
+			/* Read message code (remove response and trace options and kepp long message bit (MSB)) */
+			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x8FFF;	
 			
-			/* Read response mode */
+			/* Read response and trace modes */
 			responseMode = cMessage[port-1][2] & 0x60;
+			traceMode = cMessage[port-1][2] & 0x01;
+			oldTraceMode = BOS.trace;
+			BOS.trace = traceMode;
 			
 			/* Is it a long message? Check MSB */
 			if (code>>15) {
@@ -436,7 +440,8 @@ void PxMessagingTask(void * argument)
 				{
 					/* Forward the message to its destination */		
 					ForwardReceivedMessage(port);
-					indMode = IND_SHORT_BLINK;
+					if (traceMode)
+						indMode = IND_SHORT_BLINK;
 				}
 				/* Either broadcast or multicast local message */
 				else 
@@ -1076,6 +1081,7 @@ void PxMessagingTask(void * argument)
 			/* Read this port again */
 			HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
 		}
+		BOS.trace = oldTraceMode;
 		
 		taskYIELD();
 	}
@@ -1645,14 +1651,17 @@ BOS_Status LoadEEparams(void)
 	BOS_Status result = BOS_OK; 
 	uint16_t temp1, temp2, status1, status2; 
 	
-	/* Read params base - BOS response */
+	/* Read params base - BOS response and BOS trace */
 	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsBase], &temp1);
 	/* Found the variable (EEPROM is not cleared) */
-	if (!status1) 
+	if (!status1) {
 		BOS.response = (uint8_t)temp1;
+		BOS.trace = (bool)(temp1>>8);
 	/* Couldn't find the variable, load default config */
-	else
+	} else {
 		BOS.response = BOS_default.response;
+		BOS.trace = BOS_default.trace;
+	}
 		
 	/* Read Button debounce */
 	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDebounce], &temp1);
@@ -1709,8 +1718,8 @@ BOS_Status SaveEEparams(void)
 {
 	BOS_Status result = BOS_OK; 
 	
-	/* Save params base - BOS response */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS.response);
+	/* Save params base - BOS response & BOS trace */
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		
 	/* Save Button debounce */
 	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], BOS.buttons.debounce);
@@ -2076,13 +2085,13 @@ BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16
 	}
 
 	/* 2. Add unique broadcast ID */
-	if ( (dstGroup == BOS_MULTICAST) && ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5)) )
-		messageParams[numberOfParams+groupMembers+1] = ++bcastID;
-	else if (dstGroup == BOS_MULTICAST)
-		return BOS_ERR_MSG_DOES_NOT_FIT;
-	else if ( (dstGroup == BOS_BROADCAST) && ((numberOfParams+1) < (MAX_MESSAGE_SIZE-5)) )
+	if ( (dstGroup == BOS_BROADCAST) && ((numberOfParams+1) < (MAX_MESSAGE_SIZE-5)) )
 		messageParams[numberOfParams] = ++bcastID;
 	else if (dstGroup == BOS_BROADCAST)
+		return BOS_ERR_MSG_DOES_NOT_FIT;
+	else if ( (dstGroup < BOS_BROADCAST) && ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5)) )		// Multicast
+		messageParams[numberOfParams+groupMembers+1] = ++bcastID;
+	else if (dstGroup < BOS_BROADCAST)																																		// Multicast
 		return BOS_ERR_MSG_DOES_NOT_FIT;
 	
 	/* Calculate message length */
@@ -3145,6 +3154,9 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	
 	/* Apply response options */
 	message[2] |= BOS.response;												/* 15th bit for Message response, 14th bit for CLI response */
+
+	/* Apply trace options */
+	message[2] |= (BOS.trace<<13);										/* 13th bit for Message trace */
 	
 	/* Copy parameters */
 	if (numberOfParams <= (MAX_MESSAGE_SIZE-5) ) {				
@@ -3152,7 +3164,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		/* Calculate message length */
 		length = numberOfParams + 5;
 	} else {
-		/* Toggle code MSB to inform receiver about a long message */
+		/* Toggle code MSB (16th bit) to inform receiver about a long message */
 		code |= 0x8000;		
 		totalNumberOfParams = numberOfParams;
 		numberOfParams = MAX_MESSAGE_SIZE-5;
@@ -5220,13 +5232,24 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_ALL);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_MSG);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], BOS_RESPONSE_NONE);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else
+				result = BOS_ERR_WrongValue;
+		} 
+		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
+		{
+			if (!strncmp((const char *)pcParameterString2, "true", xParameterStringLength2)) {
+				BOS.trace = 1;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "false", xParameterStringLength2)) {
+				BOS.trace = 0;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5428,6 +5451,15 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg");
 			else if (BOS.response == BOS_RESPONSE_NONE)
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
+			else
+				result = BOS_ERR_WrongValue;
+		} 
+		if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
+		{
+			if (BOS.trace == 1)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "true");
+			else if (BOS.trace == 0)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "false");
 			else
 				result = BOS_ERR_WrongValue;
 		} 

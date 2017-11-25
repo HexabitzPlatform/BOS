@@ -29,6 +29,7 @@ enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* N
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
 enum bootStatus_e{POWER_ON_BOOT, RESET_BOOT};
+enum traceOptions_e{TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH};
 /* RTC Enums */
 enum rtc_ampm_e{RTC_AM = 1, RTC_PM};
 enum rtc_daylight_e{DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1};
@@ -173,6 +174,7 @@ typedef struct
 {
 	buttonsConfig_t buttons;
 	uint8_t response;
+	uint8_t trace;
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
@@ -219,7 +221,7 @@ button_t;
 #define MaxLengthOfAlias							10
 #define MAX_BOS_VARS									100
 #define NumOfKeywords									4
-#define NumOfParamsHelpStrings				6
+#define NumOfParamsHelpStrings				7
 #define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)

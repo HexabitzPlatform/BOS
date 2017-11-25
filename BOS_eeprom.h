@@ -97,7 +97,7 @@
 #define _EE_DMAStreamsBase			228				// 8 variables				
 #define _EE_ButtonBase					236				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
 																					// pressed_for_x_1 (8 bits), released_for_y_1 (8 bits), etc.
-#define _EE_ParamsBase					276				// Parameter base: BOS response - 1 variable
+#define _EE_ParamsBase					276				// Parameter base: BOS trace (MSB) | BOS response - 1 variable 
 #define _EE_ParamsDebounce			277				// Parameter: Button debounce - 1 variable
 #define _EE_ParamsSinClick			278				// Parameter: Button single click - 1 variable
 #define _EE_ParamsDblClick			279				// Parameter: Button double click (inter-click min and max) - 1 variable
