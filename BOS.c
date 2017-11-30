@@ -183,7 +183,6 @@ you must connect to a CLI port on each startup to restore other array ports into
 																															 "BOS.mininterclicktime: 1 ... 255 msec\r\n",
 																															 "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
 
-
 /* Create CLI commands --------------------------------------------------------*/
 
 static portBASE_TYPE prvTaskStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
