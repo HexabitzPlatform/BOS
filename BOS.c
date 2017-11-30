@@ -168,7 +168,6 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
-
 	
 /* Module exported internal functions */
 extern void Module_Init(void);
