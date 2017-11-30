@@ -135,7 +135,7 @@ uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
 void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
-//BOS_Status SaveEEtopology(void);
+//BOS_Status SaveEEtopology(void);								// change this to test conflicts
 //BOS_Status LoadEEtopology(void);
 uint8_t SaveROtopology(void);
 uint8_t LoadROtopology(void);
