@@ -419,7 +419,7 @@ void PxMessagingTask(void * argument)
 			
 			/* Read response and trace modes */
 			responseMode = cMessage[port-1][2] & 0x60;
-			traceMode = cMessage[port-1][2] & 0x01;
+			traceMode = cMessage[port-1][2] & 0x10;
 			oldTraceMode = BOS.trace;
 			BOS.trace = traceMode;
 			
@@ -1879,14 +1879,13 @@ void StreamTimerCallback( TimerHandle_t xTimer )
 /*-----------------------------------------------------------*/	
 
 /* --- Check for factory reset condition: 
-				- P1 TXD is connected to last port RXD   
-				-	or P1 TXD is connected to programming port RXD   
+				- P1 TXD is connected to last port RXD    
 */
 uint8_t IsFactoryReset(void)
 {
 	GPIO_InitTypeDef GPIO_InitStruct;
-	uint32_t P1_TX_Port, P1_RX_Port, P_last_TX_Port, P_last_RX_Port, P_prog_TX_Port, P_prog_RX_Port;
-	uint16_t P1_TX_Pin, P1_RX_Pin, P_last_TX_Pin, P_last_RX_Pin, P_prog_TX_Pin, P_prog_RX_Pin;
+	uint32_t P1_TX_Port, P1_RX_Port, P_last_TX_Port, P_last_RX_Port;
+	uint16_t P1_TX_Pin, P1_RX_Pin, P_last_TX_Pin, P_last_RX_Pin;
 	
 	/* -- Setup GPIOs -- */
 	
@@ -1899,7 +1898,6 @@ uint8_t IsFactoryReset(void)
 	/* Get GPIOs */
 	GetPortGPIOs(P1, &P1_TX_Port, &P1_TX_Pin, &P1_RX_Port, &P1_RX_Pin);
 	GetPortGPIOs(P_LAST, &P_last_TX_Port, &P_last_TX_Pin, &P_last_RX_Port, &P_last_RX_Pin);
-	GetPortGPIOs(P_PROG, &P_prog_TX_Port, &P_prog_TX_Pin, &P_prog_RX_Port, &P_prog_RX_Pin);
 	
 	/* TXD of first port */
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1912,24 +1910,9 @@ uint8_t IsFactoryReset(void)
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
 	GPIO_InitStruct.Pin = P_last_RX_Pin;
 	HAL_GPIO_Init((GPIO_TypeDef *)P_last_RX_Port, &GPIO_InitStruct);	
-	
-	/* RXD of programming port */
-	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
-	GPIO_InitStruct.Pin = P_prog_RX_Pin;
-	HAL_GPIO_Init((GPIO_TypeDef *)P_prog_RX_Port, &GPIO_InitStruct);	
+
 	
 	/* Check for factory reset conditions */
-	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
-	Delay_ms_no_rtos(5);
-	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == RESET)
-	{
-		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
-		Delay_ms_no_rtos(5);
-		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_prog_RX_Port,P_prog_RX_Pin) == SET) {
-			return 1;
-		}
-	}
 	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
 	Delay_ms_no_rtos(5);
 	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P_last_RX_Port,P_last_RX_Pin) == RESET)
@@ -1951,18 +1934,19 @@ uint8_t IsFactoryReset(void)
 /*-----------------------------------------------------------*/	
 
 /* --- Check if booting into lower CLI baudrate:
-				- Connect P1 TXD and RXD to boot CLI at 115200
+				- Connect P1 TXD and P2 RXD to boot CLI at 115200
 */
 uint8_t IsLowerCLIbaud(void)
 {
 	GPIO_InitTypeDef GPIO_InitStruct;
-	uint32_t P1_TX_Port, P1_RX_Port;
-	uint16_t P1_TX_Pin, P1_RX_Pin;
+	uint32_t P1_TX_Port, P1_RX_Port, P2_TX_Port, P2_RX_Port;
+	uint16_t P1_TX_Pin, P1_RX_Pin, P2_TX_Pin, P2_RX_Pin;
 	
 	/* -- Setup GPIOs -- */
 	
 	/* Get GPIOs */
 	GetPortGPIOs(P1, &P1_TX_Port, &P1_TX_Pin, &P1_RX_Port, &P1_RX_Pin);
+	GetPortGPIOs(P2, &P2_TX_Port, &P2_TX_Pin, &P2_RX_Port, &P2_RX_Pin);
 	
 	/* P1 TXD */
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1970,20 +1954,20 @@ uint8_t IsLowerCLIbaud(void)
 	GPIO_InitStruct.Pin = P1_TX_Pin;
 	HAL_GPIO_Init((GPIO_TypeDef *)P1_TX_Port, &GPIO_InitStruct);
 	
-	/* P1 RXD */
+	/* P2 RXD */
 	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
 	GPIO_InitStruct.Pull = GPIO_PULLDOWN;	
-	GPIO_InitStruct.Pin = P1_RX_Pin;
-	HAL_GPIO_Init((GPIO_TypeDef *)P1_RX_Port, &GPIO_InitStruct);	
+	GPIO_InitStruct.Pin = P2_RX_Pin;
+	HAL_GPIO_Init((GPIO_TypeDef *)P2_RX_Port, &GPIO_InitStruct);	
 	
 	/* Check for lower CLI baudrate conditions */
 	HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_RESET);
 	Delay_ms_no_rtos(5);		
-	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == RESET)
+	if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P2_RX_Port,P2_RX_Pin) == RESET)
 	{
 		HAL_GPIO_WritePin((GPIO_TypeDef *)P1_TX_Port,P1_TX_Pin,GPIO_PIN_SET);
 		Delay_ms_no_rtos(5);		
-		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P1_RX_Port,P1_RX_Pin) == SET) 
+		if (HAL_GPIO_ReadPin((GPIO_TypeDef *)P2_RX_Port,P2_RX_Pin) == SET) 
 		{
 			return 1;
 		}
@@ -3153,10 +3137,10 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	message[2] = (uint8_t) (code >> 8);	
 	
 	/* Apply response options */
-	message[2] |= BOS.response;												/* 15th bit for Message response, 14th bit for CLI response */
+	message[2] |= BOS.response;												/* CODE 15th bit for Message response, 14th bit for CLI response */
 
 	/* Apply trace options */
-	message[2] |= (BOS.trace<<13);										/* 13th bit for Message trace */
+	message[2] |= (BOS.trace<<4);											/* CODE 13th bit for Message trace */
 	
 	/* Copy parameters */
 	if (numberOfParams <= (MAX_MESSAGE_SIZE-5) ) {				
@@ -5454,7 +5438,7 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 			else
 				result = BOS_ERR_WrongValue;
 		} 
-		if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
+		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
 			if (BOS.trace == 1)
 				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "true");

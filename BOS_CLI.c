@@ -254,17 +254,15 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
-							writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);
-							memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
-							xReturned = pdFALSE;
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
 							{
 								ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
 								/* If timeout */
 								if (responseStatus != BOS_OK)
-									sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
-							}
+									sprintf( ( char * ) pcOutputString, "%sModule %d is not reachable.\n\r", ( char * ) pcOutputString, id);
+							}	
+							xReturned = pdFALSE;
 						}						
 					} 
 					else 
