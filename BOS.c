@@ -2981,6 +2981,17 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
 #endif	
+#ifdef P01R0	
+	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &colorCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &RGBCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pulseColorCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &pulseRGBCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
+#endif	
 #ifdef H05R0	
 	FreeRTOS_CLIRegisterCommand( &addLogCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &deleteLogCommandDefinition );
