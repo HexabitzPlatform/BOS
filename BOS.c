@@ -171,6 +171,7 @@ BOS_Status RTC_CalendarConfig(void);
 	
 /* Module exported internal functions */
 extern void Module_Init(void);
+extern void RegisterModuleCLICommands(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
@@ -2947,7 +2948,7 @@ void BOS_Init(void)
 */
 void vRegisterCLICommands(void)
 {
-	/* Register all CLI commands */
+	/* Register all BOS CLI commands */
 	FreeRTOS_CLIRegisterCommand( &prvTaskStatsCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &prvRunTimeStatsCommandDefinition );	
 	FreeRTOS_CLIRegisterCommand( &pingCommandDefinition );
@@ -2968,50 +2969,9 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &defaultCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &timeCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dateCommandDefinition );
-#ifdef H01R0	
-	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &colorCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &RGBCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pulseColorCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pulseRGBCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
-#endif	
-#ifdef P01R0	
-	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &colorCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &RGBCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pulseColorCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pulseRGBCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
-#endif
-#ifdef H02R1
-	FreeRTOS_CLIRegisterCommand( &btUpdateScriptCommandDefinition);
-	FreeRTOS_CLIRegisterCommand( &btRunScriptCommandDefinition);
-	FreeRTOS_CLIRegisterCommand( &btVspModeCommandDefinition);
-	FreeRTOS_CLIRegisterCommand( &btSetBaudrateCommandDefinition);
-#endif
-#ifdef H05R0	
-	FreeRTOS_CLIRegisterCommand( &addLogCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &deleteLogCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &logVarCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &startCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &stopCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pauseCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &resumeCommandDefinition );
-#endif
-#ifdef H09R0	
-	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &toggleCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &ledModeCommandDefinition );
-	FreeRTOS_CLIRegisterCommand( &pwmCommandDefinition );
-#endif
+	
+	/* Register module CLI commands */	
+	RegisterModuleCLICommands();
 }
 
 /*-----------------------------------------------------------*/
