@@ -2968,8 +2968,6 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &defaultCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &timeCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dateCommandDefinition );
-	
-	
 #ifdef H01R0	
 	FreeRTOS_CLIRegisterCommand( &onCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &offCommandDefinition );
@@ -2991,7 +2989,13 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &pulseRGBCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &sweepCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dimCommandDefinition );
-#endif	
+#endif
+#ifdef H02R1
+	FreeRTOS_CLIRegisterCommand( &btUpdateScriptCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &btRunScriptCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &btVspModeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &btSetBaudrateCommandDefinition);
+#endif
 #ifdef H05R0	
 	FreeRTOS_CLIRegisterCommand( &addLogCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &deleteLogCommandDefinition );
