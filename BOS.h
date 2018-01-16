@@ -96,8 +96,8 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #ifdef H0FR6
 	#include "H0FR6.h"		
 #endif
-#ifdef H11R0
-	#include "H11R0.h"	
+#ifdef H1AR0
+	#include "H1AR0.h"	
 #endif
 #ifdef H0AR9
 	#include "H0AR9.h"	
