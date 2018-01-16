@@ -24,7 +24,7 @@ TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 uint8_t indMode = IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[15][6] = {"", "H01R0", "P01R0", "H02R0", "H02R1", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0", "H17R0", "H21R0", "H24R0"};
+const char modulePNstring[15][6] = {"", "H01R0", "P01R0", "H23R0", "H02R1", "H04R0", "H05R0", "H07R0", "H08R0", "H09R0", "H11R0", "H12R0", "H17R0", "H21R0", "H24R0"};
 
 /* Define BOS keywords */
 const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
