@@ -96,7 +96,7 @@ void MX_FREERTOS_Init(void)
 {
 
   /* Create a defaultTask */
-  xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &defaultTaskHandle);	
+  xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &defaultTaskHandle);	
 
 	/* Create the front-end task */
 	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
