@@ -138,8 +138,10 @@ void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
 uint8_t SaveROtopology(void);
+uint8_t ClearROtopology(void);
 uint8_t LoadROtopology(void);
 BOS_Status SaveEEportsDir(void);
+BOS_Status ClearEEportsDir(void);
 BOS_Status LoadEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status LoadEEalias(void);
@@ -350,7 +352,7 @@ static const CLI_Command_Definition_t getCommandDefinition =
 static const CLI_Command_Definition_t defaultCommandDefinition =
 {
 	( const int8_t * ) "default", /* The command string to type. */
-	( const int8_t * ) "default:\r\n Type 'default params' to set all parameters to default values\r\n\r\n",
+	( const int8_t * ) "default:\r\n Type 'default params' to set all parameters to default values\r\n Type 'default array' to remove current topology\r\n\r\n",
 	defaultCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
@@ -616,6 +618,14 @@ void PxMessagingTask(void * argument)
 							#endif
 								SaveEEportsDir();
 								indMode = IND_PING;
+								break;
+							
+							case CODE_def_array :					
+								/* Clear the topology */
+								ClearEEportsDir();
+								ClearROtopology();
+								osDelay(100);
+								indMode = IND_TOPOLOGY;
 								break;
 							
 							case CODE_CLI_command :
@@ -1335,6 +1345,42 @@ uint8_t SaveROtopology(void)
 	
 	return result;
 }
+
+/*-----------------------------------------------------------*/
+
+/* --- Clear array topology in Flash RO --- 
+*/
+uint8_t ClearROtopology(void)
+{
+	BOS_Status result = BOS_OK; 
+	HAL_StatusTypeDef FlashStatus = HAL_OK;
+
+	// Clear the array 
+	memset(array, 0, sizeof(array));
+	N = 1; myID = 0;
+	
+	HAL_FLASH_Unlock();
+	
+	/* Erase RO area */
+	FLASH_PageErase(RO_START_ADDRESS);
+	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+	if(FlashStatus != HAL_OK)
+	{
+		return pFlash.ErrorCode;
+	}
+	else
+	{			
+		/* Operation is completed, disable the PER Bit */
+		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
+	}	
+
+	HAL_FLASH_Lock();
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
 ///* --- Save array topology in EEPROM --- 
 //*/
 //BOS_Status SaveEEtopology(void)
@@ -1401,6 +1447,8 @@ uint8_t LoadROtopology(void)
 	
 	return result;
 }
+/*-----------------------------------------------------------*/
+
 ///* --- Load array topology stored in EEPROM --- 
 //*/
 //BOS_Status LoadEEtopology(void)
@@ -1434,6 +1482,28 @@ uint8_t LoadROtopology(void)
 BOS_Status SaveEEportsDir(void)
 {
 	BOS_Status result = BOS_OK; 
+	
+	for(uint8_t i=1 ; i<=N ; i++)
+	{
+		if (arrayPortsDir[i-1])
+			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+		
+		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+			result = BOS_ERR_EEPROM;
+	}
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Clear array ports directions in EEPROM --- 
+*/
+BOS_Status ClearEEportsDir(void)
+{
+	BOS_Status result = BOS_OK; 
+	
+	memset(arrayPortsDir, 0, sizeof(arrayPortsDir));
 	
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
@@ -5496,7 +5566,8 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	static int8_t *pcParameterString1; 
 	portBASE_TYPE xParameterStringLength1 = 0;
 	
-	static const int8_t *pcMessageOK = ( int8_t * ) "All parameters set to default values\n\r";	
+	static const int8_t *pcMessageOKParams = ( int8_t * ) "All parameters set to default values\n\r";	
+	static const int8_t *pcMessageOKArray = ( int8_t * ) "Current array topology was removed. Please reboot all modules\n\r";	
 	static const int8_t *pcMessageWrongValue = ( int8_t * ) "Wrong value!\n\r";	
 	
 	/* Remove compile time warnings about unused parameters, and check the
@@ -5511,14 +5582,26 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	{
 		memcpy(&BOS, &BOS_default, sizeof(BOS_default));
 		SaveEEparams();
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOKParams );
+	}
+	else if (!strncmp((const char *)pcParameterString1, "array", xParameterStringLength1)) 
+	{
+		/* Broadcast the default array Message */
+		SendMessageToModule(BOS_BROADCAST, CODE_def_array, 0);
+		indMode = IND_TOPOLOGY; osDelay(100);
+		/* Clear the topology */
+		ClearEEportsDir();
+		ClearROtopology();
+		osDelay(100);	
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOKArray );
 	}
 	else
 		result = BOS_ERR_WrongValue;
 
 	/* Respond to the command */
 	if (result == BOS_OK)
-		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
-	else if (result == BOS_ERR_WrongValue)
+		
+	if (result == BOS_ERR_WrongValue)
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue );
 	
 	/* There is no more data to return after this single string, so return

@@ -334,10 +334,11 @@ extern void SystemClock_Config(void);
 #define	CODE_read_port_dir								18
 #define	CODE_read_port_dir_response				19
 #define	CODE_exp_eeprom	 									20
-#define	CODE_CLI_command 									21
-#define	CODE_CLI_response  								22
-#define	CODE_DMA_channel  								23
-#define	CODE_DMA_scast_stream  						24
+#define	CODE_def_array	 									21
+#define	CODE_CLI_command 									22
+#define	CODE_CLI_response  								23
+#define	CODE_DMA_channel  								24
+#define	CODE_DMA_scast_stream  						25
 
 #define	CODE_read_remote  								30
 #define	CODE_read_remote_response  				31
