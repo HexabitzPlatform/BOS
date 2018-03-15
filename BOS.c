@@ -137,8 +137,10 @@ void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
+#ifndef _N
 uint8_t SaveROtopology(void);
 uint8_t ClearROtopology(void);
+#endif
 uint8_t LoadROtopology(void);
 BOS_Status SaveEEportsDir(void);
 BOS_Status ClearEEportsDir(void);
@@ -623,7 +625,9 @@ void PxMessagingTask(void * argument)
 							case CODE_def_array :					
 								/* Clear the topology */
 								ClearEEportsDir();
+								#ifndef _N
 								ClearROtopology();
+								#endif
 								osDelay(100);
 								indMode = IND_TOPOLOGY;
 								break;
@@ -5591,8 +5595,10 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		indMode = IND_TOPOLOGY; osDelay(100);
 		/* Clear the topology */
 		ClearEEportsDir();
+		#ifndef _N
 		ClearROtopology();
-		osDelay(100);	
+		#endif
+		osDelay(100);
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOKArray );
 	}
 	else
