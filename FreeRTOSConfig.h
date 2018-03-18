@@ -102,7 +102,7 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)145)		
-#define configTOTAL_HEAP_SIZE                    ((size_t)12000)
+#define configTOTAL_HEAP_SIZE                    ((size_t)18000)
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -155,7 +155,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 interpreter.  Set this value to 1 to save RAM if FreeRTOS+CLI does not supply
 the output buffer.  See the FreeRTOS+CLI documentation for more information:
 http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
-#define configCOMMAND_INT_MAX_OUTPUT_SIZE			1024
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE			512
 
 /* Hook function related definitions. */
 #define configUSE_MALLOC_FAILED_HOOK	1

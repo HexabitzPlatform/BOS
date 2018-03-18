@@ -274,7 +274,6 @@ extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
 extern const char modulePNstring[16][6];
-extern const char BOSkeywords[NumOfKeywords][4];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)];
@@ -304,7 +303,6 @@ extern BOS_t BOS;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-extern const char *weekdayString[];
 
 
 /* Exported internal functions ---------------------------------------------------------*/
