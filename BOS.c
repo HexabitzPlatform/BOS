@@ -4721,6 +4721,28 @@ void GetTimeDate(void)
 	BOS.date.year = sdatestructureget.Year + 2000;
 }
 
+/* --- Make a data string with format weekday / month / date / year 
+*/
+char *GetDateString(void)
+{
+  static const char formatDateStr[] = "%s %02d/%02d/%04d";
+  char *buffer = malloc(30 * sizeof(int8_t));
+  memset (buffer, 0x00, 30 * sizeof(int8_t));
+  sprintf(buffer, formatDateStr, weekdayString[BOS.date.weekday-1], BOS.date.month, BOS.date.day, BOS.date.year);
+  return buffer;
+}
+
+/* --- Make a time string with format hour / minute / second
+*/
+char *GetTimeString(void)
+{
+  static const char formatTimeStr[] = "%02d:%02d:%02d";
+  char *buffer = malloc(10 * sizeof(int8_t));
+  memset (buffer, 0x00, 10 * sizeof(int8_t));
+  sprintf(buffer, formatTimeStr, BOS.time.hours, BOS.time.minutes, BOS.time.seconds);
+  return buffer;
+}
+
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
@@ -5649,7 +5671,7 @@ static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 
 static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	static const int8_t *pcMessageDate = ( int8_t * ) "Current date is %s %02d/%02d/%04d\n\r";	
+	static const int8_t *pcMessageDate = ( int8_t * ) "Current date is %s\n\r";	
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -5659,7 +5681,7 @@ static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	
 	GetTimeDate();
 	/* Respond to the command */
-	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDate, weekdayString[BOS.date.weekday-1], BOS.date.month, BOS.date.day, BOS.date.year );
+	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDate, GetDateString() );
 
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */
