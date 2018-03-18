@@ -397,6 +397,8 @@ extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t weekday, uint8_t seconds, \
 															uint8_t minutes, uint8_t hours, uint8_t AMPM, int8_t daylightsaving);
 extern void GetTimeDate(void);
+extern char *GetDateString(void);
+extern char *GetTimeString(void);
 
 
 #endif /* BOS_H */
