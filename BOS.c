@@ -2994,12 +2994,15 @@ void BOS_Init(void)
 		Module_Init();				
 	}
 	
+	/* Load stored EEPROM variables */
+	LoadEEvars();
+	
 /* If no pre-defined topology, initialize ports direction */
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
 
-	/* Startup indicator sequence - Note: DOn't move out after Module_Init. It hangs out */
+	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */
 	{
 		IND_ON();	Delay_ms_no_rtos(500); IND_OFF();
