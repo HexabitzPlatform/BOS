@@ -1,4 +1,4 @@
-# Bitz Operating System (BOS) #
+# Hexabitz Bitz Operating System (BOS) #
 
 **BOS is the operating system and backend firmware for Hexabitz modules.** It is based on FreeRTOS and optimized to provide the wired-mesh communication infrastructure as well as housekeeping functionality for Hexabitz arrays.
 
