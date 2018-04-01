@@ -2967,11 +2967,6 @@ void BOS_Init(void)
 		/* Software reset */
 		NVIC_SystemReset();
 	}
-	else
-	{	
-		/* Load stored EEPROM variables */
-		LoadEEvars();
-	}
 	
 	/* Check if booting at lower CLI baudrate */
 	if (IsLowerCLIbaud())
