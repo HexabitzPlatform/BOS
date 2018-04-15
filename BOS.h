@@ -18,7 +18,7 @@
 #define _firmTime				__TIME__
 
 /* Enumerations */
-enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P_USB};
+enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
 enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
 enum UartDirection_e{NORMAL, REVERSED};
@@ -321,7 +321,8 @@ extern void SystemClock_Config(void);
 #define	CODE_unknown_message							0
 #define	CODE_ping													1
 #define	CODE_ping_response								2
-				
+#define	CODE_IND_on												3
+#define	CODE_IND_off											4
 #define	CODE_IND_toggle										5
 
 #define	CODE_hi														10
@@ -384,7 +385,7 @@ extern BOS_Status NameModule(uint8_t module, char* alias);
 extern BOS_Status AddModuleToGroup(uint8_t module, char* group);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
-extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout);
+extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored);
 extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\

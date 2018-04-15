@@ -507,6 +507,14 @@ void PxMessagingTask(void * argument)
 								writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
 								responseStatus = BOS_OK;								
 								break;
+								
+							case CODE_IND_on :
+								IND_ON();
+								break;
+							
+							case CODE_IND_off :
+								IND_OFF();
+								break;
 							
 							case CODE_IND_toggle :
 								IND_toggle();
@@ -676,25 +684,43 @@ void PxMessagingTask(void * argument)
 								break;
 								
 							case CODE_DMA_channel :
+								/* Read EEPROM storage flag */
+								temp = cMessage[port-1][15];
+								if (messageLength[port-1] == 19)	temp = cMessage[port-1][17];							
+								if (messageLength[port-1] == 21)	temp = cMessage[port-1][19];
+								/* Activate the stream */
+								if (temp == false)
+								{
+									count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
+									timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
+									SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
+									if (messageLength[port-1] == 19)
+										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
+									if (messageLength[port-1] == 21)
+										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], cMessage[port-1][17], cMessage[port-1][18]);
+								}
 								/* Save stream paramters in EEPROM */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
-								if (messageLength[port-1] == 18)
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
-								if (messageLength[port-1] == 20)
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][17] << 8 ) + cMessage[port-1][18]);			/* src3 | dst3 */
-								/* Reset MCU */
-								NVIC_SystemReset();
+								else
+								{
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high half-word */
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low half-word */
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high half-word */
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low half-word */
+									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
+									if (messageLength[port-1] == 19)
+										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
+									if (messageLength[port-1] == 21)
+										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][17] << 8 ) + cMessage[port-1][18]);			/* src3 | dst3 */
+									/* Reset MCU */
+									NVIC_SystemReset();
+								}
 								break;
 							
 							case CODE_DMA_scast_stream :
 								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
 								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];
-								StartScastDMAStream(cMessage[port-1][13], myID, cMessage[port-1][15], cMessage[port-1][14], cMessage[port-1][12], count, timeout);
+								StartScastDMAStream(cMessage[port-1][13], myID, cMessage[port-1][15], cMessage[port-1][14], cMessage[port-1][12], count, timeout, cMessage[port-1][16]);
 								break;								
 							
 							
@@ -3094,9 +3120,9 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 		case P10 :
 			return P10uart;
 	#endif
-	#ifdef _P_USB
-		case P_USB :
-			return P_USBuart;
+	#ifdef _PUSB
+		case PUSB :
+			return PUSBuart;
 	#endif
 		default:
 			return 0;
@@ -4185,9 +4211,9 @@ BOS_Status UpdateMyPortsDir(void)
 /*-----------------------------------------------------------*/
 
 /* --- Start a single-cast DMA stream across the array. Transfer ends after (count) bytes are transferred 
-			or timeout (ms), whichever comes first. --- 
+			or timeout (ms), whichever comes first. If stored = true, the stream is stored in emulated eeprom --- 
 */
-BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout)
+BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
 	TimerHandle_t xTimer = NULL;
@@ -4208,7 +4234,8 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		messageParams[9] = srcP;												/* Source port */
 		messageParams[10] = dstM;												/* destination module */
 		messageParams[11] = dstP;												/* destination port */
-		SendMessageToModule(srcM, CODE_DMA_scast_stream, 12);		
+		messageParams[12] = stored;											/* EEPROM storage */
+		SendMessageToModule(srcM, CODE_DMA_scast_stream, 13);		
 		
 		return result;
 	}
@@ -4244,8 +4271,9 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 			messageParams[8] = direction;										/* Stream direction */
 			messageParams[9] = temp1;												/* Source port */
 			messageParams[10] = temp2;											/* destination port */
+			messageParams[11] = stored;											/* EEPROM storage */
 			FindRoute(srcM, dstM);
-			SendMessageToModule(route[i], CODE_DMA_channel, 11);
+			SendMessageToModule(route[i], CODE_DMA_channel, 12);
 			osDelay(10);
 		}
 	}
@@ -4270,6 +4298,8 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		/* Create a timeout timer */
 		xTimer = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
 	}
+	
+	// Todo: store my own streams to EEPROM
 	
 	/* Start the timeout timer */
 	xTimerStart( xTimer, portMAX_DELAY );
@@ -5148,7 +5178,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	pcParameterString7 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 7, &xParameterStringLength7);
 	timeout = ( uint32_t ) atol( ( char * ) pcParameterString7 );
 	
-	result = StartScastDMAStream(srcP, srcM, dstP, dstM, direction, count, timeout);
+	result = StartScastDMAStream(srcP, srcM, dstP, dstM, direction, count, timeout, false);
 	
 	/* Respond to the command */
 	if (result == BOS_OK) 
