@@ -75,11 +75,8 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #ifdef P01R0
 	#include "P01R0.h"
 #endif
-#ifdef H23R0
-	#include "H23R0.h"	
-#endif
-#ifdef H23R1
-	#include "H23R0.h"	
+#if defined(H23R1) || defined(H23R0)
+	#include "H23Rx.h"	
 #endif
 #ifdef H07R3
 	#include "H07R3.h"	
