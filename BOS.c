@@ -209,6 +209,7 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -377,6 +378,14 @@ static const CLI_Command_Definition_t dateCommandDefinition =
 	0 /* No parameters are expected. */
 };
 /*-----------------------------------------------------------*/
+/* CLI command structure : set-baudrate */
+const CLI_Command_Definition_t setBaudrateCommandDefinition =
+{
+	( const int8_t * ) "set-baudrate", /* The command string to type. */
+	( const int8_t * ) "set-baudrate:\r\n Set UART baudrate\r\n\t(1st parameter): P1 to P6\r\n\t(2nd parameter): baudrate\r\n\r\n",
+	setBaudrateCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
+};
 
 /* Define long messages -------------------------------------------------------*/
 
@@ -3068,6 +3077,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &defaultCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &timeCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dateCommandDefinition );
+	FreeRTOS_CLIRegisterCommand( &setBaudrateCommandDefinition);
 	
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
@@ -5719,5 +5729,53 @@ static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 }
 
 /*-----------------------------------------------------------*/
+
+static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	BOS_Status result = BOS_OK;
+
+	int8_t *pcParameterString1;
+	int8_t *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	portBASE_TYPE xParameterStringLength2 = 0;
+	static const int8_t *pcMessageOK = ( int8_t * ) "Baudrate for port P%d was set to %d\r\n";
+	static const int8_t *pcMessageWrongParam = ( int8_t * ) "Wrong parameter!\r\n";
+
+	uint8_t port;
+	uint32_t baudrate;
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* 1st parameter for port name: P1 to P6 */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'p') {
+		port = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	}
+	else
+	{
+		result = BOS_ERR_WrongValue;
+	}
+  /* 2nd parameter for baudrate */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	baudrate = ( uint32_t ) atol( ( char * ) pcParameterString2 );
+
+	/* Respond to the command */
+	if (BOS_ERR_WrongValue == result)
+	{
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongParam );
+	}
+  else
+  {
+		UpdateBaudrate(port, baudrate);
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, baudrate, port);
+  }
+
+	/* There is no more data to return after this single string, so return pdFALSE. */
+	return pdFALSE;
+}
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

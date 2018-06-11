@@ -104,7 +104,10 @@
 #define _EE_CLIBaud							280				// Parameter: CLI baudrate - LSB halfword, MSB halfword - 2 variables
 #define _EE_ParamsRTC						282				// Parameter: RTC hourformat | RTC daylightsaving - 1 variable
 
-#define _EE_EmptyVarBase				300
+// Temporary - H23Rx Bluetooth module VSP mode
+#define _EE_H23xVSP							300
+
+#define _EE_EmptyVarBase				301
 
 
 #if MaxNumOfModules > 25						// Update
