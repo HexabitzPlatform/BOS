@@ -57,6 +57,7 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 
 /* BOS */
 #include "BOS_eeprom.h"
+#include "BOS_utils.h"
 
 /* C STD Library */
 #include <stdio.h>

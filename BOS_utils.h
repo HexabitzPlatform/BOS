@@ -1,5 +1,5 @@
-#ifndef _UTILS_H_
-#define _UTILS_H_
+#ifndef BOS_UTILS_H
+#define BOS_UTILS_H
 
 #include <ctype.h>
 #include <stdbool.h>
@@ -20,7 +20,7 @@
 #define min(x,y) 								((x)>(y) ? (y) : (x))
 #define max(x,y) 								((x)>(y) ? (x) : (y))
 
-#define absolute(x,y)						((x) >=0 ? (x) : -(x))
+#define absolute(x,y)						((x) >= 0 ? (x) : -(x))
 
 #define constrain(a,low,high)		(((a) > (high)) ? (high) : (((a) < (low)) ? (low) : (a)))
 
