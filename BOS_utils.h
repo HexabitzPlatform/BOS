@@ -17,6 +17,9 @@
 
 #define EULER 									2.718281828459045235360287471352
 
+#define celsiusToFahrenheit(c)	(((c * 9.0) / 5) + 32)
+#define fahrenheitToCelsius(f)	(((f - 32) * 5.0) / 9.0)
+
 #define min(x,y) 								((x)>(y) ? (y) : (x))
 #define max(x,y) 								((x)>(y) ? (x) : (y))
 
