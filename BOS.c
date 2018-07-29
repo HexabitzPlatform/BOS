@@ -2991,7 +2991,7 @@ void BOS_Init(void)
 	
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-	MX_DMA_Init();
+	DMA_Init();
 	MX_TIM_USEC_Init();
 	
 	/* Check for factory reset */

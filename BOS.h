@@ -57,6 +57,7 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 
 /* BOS */
 #include "BOS_eeprom.h"
+#include "BOS_DMA.h"
 
 /* C STD Library */
 #include <stdio.h>
@@ -240,6 +241,8 @@ button_t;
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
+#define MSG_RX_BUF_SIZE								524				// 131*4
+#define MSG_TX_BUF_SIZE								131				// 128 max length + H + Z + CRC
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
@@ -263,6 +266,10 @@ button_t;
 #define	SWCLK_PIN			GPIO_PIN_14
 #define	SWCLK_PORT		GPIOA
 
+
+/* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
+#define	MSG_DMA_INT_PRIORITY			0
+#define	STREAM_DMA_INT_PRIORITY		1
 
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
