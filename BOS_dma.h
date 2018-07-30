@@ -28,10 +28,12 @@ extern uint32_t dmaStreamCount[6];
 extern uint32_t dmaStreamTotal[6];
 
 /* External functions ---------------------------------------------------------*/
+extern void StopMsgDMA(uint8_t port);
+extern void StopStreamDMA(uint8_t port);
 extern void SwitchMsgDMAToStream(uint8_t port);
 extern void SwitchStreamDMAToMsg(uint8_t port);
 extern BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint8_t num);
-
+extern void DMA_IRQHandler(uint8_t port);
 
 
 

@@ -133,10 +133,26 @@ BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huar
 	
 	// 5. Setup and start the DMA stream
 	DMA_STREAM_Setup(huartSrc, huartDst, num);	
+	
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
 
-
+/* DMA interrupt service routine 
+*/
+void DMA_IRQHandler(uint8_t port)
+{
+	if (portStatus[port] != STREAM) {
+		HAL_DMA_IRQHandler(&msgRxDMA[port-1]);
+	} else {
+		HAL_DMA_IRQHandler(&streamDMA[port-1]);
+		if (dmaStreamTotal[port-1])
+			++dmaStreamCount[port-1];
+		if (dmaStreamCount[port-1] >= dmaStreamTotal[port-1]) {
+			StopStreamDMA(port);
+		}
+	}
+}
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

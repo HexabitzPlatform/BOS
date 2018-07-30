@@ -153,7 +153,7 @@ BOS_Status LoadEEstreams(void);
 BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
 BOS_Status LoadEEbuttons(void);
-BOS_Status SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst);
+BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst);
 void StreamTimerCallback( TimerHandle_t xTimerStream );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
@@ -702,11 +702,11 @@ void PxMessagingTask(void * argument)
 									count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
 									timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
 									if (cMessage[port-1][13] && cMessage[port-1][14])
-										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14]);
+										SetupDMAStreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14]);
 									if (cMessage[port-1][15] && cMessage[port-1][16])
-										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][15], cMessage[port-1][16]);
+										SetupDMAStreams(cMessage[port-1][12], count, timeout, cMessage[port-1][15], cMessage[port-1][16]);
 									if (cMessage[port-1][17] && cMessage[port-1][18])
-										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][17], cMessage[port-1][18]);
+										SetupDMAStreams(cMessage[port-1][12], count, timeout, cMessage[port-1][17], cMessage[port-1][18]);
 								}
 								/* Save stream paramters in EEPROM */
 								else
@@ -1746,11 +1746,11 @@ BOS_Status LoadEEstreams(void)
 	
 	/* Activate the DMA streams */
 	if (src1 && dst1)
-		SetupDMAStreamsFromMessage(direction, count, timeout, src1, dst1);
+		SetupDMAStreams(direction, count, timeout, src1, dst1);
 	if (src2 && dst2)
-		SetupDMAStreamsFromMessage(direction, count, timeout, src2, dst2);
+		SetupDMAStreams(direction, count, timeout, src2, dst2);
 	if (src3 && dst3)
-		SetupDMAStreamsFromMessage(direction, count, timeout, src3, dst3);
+		SetupDMAStreams(direction, count, timeout, src3, dst3);
 	
 	return result;
 }
@@ -1898,7 +1898,7 @@ BOS_Status LoadEEbuttons(void)
 
 /* --- Setup DMA streams upon request from another module --- 
 */
-BOS_Status SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst)
+BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst)
 {
 	TimerHandle_t xTimerStream = NULL; 
 	
@@ -1908,28 +1908,37 @@ BOS_Status SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_
 	if (direction == FORWARD) 
 	{									
 		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
 		dmaStreamTotal[src-1] = count;
 	} 
 	else if (direction == BACKWARD) 
 	{
 		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
 		dmaStreamTotal[src-1] = count;
 	} 
 	else if (direction == BIDIRECTIONAL) 
 	{
 		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY;
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
 		dmaStreamTotal[src-1] = count;
 		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
 		dmaStreamTotal[dst-1] = count;
 	}
 	else
 		return BOS_ERR_WrongParam;
 
-	/* Create a timeout timer */
-	xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
+	
 	/* Start the timeout timer */
 	if (xTimerStream != NULL)
 		xTimerStart( xTimerStream, portMAX_DELAY );
+	
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -1942,28 +1951,9 @@ void StreamTimerCallback( TimerHandle_t xTimerStream )
 	
 	tid = ( uint32_t ) pvTimerGetTimerID( xTimerStream );
 	
-	switch (tid)
-	{
-		case 1 :
-			StopPortPortDMA1();
-			break;
-		
-		case 2 :
-			StopPortPortDMA2();
-			break;
-		
-		case 3 :
-			StopPortPortDMA3();
-			break;
-		
-		case 12 :
-			StopPortPortDMA1();
-			StopPortPortDMA2();
-			break;
-		
-		default:
-			break;
-	}	
+	StopStreamDMA(tid);
+	
+	SwitchStreamDMAToMsg(tid);
 }
 
 /*-----------------------------------------------------------*/	
@@ -3933,24 +3923,14 @@ void DisplayModuleStatus(uint8_t port)
 	}	
 
 	/* P2P DMAs */
-	sprintf(pcUserMessage, "\n\rPort-to-port DMAs Status:\n\r");
+	sprintf(pcUserMessage, "\n\rDMA Streams Status:\n\r");
 	strcat( (char *) pcOutputString, pcUserMessage);	
-	if (portPortDMA1.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is streaming from P%d to P%d", GetPort(portPortDMA1.Parent), GetPort(dmaStreamDst[0]));
-	}
-	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA2.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is streaming from P%d to P%d", GetPort(portPortDMA2.Parent), GetPort(dmaStreamDst[1]));
-	}
-	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA3.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
+	for (char i=1 ; i<=6 ; i++) {
+		if (streamDMA[i-1].Instance->CNDTR == 0) {
+				sprintf(pcUserMessage, "\n\rStreaming DMA %d is free", i);
+		} else {
+				sprintf(pcUserMessage, "\n\rStreaming DMA %d is streaming from P%d to P%d", i, GetPort(streamDMA[i-1].Parent), GetPort(dmaStreamDst[i-1]));
+		}
 	}
 	strcat( (char *) pcOutputString, pcUserMessage);
 	strcat( (char *) pcOutputString, "\n\r");
@@ -4208,7 +4188,6 @@ BOS_Status UpdateMyPortsDir(void)
 BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
-	TimerHandle_t xTimerStream = NULL;
 	uint8_t port = 0, temp1 = 0, temp2 = 0;
 	
 	/* Is the source a different module? */
@@ -4276,26 +4255,10 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		port = FindRoute(srcM, dstM);
 	
 	/* Setup my own DMA stream */
-	if (direction == FORWARD) {
-		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-	} else if (direction == BACKWARD) {
-		PortPortDMA1_Setup(GetUart(port), GetUart(srcP), 1); DMAStream1total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-	} else if (direction == BIDIRECTIONAL) {
-		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
-		PortPortDMA2_Setup(GetUart(port), GetUart(srcP), 1); DMAStream2total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
-	}
+	SetupDMAStreams(direction, count, timeout, srcP, port);
 	
 	// Todo: store my own streams to EEPROM
 	
-	/* Start the timeout timer */
-	if (xTimerStream != NULL)
-		xTimerStart( xTimerStream, portMAX_DELAY );
 	
 	return result;
 }

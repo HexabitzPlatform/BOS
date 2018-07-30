@@ -10,6 +10,11 @@
 #ifndef BOS_H
 #define BOS_H
 
+/* Includes ------------------------------------------------------------------*/
+
+/* STM HAL */
+#include "stm32f0xx_hal.h" 
+
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
@@ -37,83 +42,6 @@ enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, 
 enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
-
-
-/* Includes ------------------------------------------------------------------*/
-
-/* STM HAL */
-#include "stm32f0xx_hal.h" 
-										 
-/* Project Header File */
-#include "project.h" 
-
-/* RTOS */
-#include "cmsis_os.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "queue.h"
-#include "semphr.h"
-#include "FreeRTOS_CLI.h"	 
-
-/* BOS */
-#include "BOS_eeprom.h"
-
-/* C STD Library */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <math.h>	 
-#include <limits.h>	
-
-/* Module includes and initialization */
-#ifdef H01R0
-	#include "H01R0.h"
-#endif
-#ifdef P01R0
-	#include "P01R0.h"
-#endif
-#if defined(H23R1) || defined(H23R0)
-	#include "H23Rx.h"	
-#endif
-#ifdef H07R3
-	#include "H07R3.h"	
-#endif
-#ifdef H08R6
-	#include "H08R6.h"	
-#endif
-#ifdef H1BR6
-	#include "H1BR6.h"	
-#endif
-#ifdef H12R0
-	#include "H12R0.h"	
-#endif
-#ifdef H13R7
-	#include "H13R7.h"
-#endif
-#ifdef H0FR6
-	#include "H0FR6.h"		
-#endif
-#ifdef H1AR2
-	#include "H1AR0.h"	
-#endif
-#ifdef H0AR9
-	#include "H0AR9.h"	
-#endif
-#ifdef H1DR5
-	#include "H1DR5.h"	
-#endif
-#ifdef H0BR4
-	#include "H0BR4.h"	
-#endif
-#ifdef H18R0
-	#include "H18R0.h"	
-#endif
-
-/* More BOS header files - must be defined after module headers */
-#include "BOS_DMA.h"
 
 /* BOS_Status Type Definition */  
 typedef enum 
@@ -273,6 +201,82 @@ button_t;
 /* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
 #define	MSG_DMA_INT_PRIORITY			0
 #define	STREAM_DMA_INT_PRIORITY		1
+
+
+
+/* Includes ------------------------------------------------------------------*/
+										 
+/* Project Header File */
+#include "project.h" 
+
+/* RTOS */
+#include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "semphr.h"
+#include "FreeRTOS_CLI.h"	 
+
+/* BOS */
+#include "BOS_eeprom.h"
+
+/* C STD Library */
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <math.h>	 
+#include <limits.h>	
+
+/* Module includes and initialization */
+#ifdef H01R0
+	#include "H01R0.h"
+#endif
+#ifdef P01R0
+	#include "P01R0.h"
+#endif
+#if defined(H23R1) || defined(H23R0)
+	#include "H23Rx.h"	
+#endif
+#ifdef H07R3
+	#include "H07R3.h"	
+#endif
+#ifdef H08R6
+	#include "H08R6.h"	
+#endif
+#ifdef H1BR6
+	#include "H1BR6.h"	
+#endif
+#ifdef H12R0
+	#include "H12R0.h"	
+#endif
+#ifdef H13R7
+	#include "H13R7.h"
+#endif
+#ifdef H0FR6
+	#include "H0FR6.h"		
+#endif
+#ifdef H1AR2
+	#include "H1AR0.h"	
+#endif
+#ifdef H0AR9
+	#include "H0AR9.h"	
+#endif
+#ifdef H1DR5
+	#include "H1DR5.h"	
+#endif
+#ifdef H0BR4
+	#include "H0BR4.h"	
+#endif
+#ifdef H18R0
+	#include "H18R0.h"	
+#endif
+
+/* More BOS header files - must be defined after module headers */
+#include "BOS_DMA.h"
+
 
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
