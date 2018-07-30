@@ -57,7 +57,6 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 
 /* BOS */
 #include "BOS_eeprom.h"
-#include "BOS_DMA.h"
 
 /* C STD Library */
 #include <stdio.h>
@@ -113,6 +112,9 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 	#include "H18R0.h"	
 #endif
 
+/* More BOS header files - must be defined after module headers */
+#include "BOS_DMA.h"
+
 /* BOS_Status Type Definition */  
 typedef enum 
 {
@@ -137,9 +139,10 @@ typedef enum
 	BOS_ERR_LOCAL_FORMAT_UPDATED = 20,
 	BOS_ERR_REMOTE_WRITE_ADDRESS = 21,
 	BOS_ERR_REMOTE_WRITE_FLASH = 22,
-	BOS_ERR_WrongName = -1,
-	BOS_ERR_WrongGroup = -3,
-	BOS_ERR_WrongID = -2,
+	BOS_ERR_PORT_BUSY = 23,
+	BOS_ERR_WrongName = 100,
+	BOS_ERR_WrongGroup = 101,
+	BOS_ERR_WrongID = 102,
 	BOS_ERR_WrongParam = 103,
 	BOS_ERR_WrongValue = 104,
 	BOS_ERR_MSG_DOES_NOT_FIT = 105,

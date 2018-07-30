@@ -3,7 +3,7 @@
     All rights reserved
 		
     File Name     : BOS_dma.h
-    Description   : Header file for for BOS communication/backend DMAs. Also provides APIs for front-end DMA use.
+    Description   : Header file for for BOS communication/backend DMAs. 
 */
 	
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -22,13 +22,15 @@
 
 
 /* External variables ---------------------------------------------------------*/
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE]
 
+extern UART_HandleTypeDef* dmaStreamDst[6];
+extern uint32_t dmaStreamCount[6];
+extern uint32_t dmaStreamTotal[6];
 
 /* External functions ---------------------------------------------------------*/
-
-
+extern void SwitchMsgDMAToStream(uint8_t port);
+extern void SwitchStreamDMAToMsg(uint8_t port);
+extern BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint8_t num);
 
 
 
