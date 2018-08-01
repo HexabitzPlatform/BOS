@@ -49,6 +49,7 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
+TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
 #ifdef _P1
@@ -75,12 +76,15 @@ TaskHandle_t xCommandConsoleTaskHandle = NULL;
 SemaphoreHandle_t PxRxSemaphoreHandle[7];
 SemaphoreHandle_t PxTxSemaphoreHandle[7];
 
-
+/* External Variables --------------------------------------------------------*/
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE];
 
 /* Function prototypes -------------------------------------------------------*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
 void FrontEndTask(void * argument);
+void BackEndTask(void * argument);
 
 /* BOS exported internal functions */
 extern void PxMessagingTask(void * argument);
@@ -88,6 +92,7 @@ extern void prvUARTCommandConsoleTask( void *pvParameters );
 extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
+extern void NotifyMessagingTask(uint8_t port);
 
 /*-----------------------------------------------------------*/
 
@@ -98,6 +103,9 @@ void MX_FREERTOS_Init(void)
   /* Create a defaultTask */
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &defaultTaskHandle);	
 
+	/* Create the back-end task */
+	xTaskCreate(BackEndTask, (const char *) "BackEndTask", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &BackEndTaskHandle);
+	
 	/* Create the front-end task */
 	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
 	
@@ -202,6 +210,118 @@ void StartDefaultTask(void * argument)
 		taskYIELD();
   }
 	
+}
+
+/*-----------------------------------------------------------*/
+
+/* BackEndTask function */
+void BackEndTask(void * argument)
+{
+	int packetStart = 0, packetEnd = 0, packetLength = 0, parseStart = 0;
+	uint8_t crc8 = 0;
+	
+	// Do any backend setup here
+	
+  /* Infinite loop */
+  for(;;)
+  {
+
+		/* Search the circular receive buffers for any complete packets */	
+		for (uint8_t port=1 ; port <= NumOfPorts; port++)
+		{
+			/* A. Check for BOS messages */	
+			if (portStatus[port] == MSG || portStatus[port] == FREE) 
+			{	
+				/* A.1. Look for HZ delimiter and determine packet start */
+				if (UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z') {
+					packetStart = MSG_RX_BUF_SIZE-1;
+					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = UARTRxBuf[port-1][0] = 0;
+				} else {
+					for (int i=1 ; i< MSG_RX_BUF_SIZE; i++)
+					{
+						if (UARTRxBuf[port-1][i-1] == 'H' && UARTRxBuf[port-1][i] == 'Z')	{	
+							packetStart = i-1;	
+							UARTRxBuf[port-1][i-1] = UARTRxBuf[port-1][i] = 0;
+							break;
+						}	else {
+							if (i == MSG_RX_BUF_SIZE-1)		// Could not find any packets
+							{
+								/* Check for a CLI enter key 0xD */
+								for (int j=0 ; j< MSG_RX_BUF_SIZE; j++)
+								{
+									if (UARTRxBuf[port-1][j] == 0xD) {
+										portStatus[port] = CLI;
+										// TODO do we need to clear this byte?
+									}
+								}
+							}
+						}
+						
+					}
+				}
+				
+				// TODO Chack if there's no packet
+				
+				/* A.2. Parse the length byte - MSB is the long message flag */
+				if (packetStart == MSG_RX_BUF_SIZE-3) {
+					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] & 0x7F;
+					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = 0;
+					parseStart = 0;				
+				} else if (packetStart == MSG_RX_BUF_SIZE-2) {
+					packetLength = UARTRxBuf[port-1][0] & 0x7F;
+					UARTRxBuf[port-1][0] = 0;
+					parseStart = 1;
+				} else if (packetStart == MSG_RX_BUF_SIZE-1) {
+					packetLength = UARTRxBuf[port-1][1] & 0x7F;
+					UARTRxBuf[port-1][1] = 0;
+					parseStart = 2;
+				} else {
+					packetLength = UARTRxBuf[port-1][packetStart+2] & 0x7F;
+					UARTRxBuf[port-1][packetStart+2] = 0;
+					parseStart = packetStart+3;
+				}
+				
+				/* A.3. Set packet end from packet start and length */			
+				packetEnd = packetStart + packetLength + 3;			// Packet length is counted from Dst to CRC
+				if (packetEnd > MSG_RX_BUF_SIZE-1)							// wrap-around
+					packetEnd -= MSG_RX_BUF_SIZE;
+				
+				/* A.4. Compare CRC at packet end with calculated CRC */
+				crc8 = UARTRxBuf[port-1][packetEnd];
+				// TODO add CRC verification
+				
+				/* A.5. Accept the packet as a BOS message and notify the appropriate message parser task */
+				{
+					portStatus[port] = MSG;
+					messageLength[port-1] = packetLength;	
+
+					/* A.5.1. Copy the packet to message buffer and clear packet location in the circular buffer */	
+					if (packetLength <= MSG_RX_BUF_SIZE-parseStart) {
+						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
+						memset(&UARTRxBuf[port-1][parseStart], 0, packetLength);
+					} else {
+						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart);
+						memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart], &UARTRxBuf[port-1][0], packetLength-(MSG_RX_BUF_SIZE-parseStart));	// wrap-around
+						memset(&UARTRxBuf[port-1][parseStart], 0, MSG_RX_BUF_SIZE-parseStart);
+						memset(&UARTRxBuf[port-1][0], 0, packetLength-(MSG_RX_BUF_SIZE-parseStart)-parseStart);		// wrap-around
+					}
+					
+					/* A.5.2. Notify messaging tasks */
+					NotifyMessagingTask(port);		
+				}	
+			}				
+			/* B. Received CLI request? */				
+			else if (portStatus[port] == CLI) 
+			{				
+				PcPort = port; 
+				
+				/* Activate the CLI task */
+				xTaskNotifyGive(xCommandConsoleTaskHandle);		
+			}		
+		}
+		
+		taskYIELD();
+	}
 }
 
 /*-----------------------------------------------------------*/

@@ -133,7 +133,6 @@ uint8_t bootStatus = POWER_ON_BOOT;
 
 uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
-void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
@@ -1226,46 +1225,7 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 
 /*-----------------------------------------------------------*/
 
-/* --- Activate Messaging Tasks from ISR
-*/
-void NotifyMessagingTaskFromISR(uint8_t port)
-{
-	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-	
-	switch (port)
-	{
-	#ifdef _P1
-		case P1 : 
-			vTaskNotifyGiveFromISR(P1MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P2
-		case P2 :
-			vTaskNotifyGiveFromISR(P2MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P3
-		case P3 :
-			vTaskNotifyGiveFromISR(P3MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P4
-		case P4 :
-			vTaskNotifyGiveFromISR(P4MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P5
-		case P5 :
-			vTaskNotifyGiveFromISR(P5MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P6
-		case P6 :
-			vTaskNotifyGiveFromISR(P6MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-		default:
-			;
-	}		
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Activate Messaging Tasks 
+/* --- Activate Messaging Tasks
 */
 void NotifyMessagingTask(uint8_t port)
 {
