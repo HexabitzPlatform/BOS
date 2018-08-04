@@ -138,7 +138,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	
 	for( ;; )
 	{
-		/* Only interested in reading one character at a time. */
+		/* Only interested in reading one character at a time. TODO update to read circular buffer */
 		readPxMutex(port, &cRxedChar, sizeof( cRxedChar ), cmd50ms, HAL_MAX_DELAY);
 			
 		/* Echo the character back. */

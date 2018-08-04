@@ -23,9 +23,10 @@
 uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] = {0};
 uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE] = {0};
 
-UART_HandleTypeDef* dmaStreamDst[6] = {0};
-uint32_t dmaStreamCount[6] = {0};
-uint32_t dmaStreamTotal[6] = {0};
+UART_HandleTypeDef* dmaStreamDst[NumOfPorts] = {0};
+uint32_t dmaStreamCount[NumOfPorts] = {0};
+uint32_t dmaStreamTotal[NumOfPorts] = {0};
+bool MsgDMAStopped[NumOfPorts] = {0};
 
 /* Private variables ---------------------------------------------------------*/
 

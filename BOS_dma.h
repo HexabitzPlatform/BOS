@@ -23,9 +23,10 @@
 
 /* External variables ---------------------------------------------------------*/
 
-extern UART_HandleTypeDef* dmaStreamDst[6];
-extern uint32_t dmaStreamCount[6];
-extern uint32_t dmaStreamTotal[6];
+extern UART_HandleTypeDef* dmaStreamDst[NumOfPorts];
+extern uint32_t dmaStreamCount[NumOfPorts];
+extern uint32_t dmaStreamTotal[NumOfPorts];
+extern bool MsgDMAStopped[NumOfPorts];
 
 /* External functions ---------------------------------------------------------*/
 extern void StopMsgDMA(uint8_t port);

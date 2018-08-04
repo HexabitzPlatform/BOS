@@ -172,8 +172,8 @@ button_t;
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
-#define MSG_RX_BUF_SIZE								1310			// 131 * 10 
-#define MSG_TX_BUF_SIZE								131				// (128 max length + H + Z + CRC) * 10
+#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+#define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
