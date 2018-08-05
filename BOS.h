@@ -153,7 +153,8 @@ button_t;
 
 /* BOS Parameters and constants */ 
 #define P_LAST 												NumOfPorts
-#define MAX_MESSAGE_SIZE							50
+#define MAX_MESSAGE_SIZE							128
+#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-7)		// Dst + Src + 2 x Options + 2 x Code + CRC
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								25
 #define	MaxNumOfGroups								10

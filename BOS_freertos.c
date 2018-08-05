@@ -78,7 +78,7 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 
 /* External Variables --------------------------------------------------------*/
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE];
+//extern uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE];
 
 /* Function prototypes -------------------------------------------------------*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
