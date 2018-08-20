@@ -2973,35 +2973,22 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 BOS_Status BroadcastReceivedMessage(uint8_t dstGroup, uint8_t incomingPort)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t length = 0, src = 0; uint16_t code = 0;
-	uint16_t numberOfParams;	// TODO calculate
 	
-	/* Message length */
-	length = messageLength[incomingPort-1];
-	/* Message source */
-	src = cMessage[incomingPort-1][1];
-	/* Message code */
-	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
-	/* Message parameters */
 	/* Broadcast ID and groups are already in the payload. Don't add new ones */
-	AddBcastPayload = false; dstGroupID = dstGroup;
-	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) numberOfParams );
+	AddBcastPayload = false; dstGroupID = dstGroup;	
 	
-	/* Send the message out with a broadcast flag */
+	/* Forward the message with a broadcast flag. Set code to 0 to inform the API to copy the exact message received on incomingPort to output buffer */
 	if (dstGroup == BOS_BROADCAST)
-		SendMessageFromPort(0, src, BOS_BROADCAST, code, numberOfParams);
+		SendMessageFromPort(incomingPort, 0, BOS_BROADCAST, 0, 0);
 	else
-		SendMessageFromPort(0, src, BOS_MULTICAST, code, numberOfParams);
-
-	/* Reset messageParams buffer */
-	memset( messageParams, 0, numberOfParams );
+		SendMessageFromPort(incomingPort, 0, BOS_MULTICAST, 0, 0);
 	
 	return result;
 }
 
 /*-----------------------------------------------------------*/
 
-/* --- Broadcast a message to all connected modules TODO update!
+/* --- Broadcast a message to all connected modules
 */
 BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams)
 {
@@ -3080,8 +3067,20 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 /*-----------------------------------------------------------*/
 
 /* --- Send a message from a specific port 
-	 Note: the messageParams buffer does not get erased here to enable reuse for other transmissions.
-				Make sure you manually erase the buffer if you're done with it. 
+	 Note: The messageParams buffer does not get erased here to enable reuse for other transmissions.
+				Make sure you manually erase the buffer when you're done with it. 
+
+				#		port			src				dst							case
+				====================================================================================
+				1		0					!0				!0							Broadcast or multi-cast message.
+				2		0					0					!0							Broadcast or multi-cast message. Source module is myID.
+				3		0					!0				0								Not allowed.
+				4		0					0					0								Not allowed.
+				5		|0				!0				!0							Single-cast message.
+        6   |0        0					!0							Either single-cast message with myID as source module OR (if code == 0)
+																								 broadcast or multi-cast message forwarded from another port (which is passed to the API).
+        7   |0        !0				0								Not allowed.
+        8   |0        0					0								Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
 */
 BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
@@ -3090,127 +3089,147 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	char message[MAX_MESSAGE_SIZE] = {0};
 	bool extendOptions = false, extendCode = false;
 	
+	/* Sanity check broadcast/multi-cast and not allowed cases */
+	if ((port == 0 && dst == 0) ||																												// cases 3 & 4
+			(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 										// cases 1 & 2
+			(port != 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST) && code != 0) ||			// part of case 6
+			(port != 0 && src != 0 && dst == 0)) {																						// case 7
+		return BOS_ERR_WrongParam; 
+	}
+	
 	/* Increase the priority of current running task */
 	vTaskPrioritySet( NULL, osPriorityHigh );
-	
-	/* Sending to adjacent neighbors */
-	if (!src)	src = myID;
-	
-	/* Extended code flag? */
-	if (code > 0xFF)	extendCode = true;
-	
-	/* TODO implement extended options */
-	
-	/* Sanity check broadcast/multi-cast */
-	if ((port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || (port != 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST)))
-		return BOS_ERR_WrongParam; 
-	
-	/* Construct the message */
-	
-	/* Header */
-	message[0] = 'H';						
-	message[1] = 'Z';
-	message[2] = length;	
-	message[3] = dst;						
-	message[4] = src;
-	
-	/* Options */
-	/* MSB: Response (8th - 7th) : Trace (6th) : Extended Code (5th) : Reserved (4th - 2nd) : Extended Options (1st) */
-	message[5] = (BOS.response<<6) | (BOS.trace<<5) | (extendCode<<4) | (extendOptions<<0);
-	if (extendOptions == true) {
-		++shift;
-	}
-	
-	/* Code */
-	message[6+shift] = (uint8_t) code;
-	if (extendCode == true) {
-		++shift;
-		message[6+shift] = (uint8_t) (code >> 8);		
-	}
-	
-	/* Parameters */
-	
-	if (numberOfParams <= MAX_PARAMS_PER_MESSAGE ) {				
-		memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
-		/* Calculate message length */
-		length = numberOfParams + shift + 4;
-	} else {
-		/* Toggle length MSB (8th bit) to inform receiver about a long message */
-		length |= 0x80;		
-		totalNumberOfParams = numberOfParams;
-		numberOfParams = MAX_PARAMS_PER_MESSAGE;
-		/* Break into multiple messages */
-		while (totalNumberOfParams != 0)
-		{		
-			if ( (totalNumberOfParams/numberOfParams) >= 1) 
-			{	
-				/* Call this function recursively */
-				SendMessageFromPort(port, src, dst, code, numberOfParams);
-				osDelay(10);
-				/* Update remaining number of parameters */
-				totalNumberOfParams -= numberOfParams;
-				ptrShift += numberOfParams;
-			} 
-			else 
-			{
-				length &= 0x7F;		/* Last message */
-				numberOfParams = totalNumberOfParams;
-				memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
-				ptrShift = 0; totalNumberOfParams = 0;
-				/* Calculate message length */
-				length = numberOfParams + shift + 4;
-			}
-		}
-	}	
 
-	/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
-	/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
-	
-	if(AddBcastPayload == true)
+	/* Should I copy message buffer from another port or construct from scratch? */
+	if (port != 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST) && code == 0)					// part of case 6
 	{
-		uint8_t groupMembers = 0;
-	
-		/* Add group members if it's a multicast */
-		if (dstGroupID < BOS_BROADCAST)
-		{
-			/* Extract and add group member IDs to the Message */
-			for(uint16_t i=1 ; i<=N ; i++)						// N modules
-			{
-				if (InGroup(i, dstGroupID))
+		/* Get message length */
+		length = messageLength[port-1];
+
+		/* Copy message buffer from port as is */
+		memcpy(message, &cMessage[port-1][0], (size_t) (length+3));
+	}
+	/* Construct message from scratch - case 5 */
+	else
+	{		
+		/* Sending to adjacent neighbors - case 2, case 8 and part of case 6 */
+		if (src == 0)		src = myID;
+		
+		
+		/* Extended code flag? */
+		if (code > 0xFF)	extendCode = true;
+		
+		/* TODO implement extended options */
+		
+
+		
+		/* Construct the message */
+		
+		/* Header */
+		message[0] = 'H';						
+		message[1] = 'Z';
+		message[2] = length;	
+		message[3] = dst;						
+		message[4] = src;
+		
+		/* Options */
+		/* MSB: Response (8th - 7th) : Trace (6th) : Extended Code (5th) : Reserved (4th - 2nd) : Extended Options (1st) */
+		message[5] = (BOS.response<<6) | (BOS.trace<<5) | (extendCode<<4) | (extendOptions<<0);
+		if (extendOptions == true) {
+			++shift;
+		}
+		
+		/* Code */
+		message[6+shift] = (uint8_t) code;
+		if (extendCode == true) {
+			++shift;
+			message[6+shift] = (uint8_t) (code >> 8);		
+		}
+		
+		/* Parameters */
+		
+		if (numberOfParams <= MAX_PARAMS_PER_MESSAGE ) {				
+			memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
+			/* Calculate message length */
+			length = numberOfParams + shift + 4;
+		} else {
+			/* Toggle length MSB (8th bit) to inform receiver about a long message */
+			length |= 0x80;		
+			totalNumberOfParams = numberOfParams;
+			numberOfParams = MAX_PARAMS_PER_MESSAGE;
+			/* Break into multiple messages */
+			while (totalNumberOfParams != 0)
+			{		
+				if ( (totalNumberOfParams/numberOfParams) >= 1) 
+				{	
+					/* Call this function recursively */
+					SendMessageFromPort(port, src, dst, code, numberOfParams);
+					osDelay(10);
+					/* Update remaining number of parameters */
+					totalNumberOfParams -= numberOfParams;
+					ptrShift += numberOfParams;
+				} 
+				else 
 				{
-					++groupMembers;							// Add this member
-					if ((numberOfParams+groupMembers+1) < MAX_PARAMS_PER_MESSAGE)
-						message[7+shift+numberOfParams+groupMembers-1] = i;
-					else
-						return BOS_ERR_MSG_DOES_NOT_FIT;
+					length &= 0x7F;		/* Last message */
+					numberOfParams = totalNumberOfParams;
+					memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
+					ptrShift = 0; totalNumberOfParams = 0;
+					/* Calculate message length */
+					length = numberOfParams + shift + 4;
 				}
 			}
-			/* Add number of members */
-			message[7+shift+numberOfParams+groupMembers] = groupMembers;
-		}
+		}	
 
-		/* Add unique broadcast ID */
-		if ( (dstGroupID == BOS_BROADCAST) && ((numberOfParams+1) < MAX_PARAMS_PER_MESSAGE) )
-			message[7+shift+numberOfParams] = ++bcastID;
-		else if (dstGroupID == BOS_BROADCAST)
-			return BOS_ERR_MSG_DOES_NOT_FIT;
-		else if ( (dstGroupID < BOS_BROADCAST) && ((numberOfParams+groupMembers+2) < MAX_PARAMS_PER_MESSAGE) )		// Multicast
-			message[7+shift+numberOfParams+groupMembers+1] = ++bcastID;
-		else if (dstGroupID < BOS_BROADCAST)																																		// Multicast
-			return BOS_ERR_MSG_DOES_NOT_FIT;
+		/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
+		/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
 		
-		/* Calculate new message length */
-		if (dstGroupID == BOS_BROADCAST)
-			length += 1;		// + bcastID
-		else
-			length += groupMembers + 2;		// + bcastID + number of group member + group members IDs 
+		if(AddBcastPayload == true)
+		{
+			uint8_t groupMembers = 0;
+		
+			/* Add group members if it's a multicast */
+			if (dstGroupID < BOS_BROADCAST)
+			{
+				/* Extract and add group member IDs to the Message */
+				for(uint16_t i=1 ; i<=N ; i++)						// N modules
+				{
+					if (InGroup(i, dstGroupID))
+					{
+						++groupMembers;							// Add this member
+						if ((numberOfParams+groupMembers+1) < MAX_PARAMS_PER_MESSAGE)
+							message[7+shift+numberOfParams+groupMembers-1] = i;
+						else
+							return BOS_ERR_MSG_DOES_NOT_FIT;
+					}
+				}
+				/* Add number of members */
+				message[7+shift+numberOfParams+groupMembers] = groupMembers;
+			}
+
+			/* Add unique broadcast ID */
+			if ( (dstGroupID == BOS_BROADCAST) && ((numberOfParams+1) < MAX_PARAMS_PER_MESSAGE) )
+				message[7+shift+numberOfParams] = ++bcastID;
+			else if (dstGroupID == BOS_BROADCAST)
+				return BOS_ERR_MSG_DOES_NOT_FIT;
+			else if ( (dstGroupID < BOS_BROADCAST) && ((numberOfParams+groupMembers+2) < MAX_PARAMS_PER_MESSAGE) )		// Multicast
+				message[7+shift+numberOfParams+groupMembers+1] = ++bcastID;
+			else if (dstGroupID < BOS_BROADCAST)																																		// Multicast
+				return BOS_ERR_MSG_DOES_NOT_FIT;
+			
+			/* Calculate new message length */
+			if (dstGroupID == BOS_BROADCAST)
+				length += 1;		// + bcastID
+			else
+				length += groupMembers + 2;		// + bcastID + number of group member + group members IDs 
+		}
+		
+		/* Copy length again */
+		message[2] = length;
+		
+		/* End of message - TODO replace with CRC8 */
+		message[length+2] = 0x75;		
 	}
-	
-	/* Copy length again */
-	message[2] = length;
-	
-	/* End of message - TODO replace with CRC8 */
-	message[length+2] = 0x75;		
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
