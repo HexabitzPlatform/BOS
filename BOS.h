@@ -198,6 +198,10 @@ button_t;
 #define	SWCLK_PIN			GPIO_PIN_14
 #define	SWCLK_PORT		GPIOA
 
+/* MCU UUID */
+#define MCU_F0_UUID_BASE					0x1FFFF7AC
+#define MCU_F0_FLASH_SIZE_BASE		0x1FFFF7CC
+
 
 /* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
 #define	MSG_DMA_INT_PRIORITY			0
