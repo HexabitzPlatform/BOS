@@ -262,27 +262,27 @@ void BackEndTask(void * argument)
 					}
 				}
 				
-				/* A.2. Parse the length byte - MSB is the long message flag */
+				/* A.2. Parse the length byte - When used for length calculation, make sure to ignnore MSB (long message flag) */
 				if (packetStart == MSG_RX_BUF_SIZE-3) {
-					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] & 0x7F;
+					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1];
 					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = 0;
 					parseStart = 0;				
 				} else if (packetStart == MSG_RX_BUF_SIZE-2) {
-					packetLength = UARTRxBuf[port-1][0] & 0x7F;
+					packetLength = UARTRxBuf[port-1][0];
 					UARTRxBuf[port-1][0] = 0;
 					parseStart = 1;
 				} else if (packetStart == MSG_RX_BUF_SIZE-1) {
-					packetLength = UARTRxBuf[port-1][1] & 0x7F;
+					packetLength = UARTRxBuf[port-1][1];
 					UARTRxBuf[port-1][1] = 0;
 					parseStart = 2;
 				} else {
-					packetLength = UARTRxBuf[port-1][packetStart+2] & 0x7F;
+					packetLength = UARTRxBuf[port-1][packetStart+2];
 					UARTRxBuf[port-1][packetStart+2] = 0;
 					parseStart = packetStart+3;
 				}
 				
 				/* A.3. Set packet end from packet start and length */			
-				packetEnd = packetStart + packetLength + 3;			// Packet length is counted from Dst to CRC
+				packetEnd = packetStart + (packetLength & 0x7F) + 3;			// Packet length is counted from Dst to CRC
 				if (packetEnd > MSG_RX_BUF_SIZE-1)							// wrap-around
 					packetEnd -= MSG_RX_BUF_SIZE;
 				
@@ -296,15 +296,15 @@ void BackEndTask(void * argument)
 					portStatus[port] = MSG;
 					messageLength[port-1] = packetLength;	
 
-					/* A.5.1. Copy the packet to message buffer and clear packet location in the circular buffer */	
-					if (packetLength <= (MSG_RX_BUF_SIZE-parseStart-1)) {
-						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
-						memset(&UARTRxBuf[port-1][parseStart], 0, packetLength);
+					/* A.5.1. Copy the packet to message buffer and clear packet location in the circular buffer - TODO do not waste time clearing buffer */	
+					if ((packetLength & 0x7F) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
+						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength & 0x7F);	
+						memset(&UARTRxBuf[port-1][parseStart], 0, packetLength & 0x7F);
 					} else {				// Message wraps around
 						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
-						memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], packetLength-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
+						memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
 						memset(&UARTRxBuf[port-1][parseStart], 0, MSG_RX_BUF_SIZE-parseStart-1);
-						memset(&UARTRxBuf[port-1][0], 0, packetLength-(MSG_RX_BUF_SIZE-parseStart-1));		// wrap-around
+						memset(&UARTRxBuf[port-1][0], 0, (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));		// wrap-around
 					}
 					
 					/* A.5.2. Notify messaging tasks */
