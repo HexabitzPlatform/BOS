@@ -210,6 +210,9 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 static portBASE_TYPE timeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE dateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE uuidCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE idcodeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -386,6 +389,36 @@ const CLI_Command_Definition_t setBaudrateCommandDefinition =
 	setBaudrateCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
+/*-----------------------------------------------------------*/
+/* CLI command structure : uuid */
+static const CLI_Command_Definition_t uuidCommandDefinition =
+{
+	( const int8_t * ) "uuid", /* The command string to type. */
+	( const int8_t * ) "uuid:\r\n Display MCU unique UID\r\n\r\n",
+	uuidCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : idcode */
+static const CLI_Command_Definition_t idcodeCommandDefinition =
+{
+	( const int8_t * ) "idcode", /* The command string to type. */
+	( const int8_t * ) "idcode:\r\n Display MCU IDCODE (DEV_ID and REV_ID)\r\n\r\n",
+	idcodeCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : flash-size */
+static const CLI_Command_Definition_t flashsizeCommandDefinition =
+{
+	( const int8_t * ) "flash-size", /* The command string to type. */
+	( const int8_t * ) "flash-size:\r\n Display MCU Flash size in Kbytes\r\n\r\n",
+	flashsizeCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+
+
 
 /* Define long messages -------------------------------------------------------*/
 
@@ -3078,6 +3111,9 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &timeCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &dateCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &setBaudrateCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &uuidCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &idcodeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &flashsizeCommandDefinition);
 	
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
@@ -5777,5 +5813,100 @@ static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBuf
 	/* There is no more data to return after this single string, so return pdFALSE. */
 	return pdFALSE;
 }
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE uuidCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	static const int8_t *pcMessageUUID = ( int8_t * ) "MCU UUID is\n\r";	
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Respond to the command */
+	sprintf( ( char * ) pcWriteBuffer, "%s", ( char * ) pcMessageUUID );
+	for(uint8_t i=0 ; i<3 ; i++)
+  {
+#if defined  (STM32F0)
+		sprintf( ( char * ) pcWriteBuffer, "%s%08X", ( char * ) pcWriteBuffer, *(uint32_t *) (MCU_F0_UUID_BASE+i*4) );
+#endif
+  }
+	strcat(( char * ) pcWriteBuffer, "\r\n");
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE idcodeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageDEVID = ( int8_t * ) "MCU DEV_ID is %s\n\r";
+	static const int8_t *pcMessageREVID = ( int8_t * ) "%sMCU REV_ID is %d.0\n\r";
+	uint16_t dev = 0;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Respond to the command */
+	dev = HAL_GetDEVID();
+	switch (dev)
+  {
+  	case 0x444 :
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "STM32F03x" );
+  		break;
+  	case 0x445 :
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "STM32F04x" );
+  		break;
+  	case 0x440 :
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "STM32F05x" );
+  		break;
+  	case 0x448 :
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "STM32F07x" );
+  		break;
+  	case 0x442 :
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "STM32F09x" );
+  		break;
+  	default:
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageDEVID, "UNKNOWN" );
+  		break;
+  }
+	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageREVID, ( char * ) pcWriteBuffer, HAL_GetREVID()>>12 );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageFLASH = ( int8_t * ) "MCU Flash size is %d Kbytes\n\r";
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Respond to the command */
+	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageFLASH, (*(uint32_t *) (MCU_F0_FLASH_SIZE_BASE)) & 0x0000FFFF );
+
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

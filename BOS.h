@@ -264,6 +264,10 @@ button_t;
 #define	SWCLK_PIN			GPIO_PIN_14
 #define	SWCLK_PORT		GPIOA
 
+/* MCU UUID */
+#define MCU_F0_UUID_BASE					0x1FFFF7AC
+#define MCU_F0_FLASH_SIZE_BASE		0x1FFFF7CC
+
 
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
