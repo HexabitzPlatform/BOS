@@ -407,7 +407,7 @@ void PxMessagingTask(void * argument)
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
 	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i, shift = 0; uint16_t code;
 	uint32_t count, timeout, temp32;
-	bool extendOptions = false, extendCode = false;
+	bool extendCode = false, extendOptions = false; 
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	static uint8_t bcastLastID;
@@ -437,7 +437,8 @@ void PxMessagingTask(void * argument)
 			
 			/* Read message options */
 			if (cMessage[port-1][2] & 0x01) {						// TODO handle extended options case
-				extendOptions = true;		
+				extendOptions = true;	
+				(void) extendOptions;		// remove warning		
 				++shift;				
 			} 
 			extendCode = cMessage[port-1][2]>>4;

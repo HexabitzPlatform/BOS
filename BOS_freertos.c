@@ -288,6 +288,7 @@ void BackEndTask(void * argument)
 				
 				/* A.4. Compare CRC at packet end with calculated CRC */
 				crc8 = UARTRxBuf[port-1][packetEnd];
+				(void) crc8;		// remove warning
 				// TODO add CRC verification
 				
 				/* A.5. Accept the packet as a BOS message and notify the appropriate message parser task */
