@@ -94,7 +94,7 @@ BOS_Status ActivateButtonSnippet(uint16_t location);
 
 /*-----------------------------------------------------------*/
 
-void prvUARTCommandConsoleTask( void *pvParameters )
+void prvCLITask( void *pvParameters )
 {
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, group;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];

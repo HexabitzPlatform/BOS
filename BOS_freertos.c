@@ -88,7 +88,7 @@ void BackEndTask(void * argument);
 
 /* BOS exported internal functions */
 extern void PxMessagingTask(void * argument);
-extern void prvUARTCommandConsoleTask( void *pvParameters );
+extern void prvCLITask( void *pvParameters );
 extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
@@ -99,34 +99,41 @@ extern void NotifyMessagingTask(uint8_t port);
 /* Init FreeRTOS */
 void MX_FREERTOS_Init(void) 
 {
-
+	/* Note: CMSIS OS priority levels are -3 to +3 and FreeRTOS priority levels are 0 to 6. Use osPriorityIdle to shift CMSIS priority levels to positive */
+	
   /* Create a defaultTask */
-  xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &defaultTaskHandle);	
+  xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &defaultTaskHandle);	
 
 	/* Create the back-end task */
-	xTaskCreate(BackEndTask, (const char *) "BackEndTask", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &BackEndTaskHandle);
+	xTaskCreate(BackEndTask, (const char *) "BackEndTask", configMINIMAL_STACK_SIZE, NULL, osPriorityBelowNormal-osPriorityIdle, &BackEndTaskHandle);
 	
 	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
+	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &FrontEndTaskHandle);
+	
+	/* Register command line commands */
+	vRegisterCLICommands();
+	/* Create the CLI task */
+	xTaskCreate(prvCLITask, "CliTask",	(2*configMINIMAL_STACK_SIZE),	NULL,	osPriorityNormal-osPriorityIdle, &xCommandConsoleTaskHandle);		
+	
 	
   /* Create message parsing tasks for module ports */
 #ifdef _P1
-  xTaskCreate(PxMessagingTask, (const char *) "P1MsgTask", configMINIMAL_STACK_SIZE, (void *) P1, osPriorityAboveNormal, &P1MsgTaskHandle);
+  xTaskCreate(PxMessagingTask, (const char *) "P1MsgTask", configMINIMAL_STACK_SIZE, (void *) P1, osPriorityAboveNormal-osPriorityIdle, &P1MsgTaskHandle);
 #endif
 #ifdef _P2
-	xTaskCreate(PxMessagingTask, (const char *) "P2MsgTask", configMINIMAL_STACK_SIZE, (void *) P2, osPriorityAboveNormal, &P2MsgTaskHandle);
+	xTaskCreate(PxMessagingTask, (const char *) "P2MsgTask", configMINIMAL_STACK_SIZE, (void *) P2, osPriorityAboveNormal-osPriorityIdle, &P2MsgTaskHandle);
 #endif
 #ifdef _P3
-	xTaskCreate(PxMessagingTask, (const char *) "P3MsgTask", configMINIMAL_STACK_SIZE, (void *) P3, osPriorityAboveNormal, &P3MsgTaskHandle);
+	xTaskCreate(PxMessagingTask, (const char *) "P3MsgTask", configMINIMAL_STACK_SIZE, (void *) P3, osPriorityAboveNormal-osPriorityIdle, &P3MsgTaskHandle);
 #endif
 #ifdef _P4
-	xTaskCreate(PxMessagingTask, (const char *) "P4MsgTask", configMINIMAL_STACK_SIZE, (void *) P4, osPriorityAboveNormal, &P4MsgTaskHandle);
+	xTaskCreate(PxMessagingTask, (const char *) "P4MsgTask", configMINIMAL_STACK_SIZE, (void *) P4, osPriorityAboveNormal-osPriorityIdle, &P4MsgTaskHandle);
 #endif
 #ifdef _P5
-	xTaskCreate(PxMessagingTask, (const char *) "P5MsgTask", configMINIMAL_STACK_SIZE, (void *) P5, osPriorityAboveNormal, &P5MsgTaskHandle);
+	xTaskCreate(PxMessagingTask, (const char *) "P5MsgTask", configMINIMAL_STACK_SIZE, (void *) P5, osPriorityAboveNormal-osPriorityIdle, &P5MsgTaskHandle);
 #endif
 #ifdef _P6
-	xTaskCreate(PxMessagingTask, (const char *) "P6MsgTask", configMINIMAL_STACK_SIZE, (void *) P6, osPriorityAboveNormal, &P6MsgTaskHandle);
+	xTaskCreate(PxMessagingTask, (const char *) "P6MsgTask", configMINIMAL_STACK_SIZE, (void *) P6, osPriorityAboveNormal-osPriorityIdle, &P6MsgTaskHandle);
 #endif
 
 	/* Create semaphores to protect module ports (FreeRTOS vSemaphoreCreateBinary didn't work) */
@@ -154,12 +161,6 @@ void MX_FREERTOS_Init(void)
 	osSemaphoreDef(SemaphoreP11); PxRxSemaphoreHandle[P6] = osSemaphoreCreate(osSemaphore(SemaphoreP11), 1);
 	osSemaphoreDef(SemaphoreP12); PxTxSemaphoreHandle[P6] = osSemaphoreCreate(osSemaphore(SemaphoreP12), 1);
 #endif
-	
-	/* Register command line commands */
-	vRegisterCLICommands();
-	
-	/* Start the task that implements the command console on the UART */
-	xTaskCreate(prvUARTCommandConsoleTask, "UARTCmd",		(2*configMINIMAL_STACK_SIZE),	NULL,	osPriorityNormal, &xCommandConsoleTaskHandle);		
 	
 }
 
@@ -218,10 +219,10 @@ void StartDefaultTask(void * argument)
 void BackEndTask(void * argument)
 {
 	int packetStart = 0, packetEnd = 0, packetLength = 0, parseStart = 0;
-	uint8_t port, crc8 = 0;
+	uint8_t port, crc8 = 0; bool emptyBuffer = false;
 	
 	/* Start backend messaging DMAs */
-	SetupMessagingDMAs();
+	SetupMessagingRxDMAs();
 	
   /* Infinite loop */
   for(;;)
@@ -235,20 +236,26 @@ void BackEndTask(void * argument)
 			{	
 				/* A.1. Look for HZ delimiter and determine packet start */
 				/* Note this parses only a single packet on each pass TODO update to parse all */
-				if (UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z') {
+				if (UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z') 
+				{
 					packetStart = MSG_RX_BUF_SIZE-1;
 					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = UARTRxBuf[port-1][0] = 0;
-				} else {
+				} 
+				else 
+				{
 					for (int i=1 ; i<MSG_RX_BUF_SIZE ; i++)
 					{
-						if (UARTRxBuf[port-1][i-1] == 'H' && UARTRxBuf[port-1][i] == 'Z')	{	
+						if (UARTRxBuf[port-1][i-1] == 'H' && UARTRxBuf[port-1][i] == 'Z')	
+						{	
 							packetStart = i-1;	
 							UARTRxBuf[port-1][i-1] = UARTRxBuf[port-1][i] = 0;
 							break;
-						}	else {
-							if (i == MSG_RX_BUF_SIZE-1)		// Could not find any packets
+						}	
+						else 
+						{
+							/* Did not find any messaging packets. Check for CLI enter key (0xD) */
+							if (i == MSG_RX_BUF_SIZE-1)		
 							{
-								/* Check for a CLI enter key 0xD */
 								for (int j=0 ; j<MSG_RX_BUF_SIZE ; j++)
 								{
 									if (UARTRxBuf[port-1][j] == 0xD) {
@@ -257,9 +264,16 @@ void BackEndTask(void * argument)
 										// TODO do we need to clear this byte?
 									}
 								}
+								/* Circular buffer is empty */
+								emptyBuffer = true;
 							}
 						}						
 					}
+				}			
+				/* Check parse status */
+				if (emptyBuffer) {	
+					emptyBuffer = false;
+					continue;
 				}
 				
 				/* A.2. Parse the length byte - When used for length calculation, make sure to ignnore MSB (long message flag) */
@@ -324,11 +338,8 @@ void BackEndTask(void * argument)
 				/* Activate the CLI task */
 				xTaskNotifyGive(xCommandConsoleTaskHandle);		
 			}		
-		}
-		
-		/* If DMA stopped due to communication errors, restart again here */
-		for (port=1 ; port <= NumOfPorts; port++)
-		{
+			
+			/* If DMA stopped due to communication errors, restart again */
 			if (MsgDMAStopped[port-1] == true) {
 				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
 				MsgDMAStopped[port-1] = false;

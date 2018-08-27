@@ -46,7 +46,7 @@ uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[MaxNumOfPorts][2] = {0};
 uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
-bool AddBcastPayload = true;
+bool AddBcastPayload = false;
 uint8_t dstGroupID = BOS_BROADCAST;
 char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 #ifndef _N
@@ -733,7 +733,7 @@ void PxMessagingTask(void * argument)
 									memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][4+shift], (size_t) (messageLength[port-1]-5-shift) );
 									longMessageLastPtr = 0;
 									responseStatus = BOS_OK;
-									/* Wake up the UARTCmd task again */
+									/* Wake up the CliTask again TODO */
 								}							
 								break;
 								
@@ -3136,6 +3136,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	uint8_t length = 0, shift = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0;
 	char message[MAX_MESSAGE_SIZE] = {0};
 	bool extendOptions = false, extendCode = false;
+	UBaseType_t TaskPriority;
 	
 	/* Sanity check broadcast/multi-cast and not allowed cases */
 	if ((port == 0 && dst == 0) ||																												// cases 3 & 4
@@ -3146,7 +3147,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	}
 	
 	/* Increase the priority of current running task */
-	vTaskPrioritySet( NULL, osPriorityHigh );
+	TaskPriority = uxTaskPriorityGet( NULL );
+	vTaskPrioritySet( NULL, osPriorityHigh-osPriorityIdle );
 
 	/* Should I copy message buffer from another port or construct from scratch? */
 	if (port != 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST) && code == 0)					// part of case 6
@@ -3276,13 +3278,13 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		message[2] = length;
 		
 		/* End of message - TODO replace with CRC8 */
-		message[length+2] = 0x75;		
+		message[length+3] = 0x75;		
 	}
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
 	{
-		writePxDMAMutex(port, message, length+3, cmd50ms);
+		writePxDMAMutex(port, message, length+4, cmd50ms);
 	}
 	/* Transmit the message - multi-cast or broadcast */
 	else
@@ -3296,13 +3298,13 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 			if ( (bcastRoutes[myID-1] >> (p-1)) & 0x01 ) 		
 			{
 				/* Transmit the message from this port */
-				writePxDMAMutex(p, message, length+3, cmd50ms);
+				writePxDMAMutex(p, message, length+4, cmd50ms);
 			}	
 		}
 	}
 
-	/* Put the priority of current running task back to normal */
-	vTaskPrioritySet( NULL, osPriorityNormal );
+	/* Put the priority of current running task back to its default state */
+	vTaskPrioritySet( NULL, TaskPriority );
 	
 	/* Reset responseStatus in case response is expected - TODO should be tailored for each port */
 	responseStatus = BOS_ERR_NoResponse;
