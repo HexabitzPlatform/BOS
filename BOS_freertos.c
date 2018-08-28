@@ -45,7 +45,8 @@
 
 /* Used in the run time stats calculations. */
 static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
-
+uint16_t stackWaterMark;
+	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
 TaskHandle_t FrontEndTaskHandle = NULL;
@@ -105,7 +106,7 @@ void MX_FREERTOS_Init(void)
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &defaultTaskHandle);	
 
 	/* Create the back-end task */
-	xTaskCreate(BackEndTask, (const char *) "BackEndTask", configMINIMAL_STACK_SIZE, NULL, osPriorityBelowNormal-osPriorityIdle, &BackEndTaskHandle);
+	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
 	
 	/* Create the front-end task */
 	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &FrontEndTaskHandle);
@@ -169,10 +170,6 @@ void MX_FREERTOS_Init(void)
 /* StartDefaultTask function */
 void StartDefaultTask(void * argument)
 {
-	/* Start by reading all ports */	
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
-		readPxITMutex(port, &cRxedChar, sizeof( cRxedChar ), cmd50ms);
-	}
 	
   /* Infinite loop */
   for(;;)
@@ -315,12 +312,16 @@ void BackEndTask(void * argument)
 					if ((packetLength & 0x7F) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
 						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength & 0x7F);	
 						memset(&UARTRxBuf[port-1][parseStart], 0, packetLength & 0x7F);
+						UARTRxBuf[port-1][packetEnd] = 0;
 					} else {				// Message wraps around
 						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
 						memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
 						memset(&UARTRxBuf[port-1][parseStart], 0, MSG_RX_BUF_SIZE-parseStart-1);
 						memset(&UARTRxBuf[port-1][0], 0, (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));		// wrap-around
+						UARTRxBuf[port-1][packetEnd] = 0;
 					}
+					
+					stackWaterMark = uxTaskGetStackHighWaterMark(NULL);
 					
 					/* A.5.2. Notify messaging tasks */
 					NotifyMessagingTask(port);		
@@ -346,7 +347,10 @@ void BackEndTask(void * argument)
 			}				
 		}
 		
+		
+		
 		taskYIELD();
+		//osDelay(1);
 	}
 }
 

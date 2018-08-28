@@ -173,7 +173,8 @@ button_t;
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
-#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+//#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+#define MSG_RX_BUF_SIZE								(125)			// 1 Mbps UART at 1 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 
 /* Command Snippets */
@@ -319,7 +320,7 @@ extern BOS_t BOS;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-
+extern uint16_t stackWaterMark;
 
 /* Exported internal functions ---------------------------------------------------------*/
 
