@@ -470,6 +470,7 @@ void PxMessagingTask(void * argument)
 			/* Read message source and destination */
 			dst = cMessage[port-1][0]; 
 			src = cMessage[port-1][1];	
+			shift = 0;
 			
 			/* Read message options */
 			if (cMessage[port-1][2] & 0x01) {						// TODO handle extended options case
@@ -2935,6 +2936,9 @@ void BOS_Init(void)
 		Delay_ms_no_rtos(100);
 		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
 	}
+	
+	/* Reset UART overrun errors in case other modules were already transmitting */
+	ResetUartORE();
 
 	BOS_initialized = 1;
 }
@@ -3145,6 +3149,10 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* Increase the priority of current running task */
 	TaskPriority = uxTaskPriorityGet( NULL );
 	vTaskPrioritySet( NULL, osPriorityHigh-osPriorityIdle );
+	
+	/* HZ Delimiter */
+	message[0] = 'H';						
+	message[1] = 'Z';
 
 	/* Should I copy message buffer from another port or construct from scratch? */
 	if ((port == 0 && src == 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST)) || code == 0)					// case 2 and part of case 6
@@ -3153,27 +3161,23 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		length = messageLength[numberOfParams-1];
 
 		/* Copy message buffer from the incoming port as is */
-		memcpy(message, &cMessage[numberOfParams-1][0], (size_t) (length+4));
+		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) (length&0x7F));
 	}
 	/* Construct message from scratch - case 5 */
 	else
 	{		
 		/* Sending to adjacent neighbors - case 2, case 8 and part of case 6 */
 		if (src == 0)		src = myID;
-		
-		
+				
 		/* Extended code flag? */
 		if (code > 0xFF)	extendCode = true;
 		
-		/* TODO implement extended options */
-		
+		/* TODO implement extended options */		
 
 		
 		/* Construct the message */
 		
 		/* Header */
-		message[0] = 'H';						
-		message[1] = 'Z';
 		message[2] = length;	
 		message[3] = dst;						
 		message[4] = src;
@@ -3269,13 +3273,13 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 			else
 				length += groupMembers + 2;		// + bcastID + number of group member + group members IDs 
 		}
-		
-		/* Copy length again */
-		message[2] = length;
-		
-		/* End of message - TODO replace with CRC8 */
-		message[length+3] = 0x75;		
 	}
+		
+	/* Copy message length */
+	message[2] = length;
+	
+	/* End of message - TODO replace with CRC8 */
+	message[length+3] = 0x75;		
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 

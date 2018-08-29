@@ -293,7 +293,7 @@ void BackEndTask(void * argument)
 				}
 				
 				/* A.3. Set packet end from packet start and length */			
-				packetEnd = packetStart + (packetLength & 0x7F) + 3;			// Packet length is counted from Dst to CRC
+				packetEnd = packetStart + (packetLength & 0x7F) + 3;			// Packet length is counted from Dst to before CRC
 				if (packetEnd > MSG_RX_BUF_SIZE-1)							// wrap-around
 					packetEnd -= MSG_RX_BUF_SIZE;
 				

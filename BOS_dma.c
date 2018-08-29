@@ -156,4 +156,33 @@ void DMA_IRQHandler(uint8_t port)
 	}
 }
 
+/*-----------------------------------------------------------*/
+
+/* Reset UART ORE (overrun) flag in case other modules were already transmitting 
+*/
+void ResetUartORE(void)
+{
+#ifdef _Usart1
+	__HAL_UART_CLEAR_OREFLAG(&huart1);
+#endif
+#ifdef _Usart2
+	__HAL_UART_CLEAR_OREFLAG(&huart2);
+#endif
+#ifdef _Usart3
+	__HAL_UART_CLEAR_OREFLAG(&huart3);
+#endif
+#ifdef _Usart4
+	__HAL_UART_CLEAR_OREFLAG(&huart4);
+#endif
+#ifdef _Usart5
+	__HAL_UART_CLEAR_OREFLAG(&huart5);
+#endif
+#ifdef _Usart6
+	__HAL_UART_CLEAR_OREFLAG(&huart6);
+#endif
+}
+
+/*-----------------------------------------------------------*/
+
+
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
