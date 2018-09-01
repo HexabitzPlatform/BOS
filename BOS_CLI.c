@@ -273,8 +273,11 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				}
 				
 				/* Write the generated string to the UART. */
-				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);		
-				memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+				// TODO: Check String if string len is 0 or some MAX number
+				unsigned pcOutputStrLen = strlen((char*)pcOutputString);
+				if (pcOutputStrLen > 0)
+					writePxMutex(port, (char*)pcOutputString, pcOutputStrLen, cmd50ms, HAL_MAX_DELAY);		
+				memset( pcOutputString, 0x00, pcOutputStrLen );
 		
 			} while( xReturned != pdFALSE );
 					
