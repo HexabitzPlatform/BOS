@@ -439,7 +439,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i, shift = 0, numOfParams; uint16_t code;
+	uint8_t port, src, dst, responseMode, temp, i, shift = 0, numOfParams; uint16_t code;
 	uint32_t count, timeout, temp32;
 	bool extendCode = false, extendOptions = false; 
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
@@ -481,10 +481,8 @@ void PxMessagingTask(void * argument)
 				++shift;				
 			} 
 			extendCode = (cMessage[port-1][2]>>4)&0x01;
-			traceMode = (cMessage[port-1][2]>>5)&0x01;
+			BOS.trace = (cMessage[port-1][2]>>5)&0x01;
 			responseMode = (cMessage[port-1][2]>>6)&0x03;
-			oldTraceMode = BOS.trace;
-			BOS.trace = traceMode;			
 			
 			/* Read message code */
 			if (extendCode == true) {		
@@ -500,7 +498,7 @@ void PxMessagingTask(void * argument)
 			{
 				/* Forward the message to its destination */		
 				ForwardReceivedMessage(port);
-				if (traceMode)
+				if (BOS.trace)
 					indMode = IND_SHORT_BLINK;
 			}
 			/* Either broadcast or multicast local message */
@@ -1178,10 +1176,7 @@ void PxMessagingTask(void * argument)
 		if (portStatus[port] != STREAM && portStatus[port] != CLI && portStatus[port] != PORTBUTTON) {
 			/* Free the port */
 			portStatus[port] = FREE;
-			/* Read this port again TODO */
-			HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
 		}
-		BOS.trace = oldTraceMode;
 		
 		taskYIELD();
 	}
