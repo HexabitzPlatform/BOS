@@ -46,6 +46,7 @@
 /* Used in the run time stats calculations. */
 static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 uint16_t stackWaterMark;
+uint16_t rejectedMsg = 0, acceptedMsg = 0;
 	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
@@ -236,7 +237,6 @@ void BackEndTask(void * argument)
 				if (UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z') 
 				{
 					packetStart = MSG_RX_BUF_SIZE-1;
-					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = UARTRxBuf[port-1][0] = 0;
 				} 
 				else 
 				{
@@ -245,7 +245,6 @@ void BackEndTask(void * argument)
 						if (UARTRxBuf[port-1][i-1] == 'H' && UARTRxBuf[port-1][i] == 'Z')	
 						{	
 							packetStart = i-1;	
-							UARTRxBuf[port-1][i-1] = UARTRxBuf[port-1][i] = 0;
 							break;
 						}	
 						else 
@@ -276,61 +275,87 @@ void BackEndTask(void * argument)
 				/* A.2. Parse the length byte - When used for length calculation, make sure to ignnore MSB (long message flag) */
 				if (packetStart == MSG_RX_BUF_SIZE-3) {
 					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1];
-					UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] = 0;
 					parseStart = 0;				
 				} else if (packetStart == MSG_RX_BUF_SIZE-2) {
 					packetLength = UARTRxBuf[port-1][0];
-					UARTRxBuf[port-1][0] = 0;
 					parseStart = 1;
 				} else if (packetStart == MSG_RX_BUF_SIZE-1) {
 					packetLength = UARTRxBuf[port-1][1];
-					UARTRxBuf[port-1][1] = 0;
 					parseStart = 2;
 				} else {
 					packetLength = UARTRxBuf[port-1][packetStart+2];
-					UARTRxBuf[port-1][packetStart+2] = 0;
 					parseStart = packetStart+3;
 				}
 				
 				/* A.3. Set packet end from packet start and length */			
 				packetEnd = packetStart + (packetLength & 0x7F) + 3;			// Packet length is counted from Dst to before CRC
-				if (packetEnd > MSG_RX_BUF_SIZE-1)							// wrap-around
+				if (packetEnd > MSG_RX_BUF_SIZE-1)												// wrap-around
 					packetEnd -= MSG_RX_BUF_SIZE;
 				
-				/* A.4. Compare CRC at packet end with calculated CRC */
-				crc8 = UARTRxBuf[port-1][packetEnd];
-				(void) crc8;		// remove warning
-				// TODO add CRC verification
-				
-				/* A.5. Accept the packet as a BOS message and notify the appropriate message parser task */
-				if (1)
-				{
-					portStatus[port] = MSG;
-					messageLength[port-1] = packetLength;	
-
-					/* A.5.1. Copy the packet to message buffer and clear packet location in the circular buffer - TODO do not waste time clearing buffer */	
-					if ((packetLength & 0x7F) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
-						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength & 0x7F);	
-						memset(&UARTRxBuf[port-1][parseStart], 0, packetLength & 0x7F);
-						UARTRxBuf[port-1][packetEnd] = 0;
-					} else {				// Message wraps around
-						memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
-						memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
-						memset(&UARTRxBuf[port-1][parseStart], 0, MSG_RX_BUF_SIZE-parseStart-1);
-						memset(&UARTRxBuf[port-1][0], 0, (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));		// wrap-around
-						UARTRxBuf[port-1][packetEnd] = 0;
+				if (packetStart != packetEnd)										// Non-empty packet
+				{				
+					/* A.4. Calculate packet CRC */				
+					if (packetStart < packetEnd) {
+						crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], (packetLength & 0x7F) + 3);
+					} else {				// wrap around
+						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart-1);
+						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][0], ((packetLength & 0x7F) + 3) - (MSG_RX_BUF_SIZE-packetStart-1));
 					}
 					
-					stackWaterMark = uxTaskGetStackHighWaterMark(NULL);
-					
-					/* A.5.2. Notify messaging tasks */
-					NotifyMessagingTask(port);		
+					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
+					if (crc8 && crc8 == UARTRxBuf[port-1][packetEnd])
+					{
+						portStatus[port] = MSG;
+						messageLength[port-1] = packetLength;	
+
+						/* A.5.1. Copy the packet to message buffer */	
+						if ((packetLength & 0x7F) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
+							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength & 0x7F);	
+						} else {				// Message wraps around
+							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
+							memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
+						}
+						
+						/* A.5.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+						if (packetStart < packetEnd) {
+							memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength & 0x7F) + 4);						
+						} else {				// wrap around
+							memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart-1);
+							memset(&UARTRxBuf[port-1][0], 0, ((packetLength & 0x7F) + 4) - (MSG_RX_BUF_SIZE-packetStart-1));
+						}					
+						
+						stackWaterMark = uxTaskGetStackHighWaterMark(NULL);
+						
+						++acceptedMsg;
+						
+						/* A.5.3. Notify messaging tasks */
+						NotifyMessagingTask(port);	
+
+						continue;		// Inspect the next port circular buffer
+					}
 				}
-				else
-				{
-					// This packet is rejected TODO do something
-				}					
-			}				
+				
+				/* A.6. If you are still here, then this packet is rejected TODO do something */
+
+				/* A.6.1 Copy the packet to message buffer (temp just for debugging) */	
+				if ((packetLength & 0x7F) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
+					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength & 0x7F);	
+				} else {				// Message wraps around
+					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
+					memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
+				}
+				
+				/* A.6.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+				if (packetStart < packetEnd) {
+					memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength & 0x7F) + 4);						
+				} else {				// wrap around
+					memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart-1);
+					memset(&UARTRxBuf[port-1][0], 0, ((packetLength & 0x7F) + 4) - (MSG_RX_BUF_SIZE-packetStart-1));
+				}	
+				
+				++rejectedMsg;							
+			}	
+			
 			/* B. Received CLI request? */				
 			if (portStatus[port] == CLI) 
 			{				
@@ -340,17 +365,14 @@ void BackEndTask(void * argument)
 				xTaskNotifyGive(xCommandConsoleTaskHandle);		
 			}		
 			
-			/* If DMA stopped due to communication errors, restart again */
+			/* C. If DMA stopped due to communication errors, restart again */
 			if (MsgDMAStopped[port-1] == true) {
 				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
 				MsgDMAStopped[port-1] = false;
 			}				
 		}
 		
-		
-		
 		taskYIELD();
-		//osDelay(1);
 	}
 }
 

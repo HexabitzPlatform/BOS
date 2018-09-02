@@ -1299,30 +1299,29 @@ void NotifyMessagingTask(uint8_t port)
 	{
 	#ifdef _P1
 		case P1 : 
-			xTaskNotifyGive(P1MsgTaskHandle);	
+			xTaskNotifyGive(P1MsgTaskHandle);	break;
 	#endif
 	#ifdef _P2
 		case P2 :
-			xTaskNotifyGive(P2MsgTaskHandle);	
+			xTaskNotifyGive(P2MsgTaskHandle);	break;
 	#endif
 	#ifdef _P3
 		case P3 :
-			xTaskNotifyGive(P3MsgTaskHandle);	
+			xTaskNotifyGive(P3MsgTaskHandle);	break;
 	#endif
 	#ifdef _P4
 		case P4 :
-			xTaskNotifyGive(P4MsgTaskHandle);	
+			xTaskNotifyGive(P4MsgTaskHandle);	break;
 	#endif
 	#ifdef _P5
 		case P5 :
-			xTaskNotifyGive(P5MsgTaskHandle);	
+			xTaskNotifyGive(P5MsgTaskHandle);	break;
 	#endif
 	#ifdef _P6
 		case P6 :
-			xTaskNotifyGive(P6MsgTaskHandle);	
+			xTaskNotifyGive(P6MsgTaskHandle);	break;
 	#endif
-		default:
-			;
+		default: break;
 	}		
 }
 
@@ -2883,6 +2882,7 @@ void BOS_Init(void)
   GPIO_Init();
 	DMA_Init();
 	TIM_USEC_Init();
+	CRC_Init();
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -3278,8 +3278,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* Copy message length */
 	message[2] = length;
 	
-	/* End of message - TODO replace with CRC8 */
-	message[length+3] = 0x75;		
+	/* End of message - Calculate CRC8 */
+	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], length + 3);		
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
