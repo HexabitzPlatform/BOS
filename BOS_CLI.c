@@ -137,8 +137,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	
 	/* Send the welcome message. */
 	sprintf(pcWelcomePortMessage, "Connected to module %d (%s), port P%d.\n\n\r>", myID, modulePNstring[myPN], port);
-	writePxITMutex(port, pcWelcomeMessage, strlen(pcWelcomeMessage), cmd50ms);
-	writePxITMutex(port, pcWelcomePortMessage, strlen(pcWelcomePortMessage), cmd50ms);
+	writePxITMutex(port, pcWelcomeMessage, strlen(pcWelcomeMessage), 10);
+	writePxITMutex(port, pcWelcomePortMessage, strlen(pcWelcomePortMessage), 10);
 
 	
 	for( ;; )
@@ -155,11 +155,11 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			if (chr == MSG_RX_BUF_SIZE-1)	{
 				chr = lastChr = 0;
 			}			
-			osDelay(1);		// can also yield control
+			taskYIELD();
 		}
 			
 		/* Echo the character back. */
-		writePxITMutex(port, &cRxedChar, 1, cmd50ms);
+		writePxITMutex(port, &cRxedChar, 1, 10);
 		
 		if( cRxedChar == '\r' )
 		{
@@ -168,7 +168,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			This task will be held in the Blocked state while the Tx completes,
 			if it has not already done so, so no CPU time will be wasted by
 			polling. */
-			writePxITMutex(port, pcNewLine, strlen(pcNewLine), cmd50ms);
+			writePxITMutex(port, pcNewLine, strlen(pcNewLine), 10);
 			
 			
 			/* See if the command is empty, indicating that the last command is
@@ -271,13 +271,16 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
 							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
 							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
+							writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), 10, HAL_MAX_DELAY);
+							memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
 							{
-								ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
+								//xTaskNotifyWait(0, 0xffffffffUL, NULL, 2000);				// Clear notification value on exit
+								ulTaskNotifyTake(pdTRUE, 2000);		//cmd500ms
 								/* If timeout */
 								if (responseStatus != BOS_OK)
-									sprintf( ( char * ) pcOutputString, "%sModule %d is not reachable.\n\r", ( char * ) pcOutputString, id);
+									sprintf( ( char * ) pcOutputString, "Module %d is not reachable\n\r", id);
 							}	
 							xReturned = pdFALSE;
 						}						
@@ -289,8 +292,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					}
 				}
 				
-				/* Write the generated string to the UART. Block this task to ensure output is sent. */
-				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);		
+				/* Write the generated string to the UART. Block this task to ensure output does not get overrun. */
+				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), 10, HAL_MAX_DELAY);		
 				memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 		
 			} while( xReturned != pdFALSE );
@@ -307,7 +310,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			
 			/* Start to transmit a line separator, just to make the output easier to read. */
 			if(!recordSnippet)
-				writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms);
+				writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), 10);
 		}
 		else
 		{

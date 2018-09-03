@@ -482,7 +482,7 @@ void PxMessagingTask(void * argument)
 			} 
 			extendCode = (cMessage[port-1][2]>>4)&0x01;
 			BOS.trace = (cMessage[port-1][2]>>5)&0x01;
-			responseMode = (cMessage[port-1][2]>>6)&0x03;
+			responseMode = (cMessage[port-1][2])&0xC0;
 			
 			/* Read message code */
 			if (extendCode == true) {		
@@ -741,6 +741,8 @@ void PxMessagingTask(void * argument)
 								longMessageLastPtr = 0;
 								responseStatus = BOS_OK;
 								/* Wake up the CliTask again TODO */
+								//xTaskNotifyGive(xCommandConsoleTaskHandle);	
+								xTaskNotify( ( xCommandConsoleTaskHandle ), 0, eNoAction );
 							}							
 							break;
 							
@@ -1857,7 +1859,7 @@ BOS_Status SaveEEparams(void)
 	BOS_Status result = BOS_OK; 
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 		
 	/* Save Button debounce */
 	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], BOS.buttons.debounce);
@@ -3184,7 +3186,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		
 		/* Options */
 		/* MSB: Response (8th - 7th) : Trace (6th) : Extended Code (5th) : Reserved (4th - 2nd) : Extended Options (1st) */
-		message[5] = (BOS.response<<6) | (BOS.trace<<5) | (extendCode<<4) | (extendOptions<<0);
+		message[5] = (BOS.response) | (BOS.trace<<5) | (extendCode<<4) | (extendOptions);
 		if (extendOptions == true) {
 			++shift;
 		}
@@ -5318,13 +5320,13 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5332,10 +5334,10 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "true", xParameterStringLength2)) {
 				BOS.trace = 1;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "false", xParameterStringLength2)) {
 				BOS.trace = 0;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 

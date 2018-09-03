@@ -249,20 +249,21 @@ void BackEndTask(void * argument)
 						}	
 						else 
 						{
-							/* Did not find any messaging packets. Check for CLI enter key (0xD) */
+							/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
 							if (i == MSG_RX_BUF_SIZE-1)		
 							{
 								for (int j=0 ; j<MSG_RX_BUF_SIZE ; j++)
 								{
-									if (UARTRxBuf[port-1][j] == 0xD) {
+									if (!PcPort && UARTRxBuf[port-1][j] == 0xD) {		// Make sure there's only one CLI port
 										UARTRxBuf[port-1][j] = 0;
 										portStatus[port] = CLI;
 										PcPort = port;
+										/* Activate the CLI task */
+										xTaskNotifyGive(xCommandConsoleTaskHandle);		
 										break;
 									}
 								}
-								/* Circular buffer is empty. Note a CLI request will end up here as well but the CLI will be triggered after processing
-										all other ports */
+								/* Circular buffer is empty. */
 								emptyBuffer = true;
 							}
 						}						
@@ -357,15 +358,6 @@ void BackEndTask(void * argument)
 				
 				++rejectedMsg;							
 			}	
-			
-			/* B. Received CLI request? */				
-			if (portStatus[port] == CLI) 
-			{				
-				PcPort = port; 
-				
-				/* Activate the CLI task */
-				xTaskNotifyGive(xCommandConsoleTaskHandle);		
-			}		
 			
 			/* C. If DMA stopped due to communication errors, restart again */
 			if (MsgDMAStopped[port-1] == true) {

@@ -167,8 +167,8 @@ button_t;
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
 #define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
 #define DEF_BUTTON_MAX_INTER_CLICK		250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
-#define BOS_RESPONSE_ALL							0x60			// Send response messages for both Messaging and CLI
-#define BOS_RESPONSE_MSG							0x40			// Send response messages for Messaging only (no CLI)
+#define BOS_RESPONSE_ALL							0xC0			// Send response messages for both Messaging and CLI
+#define BOS_RESPONSE_MSG							0x80			// Send response messages for Messaging only (no CLI)
 #define BOS_RESPONSE_NONE							0x00			// Do not send any response messages
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
