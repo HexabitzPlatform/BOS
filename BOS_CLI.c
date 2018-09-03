@@ -62,7 +62,6 @@
 
 
 
-
 /* Internal Variables --------------------------------------------------------*/
 
 uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
@@ -85,6 +84,9 @@ static char * pcNewLine = "\r\n";
 static char * pcEndOfCommandOutputString = "\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] = {0};
 
+/* Exported Variables --------------------------------------------------------*/
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+
 /* Internal functions ---------------------------------------------------------*/
 
 BOS_Status AddSnippet(uint8_t type, char *string);
@@ -99,6 +101,7 @@ void prvCLITask( void *pvParameters )
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, group;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; int16_t id = 0; char idString[MaxLengthOfAlias] = {0};
+uint16_t chr = 0; static uint16_t lastChr = 0;
 portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 
 	( void ) pvParameters;
@@ -107,6 +110,8 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 	port = PcPort;
 	cRxedChar = '\0';
+
+	/* Note: DMA is not being used on transmit functions because it caused output errors. Maybe due to high baudrate. */
 	
 	/* Obtain the address of the output buffer.  Note there is no mutual
 	exclusion on this buffer as it is assumed only one command console
@@ -138,8 +143,20 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	
 	for( ;; )
 	{
-		/* Only interested in reading one character at a time. TODO update to read circular buffer */
-		readPxMutex(port, &cRxedChar, sizeof( cRxedChar ), cmd50ms, HAL_MAX_DELAY);
+		/* Only interested in reading one character at a time from the circular buffer. Start looping from last character. */
+		for (chr=lastChr ; chr<MSG_RX_BUF_SIZE ; chr++)
+		{
+			if (UARTRxBuf[PcPort-1][chr]) {
+				cRxedChar = UARTRxBuf[PcPort-1][chr];
+				UARTRxBuf[PcPort-1][chr] = 0;
+				lastChr = chr;
+				break;
+			}
+			if (chr == MSG_RX_BUF_SIZE-1)	{
+				chr = lastChr = 0;
+			}			
+			osDelay(1);		// can also yield control
+		}
 			
 		/* Echo the character back. */
 		writePxITMutex(port, &cRxedChar, 1, cmd50ms);
@@ -272,7 +289,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					}
 				}
 				
-				/* Write the generated string to the UART. */
+				/* Write the generated string to the UART. Block this task to ensure output is sent. */
 				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), cmd50ms, HAL_MAX_DELAY);		
 				memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
 		
