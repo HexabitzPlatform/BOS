@@ -276,7 +276,6 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
 							{
-								//xTaskNotifyWait(0, 0xffffffffUL, NULL, 2000);				// Clear notification value on exit
 								ulTaskNotifyTake(pdTRUE, 2000);		//cmd500ms
 								/* If timeout */
 								if (responseStatus != BOS_OK)

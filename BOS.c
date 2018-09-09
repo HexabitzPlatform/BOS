@@ -740,9 +740,8 @@ void PxMessagingTask(void * argument)
 								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
 								longMessageLastPtr = 0;
 								responseStatus = BOS_OK;
-								/* Wake up the CliTask again TODO */
-								//xTaskNotifyGive(xCommandConsoleTaskHandle);	
-								xTaskNotify( ( xCommandConsoleTaskHandle ), 0, eNoAction );
+								/* Wake up the CliTask again */
+								xTaskNotify( ( xCommandConsoleTaskHandle ), 0, eNoAction );			// Notify the task without modifying its notification value
 							}							
 							break;
 							
