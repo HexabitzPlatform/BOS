@@ -172,7 +172,8 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
-	
+void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport);
+
 /* Module exported internal functions */
 extern void Module_Init(void);
 extern void RegisterModuleCLICommands(void);
@@ -426,6 +427,10 @@ static char * pcBootloaderUpdateMessage = 	\
 "\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
 utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";	
 
+static char * pcRemoteBootloaderUpdateMessage = 	\
+"\n\rModule %d will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
+utility to update the firmware.\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
+- You must power cycle the entire array after the update is finished.\n\r";	
 
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
@@ -438,7 +443,7 @@ utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is co
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i; uint16_t code;
+	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i, p; uint16_t code;
 	uint32_t count, timeout, temp32;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
@@ -487,6 +492,11 @@ void PxMessagingTask(void * argument)
 					ForwardReceivedMessage(port);
 					if (traceMode)
 						indMode = IND_SHORT_BLINK;
+					
+					/* Special messages that require local action */
+					if (code == CODE_CLI_command && !strncmp((char *)&cMessage[port-1][4], "update", 6)) {		// Remote bootloader update
+						remoteBootloaderUpdate(src, dst, port);								
+					}
 				}
 				/* Either broadcast or multicast local message */
 				else 
@@ -646,7 +656,7 @@ void PxMessagingTask(void * argument)
 							case CODE_read_port_dir :
 								temp = 0;
 								/* Check my own ports */
-								for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
+								for (p=1 ; p<=NumOfPorts ; p++) {
 									if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
 										messageParams[temp++] = p;
 									}									
@@ -657,13 +667,36 @@ void PxMessagingTask(void * argument)
 							
 							case CODE_read_port_dir_response :
 								/* Read module ports directions */
-								for (uint8_t p=0 ; p<(messageLength[port-1]-5) ; p++) 
+								for (p=0 ; p<(messageLength[port-1]-5) ; p++) 
 								{
 									arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][4+p])-1));								
 								}
 								responseStatus = BOS_OK;
 								break;		
 
+							case CODE_baudrate :
+								/* Change baudrate of specified ports */
+								temp = temp32 = 0;
+								temp32 = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];		
+								if (cMessage[port-1][8] == 0xFF)					// All ports
+								{
+									for (p=1 ; p<=NumOfPorts ; p++) 
+									{
+										UpdateBaudrate(p, temp32); 
+									}																	
+								}
+								else
+								{
+									for (p=0 ; p<(messageLength[port-1]-5) ; p++) 
+									{
+										temp = cMessage[port-1][8+p];
+										if (temp>0 && temp<=NumOfPorts)	{
+											UpdateBaudrate(temp, temp32); 
+										}
+									}
+								}
+								break;
+								
 							case CODE_exp_eeprom :
 							#ifndef _N
 								SaveROtopology();
@@ -2939,6 +2972,50 @@ BOS_Status RTC_CalendarConfig(void)
   HAL_RTCEx_BKUPWrite(&RtcHandle, RTC_BKP_DR1, 0x32F2);
 	
 	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Trigger ST factory bootloader update for a remote module.
+*/
+void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport)
+{
+	uint8_t myOutport, lastModule; int8_t *pcOutputString;
+	
+	/* 1. Get route to destination module */
+	myOutport = FindRoute(myID, dst);
+	if (NumberOfHops(dst) == 1)
+		lastModule = myID;
+	else
+		lastModule = route[NumberOfHops(dst)-1];				/* previous module = route[Number of hops - 1] */
+
+	/* 2. If this is the source of the message, show status on the CLI */
+	if (src == myID)
+	{	
+		/* Obtain the address of the output buffer.  Note there is no mutual
+		exclusion on this buffer as it is assumed only one command console
+		interface will be used at any one time. */
+		pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+		
+		sprintf( ( char * ) pcOutputString, pcRemoteBootloaderUpdateMessage, dst);
+		writePxITMutex(inport, ( char * ) pcOutputString, strlen(( char * )pcOutputString), cmd50ms);
+	}
+	
+	/* 3. Change my inport and outport baudrate to 57600 */
+	UpdateBaudrate(inport, 57600);
+	UpdateBaudrate(myOutport, 57600);
+	
+	/* 4. If this is last module before destination, swap my outport */
+	if (lastModule == myID) {
+		SwapUartPins(GetUart(myOutport), REVERSED);
+//		UART_HandleTypeDef *huart = GetUart(myOutport);		// Set parity to EVEN for last port only TODO verify
+//		huart->Init.Parity = UART_PARITY_EVEN;
+//		HAL_UART_Init(huart);
+	}	
+	
+	/* 5. Build a DMA stream between my inport and outport */
+	StartScastDMAStream(inport, myID, myOutport, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, false);
+	
 }
 
 /*-----------------------------------------------------------*/
