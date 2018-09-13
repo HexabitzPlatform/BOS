@@ -173,6 +173,7 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
 void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport);
+void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
 /* Module exported internal functions */
 extern void Module_Init(void);
@@ -2999,23 +3000,40 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport)
 		
 		sprintf( ( char * ) pcOutputString, pcRemoteBootloaderUpdateMessage, dst);
 		writePxITMutex(inport, ( char * ) pcOutputString, strlen(( char * )pcOutputString), cmd50ms);
+		Delay_ms(100);
 	}
 	
-	/* 3. Change my inport and outport baudrate to 57600 */
-	UpdateBaudrate(inport, 57600);
-	UpdateBaudrate(myOutport, 57600);
+	/* 3. Setup my inport and outport for bootloader update */
+	SetupPortForRemoteBootloaderUpdate(inport);
+	SetupPortForRemoteBootloaderUpdate(myOutport);
 	
 	/* 4. If this is last module before destination, swap my outport */
 	if (lastModule == myID) {
 		SwapUartPins(GetUart(myOutport), REVERSED);
-//		UART_HandleTypeDef *huart = GetUart(myOutport);		// Set parity to EVEN for last port only TODO verify
-//		huart->Init.Parity = UART_PARITY_EVEN;
-//		HAL_UART_Init(huart);
 	}	
 	
 	/* 5. Build a DMA stream between my inport and outport */
-	StartScastDMAStream(inport, myID, myOutport, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, false);
+	StartScastDMAStream(inport, myID, myOutport, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, false);	
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Setup a port for remote ST factory bootloader update:
+				- Set baudrate to 57600
+				- Enable even parity
+				- Set datasize to 9 bits
+*/
+void SetupPortForRemoteBootloaderUpdate(uint8_t port)
+{
+	UART_HandleTypeDef *huart = GetUart(port);
+
+	huart->Init.BaudRate = 57600;
+	huart->Init.Parity = UART_PARITY_EVEN;
+	huart->Init.WordLength = UART_WORDLENGTH_9B;
+	HAL_UART_Init(huart);	
 	
+	/* The CLI port RXNE interrupt might be disabled so enable here again to be sure */
+  __HAL_UART_ENABLE_IT(huart, UART_IT_RXNE);
 }
 
 /*-----------------------------------------------------------*/
