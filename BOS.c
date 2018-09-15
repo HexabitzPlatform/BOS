@@ -172,7 +172,7 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
-void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport);
+void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
 /* Module exported internal functions */
@@ -249,9 +249,12 @@ static const CLI_Command_Definition_t pingCommandDefinition =
 static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition =
 {
 	( const int8_t * ) "update", /* The command string to type. */
-	( const int8_t * ) "update:\r\n Put the module in bootloader mode to update its firmware\r\n\r\n",
+	( const int8_t * ) "update:\r\n Put the module in factory bootloader mode to update its firmware.\r\n\
+- Use '#n.update' to update remote module n. Make sure the programming port is the incoming port of this module.\r\n\
+- Use 'update via #n px' to use the ST Flash Loader tool with module n, port x to update a neighbor module. This is useful if \
+target module is not part of the topology or if programming port is not in the shortest path to target module.\r\n\r\n",
 	bootloaderUpdateCommand, /* The function to run. */
-	0 /* No parameters are expected. */
+	-1 /* Variable number of parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : explore */
@@ -323,8 +326,8 @@ destination module (4th par.), direction ('forward', 'backward', 'bidirectional'
 /* CLI command structure : addbutton */
 static const CLI_Command_Definition_t addbuttonCommandDefinition =
 {
-	( const int8_t * ) "addbutton", /* The command string to type. */
-	( const int8_t * ) "addbutton:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n",
+	( const int8_t * ) "add-button", /* The command string to type. */
+	( const int8_t * ) "add-button:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n",
 	addbuttonCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
@@ -332,8 +335,8 @@ static const CLI_Command_Definition_t addbuttonCommandDefinition =
 /* CLI command structure : addbutton */
 static const CLI_Command_Definition_t removebuttonCommandDefinition =
 {
-	( const int8_t * ) "removebutton", /* The command string to type. */
-	( const int8_t * ) "removebutton:\r\n Remove a button that was previously defined at this port (1st par.)\r\n\r\n",
+	( const int8_t * ) "remove-button", /* The command string to type. */
+	( const int8_t * ) "remove-button:\r\n Remove a button that was previously defined at this port (1st par.)\r\n\r\n",
 	removebuttonCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
@@ -428,8 +431,12 @@ static char * pcBootloaderUpdateMessage = 	\
 "\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
 utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";	
 
-static char * pcRemoteBootloaderUpdateMessage = 	\
-"\n\rModule %d will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
+static char * pcRemoteBootloaderUpdateMessage = "\n\rModule %d will be forced into bootloader mode.";	
+static char * pcRemoteBootloaderUpdateViaPortMessage = "\n\rRemote update via module %d, port P%d will be triggered. \
+Make sure you manually set the target module in bootloader mode.";	
+
+static char * pcRemoteBootloaderUpdateWarningMessage = 	\
+"\n\rPlease use the \"STM Flash Loader Demonstrator\" \
 utility to update the firmware.\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
 - You must power cycle the entire array after the update is finished.\n\r";	
 
@@ -496,7 +503,7 @@ void PxMessagingTask(void * argument)
 					
 					/* Special messages that require local action */
 					if (code == CODE_CLI_command && !strncmp((char *)&cMessage[port-1][4], "update", 6)) {		// Remote bootloader update
-						remoteBootloaderUpdate(src, dst, port);								
+						remoteBootloaderUpdate(src, dst, port, 0);								
 					}
 				}
 				/* Either broadcast or multicast local message */
@@ -728,8 +735,13 @@ void PxMessagingTask(void * argument)
 									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
 								do 
 								{
+									/* Pass the inport to CLI command parsers temporarily through PcPort */
+									temp = PcPort; PcPort = port;
 									/* Process the command locally */
 									xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+									/* Restore back PcPort */
+									PcPort = temp;
+									/* Respond to the CLI command */
 									if (responseMode == BOS_RESPONSE_ALL)
 									{
 										/* Copy the generated string to messageParams */
@@ -2979,7 +2991,7 @@ BOS_Status RTC_CalendarConfig(void)
 
 /* --- Trigger ST factory bootloader update for a remote module.
 */
-void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport)
+void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport)
 {
 	uint8_t myOutport, lastModule; int8_t *pcOutputString;
 	
@@ -2989,6 +3001,8 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport)
 		lastModule = myID;
 	else
 		lastModule = route[NumberOfHops(dst)-1];				/* previous module = route[Number of hops - 1] */
+	
+	if (!outport)	myOutport = outport;								/* This is a 'via port' update */
 
 	/* 2. If this is the source of the message, show status on the CLI */
 	if (src == myID)
@@ -2998,7 +3012,12 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport)
 		interface will be used at any one time. */
 		pcOutputString = FreeRTOS_CLIGetOutputBuffer();
 		
-		sprintf( ( char * ) pcOutputString, pcRemoteBootloaderUpdateMessage, dst);
+		if (outport == 0)		// This is a remote module update
+			sprintf( ( char * ) pcOutputString, pcRemoteBootloaderUpdateMessage, dst);
+		else								// This is a 'via port' remote update
+			sprintf( ( char * ) pcOutputString, pcRemoteBootloaderUpdateViaPortMessage, dst, outport);
+			
+		strcat(( char * ) pcOutputString, pcRemoteBootloaderUpdateWarningMessage);
 		writePxITMutex(inport, ( char * ) pcOutputString, strlen(( char * )pcOutputString), cmd50ms);
 		Delay_ms(100);
 	}
@@ -4992,6 +5011,10 @@ static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	static const int8_t *pcMessage = ( int8_t * ) "Update firmware for module %d\n\r";
+	static const int8_t *pcMessageWrongValue = ( int8_t * ) "Wrong value!\n\r";	
+	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3; 
+	static portBASE_TYPE xParameterStringLength1, xParameterStringLength2, xParameterStringLength3;
+	uint8_t module, port; BOS_Status result = BOS_OK;
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -4999,16 +5022,73 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 	( void ) pcCommandString;
 	( void ) xWriteBufferLen;
 	configASSERT( pcWriteBuffer );
-
-	/* Respond to the update command */
-	sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, myID);
-	strcat( ( char * ) pcWriteBuffer, ( char * ) pcBootloaderUpdateMessage );
-	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 	
-	/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
-	*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	
+	/* Local update */
+	if (pcParameterString1 == NULL)
+	{
+		/* Respond to the update command */
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessage, myID);
+		strcat( ( char * ) pcWriteBuffer, ( char * ) pcBootloaderUpdateMessage );
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		
+		/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
+		*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
 
-	NVIC_SystemReset();		
+		NVIC_SystemReset();						
+	}
+	/* This might be a 'via port' remote update command */
+	else 
+	{
+		if (!strncmp((const char *)pcParameterString1, "via", xParameterStringLength1)) 
+		{
+			pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+			pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
+			
+			/* Parse the module */
+			if (pcParameterString2[0] == '#') {
+				module = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+			} 
+			else
+				result = BOS_ERR_WrongValue;				
+			
+			/* Parse the port */
+			if (pcParameterString3[0] == 'P') {
+				port = ( uint8_t ) atol( ( char * ) pcParameterString3+1 );
+			} 
+			else
+				result = BOS_ERR_WrongValue;		
+			
+			/* I'm forwarding the command */
+			if (module != myID)
+			{
+				/* Deactivate responses */
+				BOS.response = BOS_RESPONSE_NONE;							
+				
+				/* Forward the command */
+				strncpy( ( char * ) messageParams,  ( char * ) pcCommandString, (size_t)strlen( (char*) pcCommandString));
+				SendMessageToModule(module, CODE_CLI_command, (size_t)strlen( (char*) pcCommandString));		
+				
+				/* Execute locally */
+				remoteBootloaderUpdate(myID, module, PcPort, 0);	
+			}
+			/* I'm the last module before target, so execute here */
+			else
+			{
+				remoteBootloaderUpdate(0, myID, PcPort, port);			
+			}
+			
+		}
+		else
+			result = BOS_ERR_WrongValue;		
+	}
+	
+	/* Respond to user */
+	if (result == BOS_ERR_WrongValue) {
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue );			
+	}
 	
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */
@@ -5282,7 +5362,7 @@ static portBASE_TYPE scastCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen
 	
 	/* Obtain the 1st parameter string. */
 	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
-	if (pcParameterString1[0] == 'P' || pcParameterString1[0] == 'p') {
+	if (pcParameterString1[0] == 'P') {
 		srcP = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
 	}
 
