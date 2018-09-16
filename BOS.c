@@ -249,7 +249,7 @@ static const CLI_Command_Definition_t pingCommandDefinition =
 static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition =
 {
 	( const int8_t * ) "update", /* The command string to type. */
-	( const int8_t * ) "update:\r\n Put the module in factory bootloader mode to update its firmware.\r\n\
+	( const int8_t * ) "update:\r\n Put the module in factory bootloader mode to update its firmware.\r\n\n\
 - Use '#n.update' to update remote module n. Make sure the programming port is the incoming port of this module.\r\n\
 - Use 'update via #n px' to use the ST Flash Loader tool with module n, port x to update a neighbor module. This is useful if \
 target module is not part of the topology or if programming port is not in the shortest path to target module.\r\n\r\n",
@@ -2995,17 +2995,20 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t ou
 {
 	uint8_t myOutport, lastModule; int8_t *pcOutputString;
 	
-	/* 1. Get route to destination module */
-	myOutport = FindRoute(myID, dst);
-	if (NumberOfHops(dst) == 1)
+	/* 1. Get route to destination module */	
+	if (outport) {																			/* This is a 'via port' update and I'm the last module */
+		myOutport = outport;
 		lastModule = myID;
-	else
-		lastModule = route[NumberOfHops(dst)-1];				/* previous module = route[Number of hops - 1] */
+	} else {
+		myOutport = FindRoute(myID, dst);
+		if (NumberOfHops(dst) == 1)
+			lastModule = myID;
+		else
+			lastModule = route[NumberOfHops(dst)-1];				/* previous module = route[Number of hops - 1] */
+	}
 	
-	if (!outport)	myOutport = outport;								/* This is a 'via port' update */
-
 	/* 2. If this is the source of the message, show status on the CLI */
-	if (src == myID)
+	if (src == myID || (src == 0 && inport == PcPort))
 	{	
 		/* Obtain the address of the output buffer.  Note there is no mutual
 		exclusion on this buffer as it is assumed only one command console
@@ -5038,11 +5041,19 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 		*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
 
 		NVIC_SystemReset();						
-	}
-	/* This might be a 'via port' remote update command */
+	}	
 	else 
 	{
-		if (!strncmp((const char *)pcParameterString1, "via", xParameterStringLength1)) 
+		/* This is a forwarded remote update command. No response is needed here. */
+		if (!strncmp((const char *)pcParameterString1, "fw", xParameterStringLength1)) 
+		{
+			/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
+			*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
+
+			NVIC_SystemReset();				
+		}
+		/* This is a 'via port' remote update command */	
+		else if (!strncmp((const char *)pcParameterString1, "via", xParameterStringLength1)) 
 		{
 			pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
 			pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
@@ -5055,13 +5066,13 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 				result = BOS_ERR_WrongValue;				
 			
 			/* Parse the port */
-			if (pcParameterString3[0] == 'P') {
+			if (pcParameterString3[0] == 'p') {
 				port = ( uint8_t ) atol( ( char * ) pcParameterString3+1 );
 			} 
 			else
 				result = BOS_ERR_WrongValue;		
 			
-			/* I'm forwarding the command */
+			/* I'm the source of the command */
 			if (module != myID)
 			{
 				/* Deactivate responses */
@@ -5078,8 +5089,7 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 			else
 			{
 				remoteBootloaderUpdate(0, myID, PcPort, port);			
-			}
-			
+			}		
 		}
 		else
 			result = BOS_ERR_WrongValue;		
