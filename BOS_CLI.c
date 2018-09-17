@@ -91,6 +91,8 @@ BOS_Status AddSnippet(uint8_t type, char *string);
 BOS_Status ProcessSnippet(uint16_t location);
 BOS_Status ActivateButtonSnippet(uint16_t location);
 
+/* BOS exported internal functions */
+extern void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 
 /*-----------------------------------------------------------*/
 
@@ -250,10 +252,22 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 						}	
 						else 
 						{
-							/* Forward the command */
-							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
-							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
+							/* Special commands that convert into custom a Message */
+							if (!strncmp((char *)loc+1, "update", 6)) {			// remote update
+								BOS.response = BOS_RESPONSE_NONE;				
+								SendMessageToModule(id, CODE_update, 0);
+								osDelay(100);
+								/* Execute locally */
+								remoteBootloaderUpdate(myID, id, PcPort, 0);
+							} 
+							else 
+							{						
+								/* Forward the command */
+								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
+								SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
+								sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
+							}
+							
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
 							{
