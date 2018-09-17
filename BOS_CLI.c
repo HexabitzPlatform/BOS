@@ -252,20 +252,20 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 						}	
 						else 
 						{
-							/* Special commands that require local pre-action */
-							if (!strncmp((char *)loc+1, "update", 6)) {
+							/* Special commands that convert into custom a Message */
+							if (!strncmp((char *)loc+1, "update", 6)) {			// remote update
 								BOS.response = BOS_RESPONSE_NONE;				
-								strcat((char*) cInputString, " fw");			// Add a forward identifier to the command
-							}
-							
-							/* Forward the command */
-							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
-							SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
-							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
-							
-							/* Special commands that require local post-action */
-							if (!strncmp((char *)loc+1, "update", 6)) {
-								remoteBootloaderUpdate(myID, id, PcPort, 0);						// Setup remote module update		
+								SendMessageToModule(id, CODE_update, 0);
+								osDelay(100);
+								/* Execute locally */
+								remoteBootloaderUpdate(myID, id, PcPort, 0);
+							} 
+							else 
+							{						
+								/* Forward the command */
+								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
+								SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
+								sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
 							}
 							
 							/* Wait for response if needed */

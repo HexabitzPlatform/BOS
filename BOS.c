@@ -432,12 +432,11 @@ static char * pcBootloaderUpdateMessage = 	\
 utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";	
 
 static char * pcRemoteBootloaderUpdateMessage = "\n\rModule %d will be forced into bootloader mode.";	
-static char * pcRemoteBootloaderUpdateViaPortMessage = "\n\rRemote update via module %d, port P%d will be triggered. \
-Make sure you manually set the target module in bootloader mode.";	
+static char * pcRemoteBootloaderUpdateViaPortMessage = "\n\rRemote update via module %d, port P%d will be triggered.";	
 
 static char * pcRemoteBootloaderUpdateWarningMessage = 	\
-"\n\rPlease use the \"STM Flash Loader Demonstrator\" \
-utility to update the firmware.\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
+"\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
+\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
 - You must power cycle the entire array after the update is finished.\n\r";	
 
 /* -----------------------------------------------------------------------
@@ -502,8 +501,10 @@ void PxMessagingTask(void * argument)
 						indMode = IND_SHORT_BLINK;
 					
 					/* Special messages that require local action */
-					if (code == CODE_CLI_command && !strncmp((char *)&cMessage[port-1][4], "update", 6)) {		// Remote bootloader update
-						remoteBootloaderUpdate(src, dst, port, 0);								
+					if (code == CODE_update) {		// Remote bootloader update
+						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, 0);								
+					} else if (code == CODE_update_via_port) {		// Remote 'via port' bootloader update
+						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, cMessage[port-1][4]);								
 					}
 				}
 				/* Either broadcast or multicast local message */
@@ -769,6 +770,23 @@ void PxMessagingTask(void * argument)
 									responseStatus = BOS_OK;
 									/* Wake up the UARTCmd task again */
 								}							
+								break;							
+								
+							case CODE_update :
+								/* Trigger ST factory bootloader update */
+								/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
+								*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
+								indMode = IND_PING;
+								osDelay(10);
+								NVIC_SystemReset();												
+								break;
+							
+							case CODE_update_via_port :
+								/* I'm the last module before target. First, ask the target to jump to factory bootloader */
+								SendMessageFromPort(cMessage[port-1][4], 0, 0, CODE_update, 0);
+								osDelay(100);
+								/* Then, setup myself for remote 'via port' update */
+								remoteBootloaderUpdate(src, myID, port, cMessage[port-1][4]);
 								break;
 								
 							case CODE_DMA_channel :
@@ -2993,14 +3011,14 @@ BOS_Status RTC_CalendarConfig(void)
 */
 void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport)
 {
-	uint8_t myOutport, lastModule; int8_t *pcOutputString;
+	uint8_t myOutport = 0, lastModule = 0; int8_t *pcOutputString;
 	
 	/* 1. Get route to destination module */	
-	if (outport) {																			/* This is a 'via port' update and I'm the last module */
+	myOutport = FindRoute(myID, dst);
+	if (outport && dst == myID) {												/* This is a 'via port' update and I'm the last module */
 		myOutport = outport;
 		lastModule = myID;
-	} else {
-		myOutport = FindRoute(myID, dst);
+	} else if (outport == 0) {													/* This is a remote update */		
 		if (NumberOfHops(dst) == 1)
 			lastModule = myID;
 		else
@@ -3008,7 +3026,7 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t ou
 	}
 	
 	/* 2. If this is the source of the message, show status on the CLI */
-	if (src == myID || (src == 0 && inport == PcPort))
+	if (src == myID)
 	{	
 		/* Obtain the address of the output buffer.  Note there is no mutual
 		exclusion on this buffer as it is assumed only one command console
@@ -5039,21 +5057,14 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 		
 		/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 		*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
-
+		indMode = IND_PING;
+		osDelay(10);
 		NVIC_SystemReset();						
 	}	
 	else 
 	{
-		/* This is a forwarded remote update command. No response is needed here. */
-		if (!strncmp((const char *)pcParameterString1, "fw", xParameterStringLength1)) 
-		{
-			/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
-			*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
-
-			NVIC_SystemReset();				
-		}
 		/* This is a 'via port' remote update command */	
-		else if (!strncmp((const char *)pcParameterString1, "via", xParameterStringLength1)) 
+		if (!strncmp((const char *)pcParameterString1, "via", xParameterStringLength1)) 
 		{
 			pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
 			pcParameterString3 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 3, &xParameterStringLength3);
@@ -5072,23 +5083,26 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 			else
 				result = BOS_ERR_WrongValue;		
 			
-			/* I'm the source of the command */
+			/* I'm the source of the command and the target is > 1 hop away */
 			if (module != myID)
 			{
 				/* Deactivate responses */
 				BOS.response = BOS_RESPONSE_NONE;							
 				
 				/* Forward the command */
-				strncpy( ( char * ) messageParams,  ( char * ) pcCommandString, (size_t)strlen( (char*) pcCommandString));
-				SendMessageToModule(module, CODE_CLI_command, (size_t)strlen( (char*) pcCommandString));		
-				
+				messageParams[0] = port; SendMessageToModule(module, CODE_update_via_port, 1);
+				osDelay(100);			
 				/* Execute locally */
-				remoteBootloaderUpdate(myID, module, PcPort, 0);	
+				remoteBootloaderUpdate(myID, module, PcPort, port);	
 			}
-			/* I'm the last module before target, so execute here */
+			/* I'm the source of the command and my neighbor is the target */
 			else
 			{
-				remoteBootloaderUpdate(0, myID, PcPort, port);			
+				/* Ask the target to jump to factory bootloader */
+				SendMessageFromPort(port, myID, 0, CODE_update, 0);
+				osDelay(100);
+				/* Then, setup myself for remote 'via port' update */
+				remoteBootloaderUpdate(myID, myID, PcPort, port);							
 			}		
 		}
 		else

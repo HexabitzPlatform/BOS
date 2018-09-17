@@ -342,8 +342,10 @@ extern void SystemClock_Config(void);
 #define	CODE_def_array	 									22
 #define	CODE_CLI_command 									23
 #define	CODE_CLI_response  								24
-#define	CODE_DMA_channel  								25
-#define	CODE_DMA_scast_stream  						26
+#define	CODE_update  											25
+#define	CODE_update_via_port  						26
+#define	CODE_DMA_channel  								27
+#define	CODE_DMA_scast_stream  						28
 
 #define	CODE_read_remote  								30
 #define	CODE_read_remote_response  				31
