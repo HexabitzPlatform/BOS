@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.4 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
