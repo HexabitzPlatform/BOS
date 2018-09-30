@@ -5902,8 +5902,6 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		result = BOS_ERR_WrongValue;
 
 	/* Respond to the command */
-	if (result == BOS_OK)
-		
 	if (result == BOS_ERR_WrongValue)
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrongValue );
 	
