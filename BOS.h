@@ -207,6 +207,24 @@ typedef struct
 } 
 button_t;
 
+/* Snippet Conditionals Struct Type Definition */  
+typedef struct
+{
+	uint8_t conditionType;
+	uint8_t mathOperator;
+	uint8_t buffer[4];
+} 
+snippetConditions_t;
+
+/* Snippet Struct Type Definition */  
+typedef struct
+{
+	snippetConditions cond;
+	char *cmd;
+	uint8_t cmdSize;
+	uint8_t state;
+} 
+snippet_t;
 
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
@@ -244,11 +262,11 @@ button_t;
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
-#define MAX_SNIPPET_CONDITIONS				20				// Max number of accepted Snippet conditions
-#define SNIPPET_CONDITION							0x80			// Conditional statement - condition delimiter
-#define SNIPPET_CONDITION_CMDS				0x82			// Conditional statement - command delimiter
-#define SNIPPET_END										0xF0			// End of Snippet delimiter
-#define SNIP_COND_BUTTON_EVENT				1
+#define MAX_SNIPPETS									20				// Max number of accepted Snippets
+#define SNIPPET_CONDITION							1					// Snippet state machine codes
+#define SNIPPET_COMMANDS							2					
+#define SNIPPET_ACTIVATE							3					
+#define SNIP_COND_BUTTON_EVENT				1					// Snippet command types
 #define SNIP_COND_MODULE_EVENT				2
 #define SNIP_COND_MODULE_PARAM_CONST	3
 #define SNIP_COND_MODULE_PARAM_PARAM	4

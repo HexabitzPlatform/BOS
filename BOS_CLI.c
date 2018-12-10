@@ -58,17 +58,13 @@
 
 #include "BOS.h"
 
-
-
-
-
-
 /* Internal Variables --------------------------------------------------------*/
+snippet_t snippets[MAX_SNIPPETS];		// Buffer to hold CLI Snippets
 
-uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
-uint8_t snippetConditions[6][MAX_SNIPPET_CONDITIONS] = {{0}};			// Buffer to hold parsed Snippet conditions: 1st byte (type), 2nd byte (math operation), 3rd-6th bytes (constant/parameter)
+//uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
+//uint8_t snippetConditions[6][MAX_SNIPPETS] = {{0}};			// Buffer to hold parsed Snippet conditions: 1st byte (type), 2nd byte (math operation), 3rd-6th bytes (constant/parameter)
 uint8_t numOfRecordedSnippets = 0;
-uint16_t currentSnipSize = 0;
+
 
 static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
@@ -89,8 +85,8 @@ char pcWelcomePortMessage[40] = {0};
 
 /* Internal functions ---------------------------------------------------------*/
 
-BOS_Status AddSnippet(uint8_t type, char *string);
-BOS_Status ParseSnippet(uint16_t location);
+BOS_Status AddSnippet(uint8_t code, char *string);
+BOS_Status ParseSnippet(char *string);
 bool CheckSnippetCondition(uint8_t index);
 BOS_Status ActivateButtonSnippet(uint16_t location);
 
@@ -186,7 +182,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					/* Add the condition to Command Snippets (after removing "if " */
 					AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
 					/* Start recording Commands after the condition */
-					recordSnippet = SNIPPET_CONDITION_CMDS;
+					recordSnippet = SNIPPET_COMMANDS;
 					pcOutputString[0] = '\r';
 				} 
 				/* Check for the end of a conditional command (end if) */
@@ -194,20 +190,19 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				{
 					/* Stop recording Commands for the conditional Command Snippet */
 					recordSnippet = 0;
-					/* Check memory */
-					
-					
 					/* Activate the Snippet via the LSB */
-					AddSnippet((SNIPPET_CONDITION|0x01), "");				
+					AddSnippet(SNIPPET_ACTIVATE, "");				
 					/* If snippet saved successfuly */
 					sprintf( ( char * ) pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
 				}
 				/* Should I record any Command Snippets? */
-				else if (recordSnippet == SNIPPET_CONDITION_CMDS)
+				else if (recordSnippet == SNIPPET_COMMANDS)
 				{
 					/* Add this Command to Command Snippets */
-					AddSnippet(SNIPPET_CONDITION_CMDS, ( char * ) cInputString);
-					pcOutputString[0] = '\r';
+					if (AddSnippet(SNIPPET_COMMANDS, ( char * ) cInputString) != BOS_OK)
+						sprintf( ( char * ) pcOutputString, "\nCannot record more Command Snippets. Please delete existing ones and try again.\n\r");
+					else
+						pcOutputString[0] = '\r';
 				}
 				/* Parse a normal Command */
 				else 
@@ -362,124 +357,124 @@ void StringToLowerCase(char *string)
 
 /* Add a set of Commands to Command Snippets and activate
 */
-BOS_Status AddSnippet(uint8_t type, char *string)
+BOS_Status AddSnippet(uint8_t code, char *string)
 {
-	BOS_Status result = BOS_OK;
-	int16_t i = 0;
-	
-	if (currentSnipSize >= SNIPPETS_BUF_SIZE)
-		return BOS_ERR_SNIP_MEM_FULL;	
-	
-	/* Check for activation code */
-	if (type&0x01)
+	/* Check for codes */
+	switch (code)
 	{
-		/* Search for last matching code */
-		for(i=currentSnipSize ; i>=0 ; i--)
-    {
-			if ( (snippets[i]|0x01) == type) {
-				snippets[i] = type;																					// Snippet has been activated (via LSB)
-				break;
+		case SNIPPET_ACTIVATE :
+			snippets[numOfRecordedSnippets-1].state = true;
+			break;
+		
+		case SNIPPET_CONDITION :
+			return ParseSnippet(string);
+			break;
+		
+		case SNIPPET_COMMANDS :
+			// Did we allocate a buffer already?
+			if (snippets[numOfRecordedSnippets-1].cmd != NULL) 
+			{
+				// re-allocate with new size
+				int currentLenght = strlen(snippets[numOfRecordedSnippets-1].cmd);
+				snippets[numOfRecordedSnippets-1].cmd = (char *) realloc(snippets[numOfRecordedSnippets-1].cmd, currentLenght+strlen(string)+1);
+				// Copy the command
+				strcpy(snippets[numOfRecordedSnippets-1].cmd + currentLenght, string);
+			} 
+			// Allocate a new buffer
+			else
+			{
+				// Allocate memory buffer
+				snippets[numOfRecordedSnippets-1].cmd = (char *) malloc(strlen(string)+1);
+				// Copy the command
+				strcpy(snippets[numOfRecordedSnippets-1].cmd, string);
 			}
-    }
-		/* Add end of Snippet delimiter */
-		snippets[currentSnipSize++] = SNIPPET_END;
-		/* Activate button events if this is a conditional button Snippet */
-		ActivateButtonSnippet(i+1);
-	}
-	/* Normal code */
-	else
-	{
-		switch (type)
-		{
-			case SNIPPET_CONDITION :
-				snippets[currentSnipSize++] = SNIPPET_CONDITION;						// Add condition delimiter
-				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the condition
-				currentSnipSize += strlen(string);
-				break;
+			// Return error if allocation fails
+			if (snippets[numOfRecordedSnippets-1].cmd == NULL) {
+				// TODO delete snippet condition
+				return BOS_ERR_SNIP_MEM_FULL;
+			}
 			
-			case SNIPPET_CONDITION_CMDS :
-				snippets[currentSnipSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
-				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the Command
-				currentSnipSize += strlen(string);
-				break;
-			
-			default:
-				break;
-		}
-	}
+			break;
+		
+		default:
+			break;
+	}	
 	
-	return result;
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
 
 /* Parse Snippet conditions into the internal buffer
 */
-BOS_Status ParseSnippet(uint16_t location)
+BOS_Status ParseSnippet(char *string)
 {
 	BOS_Status result = BOS_ERROR;
 	uint8_t port = 0;
 	
-	/* 1. Check for Snippet type */	
+	/* 1. Check for Snippet condition type */	
 	
 	/* - 1: Button event: condition starts with "bx." */
-	if(snippets[location] == 'b' && snippets[location+2] == '.')
+	if(string[0] == 'b' && string[2] == '.')
 	{
-		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
+		if(string[1] >= '0' && string[1] <= (NumOfPorts+'0'))		// Valid port number
 		{
-			port = snippets[location+1]-'0';
+			port = string[1]-'0';
 			
-			if (numOfRecordedSnippets <= MAX_SNIPPET_CONDITIONS)
+			if (numOfRecordedSnippets <= MAX_SNIPPETS)
 			{
-				snippetConditions[0][numOfRecordedSnippets-1] = SNIP_COND_BUTTON_EVENT;
-				snippetConditions[1][numOfRecordedSnippets-1] = 0;			// No math operations
-				snippetConditions[2][numOfRecordedSnippets-1] = port;		// Store button port number	
+				snippets[numOfRecordedSnippets-1].cond.conditionType = SNIP_COND_BUTTON_EVENT;
+				snippets[numOfRecordedSnippets-1].cond.mathOperator = 0;			// No math operations
+				snippets[numOfRecordedSnippets-1].cond.buffer[0] = port;		// Store button port number	
 				
 				/* Store button event and event parameter if needed */
-				if (!strncmp((char *)&snippets[location+3], "clicked", 7))
+				if (!strncmp((char *)&string[3], "clicked", 7))
 				{
-					snippetConditions[3][numOfRecordedSnippets-1] = CLICKED;	return BOS_OK;
+					snippets[numOfRecordedSnippets-1].cond.buffer[1] = CLICKED;	return BOS_OK;
 				}
-				else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
+				else if (!strncmp((char *)&string[3], "double clicked", 14))
 				{
-					snippetConditions[3][numOfRecordedSnippets-1] = DBL_CLICKED;	return BOS_OK;				
+					snippets[numOfRecordedSnippets-1].cond.buffer[1] = DBL_CLICKED;	return BOS_OK;				
 				}
-				else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
+				else if (!strncmp((char *)&string[3], "pressed for ", 12))
 				{
 					if (!button[port].pressedX1Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = PRESSED_FOR_X1_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+15]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X1_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
 						return BOS_OK;
 					} else if (!button[port].pressedX2Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = PRESSED_FOR_X2_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+15]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X2_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
 						return BOS_OK;		
 					} else if (!button[port].pressedX3Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = PRESSED_FOR_X3_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+15]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X3_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
 						return BOS_OK;	
 					} else {
 						return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
 					}						
 				}
-				else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
+				else if (!strncmp((char *)&string[3], "released for ", 13))
 				{
 					if (!button[port].releasedY1Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = RELEASED_FOR_Y1_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+16]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y1_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
 						return BOS_OK;
 					} else if (!button[port].releasedY2Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = RELEASED_FOR_Y2_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+16]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y2_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
 						return BOS_OK;		
 					} else if (!button[port].releasedY3Sec) {	
-						snippetConditions[3][numOfRecordedSnippets-1] = RELEASED_FOR_Y3_SEC;	
-						snippetConditions[4][numOfRecordedSnippets-1] = atoi((char *)&snippets[location+16]);
+						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y3_SEC;	
+						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
 						return BOS_OK;	
 					} else {
 						return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
 					}									
 				}				
+				
+				/* Activate button events if this is a conditional button Snippet */
+				ActivateButtonSnippet(i+1);
 				
 				++numOfRecordedSnippets;
 			}
@@ -510,12 +505,12 @@ bool CheckSnippetCondition(uint8_t index)
 	
 	/* Check conditions based on Snippet tupe */	
 
-	switch (snippetConditions[0][index])
+	switch (snippets[index].cond.conditionType)
   {
   	case SNIP_COND_BUTTON_EVENT :				
-  		temp8 = snippetConditions[2][index]; 	
+  		temp8 = snippetConditions[2][index]; 	// Button port
 			/* Check if button state matches Snippet button event */
-			if (snippetConditions[3][index] == button[temp8].state)
+			if (snippets[index].cond.buffer[1] == button[temp8].state)
 				return true;
 			else 
 				return false;			
