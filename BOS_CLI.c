@@ -60,9 +60,6 @@
 
 /* Internal Variables --------------------------------------------------------*/
 snippet_t snippets[MAX_SNIPPETS];		// Buffer to hold CLI Snippets
-
-//uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
-//uint8_t snippetConditions[6][MAX_SNIPPETS] = {{0}};			// Buffer to hold parsed Snippet conditions: 1st byte (type), 2nd byte (math operation), 3rd-6th bytes (constant/parameter)
 uint8_t numOfRecordedSnippets = 0;
 
 
@@ -88,7 +85,6 @@ char pcWelcomePortMessage[40] = {0};
 BOS_Status AddSnippet(uint8_t code, char *string);
 BOS_Status ParseSnippet(char *string);
 bool CheckSnippetCondition(uint8_t index);
-BOS_Status ActivateButtonSnippet(uint16_t location);
 
 /* BOS exported internal functions */
 extern void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
@@ -368,7 +364,6 @@ BOS_Status AddSnippet(uint8_t code, char *string)
 		
 		case SNIPPET_CONDITION :
 			return ParseSnippet(string);
-			break;
 		
 		case SNIPPET_COMMANDS :
 			// Did we allocate a buffer already?
@@ -409,12 +404,24 @@ BOS_Status AddSnippet(uint8_t code, char *string)
 */
 BOS_Status ParseSnippet(char *string)
 {
-	BOS_Status result = BOS_ERROR;
 	uint8_t port = 0;
 	
-	/* 1. Check for Snippet condition type */	
+	// A. Verify first there's still memory left to store Snippets	
+	if (numOfRecordedSnippets == MAX_SNIPPETS-1)
+	{	
+		return BOS_ERR_SNIP_MEM_FULL;
+	}
+	// Initialize the next empty location
+	else
+	{
+		snippets[numOfRecordedSnippets].cond.conditionType = 0;
+		snippets[numOfRecordedSnippets].cond.mathOperator = 0;			
+		memset(snippets[numOfRecordedSnippets-1].cond.buffer, 0, 4);			
+	}
 	
-	/* - 1: Button event: condition starts with "bx." */
+	// B. Parse Snippets based on their condition type 
+	
+	// - 1: Button event: condition starts with "bx." 
 	if(string[0] == 'b' && string[2] == '.')
 	{
 		if(string[1] >= '0' && string[1] <= (NumOfPorts+'0'))		// Valid port number
@@ -430,69 +437,83 @@ BOS_Status ParseSnippet(char *string)
 				/* Store button event and event parameter if needed */
 				if (!strncmp((char *)&string[3], "clicked", 7))
 				{
-					snippets[numOfRecordedSnippets-1].cond.buffer[1] = CLICKED;	return BOS_OK;
+					snippets[numOfRecordedSnippets-1].cond.buffer[1] = CLICKED;	
+					if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
+						button[port].events |= BUTTON_EVENT_CLICKED;
+					return BOS_OK;
 				}
 				else if (!strncmp((char *)&string[3], "double clicked", 14))
 				{
-					snippets[numOfRecordedSnippets-1].cond.buffer[1] = DBL_CLICKED;	return BOS_OK;				
+					snippets[numOfRecordedSnippets-1].cond.buffer[1] = DBL_CLICKED;			
+					if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
+						button[port].events |= BUTTON_EVENT_DBL_CLICKED;
+					return BOS_OK;					
 				}
 				else if (!strncmp((char *)&string[3], "pressed for ", 12))
 				{
 					if (!button[port].pressedX1Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X1_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
+						button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
+						button[port].pressedX1Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2]; 
 						return BOS_OK;
 					} else if (!button[port].pressedX2Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X2_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
+						button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
+						button[port].pressedX2Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2];
 						return BOS_OK;		
 					} else if (!button[port].pressedX3Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = PRESSED_FOR_X3_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[15]);
+						button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
+						button[port].pressedX3Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2];
 						return BOS_OK;	
 					} else {
 						return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
-					}						
+					}							
 				}
 				else if (!strncmp((char *)&string[3], "released for ", 13))
 				{
 					if (!button[port].releasedY1Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y1_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
+						button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
+						button[port].releasedY1Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2];
 						return BOS_OK;
 					} else if (!button[port].releasedY2Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y2_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
+						button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
+						button[port].releasedY2Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2];
 						return BOS_OK;		
 					} else if (!button[port].releasedY3Sec) {	
 						snippets[numOfRecordedSnippets-1].cond.buffer[1] = RELEASED_FOR_Y3_SEC;	
 						snippets[numOfRecordedSnippets-1].cond.buffer[2] = atoi((char *)&string[16]);
+						button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+						button[port].releasedY3Sec = snippets[numOfRecordedSnippets-1].cond.buffer[2];						
 						return BOS_OK;	
 					} else {
 						return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
 					}									
 				}				
 				
-				/* Activate button events if this is a conditional button Snippet */
-				ActivateButtonSnippet(i+1);
-				
-				++numOfRecordedSnippets;
+				++numOfRecordedSnippets;		// Record a successful Snippet
 			}
 		}
 	}
-	/* Module-related condition */
+	// Module-related condition
 	else
 	{
-		/* - 2: Module event */
+		// - 2: Module event
 		
+		// - 3: Module parameter and constant
 		
-		/* - 3: Module parameter and constant */
-		
-		/* - 4: Module parameter and parameter */	
+		// - 4: Module parameter and parameter
 		
 	}
 	
-	return result;
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -508,13 +529,12 @@ bool CheckSnippetCondition(uint8_t index)
 	switch (snippets[index].cond.conditionType)
   {
   	case SNIP_COND_BUTTON_EVENT :				
-  		temp8 = snippetConditions[2][index]; 	// Button port
+  		temp8 = snippets[index].cond.buffer[0]; 	// Button port
 			/* Check if button state matches Snippet button event */
 			if (snippets[index].cond.buffer[1] == button[temp8].state)
 				return true;
 			else 
 				return false;			
-			break;
 			
 		case SNIP_COND_MODULE_EVENT :	
 			break;
@@ -550,112 +570,32 @@ BOS_Status ExecuteSnippet(void)
 	pcOutputString = FreeRTOS_CLIGetOutputBuffer();	
 	
 	/* Go through activated Snippets */
-	for(s=0 ; s<=currentSnipSize ; s++)
+	for(s=0 ; s<numOfRecordedSnippets ; s++)
   {
-		if (snippets[s]&0x01)									// Check the LSB (activated codes)
+		if (snippets[s].state)								// Check for activated Snippets
 		{	
-			switch (snippets[s]&0xFE)						// Go through actual codes
-      {
-      	case SNIPPET_CONDITION :
-					if (CheckSnippetCondition(s+1) == BOS_OK)				// Process Snippet Condition at this location					
+			if (CheckSnippetCondition(s))				// Process Snippet condition 				
+			{
+				if (snippets[numOfRecordedSnippets-1].cmd != NULL)
+				{
+					BOS.response = BOS_RESPONSE_MSG;		// Disable CLI response
+					// Pass the command to CLI parser
+					cInputString = (signed char *) snippets[numOfRecordedSnippets-1].cmd;
+					/* Pass the received command to the command interpreter.  The
+					command interpreter is called repeatedly until it returns
+					pdFALSE as it might generate more than one string. */
+					do
 					{
-						/* Condition is TRUE, execute Snippet Commands */
-						for(int c=s+1 ; c<=currentSnipSize ; c++)
-						{
-							/* Extract the command */
-							if (snippets[c] == SNIPPET_CONDITION_CMDS)						
-							{	
-								cInputString = (signed char *) &snippets[c+1];
-								/* Pass the received command to the command interpreter.  The
-								command interpreter is called repeatedly until it returns
-								pdFALSE as it might generate more than one string. */
-								do
-								{
-									xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
-								} while( xReturned != pdFALSE );
-								/* Clear output buffer since we do not need it */
-								memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
-							}
-							/* You reached the end of this Snippet so stop here */
-							else if (snippets[c] == SNIPPET_END)
-								break;
-						}
-						/* Disable the Snippet Move this to delete Snippets section */
-						//snippets[s] &= 0xFE;
-					}
-																				
-      		break;
-
-      	default :													// This is not a code so exit
-      		break;
-      }
-			
+						xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+					} while( xReturned != pdFALSE );
+					/* Clear output buffer since we do not need it */
+					memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+				}
+			}
 		}
   }
 	
 	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* Activate button events for a conditional button Snippet
-*/
-BOS_Status ActivateButtonSnippet(uint16_t location)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port = snippets[location+1]-'0';
-
-	/* Make sure it's a conditional button Snippet */
-	if(snippets[location] == 'b' && snippets[location+2] == '.')
-	{
-		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
-		{	
-			/* Check if appropriate events are enabled */
-			if (!strncmp((char *)&snippets[location+3], "clicked", 7))
-			{
-				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)
-					button[port].events |= BUTTON_EVENT_CLICKED;
-			}
-			else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
-			{
-				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-					button[port].events |= BUTTON_EVENT_DBL_CLICKED;	
-			}
-			else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
-			{
-				if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) != BUTTON_EVENT_PRESSED_FOR_X1_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-					button[port].pressedX1Sec = atoi((char *)&snippets[location+15]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) != BUTTON_EVENT_PRESSED_FOR_X2_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-					button[port].pressedX2Sec = atoi((char *)&snippets[location+15]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) != BUTTON_EVENT_PRESSED_FOR_X3_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-					button[port].pressedX3Sec = atoi((char *)&snippets[location+15]);
-				} else {
-					return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
-				}		
-			}
-			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
-			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) != BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-					button[port].releasedY1Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) != BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-					button[port].releasedY2Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) != BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-					button[port].releasedY3Sec = atoi((char *)&snippets[location+16]);
-				} else {
-					return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
-				}				
-			}
-		}
-	}
-	
-	return result;	
 }
 
 /*-----------------------------------------------------------*/

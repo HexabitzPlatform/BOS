@@ -219,7 +219,7 @@ snippetConditions_t;
 /* Snippet Struct Type Definition */  
 typedef struct
 {
-	snippetConditions cond;
+	snippetConditions_t cond;
 	char *cmd;
 	uint8_t cmdSize;
 	uint8_t state;
@@ -261,7 +261,6 @@ snippet_t;
 #define CLI_BAUDRATE_1								115200
 
 /* Command Snippets */
-#define SNIPPETS_BUF_SIZE							1000
 #define MAX_SNIPPETS									20				// Max number of accepted Snippets
 #define SNIPPET_CONDITION							1					// Snippet state machine codes
 #define SNIPPET_COMMANDS							2					
