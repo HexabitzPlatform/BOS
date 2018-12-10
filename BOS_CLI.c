@@ -91,6 +91,7 @@ char pcWelcomePortMessage[40] = {0};
 
 BOS_Status AddSnippet(uint8_t type, char *string);
 BOS_Status ParseSnippet(uint16_t location);
+bool CheckSnippetCondition(uint8_t index);
 BOS_Status ActivateButtonSnippet(uint16_t location);
 
 /* BOS exported internal functions */
@@ -412,7 +413,7 @@ BOS_Status AddSnippet(uint8_t type, char *string)
 
 /*-----------------------------------------------------------*/
 
-/* Process logical conditions in a Snippet
+/* Parse Snippet conditions into the internal buffer
 */
 BOS_Status ParseSnippet(uint16_t location)
 {
@@ -501,6 +502,44 @@ BOS_Status ParseSnippet(uint16_t location)
 
 /*-----------------------------------------------------------*/
 
+/* Check if Snippet conditional is true or false
+*/
+bool CheckSnippetCondition(uint8_t index)
+{
+	uint8_t temp8;
+	
+	/* Check conditions based on Snippet tupe */	
+
+	switch (snippetConditions[0][index])
+  {
+  	case SNIP_COND_BUTTON_EVENT :				
+  		temp8 = snippetConditions[2][index]; 	
+			/* Check if button state matches Snippet button event */
+			if (snippetConditions[3][index] == button[temp8].state)
+				return true;
+			else 
+				return false;			
+			break;
+			
+		case SNIP_COND_MODULE_EVENT :	
+			break;
+			
+						
+		case SNIP_COND_MODULE_PARAM_CONST :	
+			break;
+			
+		case SNIP_COND_MODULE_PARAM_PARAM :	
+			break;
+					
+  	default:
+  		break;
+  }
+	
+	return false;
+}
+
+/*-----------------------------------------------------------*/
+
 /* Execute activated Command Snippets
 */
 BOS_Status ExecuteSnippet(void)
@@ -523,7 +562,7 @@ BOS_Status ExecuteSnippet(void)
 			switch (snippets[s]&0xFE)						// Go through actual codes
       {
       	case SNIPPET_CONDITION :
-					if (ParseSnippet(s+1) == BOS_OK)				// Process Snippet Condition at this location
+					if (CheckSnippetCondition(s+1) == BOS_OK)				// Process Snippet Condition at this location					
 					{
 						/* Condition is TRUE, execute Snippet Commands */
 						for(int c=s+1 ; c<=currentSnipSize ; c++)
