@@ -261,7 +261,7 @@ snippet_t;
 #define CLI_BAUDRATE_1								115200
 
 /* Command Snippets */
-#define MAX_SNIPPETS									20				// Max number of accepted Snippets
+#define MAX_SNIPPETS									5					// Max number of accepted Snippets
 #define SNIPPET_CONDITION							1					// Snippet state machine codes
 #define SNIPPET_COMMANDS							2					
 #define SNIPPET_ACTIVATE							3					

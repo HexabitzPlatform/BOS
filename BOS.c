@@ -219,7 +219,9 @@ static portBASE_TYPE uuidCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE idcodeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-
+static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -434,6 +436,33 @@ static const CLI_Command_Definition_t snipCommandDefinition =
 	( const int8_t * ) "snip:\r\n Display a list of stored Command Snippets to edit or delete\r\n\r\n",
 	snipCommand, /* The function to run. */
 	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : act-snip */
+static const CLI_Command_Definition_t actSnipCommandDefinition =
+{
+	( const int8_t * ) "act-snip", /* The command string to type. */
+	( const int8_t * ) "act-snip:\r\n Activate a Command Snippet\r\n\r\n",
+	actSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : pause-snip */
+static const CLI_Command_Definition_t pauseSnipCommandDefinition =
+{
+	( const int8_t * ) "pause-snip", /* The command string to type. */
+	( const int8_t * ) "pause-snip:\r\n Pause a Command Snippet\r\n\r\n",
+	pauseSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : del-snip */
+static const CLI_Command_Definition_t delSnipCommandDefinition =
+{
+	( const int8_t * ) "del-snip", /* The command string to type. */
+	( const int8_t * ) "del-snip:\r\n Delete a Command Snippet\r\n\r\n",
+	delSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
 };
 /*-----------------------------------------------------------*/
 
@@ -3263,6 +3292,9 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &idcodeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &flashsizeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &snipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &actSnipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &pauseSnipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
 	
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
@@ -6201,6 +6233,132 @@ act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet
 	}
 
 	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipAction );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was activated. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	/* Respond to the command */
+	if (result == BOS_OK) {
+		snippets[index-1].state = true;
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	}
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was paused. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	/* Respond to the command */
+	if (result == BOS_OK) {
+		snippets[index-1].state = false;
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	}
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was deleted. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	if (result == BOS_OK)
+	{
+		// Delete the Snippet
+		snippets[index-1].cond.conditionType = 0;
+		snippets[index-1].cond.mathOperator = 0;
+		memset(snippets[index-1].cond.buffer, 0, 4);
+		snippets[index-1].state = false;
+		snippets[index-1].cmdSize = 0;
+		free(snippets[index-1].cmd);
+		snippets[index-1].cmd = NULL;
+		
+		// Reorder remaining Snippets to avoid empty indices
+		for(uint8_t s=index ; s<numOfRecordedSnippets ; s++) {
+			if (snippets[s].cond.conditionType) {
+				memcpy( &snippets[s-1], &snippets[s], sizeof(snippet_t) );
+				memset( &snippets[s], 0, sizeof(snippet_t) );
+			}
+		}		
+		--numOfRecordedSnippets;
+		
+		// TODO delete from Flash
+	}
+	
+	/* Respond to the command */
+	if (result == BOS_OK)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
 
 	/* There is no more data to return after this single string, so return
 	pdFALSE. */

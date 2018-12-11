@@ -171,16 +171,19 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				
 				/* Convert input string to lower case */
 				StringToLowerCase(( char * )cInputString);
-				
-				
+								
 				/* Check for a conditional statement (if) */
 				if (!recordSnippet && !strncmp((char *)cInputString, "if ", 3)) 
 				{
 					/* Add the condition to Command Snippets (after removing "if " */
-					AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
-					/* Start recording Commands after the condition */
-					recordSnippet = SNIPPET_COMMANDS;
-					pcOutputString[0] = '\r';
+					if (AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3)) != BOS_OK) {
+						sprintf( ( char * ) pcOutputString, "\nCannot store more Command Snippets. Please delete existing ones and try again.\n\r");
+						recordSnippet = 0;
+					} else {
+						/* Start recording Commands after the condition */
+						recordSnippet = SNIPPET_COMMANDS;
+						pcOutputString[0] = '\r';
+					}
 				} 
 				/* Check for the end of a conditional command (end if) */
 				else if (recordSnippet && !strncmp((char *)cInputString, "end if", 6))
@@ -197,7 +200,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				{
 					/* Add this Command to Command Snippets */
 					if (AddSnippet(SNIPPET_COMMANDS, ( char * ) cInputString) != BOS_OK)
-						sprintf( ( char * ) pcOutputString, "\nCannot record more Command Snippets. Please delete existing ones and try again.\n\r");
+						sprintf( ( char * ) pcOutputString, "\nCannot store more Command Snippets. Please delete existing ones and try again.\n\r");
 					else
 						pcOutputString[0] = '\r';
 				}
