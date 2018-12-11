@@ -122,8 +122,9 @@ typedef struct xCOMMAND_INPUT_LIST
 CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
-/* Variables used for Erase pages under interruption */
+/* Variables exported internally */
 extern FLASH_ProcessTypeDef pFlash;
+extern uint8_t numOfRecordedSnippets;
 
 /* RTC */
 RTC_HandleTypeDef RtcHandle;
@@ -180,6 +181,8 @@ extern void Module_Init(void);
 extern void RegisterModuleCLICommands(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
 
+extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
+
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
 "\r\nBOS.trace: true, false\r\n",
 "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
@@ -215,6 +218,8 @@ static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBuf
 static portBASE_TYPE uuidCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE idcodeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -422,7 +427,15 @@ static const CLI_Command_Definition_t flashsizeCommandDefinition =
 	0 /* No parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-
+/* CLI command structure : snip */
+static const CLI_Command_Definition_t snipCommandDefinition =
+{
+	( const int8_t * ) "snip", /* The command string to type. */
+	( const int8_t * ) "snip:\r\n Display a list of stored Command Snippets to edit or delete\r\n\r\n",
+	snipCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
 
 
 /* Define long messages -------------------------------------------------------*/
@@ -3249,6 +3262,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &uuidCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &idcodeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &flashsizeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &snipCommandDefinition);
 	
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
@@ -6105,5 +6119,94 @@ static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 
 /*-----------------------------------------------------------*/
 
+static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageSnipWelcome = ( int8_t * ) "The following Command Snippets are stored in memory:\n\n\r";
+	static const int8_t *pcMessageSnipAction = ( int8_t * ) "To delete a Snippet, type: del-snip x\n\rTo activate a Snippet, type: \
+act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet number from the list\n\r";
+	static const int8_t *pcMessageSnipStart = ( int8_t * ) "[%02d] %s\n\r";
+	static const int8_t *pcMessageSnipButtonEventClicked = ( int8_t * ) "%sif b%d.clicked";
+	static const int8_t *pcMessageSnipButtonEventDblClicked = ( int8_t * ) "%sif b%d.double clicked";
+	static const int8_t *pcMessageSnipButtonEventPressed = ( int8_t * ) "%sif b%d.pressed for %d";
+	static const int8_t *pcMessageSnipButtonEventReleased = ( int8_t * ) "%sif b%d.released for %d";	
+	static const int8_t *pcMessageCmds = ( int8_t * ) "%s\n\r\t%s";
+	static const int8_t *pcMessageEnd = ( int8_t * ) "\n\rend if\n\n\r";
+	char status[2][7] = {"Paused", "Active"};
+	static int8_t commands[ cmdMAX_INPUT_SIZE ];
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Respond to the command */
+	writePxMutex(PcPort, (char*) pcMessageSnipWelcome, strlen((char*) pcMessageSnipWelcome), cmd50ms, HAL_MAX_DELAY);
+	
+	/* Go through all stored Snippets */
+	uint8_t count = 1;
+	for(uint8_t s=0 ; s<numOfRecordedSnippets ; s++)
+  {
+		if (snippets[s].cond.conditionType)
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipStart, count, status[snippets[s].state]);
+		
+		// Parse conditions
+		switch (snippets[s].cond.conditionType)
+		{
+			case SNIP_COND_BUTTON_EVENT:
+
+				switch (snippets[s].cond.buffer[1])
+        {
+        	case CLICKED:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cmd);				
+        		break;
+        	case DBL_CLICKED:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventDblClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cmd);				
+        		break;
+					case PRESSED_FOR_X1_SEC:
+					case PRESSED_FOR_X2_SEC:
+					case PRESSED_FOR_X3_SEC:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventPressed, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cond.buffer[2], snippets[s].cmd);				
+        		break;
+					case RELEASED_FOR_Y1_SEC:
+					case RELEASED_FOR_Y2_SEC:
+					case RELEASED_FOR_Y3_SEC:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventReleased, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cond.buffer[2], snippets[s].cmd);				
+        		break;						
+        	default:
+        		break;
+        }
+				
+				break;
+				
+			case SNIP_COND_MODULE_PARAM_CONST:
+				break;
+			
+			default:
+				break;
+		}
+		
+		// Parse commands
+		while (ParseSnippetCommand(snippets[s].cmd, (int8_t *) &commands) != false)
+		{
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmds, pcWriteBuffer, commands );
+			memset( &commands, 0x00, strlen((char*) commands) );
+		}
+		
+		// Finish and write the buffer
+		strcat( ( char * ) pcWriteBuffer, ( char * ) pcMessageEnd);
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		
+		++count;
+	}
+
+	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipAction );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

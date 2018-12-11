@@ -327,7 +327,7 @@ extern BOS_t BOS;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-
+extern snippet_t snippets[MAX_SNIPPETS];
 
 /* Exported internal functions ---------------------------------------------------------*/
 
