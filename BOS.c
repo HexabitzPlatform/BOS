@@ -1480,44 +1480,53 @@ uint8_t SaveROtopology(void)
 
 	HAL_FLASH_Unlock();
 	
-	/* Erase RO area */
+	// Copy the page to a temporary buffer
+	uint8_t *roPtr = malloc(PAGE_SIZE);
+	if (roPtr == NULL)
+		return BOS_MEM_FULL;
+	memcpy(roPtr, (uint8_t *)RO_START_ADDRESS, PAGE_SIZE);
+	
+	// Erase RO area 
 	FLASH_PageErase(RO_START_ADDRESS);
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if(FlashStatus != HAL_OK)
-	{
+	if(FlashStatus != HAL_OK){
 		return pFlash.ErrorCode;
-	}
-	else
-	{			
-		/* Operation is completed, disable the PER Bit */
+	} else {			
+		// Operation is completed, disable the PER Bit
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
 	}	
 	
-	/* Save number of modules and myID */
+	// Save number of modules and myID - at the start of RO buffer 
 	temp = (uint16_t) (N<<8) + myID;
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
-	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if (FlashStatus != HAL_OK)
-	{
-		return pFlash.ErrorCode;
-	}
-	else
-	{
-		/* If the program operation is completed, disable the PG Bit */
-		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-	}		
+	memcpy(roPtr, (uint8_t *)&temp, 2);
 	
-	/* Save topology */
+	// Save topology - at the start of RO buffer + 2
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
 		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
 		{
 			if (array[i-1][0]) {
-				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
+				memcpy(roPtr+add, (uint8_t *)&array[i-1][j], 2);
 				add += 2;
 			}				
 		}
 	}
+	
+	// Write the RO buffer to Flash
+	for(int p=0 ; p<PAGE_SIZE ; p+=8)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, RO_START_ADDRESS+p, (uint64_t)(roPtr+p));
+		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+		if (FlashStatus != HAL_OK) {
+			return pFlash.ErrorCode;
+		} else {
+			// If the program operation is completed, disable the PG Bit
+			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+		}	
+	}
+	
+	// Free the buffer
+	free(roPtr);
 	
 	HAL_FLASH_Lock();
 	
@@ -1539,19 +1548,41 @@ uint8_t ClearROtopology(void)
 	
 	HAL_FLASH_Unlock();
 	
-	/* Erase RO area */
+	// Copy the page to a temporary buffer
+	uint8_t *roPtr = malloc(PAGE_SIZE);
+	if (roPtr == NULL)
+		return BOS_MEM_FULL;
+	memcpy(roPtr, (uint8_t *)RO_START_ADDRESS, PAGE_SIZE);
+	
+	// Erase topology area in the buffer (first 1024 bytes)
+	memset(roPtr, 0, 1024);
+	
+	// Erase RO area 
 	FLASH_PageErase(RO_START_ADDRESS);
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if(FlashStatus != HAL_OK)
-	{
+	if(FlashStatus != HAL_OK) {
 		return pFlash.ErrorCode;
-	}
-	else
-	{			
-		/* Operation is completed, disable the PER Bit */
+	} else {			
+		// Operation is completed, disable the PER Bit 
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
 	}	
 
+	// Write the RO buffer to Flash
+	for(int p=0 ; p<PAGE_SIZE ; p+=8)
+	{
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, RO_START_ADDRESS+p, (uint64_t)(roPtr+p));
+		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+		if (FlashStatus != HAL_OK) {
+			return pFlash.ErrorCode;
+		} else {
+			// If the program operation is completed, disable the PG Bit 
+			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+		}	
+	}
+	
+	// Free the buffer
+	free(roPtr);
+	
 	HAL_FLASH_Lock();
 	
 	return result;
