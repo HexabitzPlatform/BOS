@@ -140,7 +140,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 		readPxMutex(port, &cRxedChar, sizeof( cRxedChar ), cmd50ms, HAL_MAX_DELAY);
 			
 		/* Echo the character back. */
-		writePxITMutex(port, &cRxedChar, 1, cmd50ms);
+		writePxMutex(port, &cRxedChar, 1, cmd50ms, HAL_MAX_DELAY);
 		
 		if( cRxedChar == '\r' )
 		{
@@ -149,7 +149,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			This task will be held in the Blocked state while the Tx completes,
 			if it has not already done so, so no CPU time will be wasted by
 			polling. */
-			writePxITMutex(port, pcNewLine, strlen(pcNewLine), cmd50ms);
+			writePxMutex(port, pcNewLine, strlen(pcNewLine), cmd50ms, HAL_MAX_DELAY);
 			
 			
 			/* See if the command is empty, indicating that the last command is
@@ -305,7 +305,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			
 			/* Start to transmit a line separator, just to make the output easier to read. */
 			if(!recordSnippet)
-				writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms);
+				writePxMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms, HAL_MAX_DELAY);
 		}
 		else
 		{
