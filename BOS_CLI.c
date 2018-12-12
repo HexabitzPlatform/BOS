@@ -423,7 +423,7 @@ BOS_Status ParseSnippetCondition(char *string)
 	{
 		snippets[numOfRecordedSnippets].cond.conditionType = 0;
 		snippets[numOfRecordedSnippets].cond.mathOperator = 0;			
-		memset(snippets[numOfRecordedSnippets].cond.buffer, 0, 4);			
+		memset(snippets[numOfRecordedSnippets].cond.buffer1, 0, 4);			
 	}
 	
 	// B. Parse Snippets based on their condition type 
@@ -436,19 +436,19 @@ BOS_Status ParseSnippetCondition(char *string)
 			port = string[1]-'0';
 			snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_BUTTON_EVENT;
 			snippets[numOfRecordedSnippets].cond.mathOperator = 0;			// No math operations
-			snippets[numOfRecordedSnippets].cond.buffer[0] = port;		// Store button port number	
+			snippets[numOfRecordedSnippets].cond.buffer1[0] = port;		// Store button port number	
 			
 			/* Store button event and event parameter if needed */
 			if (!strncmp((char *)&string[3], "clicked", 7))
 			{
-				snippets[numOfRecordedSnippets].cond.buffer[1] = CLICKED;	
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = CLICKED;	
 				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
 					button[port].events |= BUTTON_EVENT_CLICKED;
 				status = BOS_OK;
 			}
 			else if (!strncmp((char *)&string[3], "double clicked", 14))
 			{
-				snippets[numOfRecordedSnippets].cond.buffer[1] = DBL_CLICKED;			
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = DBL_CLICKED;			
 				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
 					button[port].events |= BUTTON_EVENT_DBL_CLICKED;
 				status = BOS_OK;					
@@ -456,22 +456,22 @@ BOS_Status ParseSnippetCondition(char *string)
 			else if (!strncmp((char *)&string[3], "pressed for ", 12))
 			{
 				if (!button[port].pressedX1Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = PRESSED_FOR_X1_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[15]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X1_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
 					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-					button[port].pressedX1Sec = snippets[numOfRecordedSnippets].cond.buffer[2]; 
+					button[port].pressedX1Sec = snippets[numOfRecordedSnippets].cond.buffer1[2]; 
 					status = BOS_OK;
 				} else if (!button[port].pressedX2Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = PRESSED_FOR_X2_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[15]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X2_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
 					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-					button[port].pressedX2Sec = snippets[numOfRecordedSnippets].cond.buffer[2];
+					button[port].pressedX2Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
 					status = BOS_OK;		
 				} else if (!button[port].pressedX3Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = PRESSED_FOR_X3_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[15]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X3_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
 					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-					button[port].pressedX3Sec = snippets[numOfRecordedSnippets].cond.buffer[2];
+					button[port].pressedX3Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
 					status = BOS_OK;	
 				} else {
 					status = BOS_ERR_BUTTON_PRESS_EVENT_FULL;
@@ -480,22 +480,22 @@ BOS_Status ParseSnippetCondition(char *string)
 			else if (!strncmp((char *)&string[3], "released for ", 13))
 			{
 				if (!button[port].releasedY1Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = RELEASED_FOR_Y1_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[16]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y1_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
 					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-					button[port].releasedY1Sec = snippets[numOfRecordedSnippets].cond.buffer[2];
+					button[port].releasedY1Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
 					status = BOS_OK;
 				} else if (!button[port].releasedY2Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = RELEASED_FOR_Y2_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[16]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y2_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
 					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-					button[port].releasedY2Sec = snippets[numOfRecordedSnippets].cond.buffer[2];
+					button[port].releasedY2Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
 					status = BOS_OK;		
 				} else if (!button[port].releasedY3Sec) {	
-					snippets[numOfRecordedSnippets].cond.buffer[1] = RELEASED_FOR_Y3_SEC;	
-					snippets[numOfRecordedSnippets].cond.buffer[2] = atoi((char *)&string[16]);
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y3_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
 					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-					button[port].releasedY3Sec = snippets[numOfRecordedSnippets].cond.buffer[2];						
+					button[port].releasedY3Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];						
 					status = BOS_OK;	
 				} else {
 					status = BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
@@ -570,9 +570,9 @@ bool CheckSnippetCondition(uint8_t index)
 	switch (snippets[index].cond.conditionType)
   {
   	case SNIP_COND_BUTTON_EVENT :				
-  		temp8 = snippets[index].cond.buffer[0]; 	// Button port
+  		temp8 = snippets[index].cond.buffer1[0]; 	// Button port
 			/* Check if button state matches Snippet button event */
-			if (snippets[index].cond.buffer[1] == button[temp8].state)
+			if (snippets[index].cond.buffer1[1] == button[temp8].state)
 				return true;
 			else 
 				return false;			
