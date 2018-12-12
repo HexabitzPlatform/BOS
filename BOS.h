@@ -144,6 +144,7 @@ typedef enum
 	BOS_ERR_WrongValue = 104,
 	BOS_ERR_MSG_DOES_NOT_FIT = 105,
 	BOS_MEM_ERASED = 250,
+	BOS_MEM_FULL = 251,
 	BOS_MULTICAST = 254,
 	BOS_BROADCAST = 255,
 	BOS_ERROR = 255
@@ -212,7 +213,8 @@ typedef struct
 {
 	uint8_t conditionType;
 	uint8_t mathOperator;
-	uint8_t buffer[4];
+	uint8_t buffer1[4];
+	uint8_t buffer2[4];
 } 
 snippetConditions_t;
 
@@ -221,7 +223,6 @@ typedef struct
 {
 	snippetConditions_t cond;
 	char *cmd;
-	uint8_t cmdSize;
 	uint8_t state;
 } 
 snippet_t;

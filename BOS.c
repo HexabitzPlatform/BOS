@@ -6187,23 +6187,23 @@ act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet
 		{
 			case SNIP_COND_BUTTON_EVENT:
 
-				switch (snippets[s].cond.buffer[1])
+				switch (snippets[s].cond.buffer1[1])
         {
         	case CLICKED:
-						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cmd);				
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cmd);				
         		break;
         	case DBL_CLICKED:
-						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventDblClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cmd);				
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventDblClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cmd);				
         		break;
 					case PRESSED_FOR_X1_SEC:
 					case PRESSED_FOR_X2_SEC:
 					case PRESSED_FOR_X3_SEC:
-						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventPressed, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cond.buffer[2], snippets[s].cmd);				
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventPressed, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cond.buffer1[2], snippets[s].cmd);				
         		break;
 					case RELEASED_FOR_Y1_SEC:
 					case RELEASED_FOR_Y2_SEC:
 					case RELEASED_FOR_Y3_SEC:
-						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventReleased, ( char * ) pcWriteBuffer, snippets[s].cond.buffer[0], snippets[s].cond.buffer[2], snippets[s].cmd);				
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventReleased, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cond.buffer1[2], snippets[s].cmd);				
         		break;						
         	default:
         		break;
@@ -6336,9 +6336,8 @@ static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		// Delete the Snippet
 		snippets[index-1].cond.conditionType = 0;
 		snippets[index-1].cond.mathOperator = 0;
-		memset(snippets[index-1].cond.buffer, 0, 4);
+		memset(snippets[index-1].cond.buffer1, 0, 4);
 		snippets[index-1].state = false;
-		snippets[index-1].cmdSize = 0;
 		free(snippets[index-1].cmd);
 		snippets[index-1].cmd = NULL;
 		
