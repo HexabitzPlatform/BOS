@@ -91,6 +91,7 @@ bool CheckSnippetCondition(uint8_t index);
 extern void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 extern uint8_t IsModuleParameter(char* name);
 extern uint8_t IsMathOperator(char* string);
+extern uint8_t SaveToRO(void);
 
 /*-----------------------------------------------------------*/
 
@@ -192,7 +193,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				{
 					/* Stop recording Commands for the conditional Command Snippet */
 					recordSnippet = 0;
-					/* Activate the Snippet via the LSB */
+					/* Activate the Snippet */
 					AddSnippet(SNIPPET_ACTIVATE, "");				
 					/* If snippet saved successfuly */
 					sprintf( ( char * ) pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
@@ -366,6 +367,7 @@ BOS_Status AddSnippet(uint8_t code, char *string)
 	{
 		case SNIPPET_ACTIVATE :
 			snippets[numOfRecordedSnippets-1].state = true;
+			SaveToRO();
 			break;
 		
 		case SNIPPET_CONDITION :
@@ -393,7 +395,7 @@ BOS_Status AddSnippet(uint8_t code, char *string)
 			}
 			// Return error if allocation fails
 			if (snippets[numOfRecordedSnippets-1].cmd == NULL) {
-				// TODO delete snippet condition
+				memset(&snippets[numOfRecordedSnippets-1], 0, sizeof(snippet_t) );
 				return BOS_ERR_SNIP_MEM_FULL;
 			}
 			
@@ -554,7 +556,7 @@ BOS_Status ParseSnippetCondition(char *string)
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
 					// Extract the constant
 					float constant = atof(thirdPart);
-					memcpy(snippets[numOfRecordedSnippets].cond.buffer2, &constant, sizeof(float));
+					memcpy(snippets[numOfRecordedSnippets].cond.buffer2, &constant, sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
 				}				
 				// Extract the math operator
 				snippets[numOfRecordedSnippets].cond.mathOperator = IsMathOperator(secondPart);

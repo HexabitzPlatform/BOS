@@ -138,10 +138,11 @@ void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
+uint8_t SaveToRO(void);
 #ifndef _N
-uint8_t SaveROtopology(void);
 uint8_t ClearROtopology(void);
 #endif
+uint8_t LoadROsnippets(void);
 uint8_t LoadROtopology(void);
 BOS_Status SaveEEportsDir(void);
 BOS_Status ClearEEportsDir(void);
@@ -749,9 +750,7 @@ void PxMessagingTask(void * argument)
 								break;
 								
 							case CODE_exp_eeprom :
-							#ifndef _N
-								SaveROtopology();
-							#endif
+								SaveToRO();
 								SaveEEportsDir();
 								indMode = IND_PING;
 								break;
@@ -1466,126 +1465,166 @@ void LoadEEvars(void)
 	
 	/* Load buttons */
 	LoadEEbuttons();	
+	
+	// Load Command Snippets
+	LoadROsnippets();
 }
 
 /*-----------------------------------------------------------*/
 #ifndef _N
-/* --- Save array topology in Flash RO --- 
+/* --- Save array topology and Command Snippets in Flash RO --- 
 */
-uint8_t SaveROtopology(void)
+uint8_t SaveToRO(void)
 {
 	BOS_Status result = BOS_OK; 
 	HAL_StatusTypeDef FlashStatus = HAL_OK;
 	uint16_t add = 2, temp = 0;
-
-	HAL_FLASH_Unlock();
-	
-	// Copy the page to a temporary buffer
-	uint8_t *roPtr = malloc(PAGE_SIZE);
-	if (roPtr == NULL)
-		return BOS_MEM_FULL;
-	memcpy(roPtr, (uint8_t *)RO_START_ADDRESS, PAGE_SIZE);
-	
-	// Erase RO area 
-	FLASH_PageErase(RO_START_ADDRESS);
-	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if(FlashStatus != HAL_OK){
-		return pFlash.ErrorCode;
-	} else {			
-		// Operation is completed, disable the PER Bit
-		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
-	}	
-	
-	// Save number of modules and myID - at the start of RO buffer 
-	temp = (uint16_t) (N<<8) + myID;
-	memcpy(roPtr, (uint8_t *)&temp, 2);
-	
-	// Save topology - at the start of RO buffer + 2
-	for(uint8_t i=1 ; i<=N ; i++)
-	{
-		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
-		{
-			if (array[i-1][0]) {
-				memcpy(roPtr+add, (uint8_t *)&array[i-1][j], 2);
-				add += 2;
-			}				
-		}
-	}
-	
-	// Write the RO buffer to Flash
-	for(int p=0 ; p<PAGE_SIZE ; p+=8)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, RO_START_ADDRESS+p, (uint64_t)(roPtr+p));
-		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-		if (FlashStatus != HAL_OK) {
-			return pFlash.ErrorCode;
-		} else {
-			// If the program operation is completed, disable the PG Bit
-			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-		}	
-	}
-	
-	// Free the buffer
-	free(roPtr);
-	
-	HAL_FLASH_Lock();
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Clear array topology in Flash RO --- 
-*/
-uint8_t ClearROtopology(void)
-{
-	BOS_Status result = BOS_OK; 
-	HAL_StatusTypeDef FlashStatus = HAL_OK;
-
-	// Clear the array 
-	memset(array, 0, sizeof(array));
-	N = 1; myID = 0;
+	uint8_t snipBuffer[sizeof(snippet_t)+1] = {0};
 	
 	HAL_FLASH_Unlock();
 	
-	// Copy the page to a temporary buffer
-	uint8_t *roPtr = malloc(PAGE_SIZE);
-	if (roPtr == NULL)
-		return BOS_MEM_FULL;
-	memcpy(roPtr, (uint8_t *)RO_START_ADDRESS, PAGE_SIZE);
-	
-	// Erase topology area in the buffer (first 1024 bytes)
-	memset(roPtr, 0, 1024);
-	
-	// Erase RO area 
+	/* Erase RO area */
 	FLASH_PageErase(RO_START_ADDRESS);
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
 	if(FlashStatus != HAL_OK) {
 		return pFlash.ErrorCode;
 	} else {			
-		// Operation is completed, disable the PER Bit 
+		/* Operation is completed, disable the PER Bit */
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
 	}	
-
-	// Write the RO buffer to Flash
-	for(int p=0 ; p<PAGE_SIZE ; p+=8)
+	
+	/* Save number of modules and myID */
+	temp = (uint16_t) (N<<8) + myID;
+	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
+	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+	if (FlashStatus != HAL_OK) {
+		return pFlash.ErrorCode;
+	} else {
+		/* If the program operation is completed, disable the PG Bit */
+		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+	}		
+	
+	/* Save topology */
+	for(uint8_t i=1 ; i<=N ; i++)
 	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, RO_START_ADDRESS+p, (uint64_t)(roPtr+p));
-		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-		if (FlashStatus != HAL_OK) {
-			return pFlash.ErrorCode;
-		} else {
-			// If the program operation is completed, disable the PG Bit 
-			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-		}	
+		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		{
+			if (array[i-1][0]) {
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
+				add += 2;
+				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+				if (FlashStatus != HAL_OK) {
+					return pFlash.ErrorCode;
+				} else {
+					/* If the program operation is completed, disable the PG Bit */
+					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+				}		
+			}				
+		}
 	}
 	
-	// Free the buffer
-	free(roPtr);
+	// Save Command Snippets
+	int currentAdd = RO_MID_ADDRESS;
+	for(uint8_t s=0 ; s<numOfRecordedSnippets ; s++) 
+	{
+		if (snippets[s].cond.conditionType) 
+		{
+			snipBuffer[0] = 0xFE;		// A marker to separate Snippets
+			memcpy( (uint8_t *)&snipBuffer[1], (uint8_t *)&snippets[s], sizeof(snippet_t));
+			// Copy the snippet struct buffer (20 x numOfRecordedSnippets). Note this is assuming sizeof(snippet_t) is even.
+			for(uint8_t j=0 ; j<(sizeof(snippet_t)/2) ; j++)
+			{		
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAdd, *(uint16_t *)&snipBuffer[j*2]);
+				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+				if (FlashStatus != HAL_OK) {
+					return pFlash.ErrorCode;
+				} else {
+					/* If the program operation is completed, disable the PG Bit */
+					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					currentAdd += 2;
+				}				
+			}			
+			// Copy the snippet commands buffer. Always an even number. Note the string termination char might be skipped
+			for(uint8_t j=0 ; j<((strlen(snippets[s].cmd)+1)/2) ; j++)
+			{
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAdd, *(uint16_t *)(snippets[s].cmd+j*2));
+				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+				if (FlashStatus != HAL_OK) {
+					return pFlash.ErrorCode;
+				} else {
+					/* If the program operation is completed, disable the PG Bit */
+					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					currentAdd += 2;
+				}				
+			}				
+		}	
+	}
 	
 	HAL_FLASH_Lock();
 	
 	return result;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Clear array topology in SRAM and Flash RO --- 
+*/
+uint8_t ClearROtopology(void)
+{
+	// Clear the array 
+	memset(array, 0, sizeof(array));
+	N = 1; myID = 0;
+	
+	return SaveToRO();
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Load Command Snippets stored in Flash RO --- 
+*/
+uint8_t LoadROsnippets(void)
+{
+	uint8_t i = 0;
+	int currentAdd = RO_MID_ADDRESS;
+	char *snipBuffer = (char *) malloc(cmdMAX_INPUT_SIZE);
+	if (snipBuffer == NULL)	return BOS_MEM_FULL;
+	
+	// Exit if no recorded Snippets
+	if (*(uint8_t *)currentAdd != 0xFE)	return BOS_ERROR;
+	
+	/* Load Snippets */
+	for(uint8_t s=0 ; s<MAX_SNIPPETS ; s++)
+	{
+		// Load conditions starting at RO_MID_ADDRESS
+		for(i=0 ; i<sizeof(snippet_t) ; i++)
+			snipBuffer[i] = (*(__IO uint8_t*)(currentAdd++)); 
+		memcpy( (uint8_t *)&snippets[s], (uint8_t *)&snipBuffer[1], sizeof(snippet_t));
+		memset(snipBuffer, 0, sizeof(snippet_t)); i = 0;
+		// Load commands until you get next 0xFE
+		while (*(uint8_t *)currentAdd != 0xFE && *(uint8_t *)currentAdd != 0xFF && i<cmdMAX_INPUT_SIZE)
+		{
+			snipBuffer[i] = *(uint8_t *)currentAdd;
+			++currentAdd; ++i;
+		}
+		if (snipBuffer[i-1] != 0)		++i;	// String termination char was not recorded, then add one
+		// Allocate buffer for the Snippet commands
+		snippets[s].cmd = (char *) malloc(i);
+		if (snippets[s].cmd == NULL) {
+			memset(&snippets[s], 0, sizeof(snippet_t) );
+			free(snipBuffer);			
+			return BOS_ERR_SNIP_MEM_FULL;
+		} else {	
+			// Copy the command
+			memcpy(snippets[s].cmd, snipBuffer, i);
+			++numOfRecordedSnippets;		// Record a successful Snippet
+			memset(snipBuffer, 0, i);		
+		}
+		// Exit if no more Snippets
+		if (*(uint8_t *)currentAdd != 0xFE)	break;
+	}	
+	
+	free(snipBuffer);
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -3834,7 +3873,7 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{
 		/* Save data in the master */
-		SaveROtopology();
+		SaveToRO();
 		SaveEEportsDir();
 		osDelay(100);
 		/* Ask other modules to save their data too */
@@ -6334,6 +6373,7 @@ static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	/* Respond to the command */
 	if (result == BOS_OK) {
 		snippets[index-1].state = true;
+		SaveToRO();
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
 	}
 	else
@@ -6369,6 +6409,7 @@ static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 	/* Respond to the command */
 	if (result == BOS_OK) {
 		snippets[index-1].state = false;
+		SaveToRO();
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
 	}
 	else
@@ -6420,7 +6461,8 @@ static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		}		
 		--numOfRecordedSnippets;
 		
-		// TODO delete from Flash
+		// Write updated list to RO
+		SaveToRO();
 	}
 	
 	/* Respond to the command */
