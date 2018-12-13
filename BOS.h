@@ -38,6 +38,14 @@ enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, 
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
 
+// Math Operators
+#define MATH_EQUAL						1
+#define MATH_GREATER					2
+#define MATH_SMALLER					3
+#define MATH_GREATER_EQUAL		4
+#define MATH_SMALLER_EQUAL		5
+#define MATH_NOT_EQUAL				6
+#define NUM_MATH_OPERATORS		6
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -235,6 +243,7 @@ typedef struct
 	char *paramName;
 } 
 module_param_t;
+extern module_param_t modParam[];
 
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01

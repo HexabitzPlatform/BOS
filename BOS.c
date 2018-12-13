@@ -3151,6 +3151,45 @@ void SetupPortForRemoteBootloaderUpdate(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
+/* --- Check if this string is a local module parameter or event. Returns parameter index+1
+*/
+uint8_t IsModuleParameter(char* name)
+{
+	for(uint8_t i=0; i<NUM_MODULE_PARAMS ;i++)
+  {
+		if (!strcmp(name, (const char *)(modParam[i].paramName)))
+			return i+1;
+  }
+	return 0;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Check if this string is a math operator and return its enum
+*/
+uint8_t IsMathOperator(char* string)
+{
+	for(uint8_t i=0; i<NUM_MATH_OPERATORS ;i++)
+  {
+		if (!strcmp(string, "="))
+			return MATH_EQUAL;
+		else if (!strcmp(string, ">"))
+			return MATH_GREATER;
+		else if (!strcmp(string, "<"))
+			return MATH_SMALLER;
+		else if (!strcmp(string, ">="))
+			return MATH_GREATER_EQUAL;
+		else if (!strcmp(string, "<="))
+			return MATH_SMALLER_EQUAL;
+		else if (!strcmp(string, "!="))
+			return MATH_NOT_EQUAL;
+  }
+	return 0;
+}
+
+
+/*-----------------------------------------------------------*/
+
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follow : 

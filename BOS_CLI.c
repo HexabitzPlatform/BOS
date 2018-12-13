@@ -89,6 +89,8 @@ bool CheckSnippetCondition(uint8_t index);
 
 /* BOS exported internal functions */
 extern void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
+extern uint8_t IsModuleParameter(char* name);
+extern uint8_t IsMathOperator(char* string);
 
 /*-----------------------------------------------------------*/
 
@@ -410,6 +412,7 @@ BOS_Status AddSnippet(uint8_t code, char *string)
 */
 BOS_Status ParseSnippetCondition(char *string)
 {
+	static int8_t cInputString[ cmdMAX_INPUT_SIZE ];
 	BOS_Status status = BOS_OK;
 	uint8_t port = 0;
 	
@@ -428,7 +431,7 @@ BOS_Status ParseSnippetCondition(char *string)
 	
 	// B. Parse Snippets based on their condition type 
 	
-	// - 1: Button event: condition starts with "bx." 
+	// #1: Button event: condition starts with "bx." 
 	if(string[0] == 'b' && string[2] == '.')
 	{
 		if(string[1] >= '0' && string[1] <= (NumOfPorts+'0'))		// Valid port number
@@ -505,15 +508,67 @@ BOS_Status ParseSnippetCondition(char *string)
 			++numOfRecordedSnippets;		// Record a successful Snippet			
 		}
 	}
-	// Module-related condition
+	// Module-related conditions (local only for now)
 	else
 	{
-		// - 2: Module event
+		strcpy( (char *)cInputString, string);
+
+		// This is probably a three part condition, extract them out
+		char *firstPart, *secondPart, *thirdPart; uint8_t modPar1 = 0, modPar2 = 0;
+		firstPart = strtok ( (char *)cInputString, " ");
+		secondPart = strtok ( NULL, " ");
+		thirdPart = strtok ( NULL, " ");
 		
-		// - 3: Module parameter and constant
-		
-		// - 4: Module parameter and parameter
-		
+		// Check if first part is module parameter or event
+		if (firstPart == NULL) 
+		{
+			return BOS_ERR_WrongParam;
+		} 
+		else 
+		{
+			modPar1 = IsModuleParameter(firstPart);
+			// Found a module parameter and no more strings
+			if (modPar1 && secondPart == NULL && thirdPart == NULL) 
+			{
+			// #2: Module event	
+				snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_EVENT;			
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+				
+				++numOfRecordedSnippets;		// Record a successful Snippet	
+				return BOS_OK;
+			} 
+			else if (secondPart != NULL && thirdPart != NULL) 
+			{
+				modPar2 = IsModuleParameter(thirdPart);
+				if (modPar2) 		// Found a module parameter
+				{
+					// #4: Module parameter and parameter
+					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_PARAM;
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+					snippets[numOfRecordedSnippets].cond.buffer2[1] = modPar2;		// Leaving first buffer byte for remote module ID				
+				} 
+				else 
+				{
+					// #3: Module parameter and constant	
+					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_CONST;
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+					// Extract the constant
+					float constant = atof(thirdPart);
+					memcpy(snippets[numOfRecordedSnippets].cond.buffer2, &constant, sizeof(float));
+				}				
+				// Extract the math operator
+				snippets[numOfRecordedSnippets].cond.mathOperator = IsMathOperator(secondPart);
+				if (!snippets[numOfRecordedSnippets].cond.mathOperator)
+					return BOS_ERR_WrongParam;
+				
+				++numOfRecordedSnippets;		// Record a successful Snippet
+				return BOS_OK;				
+			} 
+			else 
+			{
+				return BOS_ERR_WrongParam;
+			}				
+		}
 	}
 	
 	// Note: after exiting this function, numOfRecordedSnippets refers to the next empty Snippet. Substract by one to reference the last Snippet.
@@ -564,6 +619,7 @@ bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer)
 bool CheckSnippetCondition(uint8_t index)
 {
 	uint8_t temp8;
+	float flt1, flt2;
 	
 	/* Check conditions based on Snippet tupe */	
 
@@ -582,6 +638,22 @@ bool CheckSnippetCondition(uint8_t index)
 			
 						
 		case SNIP_COND_MODULE_PARAM_CONST :	
+			// Get the constant and module parameter values. 
+			flt1 = *(float *)modParam[snippets[index].cond.buffer1[1]-1].paramPtr;
+			memcpy( (uint8_t *)&flt2, &snippets[index].cond.buffer2, sizeof(float));
+			//flt2 = *(float *)&snippets[index].cond.buffer2;
+			// Compare them mathematically
+			switch (snippets[index].cond.mathOperator)
+      {
+      	case MATH_EQUAL:					if (flt1 == flt2)	return true;	break;
+      	case MATH_GREATER:				if (flt1 > flt2)	return true;	break;
+		    case MATH_SMALLER:				if (flt1 < flt2)	return true;	break;
+			  case MATH_GREATER_EQUAL:	if (flt1 >= flt2)	return true;	break;
+			  case MATH_SMALLER_EQUAL:	if (flt1 <= flt2)	return true;	break;
+				case MATH_NOT_EQUAL:			if (flt1 != flt2)	return true;	break;
+      	default:
+      		break;
+      }
 			break;
 			
 		case SNIP_COND_MODULE_PARAM_PARAM :	
