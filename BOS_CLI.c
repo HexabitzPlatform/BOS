@@ -636,17 +636,16 @@ bool CheckSnippetCondition(uint8_t index)
 		case SNIP_COND_MODULE_PARAM_CONST :	
 			// Get the constant and module parameter values. 
 			flt1 = *(float *)modParam[snippets[index].cond.buffer1[1]-1].paramPtr;
-			memcpy( (uint8_t *)&flt2, &snippets[index].cond.buffer2, sizeof(float));
-			//flt2 = *(float *)&snippets[index].cond.buffer2;
+			memcpy( (uint8_t *)&flt2, &snippets[index].cond.buffer2, sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
 			// Compare them mathematically
 			switch (snippets[index].cond.mathOperator)
       {
       	case MATH_EQUAL:					if (flt1 == flt2)	return true;	break;
       	case MATH_GREATER:				if (flt1 > flt2)	return true;	break;
-		    case MATH_SMALLER:				if (flt1 < flt2)	return true;	break;
+		    case MATH_SMALLER:				if (flt1 < flt2 && flt1 != 0.0f)	return true;	break;
 			  case MATH_GREATER_EQUAL:	if (flt1 >= flt2)	return true;	break;
-			  case MATH_SMALLER_EQUAL:	if (flt1 <= flt2)	return true;	break;
-				case MATH_NOT_EQUAL:			if (flt1 != flt2)	return true;	break;
+			  case MATH_SMALLER_EQUAL:	if (flt1 <= flt2 && flt1 != 0.0f)	return true;	break;
+				case MATH_NOT_EQUAL:			if (flt1 != flt2 && flt1 != 0.0f)	return true;	break;
       	default:
       		break;
       }
