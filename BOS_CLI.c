@@ -448,14 +448,14 @@ BOS_Status ParseSnippetCondition(char *string)
 			{
 				snippets[numOfRecordedSnippets].cond.buffer1[1] = CLICKED;	
 				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
-					button[port].events |= BUTTON_EVENT_CLICKED;
+					SetButtonEvents(port, 1, 0, 0, 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
 				status = BOS_OK;
 			}
 			else if (!strncmp((char *)&string[3], "double clicked", 14))
 			{
 				snippets[numOfRecordedSnippets].cond.buffer1[1] = DBL_CLICKED;			
 				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-					button[port].events |= BUTTON_EVENT_DBL_CLICKED;
+					SetButtonEvents(port, 0, 1, 0, 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
 				status = BOS_OK;					
 			}
 			else if (!strncmp((char *)&string[3], "pressed for ", 12))
@@ -463,20 +463,17 @@ BOS_Status ParseSnippetCondition(char *string)
 				if (!button[port].pressedX1Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X1_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-					button[port].pressedX1Sec = snippets[numOfRecordedSnippets].cond.buffer1[2]; 
+					SetButtonEvents(port, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
 					status = BOS_OK;
 				} else if (!button[port].pressedX2Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X2_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-					button[port].pressedX2Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
+					SetButtonEvents(port, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
 					status = BOS_OK;		
 				} else if (!button[port].pressedX3Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X3_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-					button[port].pressedX3Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
+					SetButtonEvents(port, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, BUTTON_EVENT_MODE_OR);
 					status = BOS_OK;	
 				} else {
 					status = BOS_ERR_BUTTON_PRESS_EVENT_FULL;
@@ -487,20 +484,17 @@ BOS_Status ParseSnippetCondition(char *string)
 				if (!button[port].releasedY1Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y1_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-					button[port].releasedY1Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
+					SetButtonEvents(port, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, BUTTON_EVENT_MODE_OR);
 					status = BOS_OK;
 				} else if (!button[port].releasedY2Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y2_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-					button[port].releasedY2Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];
+					SetButtonEvents(port, 0, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, BUTTON_EVENT_MODE_OR);
 					status = BOS_OK;		
 				} else if (!button[port].releasedY3Sec) {	
 					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y3_SEC;	
 					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-					button[port].releasedY3Sec = snippets[numOfRecordedSnippets].cond.buffer1[2];						
+					SetButtonEvents(port, 0, 0, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], BUTTON_EVENT_MODE_OR);					
 					status = BOS_OK;	
 				} else {
 					status = BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
@@ -694,7 +688,7 @@ BOS_Status ExecuteSnippet(void)
 			{				
 				BOS.response = BOS_RESPONSE_MSG;		// Disable CLI response
 				// Loop over all recorded Snippet commands
-				while (ParseSnippetCommand(snippets[numOfRecordedSnippets-1].cmd, (int8_t *) &cInputString) != false)
+				while (ParseSnippetCommand(snippets[s].cmd, (int8_t *) &cInputString) != false)
 				{			
 					/* Pass the received command to the command interpreter.  The
 					command interpreter is called repeatedly until it returns

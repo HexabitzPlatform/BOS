@@ -1494,32 +1494,35 @@ uint8_t SaveToRO(void)
 	}	
 	
 	/* Save number of modules and myID */
-	temp = (uint16_t) (N<<8) + myID;
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
-	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if (FlashStatus != HAL_OK) {
-		return pFlash.ErrorCode;
-	} else {
-		/* If the program operation is completed, disable the PG Bit */
-		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-	}		
+	if (myID)
+	{
+		temp = (uint16_t) (N<<8) + myID;
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
+		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+		if (FlashStatus != HAL_OK) {
+			return pFlash.ErrorCode;
+		} else {
+			/* If the program operation is completed, disable the PG Bit */
+			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+		}			
 	
 	/* Save topology */
-	for(uint8_t i=1 ; i<=N ; i++)
-	{
-		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		for(uint8_t i=1 ; i<=N ; i++)
 		{
-			if (array[i-1][0]) {
-				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
-				add += 2;
-				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-				if (FlashStatus != HAL_OK) {
-					return pFlash.ErrorCode;
-				} else {
-					/* If the program operation is completed, disable the PG Bit */
-					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-				}		
-			}				
+			for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+			{
+				if (array[i-1][0]) {
+					HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
+					add += 2;
+					FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+					if (FlashStatus != HAL_OK) {
+						return pFlash.ErrorCode;
+					} else {
+						/* If the program operation is completed, disable the PG Bit */
+						CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					}		
+				}				
+			}
 		}
 	}
 	
@@ -2090,7 +2093,7 @@ BOS_Status LoadEEbuttons(void)
 				/* Setup the button and its events */
 				AddPortButton(button[i+1].type, i+1);
 				SetButtonEvents(i+1, (button[i+1].events & BUTTON_EVENT_CLICKED), ((button[i+1].events & BUTTON_EVENT_DBL_CLICKED)>>1), button[i+1].pressedX1Sec,\
-												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY2Sec, button[i+1].releasedY3Sec);
+												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY2Sec, button[i+1].releasedY3Sec, BUTTON_EVENT_MODE_CLEAR);
 			}
 		}
 	}
@@ -4816,9 +4819,10 @@ BOS_Status RemovePortButton(uint8_t port)
 					dbl_clicked: Double click event (1: Enable, 0: Disable)
 					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds. Use 0 to disable the event. 
 					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds. Use 0 to disable the event. 
+					mode: BUTTON_EVENT_MODE_CLEAR to clear events marked with 0, BUTTON_EVENT_MODE_OR to OR events marked with 1 with existing events.
 */
 BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode)
 {
 	BOS_Status result = BOS_OK;	
 	uint16_t res, temp16; uint8_t temp8;
@@ -4829,38 +4833,46 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
 	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
 	
-	if (clicked)				
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && clicked)) {				
 		button[port].events |= BUTTON_EVENT_CLICKED;
-	else								
-		button[port].events &= ~BUTTON_EVENT_CLICKED;
-	if (dbl_clicked)		
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !clicked) {
+		button[port].events &= ~BUTTON_EVENT_CLICKED;		
+	}
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && dbl_clicked)) {		
 		button[port].events |= BUTTON_EVENT_DBL_CLICKED;
-	else								
-		button[port].events &= ~BUTTON_EVENT_DBL_CLICKED;
-	if (pressed_x1sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !dbl_clicked) {
+		button[port].events &= ~BUTTON_EVENT_DBL_CLICKED;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x1sec)) {			
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-	if (pressed_x2sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x1sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X1_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x2sec)) {		
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-	if (pressed_x3sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x2sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X2_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x3sec)) {		
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-	if (released_y1sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x3sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X3_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y1sec)) {		
 		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-	if (released_y2sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y1sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y1_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y2sec)) {		
 		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-	if (released_y3sec)	
-		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y2sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y2_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y3sec)) {		
+		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y3sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y3_SEC;		
+	}
 	
 	/* Add to EEPROM */
 	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);

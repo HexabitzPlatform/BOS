@@ -254,8 +254,8 @@ extern module_param_t modParam[];
 #define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
 #define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
 #define	BUTTON_EVENT_RELEASED_FOR_Y3_SEC			0x80
-
-
+#define	BUTTON_EVENT_MODE_CLEAR								0
+#define	BUTTON_EVENT_MODE_OR									1
 
 /* BOS Parameters and constants */ 
 #define P_LAST 												NumOfPorts
@@ -435,7 +435,7 @@ extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, 
 extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
