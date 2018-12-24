@@ -152,6 +152,8 @@ BOS_Status LoadEEalias(void);
 BOS_Status SaveEEgroup(void);
 BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
+BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3);
 BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
 BOS_Status LoadEEbuttons(void);
@@ -835,11 +837,12 @@ void PxMessagingTask(void * argument)
 								temp = cMessage[port-1][15];
 								if (messageLength[port-1] == 19)	temp = cMessage[port-1][17];							
 								if (messageLength[port-1] == 21)	temp = cMessage[port-1][19];
+								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
+								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
+									
 								/* Activate the stream */
 								if (temp == false)
 								{
-									count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
-									timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
 									SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
 									if (messageLength[port-1] == 19)
 										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
@@ -849,16 +852,13 @@ void PxMessagingTask(void * argument)
 								/* Save stream paramters in EEPROM */
 								else
 								{
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
-									if (messageLength[port-1] == 19)
-										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
-									if (messageLength[port-1] == 21)
-										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][17] << 8 ) + cMessage[port-1][18]);			/* src3 | dst3 */
+									if (messageLength[port-1] == 17)				/* src1 | dst1 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
+									else if (messageLength[port-1] == 19)		/* src1 | dst1, src2 | dst2 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
+									else if (messageLength[port-1] == 21)		/* src1 | dst1, src2 | dst2, src3 | dst3 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], cMessage[port-1][17], cMessage[port-1][18]);
+									
 									/* Reset MCU */
 									NVIC_SystemReset();
 								}
@@ -1958,6 +1958,27 @@ BOS_Status LoadEEstreams(void)
 	
 	/* Activate the DMA streams */
 	SetupDMAStreamsFromMessage(direction, count, timeout, src1, dst1, src2, dst2, src3, dst3);
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- Save DMA streams to emulated EEPROM. --- 
+*/
+BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3)
+{
+	BOS_Status result = BOS_OK; 
+	
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], direction);			/* Direction */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
 	
 	return result;
 }
@@ -4639,7 +4660,10 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
 	}
 	
-	// Todo: store my own streams to EEPROM
+	// Store my own streams to EEPROM
+	if (stored) {
+		SaveEEstreams(cMessage[port-1][12], count, timeout, srcP, port, 0, 0, 0, 0);
+	}
 	
 	/* Start the timeout timer */
 	if (xTimerStream != NULL)
@@ -5099,6 +5123,8 @@ void GetTimeDate(void)
 	BOS.date.year = sdatestructureget.Year + 2000;
 }
 
+/*-----------------------------------------------------------*/
+
 /* --- Make a data string with format weekday / month / date / year 
 */
 char *GetDateString(void)
@@ -5110,6 +5136,8 @@ char *GetDateString(void)
   return buffer;
 }
 
+/*-----------------------------------------------------------*/
+
 /* --- Make a time string with format hour / minute / second
 */
 char *GetTimeString(void)
@@ -5120,6 +5148,21 @@ char *GetTimeString(void)
   sprintf(buffer, formatTimeStr, BOS.time.hours, BOS.time.minutes, BOS.time.seconds);
   return buffer;
 }
+
+/*-----------------------------------------------------------*/
+
+/* --- Link two array/communication ports together
+*/
+BOS_Status link(uint8_t port1, uint8_t port2)
+{
+	// Unlink these ports from any other DMA streams
+	
+	// Link the ports together
+	return StartScastDMAStream(port1, myID, port2, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, true);
+	
+}
+
+/*-----------------------------------------------------------*/
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|

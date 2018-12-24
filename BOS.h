@@ -446,7 +446,7 @@ extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, 
 extern void GetTimeDate(void);
 extern char *GetDateString(void);
 extern char *GetTimeString(void);
-
+extern BOS_Status link(uint8_t port1, uint8_t port2);
 
 #endif /* BOS_H */
 
