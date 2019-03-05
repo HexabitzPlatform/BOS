@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.4 - Copyright (C) 2017 Hexabitz
+    BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -18,7 +18,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
-#define	_firmPatch			4
+#define	_firmPatch			5
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -43,6 +43,14 @@ enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, 
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
 
+// Math Operators
+#define MATH_EQUAL						1
+#define MATH_GREATER					2
+#define MATH_SMALLER					3
+#define MATH_GREATER_EQUAL		4
+#define MATH_SMALLER_EQUAL		5
+#define MATH_NOT_EQUAL				6
+#define NUM_MATH_OPERATORS		6
 /* BOS_Status Type Definition */  
 typedef enum 
 {
@@ -75,6 +83,7 @@ typedef enum
 	BOS_ERR_WrongValue = 104,
 	BOS_ERR_MSG_DOES_NOT_FIT = 105,
 	BOS_MEM_ERASED = 250,
+	BOS_MEM_FULL = 251,
 	BOS_MULTICAST = 254,
 	BOS_BROADCAST = 255,
 	BOS_ERROR = 255
@@ -138,6 +147,34 @@ typedef struct
 } 
 button_t;
 
+/* Snippet Conditionals Struct Type Definition */  
+typedef struct
+{
+	uint8_t conditionType;
+	uint8_t mathOperator;
+	uint8_t buffer1[4];
+	uint8_t buffer2[4];
+} 
+snippetConditions_t;
+
+/* Snippet Struct Type Definition */  
+typedef struct
+{
+	snippetConditions_t cond;
+	char *cmd;
+	uint8_t state;
+} 
+snippet_t;
+
+/* Module Parameter Struct Type Definition */  
+typedef struct
+{
+	void *paramPtr;
+	varFormat_t paramFormat;
+	char *paramName;
+} 
+module_param_t;
+extern module_param_t modParam[];
 
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
@@ -148,8 +185,8 @@ button_t;
 #define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
 #define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
 #define	BUTTON_EVENT_RELEASED_FOR_Y3_SEC			0x80
-
-
+#define	BUTTON_EVENT_MODE_CLEAR								0
+#define	BUTTON_EVENT_MODE_OR									1
 
 /* BOS Parameters and constants */ 
 #define P_LAST 												NumOfPorts
@@ -178,10 +215,14 @@ button_t;
 #define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 
 /* Command Snippets */
-#define SNIPPETS_BUF_SIZE							1000
-#define SNIPPET_CONDITION							0x80			// Conditional statement - condition delimiter
-#define SNIPPET_CONDITION_CMDS				0x82			// Conditional statement - command delimiter
-#define SNIPPET_END										0xF0			// End of Snippet delimiter
+#define MAX_SNIPPETS									5					// Max number of accepted Snippets
+#define SNIPPET_CONDITION							1					// Snippet state machine codes
+#define SNIPPET_COMMANDS							2					
+#define SNIPPET_ACTIVATE							3					
+#define SNIP_COND_BUTTON_EVENT				1					// Snippet command types
+#define SNIP_COND_MODULE_EVENT				2
+#define SNIP_COND_MODULE_PARAM_CONST	3
+#define SNIP_COND_MODULE_PARAM_PARAM	4
 
 
 /* Delay macros */
@@ -320,7 +361,7 @@ extern BOS_t BOS;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-extern uint16_t stackWaterMark;
+extern snippet_t snippets[MAX_SNIPPETS];
 
 /* Exported internal functions ---------------------------------------------------------*/
 
@@ -347,17 +388,20 @@ extern void SystemClock_Config(void);
 #define	CODE_explore_adj									12
 #define	CODE_explore_adj_response					13
 #define	CODE_port_dir											14
-#define	CODE_module_id										15
-#define	CODE_topology											16
-#define	CODE_broadcast_plan								17
-#define	CODE_read_port_dir								18
-#define	CODE_read_port_dir_response				19
-#define	CODE_exp_eeprom	 									20
-#define	CODE_def_array	 									21
-#define	CODE_CLI_command 									22
-#define	CODE_CLI_response  								23
-#define	CODE_DMA_channel  								24
-#define	CODE_DMA_scast_stream  						25
+#define	CODE_baudrate											15
+#define	CODE_module_id										16
+#define	CODE_topology											17
+#define	CODE_broadcast_plan								18
+#define	CODE_read_port_dir								19
+#define	CODE_read_port_dir_response				20
+#define	CODE_exp_eeprom	 									21
+#define	CODE_def_array	 									22
+#define	CODE_CLI_command 									23
+#define	CODE_CLI_response  								24
+#define	CODE_update  											25
+#define	CODE_update_via_port  						26
+#define	CODE_DMA_channel  								27
+#define	CODE_DMA_scast_stream  						28
 
 #define	CODE_read_remote  								30
 #define	CODE_read_remote_response  				31
@@ -406,7 +450,7 @@ extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, 
 extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
 extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
@@ -417,7 +461,7 @@ extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, 
 extern void GetTimeDate(void);
 extern char *GetDateString(void);
 extern char *GetTimeString(void);
-
+extern BOS_Status link(uint8_t port1, uint8_t port2);
 
 #endif /* BOS_H */
 

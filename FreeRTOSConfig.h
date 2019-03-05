@@ -68,7 +68,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.4 - Copyright (C) 2017 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
     All rights reserved
 */
 
@@ -159,7 +159,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 interpreter.  Set this value to 1 to save RAM if FreeRTOS+CLI does not supply
 the output buffer.  See the FreeRTOS+CLI documentation for more information:
 http://www.FreeRTOS.org/FreeRTOS-Plus/FreeRTOS_Plus_CLI/ */
-#define configCOMMAND_INT_MAX_OUTPUT_SIZE			512
+#define configCOMMAND_INT_MAX_OUTPUT_SIZE			612
 
 /* Hook function related definitions. */
 #define configUSE_MALLOC_FAILED_HOOK	1

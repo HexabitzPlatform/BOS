@@ -52,26 +52,22 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.4 - Copyright (C) 2017 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
     All rights reserved
 */
 
 #include "BOS.h"
 
-
-
-
-
 /* Internal Variables --------------------------------------------------------*/
+snippet_t snippets[MAX_SNIPPETS];		// Buffer to hold CLI Snippets
+uint8_t numOfRecordedSnippets = 0;
 
-uint8_t snippets[SNIPPETS_BUF_SIZE] = {0};			// Buffer to hold Command Snippets
-uint16_t currentSnipSize = 0;
 
 static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
      \n\r====================================================	\
      \n\r||            Welcome to BitzOS CLI!              ||	\
-		 \n\r||         (C) COPYRIGHT HEXABITZ 2016.           ||	\
+		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2018.        ||	\
      \n\r||                                                ||	\
 		 \n\r||      Please check the project website at       ||	\
 		 \n\r||             http://hexabitz.com/               ||	\
@@ -89,10 +85,16 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 /* Internal functions ---------------------------------------------------------*/
 
-BOS_Status AddSnippet(uint8_t type, char *string);
-BOS_Status ProcessSnippet(uint16_t location);
-BOS_Status ActivateButtonSnippet(uint16_t location);
+BOS_Status AddSnippet(uint8_t code, char *string);
+BOS_Status ParseSnippetCondition(char *string);
+bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
+bool CheckSnippetCondition(uint8_t index);
 
+/* BOS exported internal functions */
+extern void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
+extern uint8_t IsModuleParameter(char* name);
+extern uint8_t IsMathOperator(char* string);
+extern uint8_t SaveToRO(void);
 
 /*-----------------------------------------------------------*/
 
@@ -190,36 +192,38 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				
 				/* Convert input string to lower case */
 				StringToLowerCase(( char * )cInputString);
-				
-				
+								
 				/* Check for a conditional statement (if) */
 				if (!recordSnippet && !strncmp((char *)cInputString, "if ", 3)) 
 				{
 					/* Add the condition to Command Snippets (after removing "if " */
-					AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3));
-					/* Start recording Commands after the condition */
-					recordSnippet = SNIPPET_CONDITION_CMDS;
-					pcOutputString[0] = '\r';
+					if (AddSnippet(SNIPPET_CONDITION, ( char * ) (cInputString+3)) != BOS_OK) {
+						sprintf( ( char * ) pcOutputString, "\nCannot store more Command Snippets. Please delete existing ones and try again.\n\r");
+						recordSnippet = 0;
+					} else {
+						/* Start recording Commands after the condition */
+						recordSnippet = SNIPPET_COMMANDS;
+						pcOutputString[0] = '\r';
+					}
 				} 
 				/* Check for the end of a conditional command (end if) */
 				else if (recordSnippet && !strncmp((char *)cInputString, "end if", 6))
 				{
 					/* Stop recording Commands for the conditional Command Snippet */
 					recordSnippet = 0;
-					/* Check memory */
-					
-					
-					/* Activate the Snippet via the LSB */
-					AddSnippet((SNIPPET_CONDITION|0x01), "");				
+					/* Activate the Snippet */
+					AddSnippet(SNIPPET_ACTIVATE, "");				
 					/* If snippet saved successfuly */
 					sprintf( ( char * ) pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
 				}
 				/* Should I record any Command Snippets? */
-				else if (recordSnippet == SNIPPET_CONDITION_CMDS)
+				else if (recordSnippet == SNIPPET_COMMANDS)
 				{
 					/* Add this Command to Command Snippets */
-					AddSnippet(SNIPPET_CONDITION_CMDS, ( char * ) cInputString);
-					pcOutputString[0] = '\r';
+					if (AddSnippet(SNIPPET_COMMANDS, ( char * ) cInputString) != BOS_OK)
+						sprintf( ( char * ) pcOutputString, "\nCannot store more Command Snippets. Please delete existing ones and try again.\n\r");
+					else
+						pcOutputString[0] = '\r';
 				}
 				/* Parse a normal Command */
 				else 
@@ -267,19 +271,29 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 						}	
 						else 
 						{
-							/* Forward the command */
-							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							SendMessageToModule(id, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString)-1);
-							sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
-							writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), 10, HAL_MAX_DELAY);
-							memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+							/* Special commands that convert into custom a Message */
+							if (!strncmp((char *)loc+1, "update", 6)) {			// remote update
+								BOS.response = BOS_RESPONSE_NONE;				
+								SendMessageToModule(id, CODE_update, 0);
+								osDelay(100);
+								/* Execute locally */
+								remoteBootloaderUpdate(myID, id, PcPort, 0);
+							} 
+							else 
+							{						
+								/* Forward the command */
+								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
+								SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
+								sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
+							}
+							
 							/* Wait for response if needed */
 							if (BOS.response == BOS_RESPONSE_ALL)
 							{
-								ulTaskNotifyTake(pdTRUE, 2000);		//cmd500ms
+								ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
 								/* If timeout */
 								if (responseStatus != BOS_OK)
-									sprintf( ( char * ) pcOutputString, "Module %d is not reachable\n\r", id);
+									sprintf( ( char * ) pcOutputString, "%sModule %d is not reachable.\n\r", ( char * ) pcOutputString, id);
 							}	
 							xReturned = pdFALSE;
 						}						
@@ -291,9 +305,12 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 					}
 				}
 				
-				/* Write the generated string to the UART. Block this task to ensure output does not get overrun. */
-				writePxMutex(port, (char*) pcOutputString, strlen((char*) pcOutputString), 10, HAL_MAX_DELAY);		
-				memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+				/* Write the generated string to the UART. */
+				// TODO: Check String if string len is 0 or some MAX number
+				unsigned pcOutputStrLen = strlen((char*)pcOutputString);
+				if (pcOutputStrLen > 0)
+					writePxMutex(port, (char*)pcOutputString, pcOutputStrLen, cmd50ms, HAL_MAX_DELAY);		
+				memset( pcOutputString, 0x00, pcOutputStrLen );
 		
 			} while( xReturned != pdFALSE );
 					
@@ -361,106 +378,305 @@ void StringToLowerCase(char *string)
 
 /* Add a set of Commands to Command Snippets and activate
 */
-BOS_Status AddSnippet(uint8_t type, char *string)
+BOS_Status AddSnippet(uint8_t code, char *string)
 {
-	BOS_Status result = BOS_OK;
-	int16_t i = 0;
-	
-	if (currentSnipSize >= SNIPPETS_BUF_SIZE)
-		return BOS_ERR_SNIP_MEM_FULL;	
-	
-	/* Check for activation code */
-	if (type&0x01)
+	/* Check for codes */
+	switch (code)
 	{
-		/* Search for last matching code */
-		for(i=currentSnipSize ; i>=0 ; i--)
-    {
-			if ( (snippets[i]|0x01) == type) {
-				snippets[i] = type;																					// Snippet has been activated (via LSB)
-				break;
+		case SNIPPET_ACTIVATE :
+			snippets[numOfRecordedSnippets-1].state = true;
+			SaveToRO();
+			break;
+		
+		case SNIPPET_CONDITION :
+			return ParseSnippetCondition(string);
+		
+		case SNIPPET_COMMANDS :
+			// Did we allocate a buffer already?
+			if (snippets[numOfRecordedSnippets-1].cmd != NULL) 
+			{
+				// re-allocate with new size
+				int currentLenght = strlen(snippets[numOfRecordedSnippets-1].cmd);
+				// Add two more bytes for the ENTER key (0x13) and end of string (0x00)
+				snippets[numOfRecordedSnippets-1].cmd = (char *) realloc(snippets[numOfRecordedSnippets-1].cmd, currentLenght+strlen(string)+2);
+				// Copy the command
+				strcpy(snippets[numOfRecordedSnippets-1].cmd + currentLenght + 1, string);
+				*(snippets[numOfRecordedSnippets-1].cmd + currentLenght) = 0x13;		// ENTER key between commands
+			} 
+			// Allocate a new buffer
+			else
+			{
+				// Allocate memory buffer
+				snippets[numOfRecordedSnippets-1].cmd = (char *) malloc(strlen(string)+1);
+				// Copy the command
+				strcpy(snippets[numOfRecordedSnippets-1].cmd, string);
 			}
-    }
-		/* Add end of Snippet delimiter */
-		snippets[currentSnipSize++] = SNIPPET_END;
-		/* Activate button events if this is a conditional button Snippet */
-		ActivateButtonSnippet(i+1);
-	}
-	/* Normal code */
-	else
-	{
-		switch (type)
-		{
-			case SNIPPET_CONDITION :
-				snippets[currentSnipSize++] = SNIPPET_CONDITION;						// Add condition delimiter
-				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the condition
-				currentSnipSize += strlen(string);
-				break;
+			// Return error if allocation fails
+			if (snippets[numOfRecordedSnippets-1].cmd == NULL) {
+				memset(&snippets[numOfRecordedSnippets-1], 0, sizeof(snippet_t) );
+				return BOS_ERR_SNIP_MEM_FULL;
+			}
 			
-			case SNIPPET_CONDITION_CMDS :
-				snippets[currentSnipSize++] = SNIPPET_CONDITION_CMDS;				// Add condition Command delimiter
-				strcpy((char *)&snippets[currentSnipSize++], string);				// Copy the Command
-				currentSnipSize += strlen(string);
-				break;
-			
-			default:
-				break;
-		}
-	}
+			break;
+		
+		default:
+			break;
+	}	
 	
-	return result;
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
 
-/* Process logical conditions in a Snippet
+/* Parse Snippet conditions into the internal buffer
 */
-BOS_Status ProcessSnippet(uint16_t location)
+BOS_Status ParseSnippetCondition(char *string)
 {
-	BOS_Status result = BOS_ERROR;
+	static int8_t cInputString[ cmdMAX_INPUT_SIZE ];
+	BOS_Status status = BOS_OK;
 	uint8_t port = 0;
 	
-	/* 1. Parse condition text */	
-	// Todo: This is done every time. It should be performed on Snippet activation only
-	
-	/* 2. Check the state of logical condition */
-	
-	/* Test if condition starts with "bx." */
-	if(snippets[location] == 'b' && snippets[location+2] == '.')
+	// A. Verify first there's still memory left to store Snippets	
+	if (numOfRecordedSnippets == MAX_SNIPPETS)
+	{	
+		return BOS_ERR_SNIP_MEM_FULL;
+	}
+	// Initialize the next empty location
+	else
 	{
-		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
+		snippets[numOfRecordedSnippets].cond.conditionType = 0;
+		snippets[numOfRecordedSnippets].cond.mathOperator = 0;			
+		memset(snippets[numOfRecordedSnippets].cond.buffer1, 0, 4);			
+	}
+	
+	// B. Parse Snippets based on their condition type 
+	
+	// #1: Button event: condition starts with "bx." 
+	if(string[0] == 'b' && string[2] == '.')
+	{
+		if(string[1] >= '0' && string[1] <= (NumOfPorts+'0'))		// Valid port number
 		{
-			port = snippets[location+1]-'0';
-			/* Check if the event occured */
-			if (!strncmp((char *)&snippets[location+3], "clicked", 7))
+			port = string[1]-'0';
+			snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_BUTTON_EVENT;
+			snippets[numOfRecordedSnippets].cond.mathOperator = 0;			// No math operations
+			snippets[numOfRecordedSnippets].cond.buffer1[0] = port;		// Store button port number	
+			
+			/* Store button event and event parameter if needed */
+			if (!strncmp((char *)&string[3], "clicked", 7))
 			{
-				if (button[port].state == CLICKED)	return BOS_OK;
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = CLICKED;	
+				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
+					SetButtonEvents(port, 1, 0, 0, 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
+				status = BOS_OK;
 			}
-			else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
+			else if (!strncmp((char *)&string[3], "double clicked", 14))
 			{
-				if (button[port].state == DBL_CLICKED)	return BOS_OK;				
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = DBL_CLICKED;			
+				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
+					SetButtonEvents(port, 0, 1, 0, 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
+				status = BOS_OK;					
 			}
-			else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
+			else if (!strncmp((char *)&string[3], "pressed for ", 12))
 			{
-				if (button[port].state == PRESSED_FOR_X1_SEC && button[port].pressedX1Sec == atoi((char *)&snippets[location+15]))	
-					return BOS_OK;
-				else if (button[port].state == PRESSED_FOR_X2_SEC && button[port].pressedX2Sec == atoi((char *)&snippets[location+15]))	
-					return BOS_OK;		
-				else if (button[port].state == PRESSED_FOR_X3_SEC && button[port].pressedX3Sec == atoi((char *)&snippets[location+15]))	
-					return BOS_OK;					
+				if (!button[port].pressedX1Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X1_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
+					SetButtonEvents(port, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
+					status = BOS_OK;
+				} else if (!button[port].pressedX2Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X2_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
+					SetButtonEvents(port, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, 0, BUTTON_EVENT_MODE_OR);
+					status = BOS_OK;		
+				} else if (!button[port].pressedX3Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = PRESSED_FOR_X3_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[15]);
+					SetButtonEvents(port, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, 0, BUTTON_EVENT_MODE_OR);
+					status = BOS_OK;	
+				} else {
+					status = BOS_ERR_BUTTON_PRESS_EVENT_FULL;
+				}							
 			}
-			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
+			else if (!strncmp((char *)&string[3], "released for ", 13))
 			{
-				if (button[port].state == RELEASED_FOR_Y1_SEC && button[port].releasedY1Sec == atoi((char *)&snippets[location+16]))	
-					return BOS_OK;
-				else if (button[port].state == RELEASED_FOR_Y2_SEC && button[port].releasedY2Sec == atoi((char *)&snippets[location+16]))	
-					return BOS_OK;		
-				else if (button[port].state == RELEASED_FOR_Y3_SEC && button[port].releasedY3Sec == atoi((char *)&snippets[location+16]))	
-					return BOS_OK;					
-			}
+				if (!button[port].releasedY1Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y1_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
+					SetButtonEvents(port, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, 0, BUTTON_EVENT_MODE_OR);
+					status = BOS_OK;
+				} else if (!button[port].releasedY2Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y2_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
+					SetButtonEvents(port, 0, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], 0, BUTTON_EVENT_MODE_OR);
+					status = BOS_OK;		
+				} else if (!button[port].releasedY3Sec) {	
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = RELEASED_FOR_Y3_SEC;	
+					snippets[numOfRecordedSnippets].cond.buffer1[2] = atoi((char *)&string[16]);
+					SetButtonEvents(port, 0, 0, 0, 0, 0, 0, 0, snippets[numOfRecordedSnippets].cond.buffer1[2], BUTTON_EVENT_MODE_OR);					
+					status = BOS_OK;	
+				} else {
+					status = BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
+				}									
+			}				
+			
+			++numOfRecordedSnippets;		// Record a successful Snippet			
+		}
+	}
+	// Module-related conditions (local only for now)
+	else
+	{
+		strcpy( (char *)cInputString, string);
+
+		// This is probably a three part condition, extract them out
+		char *firstPart, *secondPart, *thirdPart; uint8_t modPar1 = 0, modPar2 = 0;
+		firstPart = strtok ( (char *)cInputString, " ");
+		secondPart = strtok ( NULL, " ");
+		thirdPart = strtok ( NULL, " ");
+		
+		// Check if first part is module parameter or event
+		if (firstPart == NULL) 
+		{
+			return BOS_ERR_WrongParam;
+		} 
+		else 
+		{
+			modPar1 = IsModuleParameter(firstPart);
+			// Found a module parameter and no more strings
+			if (modPar1 && secondPart == NULL && thirdPart == NULL) 
+			{
+			// #2: Module event	
+				snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_EVENT;			
+				snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+				
+				++numOfRecordedSnippets;		// Record a successful Snippet	
+				return BOS_OK;
+			} 
+			else if (secondPart != NULL && thirdPart != NULL) 
+			{
+				modPar2 = IsModuleParameter(thirdPart);
+				if (modPar2) 		// Found a module parameter
+				{
+					// #4: Module parameter and parameter
+					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_PARAM;
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+					snippets[numOfRecordedSnippets].cond.buffer2[1] = modPar2;		// Leaving first buffer byte for remote module ID				
+				} 
+				else 
+				{
+					// #3: Module parameter and constant	
+					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_CONST;
+					snippets[numOfRecordedSnippets].cond.buffer1[1] = modPar1;		// Leaving first buffer byte for remote module ID
+					// Extract the constant
+					float constant = atof(thirdPart);
+					memcpy(snippets[numOfRecordedSnippets].cond.buffer2, &constant, sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
+				}				
+				// Extract the math operator
+				snippets[numOfRecordedSnippets].cond.mathOperator = IsMathOperator(secondPart);
+				if (!snippets[numOfRecordedSnippets].cond.mathOperator)
+					return BOS_ERR_WrongParam;
+				
+				++numOfRecordedSnippets;		// Record a successful Snippet
+				return BOS_OK;				
+			} 
+			else 
+			{
+				return BOS_ERR_WrongParam;
+			}				
 		}
 	}
 	
-	return result;
+	// Note: after exiting this function, numOfRecordedSnippets refers to the next empty Snippet. Substract by one to reference the last Snippet.
+	
+	return status;
+}
+
+/*-----------------------------------------------------------*/
+
+/* Parse Snippet commands into the internal buffer
+*/
+bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer)
+{
+	static char *ptrStart, *ptrEnd;
+	
+	if (snippets[numOfRecordedSnippets-1].cmd == NULL)	return false;
+	
+	// Initialize the start pointer to snippet buffer address
+	if (!ptrStart)	ptrStart = snippetBuffer;	
+	
+	// Did we already reach end of Snippet buffer?
+	if (*ptrStart == 0x00) {
+		ptrStart = 0;		// Initialize the start pointer for next Snippet
+		cliBuffer = NULL;
+		return false;
+	}
+	
+	// Search the buffer for first occurance of 0x13 (ENTER key)
+	ptrEnd = strchr(ptrStart,0x13);
+	if (ptrEnd != NULL)
+	{
+		strncpy((char *)cliBuffer, ptrStart, ptrEnd-ptrStart);
+		ptrStart = ptrEnd+1;
+	}
+	else
+	{
+		strcpy((char *)cliBuffer, ptrStart);
+		ptrStart += strlen((const char *) cliBuffer);
+	}
+
+	return true;
+}
+
+/*-----------------------------------------------------------*/
+
+/* Check if Snippet conditional is true or false
+*/
+bool CheckSnippetCondition(uint8_t index)
+{
+	uint8_t temp8;
+	float flt1, flt2;
+	
+	/* Check conditions based on Snippet tupe */	
+
+	switch (snippets[index].cond.conditionType)
+  {
+  	case SNIP_COND_BUTTON_EVENT :				
+  		temp8 = snippets[index].cond.buffer1[0]; 	// Button port
+			/* Check if button state matches Snippet button event */
+			if (snippets[index].cond.buffer1[1] == button[temp8].state)
+				return true;
+			else 
+				return false;			
+			
+		case SNIP_COND_MODULE_EVENT :	
+			break;
+			
+						
+		case SNIP_COND_MODULE_PARAM_CONST :	
+			// Get the constant and module parameter values. 
+			flt1 = *(float *)modParam[snippets[index].cond.buffer1[1]-1].paramPtr;
+			memcpy( (uint8_t *)&flt2, &snippets[index].cond.buffer2, sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
+			// Compare them mathematically
+			switch (snippets[index].cond.mathOperator)
+      {
+      	case MATH_EQUAL:					if (flt1 == flt2)	return true;	break;
+      	case MATH_GREATER:				if (flt1 > flt2)	return true;	break;
+		    case MATH_SMALLER:				if (flt1 < flt2 && flt1 != 0.0f)	return true;	break;
+			  case MATH_GREATER_EQUAL:	if (flt1 >= flt2)	return true;	break;
+			  case MATH_SMALLER_EQUAL:	if (flt1 <= flt2 && flt1 != 0.0f)	return true;	break;
+				case MATH_NOT_EQUAL:			if (flt1 != flt2 && flt1 != 0.0f)	return true;	break;
+      	default:
+      		break;
+      }
+			break;
+			
+		case SNIP_COND_MODULE_PARAM_PARAM :	
+			break;
+					
+  	default:
+  		break;
+  }
+	
+	return false;
 }
 
 /*-----------------------------------------------------------*/
@@ -471,7 +687,8 @@ BOS_Status ExecuteSnippet(void)
 {
 	BOS_Status result = BOS_OK;
 	portBASE_TYPE xReturned; uint16_t s = 0;
-	int8_t *cInputString, *pcOutputString;
+	int8_t *pcOutputString;
+	static int8_t cInputString[ cmdMAX_INPUT_SIZE ];
 	
 	/* Must get this address even if output is not used otherwise memory will corrupt */
 	/* Obtain the address of the output buffer.  Note there is no mutual
@@ -480,112 +697,32 @@ BOS_Status ExecuteSnippet(void)
 	pcOutputString = FreeRTOS_CLIGetOutputBuffer();	
 	
 	/* Go through activated Snippets */
-	for(s=0 ; s<=currentSnipSize ; s++)
+	for(s=0 ; s<numOfRecordedSnippets ; s++)
   {
-		if (snippets[s]&0x01)									// Check the LSB (activated codes)
+		if (snippets[s].state)								// Check for activated Snippets
 		{	
-			switch (snippets[s]&0xFE)						// Go through actual codes
-      {
-      	case SNIPPET_CONDITION :
-					if (ProcessSnippet(s+1) == BOS_OK)				// Process Snippet Condition at this location
+			if (CheckSnippetCondition(s))				// Process Snippet condition 				
+			{				
+				BOS.response = BOS_RESPONSE_MSG;		// Disable CLI response
+				// Loop over all recorded Snippet commands
+				while (ParseSnippetCommand(snippets[s].cmd, (int8_t *) &cInputString) != false)
+				{			
+					/* Pass the received command to the command interpreter.  The
+					command interpreter is called repeatedly until it returns
+					pdFALSE as it might generate more than one string. */
+					do
 					{
-						/* Condition is TRUE, execute Snippet Commands */
-						for(int c=s+1 ; c<=currentSnipSize ; c++)
-						{
-							/* Extract the command */
-							if (snippets[c] == SNIPPET_CONDITION_CMDS)						
-							{	
-								cInputString = (signed char *) &snippets[c+1];
-								/* Pass the received command to the command interpreter.  The
-								command interpreter is called repeatedly until it returns
-								pdFALSE as it might generate more than one string. */
-								do
-								{
-									xReturned = FreeRTOS_CLIProcessCommand( cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
-								} while( xReturned != pdFALSE );
-								/* Clear output buffer since we do not need it */
-								memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
-							}
-							/* You reached the end of this Snippet so stop here */
-							else if (snippets[c] == SNIPPET_END)
-								break;
-						}
-						/* Disable the Snippet Move this to delete Snippets section */
-						//snippets[s] &= 0xFE;
-					}
-																				
-      		break;
-
-      	default :													// This is not a code so exit
-      		break;
-      }
-			
+						xReturned = FreeRTOS_CLIProcessCommand( (int8_t *) &cInputString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+					} while( xReturned != pdFALSE );
+					/* Clear output buffer since we do not need it */
+					memset( pcOutputString, 0x00, strlen((char*) pcOutputString) );
+					memset( &cInputString, 0x00, strlen((char*) cInputString) );
+				}
+			}
 		}
   }
 	
 	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* Activate button events for a conditional button Snippet
-*/
-BOS_Status ActivateButtonSnippet(uint16_t location)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port = snippets[location+1]-'0';
-
-	/* Make sure it's a conditional button Snippet */
-	if(snippets[location] == 'b' && snippets[location+2] == '.')
-	{
-		if(snippets[location+1] >= '0' && snippets[location+1] <= (NumOfPorts+'0'))		// Valid port number
-		{	
-			/* Check if appropriate events are enabled */
-			if (!strncmp((char *)&snippets[location+3], "clicked", 7))
-			{
-				if ((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)
-					button[port].events |= BUTTON_EVENT_CLICKED;
-			}
-			else if (!strncmp((char *)&snippets[location+3], "double clicked", 14))
-			{
-				if ((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-					button[port].events |= BUTTON_EVENT_DBL_CLICKED;	
-			}
-			else if (!strncmp((char *)&snippets[location+3], "pressed for ", 12))
-			{
-				if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X1_SEC) != BUTTON_EVENT_PRESSED_FOR_X1_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-					button[port].pressedX1Sec = atoi((char *)&snippets[location+15]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X2_SEC) != BUTTON_EVENT_PRESSED_FOR_X2_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-					button[port].pressedX2Sec = atoi((char *)&snippets[location+15]);
-				} else if ((button[port].events & BUTTON_EVENT_PRESSED_FOR_X3_SEC) != BUTTON_EVENT_PRESSED_FOR_X3_SEC) {
-					button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-					button[port].pressedX3Sec = atoi((char *)&snippets[location+15]);
-				} else {
-					return BOS_ERR_BUTTON_PRESS_EVENT_FULL;
-				}		
-			}
-			else if (!strncmp((char *)&snippets[location+3], "released for ", 13))
-			{
-				/* First make sure this event is enabled */
-				if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y1_SEC) != BUTTON_EVENT_RELEASED_FOR_Y1_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-					button[port].releasedY1Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y2_SEC) != BUTTON_EVENT_RELEASED_FOR_Y2_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-					button[port].releasedY2Sec = atoi((char *)&snippets[location+16]);
-				} else if ((button[port].events & BUTTON_EVENT_RELEASED_FOR_Y3_SEC) != BUTTON_EVENT_RELEASED_FOR_Y3_SEC) {
-					button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-					button[port].releasedY3Sec = atoi((char *)&snippets[location+16]);
-				} else {
-					return BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
-				}				
-			}
-		}
-	}
-	
-	return result;	
 }
 
 /*-----------------------------------------------------------*/
