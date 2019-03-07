@@ -496,7 +496,7 @@ static char * pcRemoteBootloaderUpdateWarningMessage = 	\
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, temp, i, shift = 0, numOfParams; uint16_t code;
+	uint8_t port, src, dst, responseMode, temp, i, shift, numOfParams, p; uint16_t code;
 	uint32_t count, timeout, temp32;
 	bool extendCode = false, extendOptions = false; 
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
@@ -511,8 +511,6 @@ void PxMessagingTask(void * argument)
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-			
-		stackWaterMark = uxTaskGetStackHighWaterMark(NULL);
 		
 		if (messageLength[port-1])
 		{						
@@ -740,7 +738,7 @@ void PxMessagingTask(void * argument)
 						
 						case CODE_read_port_dir_response :
 							/* Read module ports directions */
-							for (uint8_t p=0 ; p<numOfParams ; p++) 
+							for (p=0 ; p<numOfParams ; p++) 
 							{
 								arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][shift+p])-1));								
 							}
