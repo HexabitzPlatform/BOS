@@ -258,7 +258,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);	
 						}	else if ((uint8_t)id == BOS_MULTICAST) {	
 							group = id >> 8;
-							/* Check if command is broadcastable */									
+							/* Todo: Check if command is broadcastable */									
 
 							/* Multicast the command */								
 							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
@@ -306,7 +306,6 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				}
 				
 				/* Write the generated string to the UART. */
-				// TODO: Check String if string len is 0 or some MAX number
 				unsigned pcOutputStrLen = strlen((char*)pcOutputString);
 				if (pcOutputStrLen > 0)
 					writePxMutex(port, (char*)pcOutputString, pcOutputStrLen, cmd50ms, HAL_MAX_DELAY);		

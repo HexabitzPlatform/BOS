@@ -225,7 +225,6 @@ void BackEndTask(void * argument)
   /* Infinite loop */
   for(;;)
   {
-
 		/* Search the circular receive buffers for any complete packets */	
 		for (port=1 ; port <= NumOfPorts; port++)
 		{
@@ -294,9 +293,10 @@ void BackEndTask(void * argument)
 				packetEnd = packetStart + (packetLength & 0x7F) + 3;			// Packet length is counted from Dst to before CRC
 				if (packetEnd > MSG_RX_BUF_SIZE-1)												// wrap-around
 					packetEnd -= MSG_RX_BUF_SIZE;
-				
+			
 				if (packetStart != packetEnd)										// Non-empty packet
 				{				
+
 					/* A.4. Calculate packet CRC */				
 					if (packetStart < packetEnd) {
 						crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], (packetLength & 0x7F) + 3);
@@ -304,10 +304,10 @@ void BackEndTask(void * argument)
 						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart-1);
 						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][0], ((packetLength & 0x7F) + 3) - (MSG_RX_BUF_SIZE-packetStart-1));
 					}
-					
+				
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
 					if (crc8 && crc8 == UARTRxBuf[port-1][packetEnd])
-					{
+					{	
 						portStatus[port] = MSG;
 						messageLength[port-1] = packetLength;	
 
@@ -318,23 +318,22 @@ void BackEndTask(void * argument)
 							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
 							memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength & 0x7F)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
 						}
-						
+							
 						/* A.5.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
 						if (packetStart < packetEnd) {
 							memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength & 0x7F) + 4);						
 						} else {				// wrap around
 							memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart-1);
 							memset(&UARTRxBuf[port-1][0], 0, ((packetLength & 0x7F) + 4) - (MSG_RX_BUF_SIZE-packetStart-1));
-						}					
-						
-						stackWaterMark = uxTaskGetStackHighWaterMark(NULL);
-						
+						}											
+		
 						++acceptedMsg;
-						
+				
 						/* A.5.3. Notify messaging tasks */
 						NotifyMessagingTask(port);	
 
 						continue;		// Inspect the next port circular buffer
+
 					}
 				}
 				

@@ -96,7 +96,7 @@ void SwitchStreamDMAToMsg(uint8_t port)
 	DMA_MSG_RX_CH_Init(&msgRxDMA[port-1], streamDMA[port-1].Instance);	
 	
 	// Read this port again in messaging mode - TODO update to DMA read 
-	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);		// TODO update
+	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);		
 		
 }
 

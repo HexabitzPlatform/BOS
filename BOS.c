@@ -514,10 +514,9 @@ void PxMessagingTask(void * argument)
 		
 		if (messageLength[port-1])
 		{						
-			/* Long message? */
-			if (messageLength[port-1]>>7) {
+			/* Long message? Read Options Byte MSB */
+			if (cMessage[port-1][2]>>7) {
 				longMessage = 1;
-				messageLength[port-1] &= 0x7F;
 			} else {
 				longMessage = 0;
 			}
@@ -530,14 +529,14 @@ void PxMessagingTask(void * argument)
 			shift = 0;
 			
 			/* Read message options */
-			if (cMessage[port-1][2] & 0x01) {						// TODO handle extended options case
+			if (cMessage[port-1][2] & 0x01) {						// LSB - TODO handle extended options case
 				extendOptions = true;	
 				(void) extendOptions;		// remove warning		
 				++shift;				
 			} 
-			extendCode = (cMessage[port-1][2]>>4)&0x01;
-			BOS.trace = (cMessage[port-1][2]>>5)&0x01;
-			responseMode = (cMessage[port-1][2])&0xC0;
+			extendCode = (cMessage[port-1][2]>>3)&0x01;		// 4th bit
+			BOS.trace = (cMessage[port-1][2]>>4)&0x01;		// 5th bit
+			responseMode = (cMessage[port-1][2])&0x60;		// 6th-7th bits
 			
 			/* Read message code */
 			if (extendCode == true) {		
@@ -796,13 +795,13 @@ void PxMessagingTask(void * argument)
 								memcpy(cCLIString, &cMessage[port-1][shift], (size_t) numOfParams);
 							do 
 							{
-									/* Pass the inport to CLI command parsers temporarily through PcPort */
-									temp = PcPort; PcPort = port;
+								/* Pass the inport to CLI command parsers temporarily through PcPort */
+								temp = PcPort; PcPort = port;
 								/* Process the command locally */
 								xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
-									/* Restore back PcPort */
-									PcPort = temp;
-									/* Respond to the CLI command */
+								/* Restore back PcPort */
+								PcPort = temp;
+								/* Respond to the CLI command */
 								if (responseMode == BOS_RESPONSE_ALL)
 								{
 									/* Copy the generated string to messageParams */
@@ -1467,7 +1466,7 @@ void LoadEEvars(void)
 }
 
 /*-----------------------------------------------------------*/
-#ifndef _N
+
 /* --- Save array topology and Command Snippets in Flash RO --- 
 */
 uint8_t SaveToRO(void)
@@ -1656,7 +1655,7 @@ uint8_t LoadROsnippets(void)
 //	
 //	return result;
 //}
-#endif
+
 /*-----------------------------------------------------------*/
 #ifndef _N
 /* --- Load array topology stored in Flash RO --- 
@@ -3444,11 +3443,11 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 				2		0					0					!0							Broadcast or multi-cast message forwarded from another port (which is passed to the API thru numberOfParams).
 				3		0					!0				0								Not allowed.
 				4		0					0					0								Not allowed.
-				5		|0				!0				!0							Single-cast message.
-        6   |0        0					!0							Either single-cast message with myID as source module OR (if code == 0)
+				5		!0				!0				!0							Single-cast message.
+        6   !0        0					!0							Either single-cast message with myID as source module OR (if code == 0)
 																								 single-cast message forwarded from another port (which is passed to the API thru numberOfParams).
-        7   |0        !0				0								Not allowed.
-        8   |0        0					0								Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
+        7   !0        !0				0								Not allowed.
+        8   !0        0					0								Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
 */
 BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
@@ -3501,8 +3500,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		message[4] = src;
 		
 		/* Options */
-		/* MSB: Response (8th - 7th) : Trace (6th) : Extended Code (5th) : Reserved (4th - 2nd) : Extended Options (1st) */
-		message[5] = (BOS.response) | (BOS.trace<<5) | (extendCode<<4) | (extendOptions);
+		/* Response (7th - 6th) : Trace (5th) : Extended Code (4th) : Reserved (3rd - 2nd) : Extended Options (1st-LSB) */
+		message[5] = (BOS.response) | (BOS.trace<<4) | (extendCode<<3) | (extendOptions);
 		if (extendOptions == true) {
 			++shift;
 		}
@@ -3521,8 +3520,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 			/* Calculate message length */
 			length = numberOfParams + shift + 4;
 		} else {
-			/* Toggle length MSB (8th bit) to inform receiver about a long message */
-			length |= 0x80;		
+			/* Long message: Set Options byte 8th bit */
+			message[5] |= 0x80;		
 			totalNumberOfParams = numberOfParams;
 			numberOfParams = MAX_PARAMS_PER_MESSAGE;
 			/* Break into multiple messages */
@@ -3539,7 +3538,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 				} 
 				else 
 				{
-					length &= 0x7F;		/* Last message */
+					message[5] &= 0x7F;		/* Last message. Reset long message flag */
 					numberOfParams = totalNumberOfParams;
 					memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
 					ptrShift = 0; totalNumberOfParams = 0;
