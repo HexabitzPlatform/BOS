@@ -46,7 +46,7 @@
 /* Used in the run time stats calculations. */
 static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 uint16_t stackWaterMark;
-uint16_t rejectedMsg = 0, acceptedMsg = 0;
+uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
 	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
@@ -217,7 +217,8 @@ void StartDefaultTask(void * argument)
 void BackEndTask(void * argument)
 {
 	int packetStart = 0, packetEnd = 0, packetLength = 0, parseStart = 0;
-	uint8_t port, crc8 = 0; bool emptyBuffer = false;
+	uint8_t port; bool emptyBuffer = false;
+	static uint8_t crc8;
 	
 	/* Start backend messaging DMAs */
 	SetupMessagingRxDMAs();
@@ -301,8 +302,8 @@ void BackEndTask(void * argument)
 					if (packetStart < packetEnd) {
 						crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], (packetLength & 0x7F) + 3);
 					} else {				// wrap around
-						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart-1);
-						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][0], ((packetLength & 0x7F) + 3) - (MSG_RX_BUF_SIZE-packetStart-1));
+						crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart);
+						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][0], ((packetLength & 0x7F) + 3) - (MSG_RX_BUF_SIZE-packetStart));
 					}
 				
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
