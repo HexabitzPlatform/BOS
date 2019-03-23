@@ -817,8 +817,9 @@ void PxMessagingTask(void * argument)
 							break;
 							
 						case CODE_CLI_response :
-							/* Obtain the address of the output buffer. */
+							/* Obtain the address of the output buffer and clear the buffer. */
 							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+							memset( pcOutputString, 0x00, strlen((char*)pcOutputString) );
 							/* Copy the response */
 							if (longMessage) {
 								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
