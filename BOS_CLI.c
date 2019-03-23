@@ -82,6 +82,7 @@ char pcWelcomePortMessage[40] = {0};
 
 /* Exported Variables --------------------------------------------------------*/
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint16_t timedoutMsg;
 
 /* Internal functions ---------------------------------------------------------*/
 
@@ -292,8 +293,10 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							{
 								ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
 								/* If timeout */
-								if (responseStatus != BOS_OK)
+								if (responseStatus != BOS_OK) {
+									++timedoutMsg;
 									sprintf( ( char * ) pcOutputString, "%sModule %d is not reachable.\n\r", ( char * ) pcOutputString, id);
+								}
 							}	
 							xReturned = pdFALSE;
 						}						
