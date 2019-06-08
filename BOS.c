@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
+    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -90,7 +90,7 @@ uint8_t dblCounter[NumOfPorts+1] = {0};
 bool needToDelayButtonStateReset = false, delayButtonStateReset = false;
 
 /* Messaging tasks */
-extern TaskHandle_t FrontEndTaskHandle;
+extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
 extern TaskHandle_t P1MsgTaskHandle;
 #endif
