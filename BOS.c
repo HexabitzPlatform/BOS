@@ -122,8 +122,9 @@ typedef struct xCOMMAND_INPUT_LIST
 CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
-/* Variables used for Erase pages under interruption */
+/* Variables exported internally */
 extern FLASH_ProcessTypeDef pFlash;
+extern uint8_t numOfRecordedSnippets;
 
 /* RTC */
 RTC_HandleTypeDef RtcHandle;
@@ -137,10 +138,11 @@ void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
+uint8_t SaveToRO(void);
 #ifndef _N
-uint8_t SaveROtopology(void);
 uint8_t ClearROtopology(void);
 #endif
+uint8_t LoadROsnippets(void);
 uint8_t LoadROtopology(void);
 BOS_Status SaveEEportsDir(void);
 BOS_Status ClearEEportsDir(void);
@@ -150,6 +152,8 @@ BOS_Status LoadEEalias(void);
 BOS_Status SaveEEgroup(void);
 BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
+BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3);
 BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
 BOS_Status LoadEEbuttons(void);
@@ -179,6 +183,8 @@ void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 extern void Module_Init(void);
 extern void RegisterModuleCLICommands(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+
+extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
 
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
 "\r\nBOS.trace: true, false\r\n",
@@ -215,6 +221,10 @@ static portBASE_TYPE setBaudrateCommand( int8_t *pcWriteBuffer, size_t xWriteBuf
 static portBASE_TYPE uuidCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE idcodeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -422,7 +432,42 @@ static const CLI_Command_Definition_t flashsizeCommandDefinition =
 	0 /* No parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-
+/* CLI command structure : snip */
+static const CLI_Command_Definition_t snipCommandDefinition =
+{
+	( const int8_t * ) "snip", /* The command string to type. */
+	( const int8_t * ) "snip:\r\n Display a list of stored Command Snippets to edit or delete\r\n\r\n",
+	snipCommand, /* The function to run. */
+	0 /* No parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : act-snip */
+static const CLI_Command_Definition_t actSnipCommandDefinition =
+{
+	( const int8_t * ) "act-snip", /* The command string to type. */
+	( const int8_t * ) "act-snip:\r\n Activate a Command Snippet\r\n\r\n",
+	actSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : pause-snip */
+static const CLI_Command_Definition_t pauseSnipCommandDefinition =
+{
+	( const int8_t * ) "pause-snip", /* The command string to type. */
+	( const int8_t * ) "pause-snip:\r\n Pause a Command Snippet\r\n\r\n",
+	pauseSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : del-snip */
+static const CLI_Command_Definition_t delSnipCommandDefinition =
+{
+	( const int8_t * ) "del-snip", /* The command string to type. */
+	( const int8_t * ) "del-snip:\r\n Delete a Command Snippet\r\n\r\n",
+	delSnipCommand, /* The function to run. */
+	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
 
 
 /* Define long messages -------------------------------------------------------*/
@@ -707,9 +752,7 @@ void PxMessagingTask(void * argument)
 								break;
 								
 							case CODE_exp_eeprom :
-							#ifndef _N
-								SaveROtopology();
-							#endif
+								SaveToRO();
 								SaveEEportsDir();
 								indMode = IND_PING;
 								break;
@@ -794,11 +837,12 @@ void PxMessagingTask(void * argument)
 								temp = cMessage[port-1][15];
 								if (messageLength[port-1] == 19)	temp = cMessage[port-1][17];							
 								if (messageLength[port-1] == 21)	temp = cMessage[port-1][19];
+								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
+								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
+									
 								/* Activate the stream */
 								if (temp == false)
 								{
-									count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
-									timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
 									SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
 									if (messageLength[port-1] == 19)
 										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
@@ -808,16 +852,13 @@ void PxMessagingTask(void * argument)
 								/* Save stream paramters in EEPROM */
 								else
 								{
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][12]);			/* Direction */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5]);			/* Count high half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7]);			/* Count low half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9]);			/* Timeout high half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11]);			/* Timeout low half-word */
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][13] << 8 ) + cMessage[port-1][14]);			/* src1 | dst1 */
-									if (messageLength[port-1] == 19)
-										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][15] << 8 ) + cMessage[port-1][16]);			/* src2 | dst2 */
-									if (messageLength[port-1] == 21)
-										EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][17] << 8 ) + cMessage[port-1][18]);			/* src3 | dst3 */
+									if (messageLength[port-1] == 17)				/* src1 | dst1 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
+									else if (messageLength[port-1] == 19)		/* src1 | dst1, src2 | dst2 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
+									else if (messageLength[port-1] == 21)		/* src1 | dst1, src2 | dst2, src3 | dst3 */
+										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], cMessage[port-1][17], cMessage[port-1][18]);
+									
 									/* Reset MCU */
 									NVIC_SystemReset();
 								}
@@ -1424,57 +1465,102 @@ void LoadEEvars(void)
 	
 	/* Load buttons */
 	LoadEEbuttons();	
+	
+	// Load Command Snippets
+	LoadROsnippets();
 }
 
 /*-----------------------------------------------------------*/
 #ifndef _N
-/* --- Save array topology in Flash RO --- 
+/* --- Save array topology and Command Snippets in Flash RO --- 
 */
-uint8_t SaveROtopology(void)
+uint8_t SaveToRO(void)
 {
 	BOS_Status result = BOS_OK; 
 	HAL_StatusTypeDef FlashStatus = HAL_OK;
 	uint16_t add = 2, temp = 0;
-
+	uint8_t snipBuffer[sizeof(snippet_t)+1] = {0};
+	
 	HAL_FLASH_Unlock();
 	
 	/* Erase RO area */
 	FLASH_PageErase(RO_START_ADDRESS);
 	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if(FlashStatus != HAL_OK)
-	{
+	if(FlashStatus != HAL_OK) {
 		return pFlash.ErrorCode;
-	}
-	else
-	{			
+	} else {			
 		/* Operation is completed, disable the PER Bit */
 		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
 	}	
 	
 	/* Save number of modules and myID */
-	temp = (uint16_t) (N<<8) + myID;
-	HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
-	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if (FlashStatus != HAL_OK)
+	if (myID)
 	{
-		return pFlash.ErrorCode;
-	}
-	else
-	{
-		/* If the program operation is completed, disable the PG Bit */
-		CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
-	}		
+		temp = (uint16_t) (N<<8) + myID;
+		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS, temp);
+		FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+		if (FlashStatus != HAL_OK) {
+			return pFlash.ErrorCode;
+		} else {
+			/* If the program operation is completed, disable the PG Bit */
+			CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+		}			
 	
 	/* Save topology */
-	for(uint8_t i=1 ; i<=N ; i++)
-	{
-		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+		for(uint8_t i=1 ; i<=N ; i++)
 		{
-			if (array[i-1][0]) {
-				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
-				add += 2;
-			}				
+			for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+			{
+				if (array[i-1][0]) {
+					HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, RO_START_ADDRESS+add, array[i-1][j]);
+					add += 2;
+					FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+					if (FlashStatus != HAL_OK) {
+						return pFlash.ErrorCode;
+					} else {
+						/* If the program operation is completed, disable the PG Bit */
+						CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					}		
+				}				
+			}
 		}
+	}
+	
+	// Save Command Snippets
+	int currentAdd = RO_MID_ADDRESS;
+	for(uint8_t s=0 ; s<numOfRecordedSnippets ; s++) 
+	{
+		if (snippets[s].cond.conditionType) 
+		{
+			snipBuffer[0] = 0xFE;		// A marker to separate Snippets
+			memcpy( (uint8_t *)&snipBuffer[1], (uint8_t *)&snippets[s], sizeof(snippet_t));
+			// Copy the snippet struct buffer (20 x numOfRecordedSnippets). Note this is assuming sizeof(snippet_t) is even.
+			for(uint8_t j=0 ; j<(sizeof(snippet_t)/2) ; j++)
+			{		
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAdd, *(uint16_t *)&snipBuffer[j*2]);
+				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+				if (FlashStatus != HAL_OK) {
+					return pFlash.ErrorCode;
+				} else {
+					/* If the program operation is completed, disable the PG Bit */
+					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					currentAdd += 2;
+				}				
+			}			
+			// Copy the snippet commands buffer. Always an even number. Note the string termination char might be skipped
+			for(uint8_t j=0 ; j<((strlen(snippets[s].cmd)+1)/2) ; j++)
+			{
+				HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, currentAdd, *(uint16_t *)(snippets[s].cmd+j*2));
+				FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
+				if (FlashStatus != HAL_OK) {
+					return pFlash.ErrorCode;
+				} else {
+					/* If the program operation is completed, disable the PG Bit */
+					CLEAR_BIT(FLASH->CR, FLASH_CR_PG);
+					currentAdd += 2;
+				}				
+			}				
+		}	
 	}
 	
 	HAL_FLASH_Lock();
@@ -1484,35 +1570,64 @@ uint8_t SaveROtopology(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Clear array topology in Flash RO --- 
+/* --- Clear array topology in SRAM and Flash RO --- 
 */
 uint8_t ClearROtopology(void)
 {
-	BOS_Status result = BOS_OK; 
-	HAL_StatusTypeDef FlashStatus = HAL_OK;
-
 	// Clear the array 
 	memset(array, 0, sizeof(array));
 	N = 1; myID = 0;
 	
-	HAL_FLASH_Unlock();
-	
-	/* Erase RO area */
-	FLASH_PageErase(RO_START_ADDRESS);
-	FlashStatus = FLASH_WaitForLastOperation((uint32_t)HAL_FLASH_TIMEOUT_VALUE); 
-	if(FlashStatus != HAL_OK)
-	{
-		return pFlash.ErrorCode;
-	}
-	else
-	{			
-		/* Operation is completed, disable the PER Bit */
-		CLEAR_BIT(FLASH->CR, FLASH_CR_PER);
-	}	
+	return SaveToRO();
+}
 
-	HAL_FLASH_Lock();
+/*-----------------------------------------------------------*/
+
+/* --- Load Command Snippets stored in Flash RO --- 
+*/
+uint8_t LoadROsnippets(void)
+{
+	uint8_t i = 0;
+	int currentAdd = RO_MID_ADDRESS;
+	char *snipBuffer = (char *) malloc(cmdMAX_INPUT_SIZE);
+	if (snipBuffer == NULL)	return BOS_MEM_FULL;
 	
-	return result;
+	// Exit if no recorded Snippets
+	if (*(uint8_t *)currentAdd != 0xFE)	return BOS_ERROR;
+	
+	/* Load Snippets */
+	for(uint8_t s=0 ; s<MAX_SNIPPETS ; s++)
+	{
+		// Load conditions starting at RO_MID_ADDRESS
+		for(i=0 ; i<sizeof(snippet_t) ; i++)
+			snipBuffer[i] = (*(__IO uint8_t*)(currentAdd++)); 
+		memcpy( (uint8_t *)&snippets[s], (uint8_t *)&snipBuffer[1], sizeof(snippet_t));
+		memset(snipBuffer, 0, sizeof(snippet_t)); i = 0;
+		// Load commands until you get next 0xFE
+		while (*(uint8_t *)currentAdd != 0xFE && *(uint8_t *)currentAdd != 0xFF && i<cmdMAX_INPUT_SIZE)
+		{
+			snipBuffer[i] = *(uint8_t *)currentAdd;
+			++currentAdd; ++i;
+		}
+		if (snipBuffer[i-1] != 0)		++i;	// String termination char was not recorded, then add one
+		// Allocate buffer for the Snippet commands
+		snippets[s].cmd = (char *) malloc(i);
+		if (snippets[s].cmd == NULL) {
+			memset(&snippets[s], 0, sizeof(snippet_t) );
+			free(snipBuffer);			
+			return BOS_ERR_SNIP_MEM_FULL;
+		} else {	
+			// Copy the command
+			memcpy(snippets[s].cmd, snipBuffer, i);
+			++numOfRecordedSnippets;		// Record a successful Snippet
+			memset(snipBuffer, 0, i);		
+		}
+		// Exit if no more Snippets
+		if (*(uint8_t *)currentAdd != 0xFE)	break;
+	}	
+	
+	free(snipBuffer);
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -1849,6 +1964,27 @@ BOS_Status LoadEEstreams(void)
 
 /*-----------------------------------------------------------*/	
 
+/* --- Save DMA streams to emulated EEPROM. --- 
+*/
+BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
+	uint8_t dst2, uint8_t src3, uint8_t dst3)
+{
+	BOS_Status result = BOS_OK; 
+	
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], direction);			/* Direction */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
+	
+	return result;
+}
+
+/*-----------------------------------------------------------*/	
+
 /* --- Load module parameters from emulated EEPROM. If erased, loade defualts --- 
 */
 BOS_Status LoadEEparams(void)
@@ -1978,7 +2114,7 @@ BOS_Status LoadEEbuttons(void)
 				/* Setup the button and its events */
 				AddPortButton(button[i+1].type, i+1);
 				SetButtonEvents(i+1, (button[i+1].events & BUTTON_EVENT_CLICKED), ((button[i+1].events & BUTTON_EVENT_DBL_CLICKED)>>1), button[i+1].pressedX1Sec,\
-												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY2Sec, button[i+1].releasedY3Sec);
+												button[i+1].pressedX2Sec, button[i+1].pressedX3Sec, button[i+1].releasedY1Sec, button[i+1].releasedY2Sec, button[i+1].releasedY3Sec, BUTTON_EVENT_MODE_CLEAR);
 			}
 		}
 	}
@@ -3078,6 +3214,45 @@ void SetupPortForRemoteBootloaderUpdate(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
+/* --- Check if this string is a local module parameter or event. Returns parameter index+1
+*/
+uint8_t IsModuleParameter(char* name)
+{
+	for(uint8_t i=0; i<NUM_MODULE_PARAMS ;i++)
+  {
+		if (!strcmp(name, (const char *)(modParam[i].paramName)))
+			return i+1;
+  }
+	return 0;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Check if this string is a math operator and return its enum
+*/
+uint8_t IsMathOperator(char* string)
+{
+	for(uint8_t i=0; i<NUM_MATH_OPERATORS ;i++)
+  {
+		if (!strcmp(string, "="))
+			return MATH_EQUAL;
+		else if (!strcmp(string, ">"))
+			return MATH_GREATER;
+		else if (!strcmp(string, "<"))
+			return MATH_SMALLER;
+		else if (!strcmp(string, ">="))
+			return MATH_GREATER_EQUAL;
+		else if (!strcmp(string, "<="))
+			return MATH_SMALLER_EQUAL;
+		else if (!strcmp(string, "!="))
+			return MATH_NOT_EQUAL;
+  }
+	return 0;
+}
+
+
+/*-----------------------------------------------------------*/
+
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follow : 
@@ -3249,6 +3424,10 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &uuidCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &idcodeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &flashsizeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &snipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &actSnipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &pauseSnipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
 	
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
@@ -3718,7 +3897,7 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{
 		/* Save data in the master */
-		SaveROtopology();
+		SaveToRO();
 		SaveEEportsDir();
 		osDelay(100);
 		/* Ask other modules to save their data too */
@@ -4481,7 +4660,10 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
 	}
 	
-	// Todo: store my own streams to EEPROM
+	// Store my own streams to EEPROM
+	if (stored) {
+		SaveEEstreams(cMessage[port-1][12], count, timeout, srcP, port, 0, 0, 0, 0);
+	}
 	
 	/* Start the timeout timer */
 	if (xTimerStream != NULL)
@@ -4661,9 +4843,10 @@ BOS_Status RemovePortButton(uint8_t port)
 					dbl_clicked: Double click event (1: Enable, 0: Disable)
 					pressed_x1sec, pressed_x1sec, pressed_x1sec: Press time for events X1, X2 and X3 in seconds. Use 0 to disable the event. 
 					released_x1sec, released_x1sec, released_x1sec: Release time for events Y1, Y2 and Y3 in seconds. Use 0 to disable the event. 
+					mode: BUTTON_EVENT_MODE_CLEAR to clear events marked with 0, BUTTON_EVENT_MODE_OR to OR events marked with 1 with existing events.
 */
 BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec,\
-													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec)
+													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode)
 {
 	BOS_Status result = BOS_OK;	
 	uint16_t res, temp16; uint8_t temp8;
@@ -4674,38 +4857,46 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	button[port].pressedX1Sec = pressed_x1sec; button[port].pressedX2Sec = pressed_x2sec; button[port].pressedX3Sec = pressed_x3sec;
 	button[port].releasedY1Sec = released_y1sec; button[port].releasedY2Sec = released_y2sec; button[port].releasedY3Sec = released_y3sec;
 	
-	if (clicked)				
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && clicked)) {				
 		button[port].events |= BUTTON_EVENT_CLICKED;
-	else								
-		button[port].events &= ~BUTTON_EVENT_CLICKED;
-	if (dbl_clicked)		
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !clicked) {
+		button[port].events &= ~BUTTON_EVENT_CLICKED;		
+	}
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && dbl_clicked)) {		
 		button[port].events |= BUTTON_EVENT_DBL_CLICKED;
-	else								
-		button[port].events &= ~BUTTON_EVENT_DBL_CLICKED;
-	if (pressed_x1sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !dbl_clicked) {
+		button[port].events &= ~BUTTON_EVENT_DBL_CLICKED;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x1sec)) {			
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X1_SEC;
-	if (pressed_x2sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x1sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X1_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x2sec)) {		
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X2_SEC;
-	if (pressed_x3sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x2sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X2_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && pressed_x3sec)) {		
 		button[port].events |= BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X3_SEC;
-	if (released_y1sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !pressed_x3sec) {
+		button[port].events &= ~BUTTON_EVENT_PRESSED_FOR_X3_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y1sec)) {		
 		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y1_SEC;
-	if (released_y2sec)	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y1sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y1_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y2sec)) {		
 		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y2_SEC;
-	if (released_y3sec)	
-		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
-	else								
-		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y3_SEC;
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y2sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y2_SEC;		
+	}		
+	if (mode == BUTTON_EVENT_MODE_OR || (mode == BUTTON_EVENT_MODE_CLEAR && released_y3sec)) {		
+		button[port].events |= BUTTON_EVENT_RELEASED_FOR_Y3_SEC;	
+	} else if (mode == BUTTON_EVENT_MODE_CLEAR && !released_y3sec) {
+		button[port].events &= ~BUTTON_EVENT_RELEASED_FOR_Y3_SEC;		
+	}
 	
 	/* Add to EEPROM */
 	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
@@ -4932,6 +5123,8 @@ void GetTimeDate(void)
 	BOS.date.year = sdatestructureget.Year + 2000;
 }
 
+/*-----------------------------------------------------------*/
+
 /* --- Make a data string with format weekday / month / date / year 
 */
 char *GetDateString(void)
@@ -4943,6 +5136,8 @@ char *GetDateString(void)
   return buffer;
 }
 
+/*-----------------------------------------------------------*/
+
 /* --- Make a time string with format hour / minute / second
 */
 char *GetTimeString(void)
@@ -4953,6 +5148,21 @@ char *GetTimeString(void)
   sprintf(buffer, formatTimeStr, BOS.time.hours, BOS.time.minutes, BOS.time.seconds);
   return buffer;
 }
+
+/*-----------------------------------------------------------*/
+
+/* --- Link two array/communication ports together
+*/
+BOS_Status link(uint8_t port1, uint8_t port2)
+{
+	// Unlink these ports from any other DMA streams
+	
+	// Link the ports together
+	return StartScastDMAStream(port1, myID, port2, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, true);
+	
+}
+
+/*-----------------------------------------------------------*/
 
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
@@ -6105,5 +6315,222 @@ static portBASE_TYPE flashsizeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 
 /*-----------------------------------------------------------*/
 
+static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageSnipWelcome = ( int8_t * ) "The following Command Snippets are stored in memory:\n\n\r";
+	static const int8_t *pcMessageSnipAction = ( int8_t * ) "To delete a Snippet, type: del-snip x\n\rTo activate a Snippet, type: \
+act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet number from the list\n\r";
+	static const int8_t *pcMessageSnipStart = ( int8_t * ) "[%02d] %s\n\r";
+	static const int8_t *pcMessageSnipButtonEventClicked = ( int8_t * ) "%sif b%d.clicked";
+	static const int8_t *pcMessageSnipButtonEventDblClicked = ( int8_t * ) "%sif b%d.double clicked";
+	static const int8_t *pcMessageSnipButtonEventPressed = ( int8_t * ) "%sif b%d.pressed for %d";
+	static const int8_t *pcMessageSnipButtonEventReleased = ( int8_t * ) "%sif b%d.released for %d";	
+	static const int8_t *pcMessageCmds = ( int8_t * ) "%s\n\r\t%s";
+	static const int8_t *pcMessageEnd = ( int8_t * ) "\n\rend if\n\n\r";
+	char status[2][7] = {"Paused", "Active"};
+	static int8_t commands[ cmdMAX_INPUT_SIZE ];
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Respond to the command */
+	writePxMutex(PcPort, (char*) pcMessageSnipWelcome, strlen((char*) pcMessageSnipWelcome), cmd50ms, HAL_MAX_DELAY);
+	
+	/* Go through all stored Snippets */
+	uint8_t count = 1;
+	for(uint8_t s=0 ; s<numOfRecordedSnippets ; s++)
+  {
+		if (snippets[s].cond.conditionType)
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipStart, count, status[snippets[s].state]);
+		
+		// Parse conditions
+		switch (snippets[s].cond.conditionType)
+		{
+			case SNIP_COND_BUTTON_EVENT:
+
+				switch (snippets[s].cond.buffer1[1])
+        {
+        	case CLICKED:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cmd);				
+        		break;
+        	case DBL_CLICKED:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventDblClicked, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cmd);				
+        		break;
+					case PRESSED_FOR_X1_SEC:
+					case PRESSED_FOR_X2_SEC:
+					case PRESSED_FOR_X3_SEC:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventPressed, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cond.buffer1[2], snippets[s].cmd);				
+        		break;
+					case RELEASED_FOR_Y1_SEC:
+					case RELEASED_FOR_Y2_SEC:
+					case RELEASED_FOR_Y3_SEC:
+						sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipButtonEventReleased, ( char * ) pcWriteBuffer, snippets[s].cond.buffer1[0], snippets[s].cond.buffer1[2], snippets[s].cmd);				
+        		break;						
+        	default:
+        		break;
+        }
+				
+				break;
+				
+			case SNIP_COND_MODULE_PARAM_CONST:
+				break;
+			
+			default:
+				break;
+		}
+		
+		// Parse commands
+		while (ParseSnippetCommand(snippets[s].cmd, (int8_t *) &commands) != false)
+		{
+			sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageCmds, pcWriteBuffer, commands );
+			memset( &commands, 0x00, strlen((char*) commands) );
+		}
+		
+		// Finish and write the buffer
+		strcat( ( char * ) pcWriteBuffer, ( char * ) pcMessageEnd);
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		
+		++count;
+	}
+
+	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipAction );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was activated. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	/* Respond to the command */
+	if (result == BOS_OK) {
+		snippets[index-1].state = true;
+		SaveToRO();
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	}
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was paused. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	/* Respond to the command */
+	if (result == BOS_OK) {
+		snippets[index-1].state = false;
+		SaveToRO();
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	}
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "Snippet was deleted. Type snip to view updated list\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "The Snippet number was not found\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* 1st parameter for Snippet index */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	uint8_t index = ( uint8_t ) atoi( ( char * ) pcParameterString1 );
+	
+	if (!index || index > numOfRecordedSnippets)	result = BOS_ERROR;
+	
+	if (result == BOS_OK)
+	{
+		// Delete the Snippet
+		snippets[index-1].cond.conditionType = 0;
+		snippets[index-1].cond.mathOperator = 0;
+		memset(snippets[index-1].cond.buffer1, 0, 4);
+		snippets[index-1].state = false;
+		free(snippets[index-1].cmd);
+		snippets[index-1].cmd = NULL;
+		
+		// Reorder remaining Snippets to avoid empty indices
+		for(uint8_t s=index ; s<numOfRecordedSnippets ; s++) {
+			if (snippets[s].cond.conditionType) {
+				memcpy( &snippets[s-1], &snippets[s], sizeof(snippet_t) );
+				memset( &snippets[s], 0, sizeof(snippet_t) );
+			}
+		}		
+		--numOfRecordedSnippets;
+		
+		// Write updated list to RO
+		SaveToRO();
+	}
+	
+	/* Respond to the command */
+	if (result == BOS_OK)
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK );
+	else
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );
+
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
