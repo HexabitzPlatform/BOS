@@ -1200,6 +1200,8 @@ void PxMessagingTask(void * argument)
 								responseStatus = (BOS_Status) cMessage[port-1][4];
 								break;	
 							
+							case CODE_port_forward :
+							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
 							
 							default :
 								/* Process module tasks */

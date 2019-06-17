@@ -198,6 +198,16 @@ typedef struct
 } 
 BOS_t;
 
+/* Module Parameter Struct Type Definition */  
+typedef struct
+{
+	void *paramPtr;
+	varFormat_t paramFormat;
+	char *paramName;
+} 
+module_param_t;
+extern module_param_t modParam[];
+
 /* Button Struct Type Definition */  
 typedef struct
 {
@@ -358,6 +368,8 @@ extern void SystemClock_Config(void);
 #define	CODE_write_remote  								32
 #define	CODE_write_remote_response  			33
 #define	CODE_write_remote_force						34
+
+#define	CODE_port_forward     						35
 
 
 /* -----------------------------------------------------------------------
