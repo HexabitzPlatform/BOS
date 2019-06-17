@@ -4193,7 +4193,7 @@ int16_t GetID(char* string)
 	{															
 		/* Check module alias */
 		for (i=0 ; i<N ; i++) {
-			if(!strcmp(string, moduleAlias[i]) && (*string != 0))	return (i+1);	
+			if(!strcmp(string, moduleAlias[i]) && (*string != 0))	return (i);	
 		}
 		
 		/* Check group alias */
