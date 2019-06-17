@@ -8,6 +8,7 @@
 		Required MCU resources : 
 		
 			>> Timer 14 for micro-sec delay.
+			>> Timer 15 for milli-sec delay.
 
 */
 	
@@ -21,6 +22,7 @@ BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_
 											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
+TIM_HandleTypeDef htim15;	/* milli-second delay counter */
 uint8_t indMode = IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
@@ -1246,15 +1248,43 @@ void MX_TIM_USEC_Init(void)
 
 	/* Peripheral configuration */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
+  htim14.Init.Prescaler = HAL_RCC_GetPCLK1Freq()/1000000;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim14.Init.Period = 1;
+  htim14.Init.Period = 0xFFFF;
   HAL_TIM_Base_Init(&htim14);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim14, &sMasterConfig);
+	
+	HAL_TIM_Base_Start(&htim14);
+}
 
+/*-----------------------------------------------------------*/
+
+/*-----------------------------------------------------------*/
+
+/*  Milli-seconds timebase init function - TIM15 (16-bit)
+*/
+void MX_TIM_MSEC_Init(void)
+{
+  TIM_MasterConfigTypeDef sMasterConfig;
+	
+	/* Peripheral clock enable */
+	__TIM15_CLK_ENABLE();
+
+	/* Peripheral configuration */
+  htim15.Instance = TIM15;
+  htim15.Init.Prescaler = HAL_RCC_GetPCLK1Freq()/1000;
+  htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim15.Init.Period = 0xFFFF;
+  HAL_TIM_Base_Init(&htim15);
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig);
+	
+	HAL_TIM_Base_Start(&htim15);
 }
 
 /*-----------------------------------------------------------*/
@@ -3161,6 +3191,7 @@ void BOS_Init(void)
   MX_GPIO_Init();
 	MX_DMA_Init();
 	MX_TIM_USEC_Init();
+	MX_TIM_MSEC_Init();
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -3823,21 +3854,15 @@ BOS_Status FindBroadcastRoutes(uint8_t src)
 */
 void StartMicroDelay(uint16_t Delay)
 {
+	uint32_t t0=0;
+
 	portENTER_CRITICAL();
-	
-	/* Setup the timer to 1-usec base */
-	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
-	HAL_TIM_Base_Init(&htim14);
 	
 	if (Delay)
 	{
-		htim14.Instance->ARR = Delay;
+		t0 = htim14.Instance->CNT;
 
-		HAL_TIM_Base_Start(&htim14);	
-
-		while(htim14.Instance->CNT < Delay) {};
-		
-		HAL_TIM_Base_Stop(&htim14);
+		while(htim14.Instance->CNT - t0 <= Delay) {};
 	}
 	
 	portEXIT_CRITICAL();
@@ -3849,21 +3874,15 @@ void StartMicroDelay(uint16_t Delay)
 */
 void StartMilliDelay(uint16_t Delay)
 {
-	portENTER_CRITICAL();
+	uint32_t t0=0;
 	
-	/* Setup the timer to 1-msec base */
-	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000;
-	HAL_TIM_Base_Init(&htim14);
+	portENTER_CRITICAL();
 	
 	if (Delay)
 	{
-		htim14.Instance->ARR = Delay;
-		
-		HAL_TIM_Base_Start(&htim14);	
+		t0 = htim15.Instance->CNT;
 
-		while(htim14.Instance->CNT < Delay) {};
-		
-		HAL_TIM_Base_Stop(&htim14);
+		while(htim15.Instance->CNT - t0 <= Delay) {};
 	}
 	
 	portEXIT_CRITICAL();

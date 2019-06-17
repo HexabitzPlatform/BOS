@@ -256,8 +256,8 @@ button_t;
 
 
 /* Delay macros */
-#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
+#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 #define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
