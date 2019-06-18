@@ -182,6 +182,7 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t ou
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
 /* Module exported internal functions */
+extern uint8_t IsModuleParameter(char* name);
 extern void Module_Init(void);
 extern void RegisterModuleCLICommands(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
@@ -913,15 +914,16 @@ void PxMessagingTask(void * argument)
 								}	
 								else if(cMessage[port-1][4]==REMOTE_MODULE_PARAM)			// request for a Module param
 								{
-									messageParams[0] = BOS_var_reg[cMessage[port-1][4]-1]&0x000F;					// send variable format (lower 4 bits)
-									
-									if (messageParams[0] == 0) {																					// Variable does not exist
+									cMessage[port-1][messageLength[port-1]-1] = 0;		 // adding string termination
+									messageParams[0]=IsModuleParameter((char *)&cMessage[port-1][5]);          // extrating module parameter
+									if (messageParams[0] == 0) {																					// Parameter does not exist
 										SendMessageToModule(src, CODE_read_remote_response, 1);							
 									} else {
-										// Variable exists. Get its memory address
-										temp32 = (BOS_var_reg[cMessage[port-1][4]-1]>>16) + SRAM_BASE;
-										// Send variable according to its format
-										switch (messageParams[0])											// requested format
+										// Parameter exists. Get its pointer
+										temp32 = (uint32_t) modParam[messageParams[0]-1].paramPtr;
+										messageParams[0]=modParam[messageParams[0]-1].paramFormat;
+										// Send parameter according to its format
+										switch (modParam[messageParams[0]-1].paramFormat)											// requested format
 										{
 											case FMT_BOOL:
 											case FMT_UINT8: 
@@ -1000,7 +1002,7 @@ void PxMessagingTask(void * argument)
 								break;			
 								
 							case CODE_read_remote_response :
-								if (remoteBuffer == 0)				// We requested a BOS variable
+								if (remoteBuffer >= REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable
 								{
 									// Read variable according to its format
 									remoteVarFormat = (varFormat_t) cMessage[port-1][4];

@@ -251,16 +251,6 @@ typedef struct
 } 
 snippet_t;
 
-/* Module Parameter Struct Type Definition */  
-typedef struct
-{
-	void *paramPtr;
-	varFormat_t paramFormat;
-	char *paramName;
-} 
-module_param_t;
-extern module_param_t modParam[];
-
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
 #define	BUTTON_EVENT_DBL_CLICKED							0x02
