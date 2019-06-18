@@ -32,7 +32,7 @@
   */
 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -48,7 +48,7 @@ static uint32_t ulClocksPer10thOfAMilliSecond = 0UL;
 
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
-TaskHandle_t FrontEndTaskHandle = NULL;
+TaskHandle_t userTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
 #ifdef _P1
@@ -80,7 +80,7 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 /* Function prototypes -------------------------------------------------------*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
-void FrontEndTask(void * argument);
+void UserTask(void * argument);
 
 /* BOS exported internal functions */
 extern void PxMessagingTask(void * argument);
@@ -98,8 +98,8 @@ void MX_FREERTOS_Init(void)
   /* Create a defaultTask */
   xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &defaultTaskHandle);	
 
-	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &FrontEndTaskHandle);
+	/* Create the User task */
+	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &userTaskHandle);
 	
   /* Create message parsing tasks for module ports */
 #ifdef _P1
