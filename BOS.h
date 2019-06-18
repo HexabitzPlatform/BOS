@@ -257,6 +257,10 @@ button_t;
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
+#define REMOTE_MEMORY_ADD             0
+#define REMOTE_BOS_PARAM              1
+#define REMOTE_MODULE_PARAM           2
+#define REMOTE_BOS_VAR                3
 
 /* Command Snippets */
 #define SNIPPETS_BUF_SIZE							1000
@@ -370,6 +374,7 @@ extern void SystemClock_Config(void);
 #define	CODE_write_remote_force						34
 
 #define	CODE_port_forward     						35
+#define	CODE_read_param       						36
 
 
 /* -----------------------------------------------------------------------
@@ -415,6 +420,7 @@ extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_cli
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec);
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);

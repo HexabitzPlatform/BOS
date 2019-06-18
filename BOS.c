@@ -832,10 +832,48 @@ void PxMessagingTask(void * argument)
 								break;								
 							
 							
-							case CODE_read_remote :								
-								if(cMessage[port-1][4])			// request for a BOS var
+							case CODE_read_remote :	
+							 if	(cMessage[port-1][4]==REMOTE_MEMORY_ADD)											// request for a memory address
+								{
+									// Get requested address
+									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
+									// Get variable according to requested format
+									switch (cMessage[port-1][5])											// requested format
+                  {
+										case FMT_BOOL:
+                  	case FMT_UINT8: 
+											messageParams[0] = *(__IO uint8_t *)temp32; 
+											SendMessageToModule(src, CODE_read_remote_response, 1); break;
+                  	case FMT_INT8: 
+											messageParams[0] = *(__IO int8_t *)temp32; 
+											SendMessageToModule(src, CODE_read_remote_response, 1); break;
+                  	case FMT_UINT16: 
+											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8);  
+											SendMessageToModule(src, CODE_read_remote_response, 2); break;
+                  	case FMT_INT16: 
+											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
+											SendMessageToModule(src, CODE_read_remote_response, 2); break;
+                  	case FMT_UINT32: 
+											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
+											SendMessageToModule(src, CODE_read_remote_response, 4); break;
+                  	case FMT_INT32: 
+											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
+											SendMessageToModule(src, CODE_read_remote_response, 4); break;										
+                  	case FMT_FLOAT:
+											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); messageParams[2] = *(__IO uint8_t *)(temp32+2); 
+											messageParams[3] = *(__IO uint8_t *)(temp32+3); messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+5); 
+											messageParams[6] = *(__IO uint8_t *)(temp32+6); messageParams[7] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
+											SendMessageToModule(src, CODE_read_remote_response, 8); break;
+                  	default:
+                  		break;
+                  }		
+								}	
+								else if(cMessage[port-1][4]==REMOTE_MODULE_PARAM)			// request for a Module param
 								{
 									messageParams[0] = BOS_var_reg[cMessage[port-1][4]-1]&0x000F;					// send variable format (lower 4 bits)
+									
 									if (messageParams[0] == 0) {																					// Variable does not exist
 										SendMessageToModule(src, CODE_read_remote_response, 1);							
 									} else {
@@ -874,46 +912,51 @@ void PxMessagingTask(void * argument)
 												break;
 										}											
 									}
-								}
-								else												// request for a memory address
+								}								
+								else if(cMessage[port-1][4]>=REMOTE_BOS_VAR)			// request for a BOS var
 								{
-									// Get requested address
-									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
-									// Get variable according to requested format
-									switch (cMessage[port-1][5])											// requested format
-                  {
-										case FMT_BOOL:
-                  	case FMT_UINT8: 
-											messageParams[0] = *(__IO uint8_t *)temp32; 
-											SendMessageToModule(src, CODE_read_remote_response, 1); break;
-                  	case FMT_INT8: 
-											messageParams[0] = *(__IO int8_t *)temp32; 
-											SendMessageToModule(src, CODE_read_remote_response, 1); break;
-                  	case FMT_UINT16: 
-											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8);  
-											SendMessageToModule(src, CODE_read_remote_response, 2); break;
-                  	case FMT_INT16: 
-											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
-											SendMessageToModule(src, CODE_read_remote_response, 2); break;
-                  	case FMT_UINT32: 
-											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
-											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
-											SendMessageToModule(src, CODE_read_remote_response, 4); break;
-                  	case FMT_INT32: 
-											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
-											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
-											SendMessageToModule(src, CODE_read_remote_response, 4); break;										
-                  	case FMT_FLOAT:
-											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); messageParams[2] = *(__IO uint8_t *)(temp32+2); 
-											messageParams[3] = *(__IO uint8_t *)(temp32+3); messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+5); 
-											messageParams[6] = *(__IO uint8_t *)(temp32+6); messageParams[7] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
-											SendMessageToModule(src, CODE_read_remote_response, 8); break;
-                  	default:
-                  		break;
-                  }	
+									messageParams[0] = BOS_var_reg[cMessage[port-1][4]-REMOTE_BOS_VAR-1]&0x000F;					// send variable format (lower 4 bits)
+									if (messageParams[0] == 0) {																					// Variable does not exist
+										SendMessageToModule(src, CODE_read_remote_response, 1);							
+									} else {
+										// Variable exists. Get its memory address
+										temp32 = (BOS_var_reg[cMessage[port-1][4]-REMOTE_BOS_VAR-1]>>16) + SRAM_BASE;
+										// Send variable according to its format
+										switch (messageParams[0])											// requested format
+										{
+											case FMT_BOOL:
+											case FMT_UINT8: 
+												messageParams[1] = *(__IO uint8_t *)temp32; 
+												SendMessageToModule(src, CODE_read_remote_response, 2); break;
+											case FMT_INT8: 
+												messageParams[1] = *(__IO int8_t *)temp32; 
+												SendMessageToModule(src, CODE_read_remote_response, 2); break;
+											case FMT_UINT16: 
+												messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); 
+												SendMessageToModule(src, CODE_read_remote_response, 3); break;
+											case FMT_INT16: 
+												messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
+												SendMessageToModule(src, CODE_read_remote_response, 3); break;
+											case FMT_UINT32: 
+												messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+												messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
+												SendMessageToModule(src, CODE_read_remote_response, 5); break;
+											case FMT_INT32: 
+												messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+												messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
+												SendMessageToModule(src, CODE_read_remote_response, 5); break;										
+											case FMT_FLOAT:
+												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
+												messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
+												messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
+												SendMessageToModule(src, CODE_read_remote_response, 9); break;			
+											default:
+												break;
+										}											
+									}
 								}
-								break;			
 
+								break;			
 								
 							case CODE_read_remote_response :
 								if (remoteBuffer == 0)				// We requested a BOS variable
@@ -1201,6 +1244,9 @@ void PxMessagingTask(void * argument)
 								break;	
 							
 							case CODE_port_forward :
+							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
+
+							case CODE_read_param :
 							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
 							
 							default :
@@ -4775,7 +4821,7 @@ uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *rem
 	remoteBuffer = 0;
 	
 	/* Send the Message */
-	messageParams[0] = remoteAddress;			// Send BOS variable index
+	messageParams[0] = remoteAddress + REMOTE_BOS_VAR;			// Send BOS variable index
 	SendMessageToModule(module, CODE_read_remote, 1);
 	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
@@ -4811,7 +4857,7 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 	remoteBuffer = 0;
 	
 	/* Send the Message */
-	messageParams[0] = 0;
+	messageParams[0] = REMOTE_MEMORY_ADD;
 	messageParams[1] = requestedFormat;						// Requested format
 	messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
 	messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 		
@@ -4825,6 +4871,43 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 	/* Return the read value address */
 	if (responseStatus == BOS_OK)
 		return ((uint32_t *)&remoteBuffer);	
+	else 
+		return NULL;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Read a parameter from a remote module. 
+			 This API returns a pointer to the remote parameter. Cast this pointer to match the appropriate format.
+			 If the returned parameter is NULL, then remote parameter does not exist or remote module is not responsive.
+					module: Remote module ID. 
+					paramString: Remote parameter string address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS parameters with unknown addresses.
+					remoteFormat (output): Pointer to format of remote BOS variable. 					
+					timeout: Read timeout in msec.
+*/
+uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout)
+{
+	/* Reset local buffer */
+	remoteBuffer = 0;
+	
+	/* Send the Message */
+	messageParams[0] = REMOTE_MODULE_PARAM;
+	memcpy(&messageParams[1], paramString, strlen(paramString));   // copy BOS parameter index to location
+	SendMessageToModule(module, CODE_read_param, strlen(paramString)+1);
+	remoteBuffer = 0;											// Set a flag that we requested a BOS var
+	
+	/* Wait until read is complete */
+	uint32_t t0 = HAL_GetTick();
+	while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
+	
+	/* Return the read value address */
+	if (responseStatus == BOS_OK) 
+	{
+		/* Return the remote var format */
+		*remoteFormat = remoteVarFormat;
+		
+		return ((uint32_t *)&remoteBuffer);		
+	}
 	else 
 		return NULL;
 }
