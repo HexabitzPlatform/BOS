@@ -405,7 +405,7 @@ extern void SystemClock_Config(void);
 #define	CODE_write_remote_force						34
 
 #define	CODE_port_forward     						35
-#define	CODE_read_param       						36
+
 
 
 /* -----------------------------------------------------------------------

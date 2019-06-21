@@ -915,15 +915,15 @@ void PxMessagingTask(void * argument)
 								else if(cMessage[port-1][4]==REMOTE_MODULE_PARAM)			// request for a Module param
 								{
 									cMessage[port-1][messageLength[port-1]-1] = 0;		 // adding string termination
-									messageParams[0]=IsModuleParameter((char *)&cMessage[port-1][5]);          // extrating module parameter
-									if (messageParams[0] == 0) {																					// Parameter does not exist
+									temp=IsModuleParameter((char *)&cMessage[port-1][5]);          // extrating module parameter
+									if (temp == 0) {																					// Parameter does not exist
 										SendMessageToModule(src, CODE_read_remote_response, 1);							
 									} else {
 										// Parameter exists. Get its pointer
-										temp32 = (uint32_t) modParam[messageParams[0]-1].paramPtr;
-										messageParams[0]=modParam[messageParams[0]-1].paramFormat;
+										temp32 = (uint32_t) modParam[temp-1].paramPtr;
+										messageParams[0] = modParam[temp-1].paramFormat;
 										// Send parameter according to its format
-										switch (modParam[messageParams[0]-1].paramFormat)											// requested format
+										switch (messageParams[0])											// requested format
 										{
 											case FMT_BOOL:
 											case FMT_UINT8: 
@@ -1002,7 +1002,7 @@ void PxMessagingTask(void * argument)
 								break;			
 								
 							case CODE_read_remote_response :
-								if (remoteBuffer >= REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable
+								if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable
 								{
 									// Read variable according to its format
 									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
@@ -1030,7 +1030,7 @@ void PxMessagingTask(void * argument)
                   		break;
                   }										
 								}
-								else										// We requested a memory location
+								else if (remoteBuffer == REMOTE_MEMORY_ADD)										// We requested a memory location
 								{
 									// Read variable according to requested format
 									switch (remoteBuffer)															// Requested format
@@ -1054,6 +1054,9 @@ void PxMessagingTask(void * argument)
                   	default:
                   		break;
                   }															
+								}
+								else
+								{
 								}
 								// Remote read status
 								if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
@@ -1288,9 +1291,7 @@ void PxMessagingTask(void * argument)
 							
 							case CODE_port_forward :
 							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
-
-							case CODE_read_param :
-							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
+							break;
 							
 							default :
 								/* Process module tasks */
@@ -5011,7 +5012,7 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
-	remoteBuffer = 0;
+	remoteBuffer = REMOTE_BOS_VAR;
 	
 	/* Send the Message */
 	messageParams[0] = remoteAddress + REMOTE_BOS_VAR;			// Send BOS variable index
@@ -5047,7 +5048,7 @@ uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *rem
 uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
-	remoteBuffer = 0;
+	remoteBuffer = REMOTE_MEMORY_ADD;
 	
 	/* Send the Message */
 	messageParams[0] = REMOTE_MEMORY_ADD;
@@ -5081,12 +5082,12 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
-	remoteBuffer = 0;
+	remoteBuffer = REMOTE_MODULE_PARAM;
 	
 	/* Send the Message */
 	messageParams[0] = REMOTE_MODULE_PARAM;
 	memcpy(&messageParams[1], paramString, strlen(paramString));   // copy BOS parameter index to location
-	SendMessageToModule(module, CODE_read_param, strlen(paramString)+1);
+	SendMessageToModule(module, CODE_read_remote, strlen(paramString)+1);
 	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
 	/* Wait until read is complete */
