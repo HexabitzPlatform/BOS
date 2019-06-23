@@ -1002,7 +1002,7 @@ void PxMessagingTask(void * argument)
 								break;			
 								
 							case CODE_read_remote_response :
-								if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable
+								if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable or module param
 								{
 									// Read variable according to its format
 									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
@@ -1290,8 +1290,8 @@ void PxMessagingTask(void * argument)
 								break;	
 							
 							case CODE_port_forward :
-							writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
-							break;
+								writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
+								break;
 							
 							default :
 								/* Process module tasks */
