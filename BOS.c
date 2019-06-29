@@ -5017,7 +5017,6 @@ uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *rem
 	/* Send the Message */
 	messageParams[0] = remoteAddress + REMOTE_BOS_VAR;			// Send BOS variable index
 	SendMessageToModule(module, CODE_read_remote, 1);
-	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
 	/* Wait until read is complete */
 	uint32_t t0 = HAL_GetTick();
@@ -5088,7 +5087,6 @@ uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remote
 	messageParams[0] = REMOTE_MODULE_PARAM;
 	memcpy(&messageParams[1], paramString, strlen(paramString));   // copy BOS parameter index to location
 	SendMessageToModule(module, CODE_read_remote, strlen(paramString)+1);
-	remoteBuffer = 0;											// Set a flag that we requested a BOS var
 	
 	/* Wait until read is complete */
 	uint32_t t0 = HAL_GetTick();
