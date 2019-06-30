@@ -207,6 +207,16 @@ typedef struct
 } 
 BOS_t;
 
+/* Module Parameter Struct Type Definition */  
+typedef struct
+{
+	void *paramPtr;
+	varFormat_t paramFormat;
+	char *paramName;
+} 
+module_param_t;
+extern module_param_t modParam[];
+
 /* Button Struct Type Definition */  
 typedef struct
 {
@@ -241,16 +251,6 @@ typedef struct
 } 
 snippet_t;
 
-/* Module Parameter Struct Type Definition */  
-typedef struct
-{
-	void *paramPtr;
-	varFormat_t paramFormat;
-	char *paramName;
-} 
-module_param_t;
-extern module_param_t modParam[];
-
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
 #define	BUTTON_EVENT_DBL_CLICKED							0x02
@@ -284,6 +284,10 @@ extern module_param_t modParam[];
 #define DEF_ARRAY_BAUDRATE						921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
+#define REMOTE_MEMORY_ADD             0
+#define REMOTE_BOS_PARAM              1
+#define REMOTE_MODULE_PARAM           2
+#define REMOTE_BOS_VAR                3
 
 /* Command Snippets */
 #define MAX_SNIPPETS									5					// Max number of accepted Snippets
@@ -297,8 +301,8 @@ extern module_param_t modParam[];
 
 
 /* Delay macros */
-#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
+#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 #define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
@@ -400,6 +404,9 @@ extern void SystemClock_Config(void);
 #define	CODE_write_remote_response  			33
 #define	CODE_write_remote_force						34
 
+#define	CODE_port_forward     						35
+
+
 
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
@@ -444,6 +451,7 @@ extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_cli
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
