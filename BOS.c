@@ -1552,7 +1552,7 @@ void LoadEEvars(void)
 }
 
 /*-----------------------------------------------------------*/
-#ifndef _N
+
 /* --- Save array topology and Command Snippets in Flash RO --- 
 */
 uint8_t SaveToRO(void)
@@ -1741,9 +1741,9 @@ uint8_t LoadROsnippets(void)
 //	
 //	return result;
 //}
-#endif
+
 /*-----------------------------------------------------------*/
-#ifndef _N
+
 /* --- Load array topology stored in Flash RO --- 
 */
 uint8_t LoadROtopology(void)
@@ -1806,7 +1806,7 @@ uint8_t LoadROtopology(void)
 //	
 //	return result;
 //}
-#endif
+
 /*-----------------------------------------------------------*/
 
 /* --- Save array ports directions in EEPROM --- 
