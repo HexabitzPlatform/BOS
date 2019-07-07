@@ -29,7 +29,7 @@ enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* N
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
 enum bootStatus_e{POWER_ON_BOOT, RESET_BOOT};
-enum traceOptions_e{TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH};
+
 /* RTC Enums */
 enum rtc_ampm_e{RTC_AM = 1, RTC_PM};
 enum rtc_daylight_e{DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1};
@@ -37,6 +37,7 @@ enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, 
 enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
+typedef enum { TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } traceOptions_t;
 
 // Math Operators
 #define MATH_EQUAL						1
@@ -198,7 +199,7 @@ typedef struct
 {
 	buttonsConfig_t buttons;
 	uint8_t response;
-	uint8_t trace;
+	traceOptions_t trace;
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;

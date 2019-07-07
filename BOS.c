@@ -18,7 +18,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 BOS_t BOS; 
-BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = 1, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
+BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = TRACE_BOTH, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
 											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
@@ -498,7 +498,8 @@ static char * pcRemoteBootloaderUpdateWarningMessage = 	\
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i, p; uint16_t code;
+	uint8_t port, src, dst, responseMode, temp, i, p; uint16_t code;
+	traceOptions_t traceMode, oldTraceMode;
 	uint32_t count, timeout, temp32;
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
@@ -524,7 +525,7 @@ void PxMessagingTask(void * argument)
 			
 			/* Read response and trace modes */
 			responseMode = cMessage[port-1][2] & 0x60;
-			traceMode = cMessage[port-1][2] & 0x10;
+			traceMode = (traceOptions_t) (cMessage[port-1][2] & 0x10);
 			oldTraceMode = BOS.trace;
 			BOS.trace = traceMode;
 			
@@ -2078,7 +2079,7 @@ BOS_Status LoadEEparams(void)
 	/* Found the variable (EEPROM is not cleared) */
 	if (!status1) {
 		BOS.response = (uint8_t)temp1;
-		BOS.trace = (bool)(temp1>>8);
+		BOS.trace = (traceOptions_t)(temp1>>8);
 	/* Couldn't find the variable, load default config */
 	} else {
 		BOS.response = BOS_default.response;
@@ -5888,10 +5889,10 @@ you must connect to a CLI port on each startup to restore other array ports into
 		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
 			if (!strncmp((const char *)pcParameterString2, "true", xParameterStringLength2)) {
-				BOS.trace = 1;
+				BOS.trace = TRACE_BOTH;
 				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "false", xParameterStringLength2)) {
-				BOS.trace = 0;
+				BOS.trace = TRACE_NONE;
 				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
