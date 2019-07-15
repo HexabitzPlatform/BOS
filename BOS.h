@@ -42,7 +42,7 @@ enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, 
 enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
-typedef enum { TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } traceOptions_t;
+typedef enum { TRACE_NONE = 0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } traceOptions_t;
 
 // Math Operators
 #define MATH_EQUAL						1

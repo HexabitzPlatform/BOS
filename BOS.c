@@ -191,7 +191,7 @@ extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t s
 extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
 
 const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
-"\r\nBOS.trace: true, false\r\n",
+"\r\nBOS.trace: all, msg, none\r\n",
 "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
 you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n",
 																															 "BOS.debounce: 1 ... 65536 msec\r\n",
@@ -499,8 +499,7 @@ static char * pcRemoteBootloaderUpdateWarningMessage = 	\
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, temp, i, p; uint16_t code;
-	traceOptions_t traceMode, oldTraceMode;
+	uint8_t port, src, dst, temp, i, p, shift, numOfParams; uint16_t code;
 	uint32_t count, timeout, temp32;
 	bool extendCode = false, extendOptions = false; 
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
@@ -533,14 +532,16 @@ void PxMessagingTask(void * argument)
 			shift = 0;
 			
 			/* Read message options */
-			if (cMessage[port-1][2] & 0x01) {						// LSB - TODO handle extended options case
+			if (cMessage[port-1][2] & 0x01) {						// 1st bit (LSB) Extended options - TODO handle extended options case
 				extendOptions = true;	
 				(void) extendOptions;		// remove warning		
 				++shift;				
 			} 
-			extendCode = (cMessage[port-1][2]>>3)&0x01;		// 4th bit
-			BOS.trace = (cMessage[port-1][2]>>4)&0x01;		// 5th bit
-			responseMode = (cMessage[port-1][2])&0x60;		// 6th-7th bits
+			extendCode = (cMessage[port-1][2]>>1)&0x01;									// 2nd bit Extended code
+			BOS.trace = (traceOptions_t)((cMessage[port-1][2]>>2)&0x03);	// 3rd-4th bits Trace 
+																																	// 5th bit Reserved
+			BOS.response = (cMessage[port-1][2])&0x60;									// 6th-7th bits Response mode
+																																	// 8th bit (MSB) Long message
 			
 			/* Read message code */
 			if (extendCode == true) {		
@@ -621,7 +622,7 @@ void PxMessagingTask(void * argument)
 						
 						case CODE_ping :
 							indMode = IND_PING;	osDelay(10);
-							if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG)
+							if (BOS.response == BOS_RESPONSE_ALL || BOS.response == BOS_RESPONSE_MSG)
 								SendMessageToModule(src, CODE_ping_response, 0);	
 							break;
 
@@ -806,7 +807,7 @@ void PxMessagingTask(void * argument)
 								/* Restore back PcPort */
 								PcPort = temp;
 								/* Respond to the CLI command */
-								if (responseMode == BOS_RESPONSE_ALL)
+								if (BOS.response == BOS_RESPONSE_ALL)
 								{
 									/* Copy the generated string to messageParams */
 									memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
@@ -1303,7 +1304,7 @@ void PxMessagingTask(void * argument)
 							}
 							
 							/* Send confirmation back */
-							if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG) {
+							if (BOS.response == BOS_RESPONSE_ALL || BOS.response == BOS_RESPONSE_MSG) {
 								messageParams[0] = responseStatus;
 								SendMessageToModule(src, CODE_write_remote_response, 1);											
 							}
@@ -3584,8 +3585,8 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		message[4] = src;
 		
 		/* Options */
-		/* Response (7th - 6th) : Trace (5th) : Extended Code (4th) : Reserved (3rd - 2nd) : Extended Options (1st-LSB) */
-		message[5] = (BOS.response) | (BOS.trace<<4) | (extendCode<<3) | (extendOptions);
+		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
+		message[5] = (BOS.response) | (BOS.trace<<2) | (extendCode<<1) | (extendOptions);
 		if (extendOptions == true) {
 			++shift;
 		}
@@ -5837,24 +5838,27 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
-			if (!strncmp((const char *)pcParameterString2, "true", xParameterStringLength2)) {
+			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.trace = TRACE_BOTH;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
-			} else if (!strncmp((const char *)pcParameterString2, "false", xParameterStringLength2)) {
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
+				BOS.trace = TRACE_MESSAGE;
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.trace = TRACE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
+				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -6061,10 +6065,12 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
-			if (BOS.trace == 1)
-				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "true");
-			else if (BOS.trace == 0)
-				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "false");
+			if (BOS.trace == TRACE_BOTH)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "all");
+			else if (BOS.trace == TRACE_MESSAGE)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg");
+			else if (BOS.trace == TRACE_NONE)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
 			else
 				result = BOS_ERR_WrongValue;
 		} 
