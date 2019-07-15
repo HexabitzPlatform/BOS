@@ -361,8 +361,9 @@ void BackEndTask(void * argument)
 			
 			/* C. If DMA stopped due to communication errors, restart again */
 			if (MsgDMAStopped[port-1] == true) {
-				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
 				MsgDMAStopped[port-1] = false;
+				if (portStatus[port] == OVERRUN)	portStatus[port] = MSG;
+				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
 			}				
 		}
 		
