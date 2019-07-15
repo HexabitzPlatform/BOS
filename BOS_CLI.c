@@ -52,7 +52,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -67,7 +67,7 @@ static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
      \n\r====================================================	\
      \n\r||            Welcome to BitzOS CLI!              ||	\
-		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2018.        ||	\
+		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2019.        ||	\
      \n\r||                                                ||	\
 		 \n\r||      Please check the project website at       ||	\
 		 \n\r||             http://hexabitz.com/               ||	\

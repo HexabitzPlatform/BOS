@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
+    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -23,18 +23,18 @@
 #define _firmTime				__TIME__
 
 /* Enumerations */
-enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB};
+enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485};
 enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON};
 enum UartDirection_e{NORMAL, REVERSED};
-enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _H1BR6, _H12R0, _H13R7, _H0FR6, _H1AR2, _H0AR9, _H1DR5, _H0BR4, _H18R0};
+enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _H1BR6, _H12R0, _H13R7, _H0FR6, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0};
 enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e{OFF=1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC,\
 										 PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC};
 enum bootStatus_e{POWER_ON_BOOT, RESET_BOOT};
-enum traceOptions_e{TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH};
+
 /* RTC Enums */
 enum rtc_ampm_e{RTC_AM = 1, RTC_PM};
 enum rtc_daylight_e{DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1};
@@ -42,6 +42,7 @@ enum rtc_months_e{JANUARY = 1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, 
 enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY};  
 /* Type definitions */
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
+typedef enum { TRACE_NONE, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } traceOptions_t;
 
 // Math Operators
 #define MATH_EQUAL						1
@@ -51,6 +52,15 @@ typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_I
 #define MATH_SMALLER_EQUAL		5
 #define MATH_NOT_EQUAL				6
 #define NUM_MATH_OPERATORS		6
+#ifdef H1DR1
+	#include "H1DR1.h"	
+#endif
+#ifdef H1DR5
+	#include "H1DR5.h"	
+#endif
+#ifdef H26R0
+	#include "H26R0.h"	
+#endif
 /* BOS_Status Type Definition */  
 typedef enum 
 {
@@ -123,7 +133,7 @@ typedef struct
 {
 	buttonsConfig_t buttons;
 	uint8_t response;
-	uint8_t trace;
+	traceOptions_t trace;
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
@@ -131,6 +141,16 @@ typedef struct
 	date_t date;						// Not saved with BOS parameters
 } 
 BOS_t;
+
+/* Module Parameter Struct Type Definition */  
+typedef struct
+{
+	void *paramPtr;
+	varFormat_t paramFormat;
+	char *paramName;
+} 
+module_param_t;
+extern module_param_t modParam[];
 
 /* Button Struct Type Definition */  
 typedef struct
@@ -165,16 +185,6 @@ typedef struct
 	uint8_t state;
 } 
 snippet_t;
-
-/* Module Parameter Struct Type Definition */  
-typedef struct
-{
-	void *paramPtr;
-	varFormat_t paramFormat;
-	char *paramName;
-} 
-module_param_t;
-extern module_param_t modParam[];
 
 /* Button Events Definition */ 
 #define	BUTTON_EVENT_CLICKED									0x01
@@ -214,6 +224,10 @@ extern module_param_t modParam[];
 //#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 #define MSG_RX_BUF_SIZE								(125)			// 1 Mbps UART at 1 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+#define REMOTE_MEMORY_ADD             0
+#define REMOTE_BOS_PARAM              1
+#define REMOTE_MODULE_PARAM           2
+#define REMOTE_BOS_VAR                3
 
 /* Command Snippets */
 #define MAX_SNIPPETS									5					// Max number of accepted Snippets
@@ -227,8 +241,8 @@ extern module_param_t modParam[];
 
 
 /* Delay macros */
-#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe (16 bits) - Use before and after starting the scheduler */
+#define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 #define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
@@ -332,7 +346,7 @@ extern uint8_t myID, bcastID;
 extern uint16_t myPN;
 extern uint8_t indMode;
 extern uint8_t N;
-extern const char modulePNstring[16][6];
+extern const char modulePNstring[18][6];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)];
@@ -410,6 +424,9 @@ extern void SystemClock_Config(void);
 #define	CODE_write_remote_response  			33
 #define	CODE_write_remote_force						34
 
+#define	CODE_port_forward     						35
+
+
 
 /* -----------------------------------------------------------------------
 	|																APIs	 																 	|
@@ -454,6 +471,7 @@ extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_cli
 													uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
 extern uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);

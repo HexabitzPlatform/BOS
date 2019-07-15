@@ -32,7 +32,7 @@
   */
 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.5 - Copyright (C) 2017-2018 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -50,7 +50,7 @@ uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
 	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
-TaskHandle_t FrontEndTaskHandle = NULL;
+TaskHandle_t userTaskHandle = NULL;
 TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
@@ -85,7 +85,7 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 /* Function prototypes -------------------------------------------------------*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 void StartDefaultTask(void * argument);
-void FrontEndTask(void * argument);
+void UserTask(void * argument);
 void BackEndTask(void * argument);
 
 /* BOS exported internal functions */
@@ -109,8 +109,8 @@ void MX_FREERTOS_Init(void)
 	/* Create the back-end task */
 	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
 	
-	/* Create the front-end task */
-	xTaskCreate(FrontEndTask, (const char *) "FrontEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &FrontEndTaskHandle);
+	/* Create the User task */
+	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &userTaskHandle);
 	
 	/* Register command line commands */
 	vRegisterCLICommands();
