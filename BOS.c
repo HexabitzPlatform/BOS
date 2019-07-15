@@ -3701,6 +3701,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 			{
 				/* Transmit the message from this port */
 				writePxDMAMutex(p, message, length+4, cmd50ms);
+				Delay_ms(1);
 			}	
 		}
 	}
