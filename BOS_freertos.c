@@ -200,7 +200,7 @@ void StartDefaultTask(void * argument)
 		/* Read button state */
 		CheckAttachedButtons();
 		
-		/* Executed activated Command Snippets */
+		/* Execute activated Command Snippets */
 		ExecuteSnippet();
 		
 		/* Reset button state if no delay is needed by this module */

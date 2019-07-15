@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.4 - Copyright (C) 2018 Hexabitz
+    BitzOS (BOS) V0.1.4 - Copyright (C) 2019 Hexabitz
     All rights reserved
 
     File Name     : BOS_dma.c
@@ -95,8 +95,8 @@ void SwitchStreamDMAToMsg(uint8_t port)
 	// Initialize a messaging DMA using same channels
 	DMA_MSG_RX_CH_Init(&msgRxDMA[port-1], streamDMA[port-1].Instance);	
 	
-	// Read this port again in messaging mode - TODO update to DMA read 
-	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);		
+	// Read this port again in messaging mode	
+	DMA_MSG_RX_Setup(GetUart(port), &msgRxDMA[port-1]);
 		
 }
 
@@ -158,7 +158,7 @@ void DMA_IRQHandler(uint8_t port)
 
 /*-----------------------------------------------------------*/
 
-/* Reset UART ORE (overrun) flag in case other modules were already transmitting 
+/* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup
 */
 void ResetUartORE(void)
 {

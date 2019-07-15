@@ -3335,7 +3335,7 @@ void BOS_Init(void)
 		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
 	}
 	
-	/* Reset UART overrun errors in case other modules were already transmitting */
+	/* Reset UART overrun errors in case other modules were already transmitting on startup */
 	ResetUartORE();
 
 	BOS_initialized = 1;
