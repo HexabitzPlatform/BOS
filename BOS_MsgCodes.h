@@ -67,7 +67,11 @@
 #define	CODE_H01R0_DIM						106
 
 
-
+// H0FR6x
+#define	CODE_H0FR6_ON							1500
+#define	CODE_H0FR6_OFF						1501
+#define	CODE_H0FR6_TOGGLE					1502
+#define	CODE_H0FR6_PWM						1503
 
 
 #endif /* BOS_MSGCODES_H */
