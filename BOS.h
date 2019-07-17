@@ -12,6 +12,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 
+#include "BOS_MsgCodes.h" 
+
 /* STM HAL */
 #include "stm32f0xx_hal.h" 
 
@@ -52,15 +54,7 @@ typedef enum { TRACE_NONE = 0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } trace
 #define MATH_SMALLER_EQUAL		5
 #define MATH_NOT_EQUAL				6
 #define NUM_MATH_OPERATORS		6
-#ifdef H1DR1
-	#include "H1DR1.h"	
-#endif
-#ifdef H1DR5
-	#include "H1DR5.h"	
-#endif
-#ifdef H26R0
-	#include "H26R0.h"	
-#endif
+
 /* BOS_Status Type Definition */  
 typedef enum 
 {
@@ -327,14 +321,20 @@ snippet_t;
 #ifdef H0AR9
 	#include "H0AR9.h"	
 #endif
-#ifdef H1DR5
-	#include "H1DR5.h"	
-#endif
 #ifdef H0BR4
 	#include "H0BR4.h"	
 #endif
 #ifdef H18R0
 	#include "H18R0.h"	
+#endif
+#ifdef H1DR1
+	#include "H1DR1.h"	
+#endif
+#ifdef H1DR5
+	#include "H1DR5.h"	
+#endif
+#ifdef H26R0
+	#include "H26R0.h"	
 #endif
 
 /* More BOS header files - must be defined after module headers */
@@ -387,45 +387,6 @@ extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code,
 extern void SystemClock_Config(void);
 extern void MX_FREERTOS_Init(void);
 extern void SystemClock_Config(void);
-
-/* -----------------------------------------------------------------------
-	|														Message Codes	 														 	|
-   ----------------------------------------------------------------------- 
-*/
-#define	CODE_unknown_message							0
-#define	CODE_ping													1
-#define	CODE_ping_response								2
-#define	CODE_IND_on												3
-#define	CODE_IND_off											4
-#define	CODE_IND_toggle										5
-
-#define	CODE_hi														10
-#define	CODE_hi_response									11
-#define	CODE_explore_adj									12
-#define	CODE_explore_adj_response					13
-#define	CODE_port_dir											14
-#define	CODE_baudrate											15
-#define	CODE_module_id										16
-#define	CODE_topology											17
-#define	CODE_broadcast_plan								18
-#define	CODE_read_port_dir								19
-#define	CODE_read_port_dir_response				20
-#define	CODE_exp_eeprom	 									21
-#define	CODE_def_array	 									22
-#define	CODE_CLI_command 									23
-#define	CODE_CLI_response  								24
-#define	CODE_update  											25
-#define	CODE_update_via_port  						26
-#define	CODE_DMA_channel  								27
-#define	CODE_DMA_scast_stream  						28
-
-#define	CODE_read_remote  								30
-#define	CODE_read_remote_response  				31
-#define	CODE_write_remote  								32
-#define	CODE_write_remote_response  			33
-#define	CODE_write_remote_force						34
-
-#define	CODE_port_forward     						35
 
 
 

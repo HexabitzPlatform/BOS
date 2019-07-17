@@ -251,7 +251,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Broadcast the command */								
 							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
+							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_COMMAND, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 							/* Execute locally */
 							xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
 							strcat( ( char * ) pcOutputString, "Command broadcasted to all\n\r");
@@ -264,7 +264,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Multicast the command */								
 							memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 							strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-							BroadcastMessage(myID, group, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
+							BroadcastMessage(myID, group, CODE_CLI_COMMAND, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 							/* Do I need to execute locally? */
 							if (InGroup(myID, group))
 								xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
@@ -275,7 +275,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							/* Special commands that convert into custom a Message */
 							if (!strncmp((char *)loc+1, "update", 6)) {			// remote update
 								BOS.response = BOS_RESPONSE_NONE;				
-								SendMessageToModule(id, CODE_update, 0);
+								SendMessageToModule(id, CODE_UPDATE, 0);
 								osDelay(100);
 								/* Execute locally */
 								remoteBootloaderUpdate(myID, id, PcPort, 0);
@@ -284,7 +284,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 							{						
 								/* Forward the command */
 								strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
-								SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
+								SendMessageToModule(id, CODE_CLI_COMMAND, strlen((char*) cInputString)-strlen((char*) idString)-1);
 								sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
 							}
 							
