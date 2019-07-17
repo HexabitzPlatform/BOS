@@ -217,7 +217,7 @@ snippet_t;
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
 //#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
-#define MSG_RX_BUF_SIZE								(125)			// 1 Mbps UART at 1 KHz parsing rate
+#define MSG_RX_BUF_SIZE								(65)			// 1 Mbps UART at 2 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 #define REMOTE_MEMORY_ADD             0
 #define REMOTE_BOS_PARAM              1
