@@ -66,11 +66,10 @@
 #define	CODE_H01R0_SWEEP					105
 #define	CODE_H01R0_DIM						106
 
-// H0FR6x
-#define	CODE_H0FR6_ON							1500
-#define	CODE_H0FR6_OFF						1501
-#define	CODE_H0FR6_TOGGLE					1502
-#define	CODE_H0FR6_PWM						1503
+// H07R3x
+#define CODE_H07R3_PLAY_SINE							800
+#define CODE_H07R3_PLAY_WAVE							801
+#define CODE_H07R3_PLAY_Tone							802
 
 // H08R6x
 #define CODE_H08R6_GET_INFO                 800
@@ -86,7 +85,11 @@
 #define CODE_H08R6_MIN_RANGE                810
 #define CODE_H08R6_TIMEOUT                	811
 
-
+// H0FR6x
+#define	CODE_H0FR6_ON							1500
+#define	CODE_H0FR6_OFF						1501
+#define	CODE_H0FR6_TOGGLE					1502
+#define	CODE_H0FR6_PWM						1503
 
 #endif /* BOS_MSGCODES_H */
 
