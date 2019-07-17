@@ -57,6 +57,16 @@
    ----------------------------------------------------------------------- 
 */
 
+// H01R0x
+#define	CODE_H01R0_ON							100
+#define	CODE_H01R0_OFF						101
+#define	CODE_H01R0_TOGGLE					102
+#define	CODE_H01R0_COLOR					103
+#define	CODE_H01R0_PULSE					104
+#define	CODE_H01R0_SWEEP					105
+#define	CODE_H01R0_DIM						106
+
+
 
 
 
