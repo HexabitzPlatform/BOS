@@ -930,10 +930,9 @@ void PxMessagingTask(void * argument)
 											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
 											SendMessageToModule(src, CODE_read_remote_response, 4); break;										
                   	case FMT_FLOAT:
-											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); messageParams[2] = *(__IO uint8_t *)(temp32+2); 
-											messageParams[3] = *(__IO uint8_t *)(temp32+3); messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+5); 
-											messageParams[6] = *(__IO uint8_t *)(temp32+6); messageParams[7] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
-											SendMessageToModule(src, CODE_read_remote_response, 8); break;
+											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); 
+											messageParams[2] = *(__IO uint8_t *)(temp32+2); messageParams[3] = *(__IO uint8_t *)(temp32+3); 
+											SendMessageToModule(src, CODE_read_remote_response, 8); break;	// You cannot bitwise floats	
                   	default:
                   		break;
                   }		
@@ -973,9 +972,8 @@ void PxMessagingTask(void * argument)
 											messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
 											SendMessageToModule(src, CODE_read_remote_response, 5); break;										
 										case FMT_FLOAT:
-											messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
-											messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
-											messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
+											messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1);  
+											messageParams[3] = *(__IO uint8_t *)(temp32+2); messageParams[4] = *(__IO uint8_t *)(temp32+3);  			// You cannot bitwise floats	
 											SendMessageToModule(src, CODE_read_remote_response, 9); break;			
 										default:
 											break;
@@ -1015,9 +1013,8 @@ void PxMessagingTask(void * argument)
 												messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
 												SendMessageToModule(src, CODE_read_remote_response, 5); break;										
 											case FMT_FLOAT:
-												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
-												messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
-												messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
+												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); 
+												messageParams[3] = *(__IO uint8_t *)(temp32+2); messageParams[4] = *(__IO uint8_t *)(temp32+3);  			// You cannot bitwise floats	
 												SendMessageToModule(src, CODE_read_remote_response, 9); break;			
 											default:
 												break;
@@ -1028,7 +1025,7 @@ void PxMessagingTask(void * argument)
 								break;			
 							
 						case CODE_read_remote_response :
-								if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable or module param
+							if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable or module param
 							{
 								// Read variable according to its format
 								remoteVarFormat = (varFormat_t) cMessage[port-1][shift];
@@ -1050,13 +1047,12 @@ void PxMessagingTask(void * argument)
 									case FMT_INT32:
 										remoteBuffer = ((int32_t)cMessage[port-1][1+shift]<<0) + ((int32_t)cMessage[port-1][2+shift]<<8) + ((int32_t)cMessage[port-1][3+shift]<<16) + ((int32_t)cMessage[port-1][4+shift]<<24); break;									
 									case FMT_FLOAT:
-										remoteBuffer = ((uint64_t)cMessage[port-1][1+shift]<<0) + ((uint64_t)cMessage[port-1][2+shift]<<8) + ((uint64_t)cMessage[port-1][3+shift]<<16) + ((uint64_t)cMessage[port-1][4+shift]<<24) + \
-																	 ((uint64_t)cMessage[port-1][5+shift]<<32) + ((uint64_t)cMessage[port-1][6+shift]<<40) + ((uint64_t)cMessage[port-1][7+shift]<<48) + ((uint64_t)cMessage[port-1][8+shift]<<56); break;
+										remoteBuffer = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24); break;
 									default:
 										break;
 								}										
 							}
-								else if (remoteBuffer == REMOTE_MEMORY_ADD)										// We requested a memory location
+							else if (remoteBuffer == REMOTE_MEMORY_ADD)										// We requested a memory location
 							{
 								// Read variable according to requested format
 								switch (remoteBuffer)															// Requested format
@@ -1075,15 +1071,14 @@ void PxMessagingTask(void * argument)
 									case FMT_INT32:
 										remoteBuffer = ((int32_t)cMessage[port-1][shift]<<0) + ((int32_t)cMessage[port-1][1+shift]<<8) + ((int32_t)cMessage[port-1][2+shift]<<16) + ((int32_t)cMessage[port-1][3+shift]<<24); break;									
 									case FMT_FLOAT:
-										remoteBuffer = ((uint64_t)cMessage[port-1][shift]<<0) + ((uint64_t)cMessage[port-1][1+shift]<<8) + ((uint64_t)cMessage[port-1][2+shift]<<16) + ((uint64_t)cMessage[port-1][3+shift]<<24) + \
-																	 ((uint64_t)cMessage[port-1][4+shift]<<32) + ((uint64_t)cMessage[port-1][5+shift]<<40) + ((uint64_t)cMessage[port-1][6+shift]<<48) + ((uint64_t)cMessage[port-1][7+shift]<<56); break;
+										remoteBuffer = ((uint32_t)cMessage[port-1][shift]<<0) + ((uint32_t)cMessage[port-1][1+shift]<<8) + ((uint32_t)cMessage[port-1][2+shift]<<16) + ((uint32_t)cMessage[port-1][3+shift]<<24); break;
 									default:
 										break;
 								}															
 							}
-								else
-								{
-								}
+							else
+							{
+							}
 							// Remote read status
 							if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
 							break;	
@@ -1191,8 +1186,7 @@ void PxMessagingTask(void * argument)
 												}
 											}
 											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) {			// Write remote value
-												remoteBuffer = ((uint64_t)cMessage[port-1][2+shift]<<0) + ((uint64_t)cMessage[port-1][3+shift]<<8) + ((uint64_t)cMessage[port-1][4+shift]<<16) + ((uint64_t)cMessage[port-1][5+shift]<<24) + \
-																			 ((uint64_t)cMessage[port-1][6+shift]<<32) + ((uint64_t)cMessage[port-1][7+shift]<<40) + ((uint64_t)cMessage[port-1][8+shift]<<48) + ((uint64_t)cMessage[port-1][9+shift]<<56);
+												remoteBuffer = ((uint32_t)cMessage[port-1][2+shift]<<0) + ((uint32_t)cMessage[port-1][3+shift]<<8) + ((uint32_t)cMessage[port-1][4+shift]<<16) + ((uint32_t)cMessage[port-1][5+shift]<<24);
 												*(float *)temp32 = *(float *)&remoteBuffer;																		
 											}
 											break;												
@@ -1235,8 +1229,7 @@ void PxMessagingTask(void * argument)
 										case FMT_INT32:
 											*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][6+shift]<<0) + ((int32_t)cMessage[port-1][7+shift]<<8) + ((int32_t)cMessage[port-1][8+shift]<<16) + ((int32_t)cMessage[port-1][9+shift]<<24); break; 									
 										case FMT_FLOAT:
-											remoteBuffer = ((uint64_t)cMessage[port-1][6+shift]<<0) + ((uint64_t)cMessage[port-1][7+shift]<<8) + ((uint64_t)cMessage[port-1][8+shift]<<16) + ((uint64_t)cMessage[port-1][9+shift]<<24) + \
-																		 ((uint64_t)cMessage[port-1][10+shift]<<32) + ((uint64_t)cMessage[port-1][11+shift]<<40) + ((uint64_t)cMessage[port-1][12+shift]<<48) + ((uint64_t)cMessage[port-1][13+shift]<<56);
+											remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24);
 											*(float *)temp32 = *(float *)&remoteBuffer;	break;
 										default:
 											break;
@@ -1288,8 +1281,7 @@ void PxMessagingTask(void * argument)
 												if (*(__IO uint64_t *)temp32 != 0xFFFFFFFFFFFFFFFF) {
 													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
 												} else {
-													remoteBuffer = ((uint64_t)cMessage[port-1][6+shift]<<0) + ((uint64_t)cMessage[port-1][7+shift]<<8) + ((uint64_t)cMessage[port-1][8+shift]<<16) + ((uint64_t)cMessage[port-1][9+shift]<<24) + \
-																				 ((uint64_t)cMessage[port-1][10+shift]<<32) + ((uint64_t)cMessage[port-1][11+shift]<<40) + ((uint64_t)cMessage[port-1][12+shift]<<48) + ((uint64_t)cMessage[port-1][13+shift]<<56);
+													remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24);
 													status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
 												}
 											default:
