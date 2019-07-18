@@ -3421,10 +3421,6 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 		case P10 :
 			return P10uart;
 	#endif
-	#ifdef _PUSB
-		case PUSB :
-			return PUSBuart;
-	#endif
 		default:
 			return 0;
 	}		
