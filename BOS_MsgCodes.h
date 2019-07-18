@@ -58,38 +58,54 @@
 */
 
 // H01R0x
-#define	CODE_H01R0_ON							100
-#define	CODE_H01R0_OFF						101
-#define	CODE_H01R0_TOGGLE					102
-#define	CODE_H01R0_COLOR					103
-#define	CODE_H01R0_PULSE					104
-#define	CODE_H01R0_SWEEP					105
-#define	CODE_H01R0_DIM						106
+#define	CODE_H01R0_ON												100
+#define	CODE_H01R0_OFF											101
+#define	CODE_H01R0_TOGGLE										102
+#define	CODE_H01R0_COLOR										103
+#define	CODE_H01R0_PULSE										104
+#define	CODE_H01R0_SWEEP										105
+#define	CODE_H01R0_DIM											106
 
 // H07R3x
-#define CODE_H07R3_PLAY_SINE							800
-#define CODE_H07R3_PLAY_WAVE							801
-#define CODE_H07R3_PLAY_Tone							802
+#define CODE_H07R3_PLAY_SINE								350
+#define CODE_H07R3_PLAY_WAVE								351
+#define CODE_H07R3_PLAY_Tone								352
 
 // H08R6x
-#define CODE_H08R6_GET_INFO                 800
-#define CODE_H08R6_SAMPLE                   801
-#define CODE_H08R6_STREAM_PORT              802
-#define CODE_H08R6_STREAM_MEM               803
-#define CODE_H08R6_RESULT_MEASUREMENT       804
-#define CODE_H08R6_STOP_RANGING             805
-#define CODE_H08R6_SET_UNIT                 806
-#define CODE_H08R6_GET_UNIT                 807
-#define CODE_H08R6_RESPOND_GET_UNIT         808
-#define CODE_H08R6_MAX_RANGE                809
-#define CODE_H08R6_MIN_RANGE                810
-#define CODE_H08R6_TIMEOUT                	811
+#define CODE_H08R6_GET_INFO                 400
+#define CODE_H08R6_SAMPLE                   401
+#define CODE_H08R6_STREAM_PORT              402
+#define CODE_H08R6_STREAM_MEM               403
+#define CODE_H08R6_RESULT_MEASUREMENT       404
+#define CODE_H08R6_STOP_RANGING             405
+#define CODE_H08R6_SET_UNIT                 406
+#define CODE_H08R6_GET_UNIT                 407
+#define CODE_H08R6_RESPOND_GET_UNIT         408
+#define CODE_H08R6_MAX_RANGE                409
+#define CODE_H08R6_MIN_RANGE                410
+#define CODE_H08R6_TIMEOUT                	411
+
+
+// H0BR4x
+#define CODE_H0BR4_GET_GYRO                 550
+#define CODE_H0BR4_GET_ACC                  551
+#define CODE_H0BR4_GET_MAG		              552
+#define CODE_H0BR4_GET_TEMP		              553
+#define CODE_H0BR4_RESULT_GYRO              554
+#define CODE_H0BR4_RESULT_ACC               555
+#define CODE_H0BR4_RESULT_MAG		 	          556
+#define CODE_H0BR4_RESULT_TEMP		          557
+#define CODE_H0BR4_STREAM_GYRO							558
+#define CODE_H0BR4_STREAM_ACC								559
+#define CODE_H0BR4_STREAM_MAG								560
+#define CODE_H0BR4_STREAM_TEMP							561
+#define CODE_H0BR4_STREAM_STOP							562
 
 // H0FR6x
-#define	CODE_H0FR6_ON							1500
-#define	CODE_H0FR6_OFF						1501
-#define	CODE_H0FR6_TOGGLE					1502
-#define	CODE_H0FR6_PWM						1503
+#define	CODE_H0FR6_ON												750
+#define	CODE_H0FR6_OFF											751
+#define	CODE_H0FR6_TOGGLE										752
+#define	CODE_H0FR6_PWM											753
 
 // H1BR6x
 

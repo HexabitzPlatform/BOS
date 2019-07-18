@@ -1,3 +1,12 @@
+/*
+    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+    All rights reserved
+		
+    File Name     : BOS_utils.h
+    Description   : Header file for BOS macros, constants and utilities.
+*/
+	
+
 #ifndef BOS_UTILS_H
 #define BOS_UTILS_H
 
@@ -56,4 +65,7 @@
 
 
 
-#endif
+#endif /* BOS_H */
+
+/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+

@@ -280,6 +280,7 @@ snippet_t;
 
 /* BOS */
 #include "BOS_eeprom.h"
+#include "BOS_utils.h"
 
 /* C STD Library */
 #include <stdio.h>
