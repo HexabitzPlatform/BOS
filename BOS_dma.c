@@ -32,7 +32,7 @@ bool MsgDMAStopped[NumOfPorts] = {0};
 
 
 /* External functions --------------------------------------------------------*/
-extern void DMA_STREAM_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint8_t num);
+extern void DMA_STREAM_Setup(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint16_t num);
 
 
 /* --- Stop a messaging DMA --- 
@@ -104,7 +104,7 @@ void SwitchStreamDMAToMsg(uint8_t port)
 
 /* Setup and start a streaming DMA (port-to-port) 
 */
-BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint8_t num)
+BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huartDst, uint16_t num)
 {	
 	uint8_t srcPort = GetPort(huartSrc);
 	
