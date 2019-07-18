@@ -46,14 +46,6 @@ enum rtc_weekdays_e{MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, 
 typedef enum { FMT_UINT8 = 1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL } varFormat_t;
 typedef enum { TRACE_NONE = 0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH } traceOptions_t;
 
-// Math Operators
-#define MATH_EQUAL						1
-#define MATH_GREATER					2
-#define MATH_SMALLER					3
-#define MATH_GREATER_EQUAL		4
-#define MATH_SMALLER_EQUAL		5
-#define MATH_NOT_EQUAL				6
-#define NUM_MATH_OPERATORS		6
 
 /* BOS_Status Type Definition */  
 typedef enum 
@@ -193,36 +185,24 @@ snippet_t;
 #define	BUTTON_EVENT_MODE_CLEAR								0
 #define	BUTTON_EVENT_MODE_OR									1
 
-/* BOS Parameters and constants */ 
-#define P_LAST 												NumOfPorts
-#define MAX_MESSAGE_SIZE							128
-#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-7)		// Dst + Src + 2 x Options + 2 x Code + CRC
-#define cmdMAX_INPUT_SIZE							50
-#define	MaxNumOfModules								25
-#define	MaxNumOfGroups								10
-#define MaxNumOfPorts									10
-#define MaxLengthOfAlias							10
-#define MAX_BOS_VARS									100
-#define NumOfKeywords									4
-#define NumOfParamsHelpStrings				7
-#define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
-#define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
-#define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_BUTTON_MAX_INTER_CLICK		250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
+/* BOS Defiitions */
 #define BOS_RESPONSE_ALL							0x60			// Send response messages for both Messaging and CLI
 #define BOS_RESPONSE_MSG							0x20			// Send response messages for Messaging only (no CLI)
 #define BOS_RESPONSE_CLI							0x40			// Send response messages for CLI only (no messages)
 #define BOS_RESPONSE_NONE							0x00			// Do not send any response messages
-#define DEF_ARRAY_BAUDRATE						921600
-#define DEF_CLI_BAUDRATE							921600
-#define CLI_BAUDRATE_1								115200
-//#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
-#define MSG_RX_BUF_SIZE								(65)			// 1 Mbps UART at 2 KHz parsing rate
-#define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 #define REMOTE_MEMORY_ADD             0
 #define REMOTE_BOS_PARAM              1
 #define REMOTE_MODULE_PARAM           2
 #define REMOTE_BOS_VAR                3
+
+/* Math Operators */
+#define MATH_EQUAL										1
+#define MATH_GREATER									2
+#define MATH_SMALLER									3
+#define MATH_GREATER_EQUAL						4
+#define MATH_SMALLER_EQUAL						5
+#define MATH_NOT_EQUAL								6
+#define NUM_MATH_OPERATORS						6
 
 /* Command Snippets */
 #define MAX_SNIPPETS									5					// Max number of accepted Snippets
@@ -233,6 +213,30 @@ snippet_t;
 #define SNIP_COND_MODULE_EVENT				2
 #define SNIP_COND_MODULE_PARAM_CONST	3
 #define SNIP_COND_MODULE_PARAM_PARAM	4
+
+
+/* BOS Parameters and constants */ 
+#define P_LAST 												NumOfPorts
+#define MAX_MESSAGE_SIZE							56
+#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-6)		// Dst + Src + 1 x Options + 2 x Code + CRC
+#define cmdMAX_INPUT_SIZE							50
+#define	MaxNumOfModules								25
+#define	MaxNumOfGroups								10
+#define MaxNumOfPorts									10
+#define MaxLengthOfAlias							10
+#define MAX_BOS_VARS									30
+#define NumOfKeywords									4
+#define NumOfParamsHelpStrings				7
+#define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
+#define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
+#define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_BUTTON_MAX_INTER_CLICK		250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_ARRAY_BAUDRATE						921600
+#define DEF_CLI_BAUDRATE							921600
+#define CLI_BAUDRATE_1								115200
+//#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+#define MSG_RX_BUF_SIZE								(65)			// 1 Mbps UART at 0.5 KHz parsing rate
+#define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
 
 
 /* Delay macros */
@@ -350,7 +354,7 @@ extern uint8_t N;
 extern const char modulePNstring[18][6];
 extern uint8_t portStatus[NumOfPorts+1];
 extern uint16_t neighbors[NumOfPorts][2];
-extern uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)];
+extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
 extern uint8_t messageLength[NumOfPorts];
 extern SemaphoreHandle_t PxRxSemaphoreHandle[7];

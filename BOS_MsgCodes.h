@@ -91,6 +91,11 @@
 #define	CODE_H0FR6_TOGGLE					1502
 #define	CODE_H0FR6_PWM						1503
 
+// H1BR6x
+
+
+
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

@@ -74,7 +74,7 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};		// Buffer for messages received and ready to be parsed 
 char message[MAX_MESSAGE_SIZE] = {0};										// Buffer to construct a message to be sent
 uint8_t messageLength[NumOfPorts] = {0};
-uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)] = {0};
+uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] = {0};
 char cRxedChar = 0; 
 uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
