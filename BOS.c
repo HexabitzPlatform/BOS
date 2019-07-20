@@ -1278,7 +1278,7 @@ void PxMessagingTask(void * argument)
 													status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
 												}				
 											case FMT_FLOAT:
-												if (*(__IO uint64_t *)temp32 != 0xFFFFFFFFFFFFFFFF) {
+												if (*(__IO uint32_t *)temp32 != 0xFFFFFFFF) {
 													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
 												} else {
 													remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24);
