@@ -15,7 +15,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
-/* Private variables ---------------------------------------------------------*/
+/* Private and global variables ---------------------------------------------------------*/
 
 BOS_t BOS; 
 BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = TRACE_BOTH, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
@@ -126,6 +126,7 @@ typedef struct xCOMMAND_INPUT_LIST
 } 
 CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
+uint8_t numOfBosCommands;
 
 /* Variables exported internally */
 extern FLASH_ProcessTypeDef pFlash;
@@ -3368,7 +3369,11 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &actSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &pauseSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
-	
+	numOfBosCommands = 26;			// Add "help" command
+#ifndef _N	
+	numOfBosCommands = 27;
+#endif
+
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
 }
