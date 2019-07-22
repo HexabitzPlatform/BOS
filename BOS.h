@@ -293,11 +293,8 @@ snippet_t;
 #include <limits.h>	
 
 /* Module includes and initialization */
-#ifdef H01R0
+#if defined(H01R0) || defined(P01R0)
 	#include "H01R0.h"
-#endif
-#ifdef P01R0
-	#include "P01R0.h"
 #endif
 #if defined(H23R1) || defined(H23R0)
 	#include "H23Rx.h"	
