@@ -879,16 +879,16 @@ void PxMessagingTask(void * argument)
 							/* Save stream paramters in EEPROM */
 							else
 							{
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], cMessage[port-1][8+shift]);			/* Direction */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift]);			/* Count high half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift]);			/* Count low half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][5+shift]);			/* Timeout high half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift]);			/* Timeout low half-word */
-								EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) cMessage[port-1][9+shift] << 8 ) + cMessage[port-1][10+shift]);			/* src1 | dst1 */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE, cMessage[port-1][8+shift]);			/* Direction */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+1, ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift]);			/* Count high half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+2, ( (uint16_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift]);			/* Count low half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+3, ( (uint16_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][5+shift]);			/* Timeout high half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+4, ( (uint16_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift]);			/* Timeout low half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+5, ( (uint16_t) cMessage[port-1][9+shift] << 8 ) + cMessage[port-1][10+shift]);			/* src1 | dst1 */
 								if (numOfParams == 19)
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) cMessage[port-1][11+shift] << 8 ) + cMessage[port-1][12+shift]);			/* src2 | dst2 */
+									EE_WriteVariable(_EE_DMA_STREAM_BASE+6, ( (uint16_t) cMessage[port-1][11+shift] << 8 ) + cMessage[port-1][12+shift]);			/* src2 | dst2 */
 								if (numOfParams == 21)
-									EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) cMessage[port-1][13+shift] << 8 ) + cMessage[port-1][14+shift]);			/* src3 | dst3 */
+									EE_WriteVariable(_EE_DMA_STREAM_BASE+7, ( (uint16_t) cMessage[port-1][13+shift] << 8 ) + cMessage[port-1][14+shift]);			/* src3 | dst3 */
 								/* Reset MCU */
 								NVIC_SystemReset();
 							}
@@ -1704,37 +1704,6 @@ uint8_t LoadROsnippets(void)
 
 /*-----------------------------------------------------------*/
 
-///* --- Save array topology in EEPROM --- 
-//*/
-//BOS_Status SaveEEtopology(void)
-//{
-//	BOS_Status result = BOS_OK; 
-//	uint16_t add = 0, temp = 0;
-//	
-//	/* Save number of modules and myID */
-//	temp = (uint16_t) (N<<8) + myID;
-//	EE_WriteVariable(VirtAddVarTab[_EE_NBase], temp);
-//	
-//	/* Save topology */
-//	for(uint8_t i=1 ; i<=N ; i++)
-//	{
-//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
-//		{
-//			if (array[i-1][0]) {
-//				EE_WriteVariable(VirtAddVarTab[_EE_topologyBase+add], array[i-1][j]);
-//				add++;
-//			}				
-//		}
-//	}
-//	
-//	if ((add+_EE_NBase) >= _EE_portDirBase)
-//		result = BOS_ERR_EEPROM;
-//	
-//	return result;
-//}
-
-/*-----------------------------------------------------------*/
-
 /* --- Load array topology stored in Flash RO --- 
 */
 uint8_t LoadROtopology(void)
@@ -1772,34 +1741,6 @@ uint8_t LoadROtopology(void)
 }
 /*-----------------------------------------------------------*/
 
-///* --- Load array topology stored in EEPROM --- 
-//*/
-//BOS_Status LoadEEtopology(void)
-//{
-//	BOS_Status result = BOS_OK; 
-//	uint16_t add = 0, temp = 0;
-//	
-//	/* Load number of modules */
-//	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
-//	N = (uint8_t) (temp>>8);
-//	if (N == 0)	N = 1;
-//	myID = (uint8_t) temp;
-//	
-//	/* Load topology */
-//	for(uint8_t i=1 ; i<=N ; i++)
-//	{
-//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
-//		{
-//			EE_ReadVariable(VirtAddVarTab[_EE_topologyBase+add], &array[i-1][j]);
-//			add++;			
-//		}
-//	}	
-//	
-//	return result;
-//}
-
-/*-----------------------------------------------------------*/
-
 /* --- Save array ports directions in EEPROM --- 
 */
 BOS_Status SaveEEportsDir(void)
@@ -1809,9 +1750,9 @@ BOS_Status SaveEEportsDir(void)
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
 		if (arrayPortsDir[i-1])
-			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+			EE_WriteVariable(_EE_PORT_DIR_BASE+i-1, arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1831,9 +1772,9 @@ BOS_Status ClearEEportsDir(void)
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
 		if (arrayPortsDir[i-1])
-			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+			EE_WriteVariable(_EE_PORT_DIR_BASE+i-1, arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1850,9 +1791,9 @@ BOS_Status LoadEEportsDir(void)
 	
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
-		EE_ReadVariable(VirtAddVarTab[_EE_portDirBase+i-1], &arrayPortsDir[i-1]);		
+		EE_ReadVariable(_EE_PORT_DIR_BASE+i-1, &arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1875,7 +1816,7 @@ BOS_Status SaveEEalias(void)
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
 				temp = (uint16_t) (moduleAlias[i][j-1]<<8) + moduleAlias[i][j];
-				EE_WriteVariable(VirtAddVarTab[_EE_aliasBase+add], temp);
+				EE_WriteVariable(_EE_ALIAS_BASE+add, temp);
 				add++;			
 			}
 		}			
@@ -1898,7 +1839,7 @@ BOS_Status SaveEEgroup(void)
 	{
 		if (groupModules[i]) 
 		{
-			EE_WriteVariable(VirtAddVarTab[_EE_groupModulesBase+add], groupModules[i]);
+			EE_WriteVariable(_EE_GROUP_MODULES_BASE+add, groupModules[i]);
 			add++;			
 		}			
 	}
@@ -1911,7 +1852,7 @@ BOS_Status SaveEEgroup(void)
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
 				temp = (uint16_t) (groupAlias[i][j-1]<<8) + groupAlias[i][j];
-				EE_WriteVariable(VirtAddVarTab[_EE_groupAliasBase+add], temp);
+				EE_WriteVariable(_EE_GROUP_ALIAS_BASE+add, temp);
 				add++;			
 			}
 		}			
@@ -1933,7 +1874,7 @@ BOS_Status LoadEEalias(void)
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
-			EE_ReadVariable(VirtAddVarTab[_EE_aliasBase+add], &temp);
+			EE_ReadVariable(_EE_ALIAS_BASE+add, &temp);
 			moduleAlias[i][j] = (uint8_t) temp;
 			moduleAlias[i][j-1] = (uint8_t) (temp>>8);
 			add++;			
@@ -1956,7 +1897,7 @@ BOS_Status LoadEEgroup(void)
 	/* Load group members */
 	for(i=0 ; i<N ; i++)			// N modules
 	{
-		EE_ReadVariable(VirtAddVarTab[_EE_groupModulesBase+add], &groupModules[i]);
+		EE_ReadVariable(_EE_GROUP_MODULES_BASE+add, &groupModules[i]);
 		add++;
 	}
 
@@ -1965,7 +1906,7 @@ BOS_Status LoadEEgroup(void)
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
-			EE_ReadVariable(VirtAddVarTab[_EE_groupAliasBase+add], &temp);
+			EE_ReadVariable(_EE_GROUP_ALIAS_BASE+add, &temp);
 			groupAlias[i][j] = (uint8_t) temp;
 			groupAlias[i][j-1] = (uint8_t) (temp>>8);
 			add++;			
@@ -1988,41 +1929,41 @@ BOS_Status LoadEEstreams(void)
 	static uint8_t src1, dst1, src2, dst2, src3, dst3;
 	
 	/* Direction */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE, &temp1);
 	if (!status1) {
 		direction = (uint8_t) temp1;
 	}
 
 	/* Count */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], &temp2);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+1, &temp1);
+	status2 = EE_ReadVariable(_EE_DMA_STREAM_BASE+2, &temp2);
 	if (!status1 && !status2) {
 		count = ( (uint32_t) temp1 << 16 ) + temp2;
 	}
 	
 	/* Timeout */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], &temp2);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+3, &temp1);
+	status2 = EE_ReadVariable(_EE_DMA_STREAM_BASE+4, &temp2);
 	if (!status1 && !status2) {
 		timeout = ( (uint32_t) temp1 << 16 ) + temp2;
 	}
 	
 	/* src1 | dst1 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+5, &temp1);
 	if (!status1) {
 		src1 = (uint8_t) (temp1 >> 8);
 		dst1 = (uint8_t) temp1;
 	}
 	
 	/* src2 | dst2 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+6, &temp1);
 	if (!status1) {
 		src2 = (uint8_t) (temp1 >> 8);
 		dst2 = (uint8_t) temp1;	
 	}
 
 	/* src3 | dst3 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+7, &temp1);
 	if (!status1) {
 		src3 = (uint8_t) (temp1 >> 8);
 		dst3 = (uint8_t) temp1;
@@ -2048,14 +1989,14 @@ BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, ui
 {
 	BOS_Status result = BOS_OK; 
 	
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], direction);			/* Direction */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) (count >> 8)));				/* Count high half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) count));								/* Count low half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) timeout));							/* Timeout low half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, direction);			/* Direction */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
 	
 	return result;
 }
@@ -2070,7 +2011,7 @@ BOS_Status LoadEEparams(void)
 	uint16_t temp1, temp2, status1, status2; 
 	
 	/* Read params base - BOS response and BOS trace */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsBase], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_BASE, &temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if (!status1) {
 		BOS.response = (uint8_t)temp1;
@@ -2082,21 +2023,21 @@ BOS_Status LoadEEparams(void)
 	}
 		
 	/* Read Button debounce */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDebounce], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_DEBOUNCE, &temp1);
 	if (!status1) 
 		BOS.buttons.debounce = temp1;
 	else
 		BOS.buttons.debounce = BOS_default.buttons.debounce;
 
 	/* Read Button single click time */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsSinClick], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_SINGLE_CLICK, &temp1);
 	if (!status1) 
 		BOS.buttons.singleClickTime = temp1;
 	else
 		BOS.buttons.singleClickTime = BOS_default.buttons.singleClickTime;	
 
 	/* Read Button double click time (min and max inter-click) */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDblClick], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_DBL_CLICK, &temp1);
 	if (!status1) {
 		BOS.buttons.minInterClickTime = (uint8_t)temp1;
 		BOS.buttons.maxInterClickTime = (uint8_t)(temp1>>8);
@@ -2106,8 +2047,8 @@ BOS_Status LoadEEparams(void)
 	}
 	
 	/* Read CLI baudrate */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud+1], &temp2);
+	status1 = EE_ReadVariable(_EE_CLI_BAUD, &temp1);
+	status2 = EE_ReadVariable(_EE_CLI_BAUD+1, &temp2);
 	if (!status1 && !status2) 
 	{
 		BOS.clibaudrate = (uint32_t)temp1 | (((uint32_t)temp2)<<16);
@@ -2116,7 +2057,7 @@ BOS_Status LoadEEparams(void)
 		BOS.clibaudrate = BOS_default.clibaudrate;
 	
 	/* Read RTC hourformat and daylightsaving */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsRTC], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_RTC, &temp1);
 	if (!status1) {
 		BOS.daylightsaving = (int8_t)temp1;
 		BOS.hourformat = (uint8_t)(temp1>>8);
@@ -2137,23 +2078,23 @@ BOS_Status SaveEEparams(void)
 	BOS_Status result = BOS_OK; 
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
+	EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 		
 	/* Save Button debounce */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], BOS.buttons.debounce);
+	EE_WriteVariable(_EE_PARAMS_DEBOUNCE, BOS.buttons.debounce);
 
 	/* Save Button single click time */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], BOS.buttons.singleClickTime);
+	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK, BOS.buttons.singleClickTime);
 
 	/* Save Button double click time (min and max inter-click) */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.daylightsaving);
+	EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.daylightsaving);
 
 	/* Save CLI baudrate */
-	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
-	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+	EE_WriteVariable(_EE_CLI_BAUD, (uint16_t)BOS.clibaudrate);
+	EE_WriteVariable(_EE_CLI_BAUD+1, (uint16_t)(BOS.clibaudrate>>16));
 	
 	/* Save RTC hourformat and daylightsaving */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 	
 	return result;
 }
@@ -2170,7 +2111,7 @@ BOS_Status LoadEEbuttons(void)
 	
 	for(uint8_t i=0 ; i<=NumOfPorts ; i++)
 	{
-		status1 = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)], &temp16);
+		status1 = EE_ReadVariable(_EE_BUTTON_BASE+4*(i), &temp16);
 		
 		if(!status1)																												// This variable exists
 		{
@@ -2179,13 +2120,13 @@ BOS_Status LoadEEbuttons(void)
 			{
 				button[i+1].type = temp8 & 0x0F;
 				button[i+1].events = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+1], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+1, &temp16);
 				button[i+1].pressedX1Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY1Sec = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+2], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+2, &temp16);
 				button[i+1].pressedX2Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY2Sec = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+3], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+3, &temp16);
 				button[i+1].pressedX3Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY3Sec = (uint8_t)temp16;
 				/* Setup the button and its events */
@@ -4743,7 +4684,7 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	button[port].type = buttonType;	
 	
 	/* 5. Add to EEPROM if not already there */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists
 	{
 		temp8 = (uint8_t)(temp16 >> 8);
@@ -4752,21 +4693,21 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 		else 																															// Update the variable
 		{																														
 			temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);
 			/* Reset times */
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
 		}
 	}
 	else																																// Variable does not exist. Create a new one
 	{
 		temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);		
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);		
 		/* Reset times */
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
 	}
 	
 	return result;
@@ -4790,14 +4731,14 @@ BOS_Status RemovePortButton(uint8_t port)
 	button[port].releasedY1Sec = 0; button[port].releasedY2Sec = 0; button[port].releasedY3Sec = 0;
 	
 	/* 2. Remove from EEPROM if it's already there */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists, reset all to zeros
 	{
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), 0);
 		/* Reset times */
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);		
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);		
 	}
 	
 	/* 3. Initialize UART at this port */
@@ -4926,28 +4867,28 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	}
 	
 	/* Add to EEPROM */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists
 	{
 		temp8 = (uint8_t)(temp16 >> 8);																		// Keep upper byte
 		/* Store event flags */
 		if ((uint8_t)(temp16) != button[port].events) {										// Update only if different
 			temp16 = ((uint16_t)temp8 << 8) | (uint16_t)button[port].events;
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);
 		}
 		
 		/* Store times - only if different */
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+1, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
 		
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+2, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
 		
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+3, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
 	}	// TODO - var does not exist after adding button!
 	else																																// Variable does not exist. Return error
 		return BOS_ERR_BUTTON_NOT_DEFINED;	
@@ -5154,7 +5095,7 @@ BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t
 		return BOS_ERROR;
 	
 	/* Save RTC hourformat and daylightsaving to EEPROM */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 
   /* Writes a data in a RTC Backup data Register1 */
   HAL_RTCEx_BKUPWrite(&RtcHandle, RTC_BKP_DR1, 0x32F2);
@@ -5832,13 +5773,13 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5846,13 +5787,13 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.trace = TRACE_BOTH;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
 				BOS.trace = TRACE_MESSAGE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.trace = TRACE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5861,8 +5802,8 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp2 = atoi((const char *)pcParameterString2);
 			if (temp2 <= DEF_CLI_BAUDRATE) {
 				BOS.clibaudrate = temp2;
-				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
-				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+				EE_WriteVariable(_EE_CLI_BAUD, (uint16_t)BOS.clibaudrate);
+				EE_WriteVariable(_EE_CLI_BAUD+1, (uint16_t)(BOS.clibaudrate>>16));
 				extraMessage = 1;
 			} else
 				result = BOS_ERR_WrongValue;			
@@ -5872,7 +5813,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
 				BOS.buttons.debounce = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], temp16);
+				EE_WriteVariable(_EE_PARAMS_DEBOUNCE, temp16);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5881,7 +5822,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
 				BOS.buttons.singleClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], temp16);
+				EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK, temp16);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 
@@ -5890,7 +5831,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
 				BOS.buttons.minInterClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 		
@@ -5899,7 +5840,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
 				BOS.buttons.maxInterClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;					
 		} 
