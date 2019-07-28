@@ -110,7 +110,7 @@ void MX_FREERTOS_Init(void)
 	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
 	
 	/* Create the User task */
-	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal, &userTaskHandle);
+	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &userTaskHandle);
 	
 	/* Register command line commands */
 	vRegisterCLICommands();
