@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.4 - Copyright (C) 2019 Hexabitz
+    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 
     File Name     : BOS_dma.c
