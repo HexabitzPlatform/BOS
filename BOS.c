@@ -2010,13 +2010,13 @@ BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, ui
 	BOS_Status result = BOS_OK; 
 	
 	EE_WriteVariable(_EE_DMA_STREAM_BASE, direction);			/* Direction */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (count >> 8)));				/* Count high half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) count));								/* Count low half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) timeout));							/* Timeout low half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+1, ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+2, ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+3, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+4, ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+5, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+6, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+7, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
 	
 	return result;
 }
