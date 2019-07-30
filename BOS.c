@@ -4323,13 +4323,14 @@ void DisplayModuleStatus(uint8_t port)
 	sprintf(pcUserMessage, "\n\rDMA Streams Status:\n\r");
 	strcat( (char *) pcOutputString, pcUserMessage);	
 	for (char i=1 ; i<=6 ; i++) {
-		if (streamDMA[i-1].Instance->CNDTR == 0) {
+		if (streamDMA[i-1].Instance == 0) {
 				sprintf(pcUserMessage, "\n\rStreaming DMA %d is free", i);
+				strcat( (char *) pcOutputString, pcUserMessage);
 		} else {
 				sprintf(pcUserMessage, "\n\rStreaming DMA %d is streaming from P%d to P%d", i, GetPort(streamDMA[i-1].Parent), GetPort(dmaStreamDst[i-1]));
+				strcat( (char *) pcOutputString, pcUserMessage);
 		}
 	}
-	strcat( (char *) pcOutputString, pcUserMessage);
 	strcat( (char *) pcOutputString, "\n\r");
 	
 	/* Ports direction */

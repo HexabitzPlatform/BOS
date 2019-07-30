@@ -63,9 +63,7 @@ void StopStreamDMA(uint8_t port)
 	hDMA->Instance->CNDTR = 0;
 	dmaStreamCount[port-1] = 0;
 	dmaStreamTotal[port-1] = 0;
-	portStatus[GetPort(hDMA->Parent)] = FREE; 
-	portStatus[GetPort(dmaStreamDst[port-1])] = FREE;	
-	dmaStreamDst[port-1] = 0;
+
 }
 
 /*-----------------------------------------------------------*/
@@ -94,6 +92,11 @@ void SwitchStreamDMAToMsg(uint8_t port)
 	
 	// Initialize a messaging DMA using same channels
 	DMA_MSG_RX_CH_Init(&msgRxDMA[port-1], streamDMA[port-1].Instance);	
+	
+	// Remove stream DMA and change port status
+	portStatus[GetPort(streamDMA[port-1].Parent)] = FREE; 
+	streamDMA[port-1].Instance = 0;
+	dmaStreamDst[port-1] = 0;
 	
 	// Read this port again in messaging mode	
 	DMA_MSG_RX_Setup(GetUart(port), &msgRxDMA[port-1]);
