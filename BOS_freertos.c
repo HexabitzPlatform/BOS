@@ -32,7 +32,7 @@
   */
 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -254,9 +254,10 @@ void BackEndTask(void * argument)
 							{
 								for (int j=0 ; j<MSG_RX_BUF_SIZE ; j++)
 								{
-									if (!PcPort && UARTRxBuf[port-1][j] == 0xD) {		// Make sure there's only one CLI port
+									if (UARTRxBuf[port-1][j] == 0xD) {		
 										UARTRxBuf[port-1][j] = 0;
-										portStatus[port] = CLI;
+										portStatus[PcPort] = FREE;			// Free the previous CLI port 
+										portStatus[port] = CLI;					// Continue the CLI session on this port
 										PcPort = port;
 										/* Activate the CLI task */
 										xTaskNotifyGive(xCommandConsoleTaskHandle);		
@@ -362,7 +363,7 @@ void BackEndTask(void * argument)
 			/* C. If DMA stopped due to communication errors, restart again */
 			if (MsgDMAStopped[port-1] == true) {
 				MsgDMAStopped[port-1] = false;
-				if (portStatus[port] == OVERRUN)	portStatus[port] = MSG;
+				if (portStatus[port] == OVERRUN)	portStatus[port] = FREE;
 				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
 			}				
 		}

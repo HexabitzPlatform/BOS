@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -230,6 +230,8 @@ static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -471,6 +473,24 @@ static const CLI_Command_Definition_t delSnipCommandDefinition =
 	( const int8_t * ) "del-snip:\r\n Delete a Command Snippet\r\n\r\n",
 	delSnipCommand, /* The function to run. */
 	1 /* One parameters is expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : bridge */
+static const CLI_Command_Definition_t bridgeCommandDefinition =
+{
+	( const int8_t * ) "bridge", /* The command string to type. */
+	( const int8_t * ) "bridge:\r\n Bridge two array ports\r\n\r\n",
+	bridgeCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : Unbridge */
+static const CLI_Command_Definition_t unbridgeCommandDefinition =
+{
+	( const int8_t * ) "unbridge", /* The command string to type. */
+	( const int8_t * ) "unbridge:\r\n Un-bridge two array ports\r\n\r\n",
+	unbridgeCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
 
@@ -1990,13 +2010,13 @@ BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, ui
 	BOS_Status result = BOS_OK; 
 	
 	EE_WriteVariable(_EE_DMA_STREAM_BASE, direction);			/* Direction */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (count >> 8)));				/* Count high half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) count));								/* Count low half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) timeout));							/* Timeout low half-word */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
-	EE_WriteVariable(_EE_DMA_STREAM_BASE, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+1, ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+2, ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+3, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+4, ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+5, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+6, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+7, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
 	
 	return result;
 }
@@ -3310,9 +3330,12 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &actSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &pauseSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
-	numOfBosCommands = 26;			// Add "help" command
+	FreeRTOS_CLIRegisterCommand( &bridgeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &unbridgeCommandDefinition);
+	
+	numOfBosCommands = 28;			// Add "help" command
 #ifndef _N	
-	numOfBosCommands = 27;
+	numOfBosCommands = 29;
 #endif
 
 	/* Register module CLI commands */	
@@ -4300,13 +4323,14 @@ void DisplayModuleStatus(uint8_t port)
 	sprintf(pcUserMessage, "\n\rDMA Streams Status:\n\r");
 	strcat( (char *) pcOutputString, pcUserMessage);	
 	for (char i=1 ; i<=6 ; i++) {
-		if (streamDMA[i-1].Instance->CNDTR == 0) {
+		if (streamDMA[i-1].Instance == 0) {
 				sprintf(pcUserMessage, "\n\rStreaming DMA %d is free", i);
+				strcat( (char *) pcOutputString, pcUserMessage);
 		} else {
 				sprintf(pcUserMessage, "\n\rStreaming DMA %d is streaming from P%d to P%d", i, GetPort(streamDMA[i-1].Parent), GetPort(dmaStreamDst[i-1]));
+				strcat( (char *) pcOutputString, pcUserMessage);
 		}
 	}
-	strcat( (char *) pcOutputString, pcUserMessage);
 	strcat( (char *) pcOutputString, "\n\r");
 	
 	/* Ports direction */
@@ -5154,15 +5178,28 @@ char *GetTimeString(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Link two array/communication ports together
+/* --- Bridge two array/communication ports together
 */
-BOS_Status link(uint8_t port1, uint8_t port2)
+BOS_Status Bridge(uint8_t port1, uint8_t port2)
 {
-	// Unlink these ports from any other DMA streams
-	
-	// Link the ports together
+	// Link the ports together with an infinite DMA stream
 	return StartScastDMAStream(port1, myID, port2, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, true);
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Un-bridge two array/communication ports
+*/
+BOS_Status Unbridge(uint8_t port1, uint8_t port2)
+{
+	// Stop the DMA streams and enable messaging back on these ports
+	SwitchStreamDMAToMsg(port1);
+	SwitchStreamDMAToMsg(port2);
 	
+	// Remove the stream from EEPROM
+	SaveEEstreams(0, 0, 0, 0, 0, 0, 0, 0, 0);
+	
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -5720,7 +5757,7 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 	configASSERT( pcWriteBuffer );
 	
 	/* Obtain the 1st parameter string. */
-	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength1);
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
 	if (pcParameterString1[0] == 'p') {
 		port = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
 	}
@@ -6539,6 +6576,111 @@ static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	return pdFALSE;
 }
 
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "P%d and P%d are bridged together\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
+	static const int8_t *pcMessageFail = ( int8_t * ) "Port bridging failed\n\r";
+	int8_t *pcParameterString1, *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t port1, port2;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'p') {
+		port1 = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	if (pcParameterString2[0] == 'p') {
+		port2 = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	
+	/* Build the bridge */
+	if (result == BOS_OK) 
+		result = Bridge(port1, port2);
+	else
+		result = BOS_ERR_WrongParam;
+	
+	/* Return CLI output */
+	if (result == BOS_OK) 
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, port1, port2 );
+	else if (result == BOS_ERR_WrongParam) 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
+	else 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail );	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+	
+/*-----------------------------------------------------------*/
+
+
+static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "P%d and P%d are un-bridged\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
+	static const int8_t *pcMessageFail = ( int8_t * ) "Port unbridging failed\n\r";
+	int8_t *pcParameterString1, *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t port1, port2;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'p') {
+		port1 = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	if (pcParameterString2[0] == 'p') {
+		port2 = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	
+	/* Build the bridge */
+	if (result == BOS_OK) 
+		result = Unbridge(port1, port2);
+	else
+		result = BOS_ERR_WrongParam;
+	
+	/* Return CLI output */
+	if (result == BOS_OK) 
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, port1, port2 );
+	else if (result == BOS_ERR_WrongParam) 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
+	else 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail );	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+	
 /*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

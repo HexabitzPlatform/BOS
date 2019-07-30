@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -19,8 +19,8 @@
 
 /* Firmware */
 #define	_firmMajor			0
-#define	_firmMinor			1
-#define	_firmPatch			5
+#define	_firmMinor			2
+#define	_firmPatch			0
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -448,7 +448,8 @@ extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, 
 extern void GetTimeDate(void);
 extern char *GetDateString(void);
 extern char *GetTimeString(void);
-extern BOS_Status link(uint8_t port1, uint8_t port2);
+extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
+extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 
 #endif /* BOS_H */
 

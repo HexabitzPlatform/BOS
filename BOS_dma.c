@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.4 - Copyright (C) 2019 Hexabitz
+    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 
     File Name     : BOS_dma.c
@@ -63,9 +63,7 @@ void StopStreamDMA(uint8_t port)
 	hDMA->Instance->CNDTR = 0;
 	dmaStreamCount[port-1] = 0;
 	dmaStreamTotal[port-1] = 0;
-	portStatus[GetPort(hDMA->Parent)] = FREE; 
-	portStatus[GetPort(dmaStreamDst[port-1])] = FREE;	
-	dmaStreamDst[port-1] = 0;
+
 }
 
 /*-----------------------------------------------------------*/
@@ -94,6 +92,11 @@ void SwitchStreamDMAToMsg(uint8_t port)
 	
 	// Initialize a messaging DMA using same channels
 	DMA_MSG_RX_CH_Init(&msgRxDMA[port-1], streamDMA[port-1].Instance);	
+	
+	// Remove stream DMA and change port status
+	portStatus[GetPort(streamDMA[port-1].Parent)] = FREE; 
+	streamDMA[port-1].Instance = 0;
+	dmaStreamDst[port-1] = 0;
 	
 	// Read this port again in messaging mode	
 	DMA_MSG_RX_Setup(GetUart(port), &msgRxDMA[port-1]);
@@ -127,7 +130,6 @@ BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huar
 	
 	// 3. Lock the ports 
 	portStatus[srcPort] = STREAM;
-	portStatus[GetPort(huartDst)] = STREAM;
 	
 	// 4. Initialize stream counter 
 	dmaStreamCount[srcPort-1] = 0;

@@ -52,7 +52,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -101,7 +101,7 @@ extern uint8_t SaveToRO(void);
 
 void prvCLITask( void *pvParameters )
 {
-char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port, group;
+char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t group;
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
 char* loc = 0; int16_t id = 0; char idString[MaxLengthOfAlias] = {0};
 uint16_t chr = 0; static uint16_t lastChr = 0;
@@ -111,7 +111,6 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	
 	/* Wait indefinitly until a '\r' is received on one of the ports */
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-	port = PcPort;
 	cRxedChar = '\0';
 
 	/* Note: DMA is not being used on transmit functions because it caused output errors. Maybe due to high baudrate. */
@@ -139,9 +138,9 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 	}
 	
 	/* Send the welcome message. */
-	sprintf(pcWelcomePortMessage, "Connected to module %d (%s), port P%d.\n\n\r>", myID, modulePNstring[myPN], port);
-	writePxITMutex(port, pcWelcomeMessage, strlen(pcWelcomeMessage), 10);
-	writePxITMutex(port, pcWelcomePortMessage, strlen(pcWelcomePortMessage), 10);
+	sprintf(pcWelcomePortMessage, "Connected to module %d (%s), port P%d.\n\n\r>", myID, modulePNstring[myPN], PcPort);
+	writePxITMutex(PcPort, pcWelcomeMessage, strlen(pcWelcomeMessage), 10);
+	writePxITMutex(PcPort, pcWelcomePortMessage, strlen(pcWelcomePortMessage), 10);
 
 	
 	for( ;; )
@@ -162,7 +161,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 		}
 			
 		/* Echo the character back. */
-		writePxITMutex(port, &cRxedChar, 1, 10);
+		writePxITMutex(PcPort, &cRxedChar, 1, 10);
 		
 		if( cRxedChar == '\r' )
 		{
@@ -171,7 +170,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			This task will be held in the Blocked state while the Tx completes,
 			if it has not already done so, so no CPU time will be wasted by
 			polling. */
-			writePxITMutex(port, pcNewLine, strlen(pcNewLine), 10);
+			writePxITMutex(PcPort, pcNewLine, strlen(pcNewLine), 10);
 			
 			
 			/* See if the command is empty, indicating that the last command is
@@ -311,7 +310,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 				/* Write the generated string to the UART. */
 				unsigned pcOutputStrLen = strlen((char*)pcOutputString);
 				if (pcOutputStrLen > 0)
-					writePxMutex(port, (char*)pcOutputString, pcOutputStrLen, cmd50ms, HAL_MAX_DELAY);		
+					writePxMutex(PcPort, (char*)pcOutputString, pcOutputStrLen, cmd50ms, HAL_MAX_DELAY);		
 				memset( pcOutputString, 0x00, pcOutputStrLen );
 		
 			} while( xReturned != pdFALSE );
@@ -328,7 +327,7 @@ portBASE_TYPE xReturned; uint8_t recordSnippet = 0;
 			
 			/* Start to transmit a line separator, just to make the output easier to read. */
 			if(!recordSnippet)
-				writePxITMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), 10);
+				writePxITMutex(PcPort, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), 10);
 		}
 		else
 		{
