@@ -127,7 +127,6 @@ BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huar
 	
 	// 3. Lock the ports 
 	portStatus[srcPort] = STREAM;
-	portStatus[GetPort(huartDst)] = STREAM;
 	
 	// 4. Initialize stream counter 
 	dmaStreamCount[srcPort-1] = 0;
