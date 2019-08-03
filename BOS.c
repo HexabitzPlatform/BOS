@@ -564,9 +564,9 @@ void PxMessagingTask(void * argument)
 			BOS.response = (cMessage[port-1][2])&0x60;									// 6th-7th bits Response mode
 																																	// 8th bit (MSB) Long message
 			
-			/* Read message code */
+			/* Read message code - LSB first */
 			if (extendCode == true) {		
-				code = ( ( (uint16_t) cMessage[port-1][3+shift] << 8 ) + cMessage[port-1][4+shift] );	
+				code = ( ( (uint16_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][3+shift] );	
 				++shift;
 			} else {
 				code = cMessage[port-1][3+shift];
@@ -3548,7 +3548,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 			++shift;
 		}
 		
-		/* Code */
+		/* Code - LSB first */
 		message[6+shift] = (uint8_t) code;
 		if (extendCode == true) {
 			++shift;
