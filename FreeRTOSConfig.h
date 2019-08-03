@@ -125,10 +125,8 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil             0
 #define INCLUDE_vTaskDelay                  1
 #define INCLUDE_xTaskGetSchedulerState      1
-
-#if defined(H08R6)
 #define INCLUDE_xTimerPendFunctionCall      1
-#endif
+
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -195,8 +193,8 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 
 /* Software Timers */
 #define configUSE_TIMERS 	1
-#define	configTIMER_TASK_PRIORITY		1	
-#define configTIMER_QUEUE_LENGTH	4
+#define	configTIMER_TASK_PRIORITY		3			// (osPriorityNormal-osPriorityIdle)	
+#define configTIMER_QUEUE_LENGTH		4
 #define configTIMER_TASK_STACK_DEPTH		configMINIMAL_STACK_SIZE	
 
 /* USe uxTaskGetStackHighWaterMark */
