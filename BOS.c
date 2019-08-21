@@ -5193,13 +5193,17 @@ BOS_Status Bridge(uint8_t port1, uint8_t port2)
 BOS_Status Unbridge(uint8_t port1, uint8_t port2)
 {
 	// Stop the DMA streams and enable messaging back on these ports
+	if(streamDMA[port1-1].Instance == 0) {return BOS_ERR_WrongValue ;}
+	else if(streamDMA[port2-1].Instance == 0) {return BOS_ERR_WrongValue ;}
+	else {
 	SwitchStreamDMAToMsg(port1);
 	SwitchStreamDMAToMsg(port2);
-	
+
 	// Remove the stream from EEPROM
 	SaveEEstreams(0, 0, 0, 0, 0, 0, 0, 0, 0);
 	
 	return BOS_OK;
+	}
 }
 
 /*-----------------------------------------------------------*/
