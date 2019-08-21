@@ -4656,8 +4656,8 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 	SetupDMAStreams(direction, count, timeout, srcP, port);
 	
 	// Store my own streams to EEPROM
-	if (stored) {
-		SaveEEstreams(cMessage[port-1][12], count, timeout, srcP, port, 0, 0, 0, 0);
+	if (stored) {		
+		SaveEEstreams(direction, count, timeout, srcP, port, 0, 0, 0, 0);
 	}
 	
 	
@@ -5191,15 +5191,18 @@ BOS_Status Bridge(uint8_t port1, uint8_t port2)
 /* --- Un-bridge two array/communication ports
 */
 BOS_Status Unbridge(uint8_t port1, uint8_t port2)
-{
-	// Stop the DMA streams and enable messaging back on these ports
-	SwitchStreamDMAToMsg(port1);
-	SwitchStreamDMAToMsg(port2);
-	
+{		
 	// Remove the stream from EEPROM
 	SaveEEstreams(0, 0, 0, 0, 0, 0, 0, 0, 0);
 	
-	return BOS_OK;
+	// Stop the DMA streams and enable messaging back on these ports
+	if(streamDMA[port1-1].Instance != 0 && streamDMA[port2-1].Instance != 0) 
+			{SwitchStreamDMAToMsg(port1);SwitchStreamDMAToMsg(port2);return BOS_OK;}
+	else if (streamDMA[port1-1].Instance != 0)
+			{SwitchStreamDMAToMsg(port1);return BOS_OK;}
+	else if (streamDMA[port2-1].Instance != 0)
+			{SwitchStreamDMAToMsg(port2);return BOS_OK;}	
+	else {return BOS_ERR_WrongValue;}
 }
 
 /*-----------------------------------------------------------*/
