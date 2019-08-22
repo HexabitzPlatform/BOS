@@ -69,7 +69,7 @@
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				350
 #define CODE_H07R3_PLAY_WAVE				351
-#define CODE_H07R3_PLAY_Tone				352
+#define CODE_H07R3_PLAY_TUNE				352
 
 // H08R6x
 #define CODE_H08R6_GET_INFO                 400
