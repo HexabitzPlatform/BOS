@@ -1329,7 +1329,7 @@ void PxMessagingTask(void * argument)
 							break;	
 						
 							case CODE_PORT_FORWARD :
-								writePxMutex(cMessage[port-1][4], (char *)&cMessage[port-1][5], messageLength[port-1]-5-1, 10, 10);
+								writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
 								break;
 						
 						default :
