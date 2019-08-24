@@ -585,7 +585,7 @@ void PxMessagingTask(void * argument)
 					if (code == CODE_UPDATE) {		// Remote bootloader update
 						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, 0);								
 					} else if (code == CODE_UPDATE_VIA_PORT) {		// Remote 'via port' bootloader update
-						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, cMessage[port-1][4]);								
+						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, cMessage[port-1][shift]);								
 					}
 			}
 			/* Either broadcast or multicast local message */
@@ -773,8 +773,8 @@ void PxMessagingTask(void * argument)
 							case CODE_BAUDRATE :
 								/* Change baudrate of specified ports */
 								temp = temp32 = 0;
-								temp32 = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];		
-								if (cMessage[port-1][8] == 0xFF)					// All ports
+								temp32 = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];		
+								if (cMessage[port-1][4+shift] == 0xFF)					// All ports
 								{
 									for (p=1 ; p<=NumOfPorts ; p++) 
 									{
@@ -783,9 +783,9 @@ void PxMessagingTask(void * argument)
 								}
 								else
 								{
-									for (p=0 ; p<(messageLength[port-1]-5) ; p++) 
+									for (p=0 ; p<numOfParams ; p++) 
 									{
-										temp = cMessage[port-1][8+p];
+										temp = cMessage[port-1][4+shift+p];
 										if (temp>0 && temp<=NumOfPorts)	{
 											UpdateBaudrate(temp, temp32); 
 										}
@@ -870,10 +870,10 @@ void PxMessagingTask(void * argument)
 							
 							case CODE_UPDATE_VIA_PORT :
 								/* I'm the last module before target. First, ask the target to jump to factory bootloader */
-								SendMessageFromPort(cMessage[port-1][4], 0, 0, CODE_UPDATE, 0);
+								SendMessageFromPort(cMessage[port-1][shift], 0, 0, CODE_UPDATE, 0);
 								osDelay(100);
 								/* Then, setup myself for remote 'via port' update */
-								remoteBootloaderUpdate(src, myID, port, cMessage[port-1][4]);
+								remoteBootloaderUpdate(src, myID, port, cMessage[port-1][shift]);
 								break;
 								
 						case CODE_DMA_CHANNEL :
@@ -881,8 +881,8 @@ void PxMessagingTask(void * argument)
 							temp = cMessage[port-1][11+shift];
 							if (numOfParams == 15)	temp = cMessage[port-1][13+shift];							
 							if (numOfParams == 17)	temp = cMessage[port-1][15+shift];
-								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
-								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
+								count = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];
+								timeout = ( (uint32_t) cMessage[port-1][4+shift] << 24 ) + ( (uint32_t) cMessage[port-1][5+shift] << 16 ) + ( (uint32_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift];									
 									
 							/* Activate the stream */
 							if (temp == false)
@@ -1328,9 +1328,9 @@ void PxMessagingTask(void * argument)
 							responseStatus = (BOS_Status) cMessage[port-1][shift];
 							break;	
 						
-							case CODE_PORT_FORWARD :
-								writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
-								break;
+						case CODE_PORT_FORWARD :
+							writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
+							break;
 						
 						default :
 							/* Process module messages */
