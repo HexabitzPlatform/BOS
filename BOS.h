@@ -394,6 +394,7 @@ extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 extern snippet_t snippets[MAX_SNIPPETS];
 extern uint8_t numOfBosCommands;
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 /* Exported internal functions ---------------------------------------------------------*/
 
