@@ -5352,7 +5352,7 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 			else
 			{
 				/* Ask the target to jump to factory bootloader */
-				SendMessageFromPort(port, myID, 0, CODE_UPDATE, 0);
+				SendMessageFromPort(port, 0, 0, CODE_UPDATE, 0);
 				osDelay(100);
 				/* Then, setup myself for remote 'via port' update */
 				remoteBootloaderUpdate(myID, myID, PcPort, port);							

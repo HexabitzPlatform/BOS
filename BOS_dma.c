@@ -113,7 +113,7 @@ BOS_Status StartDMAstream(UART_HandleTypeDef* huartSrc, UART_HandleTypeDef* huar
 	
 	// 1. Check if single- or multi-cast 
 	// 1.a. If single-cast, switch the DMA channel to streaming if it's available 
-	if (portStatus[srcPort] == FREE)		// This port is not streaming so it's single-cast
+	if (portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI)		// This port is not streaming so it's single-cast
 	{
 		SwitchMsgDMAToStream(srcPort);
 	}
