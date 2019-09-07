@@ -592,37 +592,37 @@ void PxMessagingTask(void * argument)
 			else 
 			{				
 				/* Is it a broadcast message with unique ID? */
-				if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+				if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-1] != bcastLastID) 
 				{
-					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
+					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-1];			// Store bcastID 		
 					BroadcastReceivedMessage(BOS_BROADCAST, port);
-					cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
+					cMessage[port-1][messageLength[port-1]-1] = 0;								// Reset bcastID location 
 				} 
 				/* Reflection of last broadcast message! */
-				else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
+				else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-1] == bcastLastID) 
 				{
 					result = BOS_ERR_MSG_Reflection;
 				}
 								
 				/* Is it a multicast message with unique ID? */
-				if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+				if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-1] != bcastLastID) 
 				{
-					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
+					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-1];			// Store bcastID 		
 					BroadcastReceivedMessage(BOS_MULTICAST, port);
-					cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
-					temp = cMessage[port-1][messageLength[port-1]-3];							// Number of members in this multicast group - TODO breaks when message is 14 length and padded
+					cMessage[port-1][messageLength[port-1]-1] = 0;								// Reset bcastID location 
+					temp = cMessage[port-1][messageLength[port-1]-2];							// Number of members in this multicast group - TODO breaks when message is 14 length and padded
 					/* Am I part of this multicast group? */
 					result = BOS_ERR_WrongID;
 					for(i=0 ; i<temp ; i++)
 					{
-						if (myID == cMessage[port-1][messageLength[port-1]-3-temp+i]) {
+						if (myID == cMessage[port-1][messageLength[port-1]-2-temp+i]) {
 							result = BOS_OK;
 							break;
 						}
 					}
 				} 
 				/* Reflection of last multi-cast message! */
-				else if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
+				else if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-1] == bcastLastID) 
 				{
 					result = BOS_ERR_MSG_Reflection;
 				}
@@ -1484,8 +1484,8 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstGroup, uint8_t incomingPort)
 	/* Broadcast ID and groups are already in the payload. Don't add new ones */
 	AddBcastPayload = false; dstGroupID = dstGroup;	
 	
-	/* Forward the message with a broadcast flag. Set src to 0 to inform the API to copy the exact message received on 
-		incomingPort which is passed thru numberOfParams */
+	/* Forward the message with a broadcast flag. Set src and code to 0 to inform the API to copy the exact message received on 
+		incomingPort which is passed thru numberOfParams. Src will be updated with original source inside the function */
 	if (dstGroup == BOS_BROADCAST)
 		SendMessageFromPort(0, 0, BOS_BROADCAST, 0, incomingPort);
 	else
@@ -3648,6 +3648,10 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* Transmit the message - multi-cast or broadcast */
 	else
 	{
+		if (code == 0 && src == 0) {					// Forwarded broadcast or multicast. Update with original source.
+			src = message[4];
+		} 
+		
 		/* Get broadcast routes */
 		FindBroadcastRoutes(src);
 		
