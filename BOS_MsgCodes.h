@@ -108,7 +108,7 @@
 #define	CODE_H0FR6_PWM						753
 
 // H1BR6x
-
+#define CODE_H1BR6_READ_WAVE            		800
 // H23R0x
 #define CODE_H23Rx_GET_INFO                 1700
 #define CODE_H23Rx_DOWNLOAD_SCRIPT_OTA      1701

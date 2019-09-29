@@ -2171,7 +2171,11 @@ BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, 
 {
 	TimerHandle_t xTimerStream = NULL; 
 	
-	if (!src || !dst || src == dst) return BOS_ERR_WrongParam;
+	if (src == dst) {		// Streaming inside the module
+		portStatus[src] = STREAM;
+		return BOS_ERR_WrongParam;
+	} else if (!src || !dst) 
+		return BOS_ERR_WrongParam;
 	
 	/* Start DMA streams */
 	if (direction == FORWARD) 
