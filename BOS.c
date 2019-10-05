@@ -3524,7 +3524,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		length = messageLength[numberOfParams-1];
 
 		/* Copy message buffer from the incoming port as is */
-		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) (length&0x7F));
+		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) length);
 	}
 	/* Construct message from scratch - case 5 */
 	else
