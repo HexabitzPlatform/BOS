@@ -233,7 +233,7 @@ snippet_t;
 #define	MaxNumOfModules								25
 #define	MaxNumOfGroups								10
 #define MaxNumOfPorts									10
-#define MaxLengthOfAlias							10
+#define MaxLengthOfAlias							9
 #define MAX_BOS_VARS									30
 #define NumOfKeywords									4
 #define NumOfParamsHelpStrings				7
