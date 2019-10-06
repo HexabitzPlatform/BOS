@@ -3278,6 +3278,9 @@ void BOS_Init(void)
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
+	
+	/* Start backend messaging DMAs */
+	SetupMessagingRxDMAs();
 
 	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */

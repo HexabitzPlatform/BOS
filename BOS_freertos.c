@@ -221,9 +221,6 @@ void BackEndTask(void * argument)
 	uint8_t port; bool emptyBuffer = false;
 	static uint8_t crc8;
 	
-	/* Start backend messaging DMAs */
-	SetupMessagingRxDMAs();
-	
   /* Infinite loop */
   for(;;)
   {
