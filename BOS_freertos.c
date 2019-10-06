@@ -296,7 +296,6 @@ void BackEndTask(void * argument)
 			
 				if (packetStart != packetEnd)										// Non-empty packet
 				{				
-
 					/* A.4. Calculate packet CRC */				
 					if (packetStart < packetEnd) {
 						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], packetLength + 3);						
@@ -306,7 +305,7 @@ void BackEndTask(void * argument)
 					}
 					crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (packetLength + 3)/4);
 					if ((packetLength + 3)%4 !=0)
-						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[packetEnd-((packetLength + 3)%4)], 1);
+						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
 						
 					memset(crcBuffer, 0,sizeof(crcBuffer));
 					

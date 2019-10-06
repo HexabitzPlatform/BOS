@@ -3645,7 +3645,9 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	message[2] = length;
 	
 	/* End of message - Calculate CRC8 */
-	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], length + 3);		
+	HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], (length + 3)/4);
+	if ((length + 3)%4 !=0)
+		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&message[((length + 3)/4)*4], 1);
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
