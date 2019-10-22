@@ -346,15 +346,8 @@ void BackEndTask(void * argument)
 				
 				/* A.6. If you are still here, then this packet is rejected TODO do something */
 
-				/* A.6.1 Copy the packet to message buffer (temp just for debugging) */	
-				if ((packetLength) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
-					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
-				} else {				// Message wraps around
-					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
-					memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
-				}
-				
-				/* A.6.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+		
+				/* A.6.1 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
 				if (packetStart < packetEnd) {
 					memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);						
 				} else {				// wrap around
