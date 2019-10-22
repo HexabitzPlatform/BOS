@@ -86,6 +86,7 @@ uint8_t BOS_initialized = 0;
 uint32_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
 uint64_t remoteBuffer = 0;
 varFormat_t remoteVarFormat = FMT_UINT8;
+uint8_t CLI_LOW_Baudrate_Flag = 0; 			//Flage for Lower CLI baudrate is set
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -2073,6 +2074,8 @@ BOS_Status LoadEEparams(void)
 	{
 		BOS.clibaudrate = (uint32_t)temp1 | (((uint32_t)temp2)<<16);
 	}
+	else if(CLI_LOW_Baudrate_Flag)
+		BOS.clibaudrate = CLI_BAUDRATE_1;
 	else
 		BOS.clibaudrate = BOS_default.clibaudrate;
 	
@@ -3249,6 +3252,7 @@ void BOS_Init(void)
 	/* Check if booting at lower CLI baudrate */
 	if (IsLowerCLIbaud())
 	{
+		CLI_LOW_Baudrate_Flag = 1;
 		/* Initialize the module */
 		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();	
