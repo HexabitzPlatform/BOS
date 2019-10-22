@@ -227,13 +227,13 @@ snippet_t;
 /* BOS Parameters and constants */ 
 #define	NUM_OF_MODULE_PN							21
 #define P_LAST 												NumOfPorts
-#define MAX_MESSAGE_SIZE							56
+#define MAX_MESSAGE_SIZE							56											// Must be word-aligned for CRC calculations
 #define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-6)		// Dst + Src + 1 x Options + 2 x Code + CRC
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								25
 #define	MaxNumOfGroups								10
 #define MaxNumOfPorts									10
-#define MaxLengthOfAlias							10
+#define MaxLengthOfAlias							9
 #define MAX_BOS_VARS									30
 #define NumOfKeywords									4
 #define NumOfParamsHelpStrings				7
@@ -245,8 +245,9 @@ snippet_t;
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
 //#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
-#define MSG_RX_BUF_SIZE								(65)			// 1 Mbps UART at 0.5 KHz parsing rate
+#define MSG_RX_BUF_SIZE								(64)			// 1 Mbps UART at 0.5 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
+
 
 
 /* Delay macros */

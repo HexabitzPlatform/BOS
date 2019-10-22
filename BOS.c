@@ -2171,7 +2171,11 @@ BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, 
 {
 	TimerHandle_t xTimerStream = NULL; 
 	
-	if (!src || !dst || src == dst) return BOS_ERR_WrongParam;
+	if (src == dst) {		// Streaming inside the module
+		portStatus[src] = STREAM;
+		return BOS_ERR_WrongParam;
+	} else if (!src || !dst) 
+		return BOS_ERR_WrongParam;
 	
 	/* Start DMA streams */
 	if (direction == FORWARD) 
@@ -3278,6 +3282,9 @@ void BOS_Init(void)
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
+	
+	/* Start backend messaging DMAs */
+	SetupMessagingRxDMAs();
 
 	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */
@@ -3524,7 +3531,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		length = messageLength[numberOfParams-1];
 
 		/* Copy message buffer from the incoming port as is */
-		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) (length&0x7F));
+		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) length);
 	}
 	/* Construct message from scratch - case 5 */
 	else
@@ -3641,9 +3648,12 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* Copy message length */
 	message[2] = length;
 	
-	/* End of message - Calculate CRC8 */
-	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], length + 3);		
-	if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
+	/* End of message - Calculate CRC8 */	
+	HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], (length + 3)/4);
+	if ((length + 3)%4 !=0)
+		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&message[((length + 3)/4)*4], 1);
+
+	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
