@@ -306,9 +306,11 @@ void BackEndTask(void * argument)
 						crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart);
 						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&UARTRxBuf[port-1][0], ((packetLength & 0x7F) + 3) - (MSG_RX_BUF_SIZE-packetStart));
 					}
+					
+					if(!crc8){crc8=1;} /*Making sure CRC Value Is not Zero*/
 				
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
-					if (crc8 && crc8 == UARTRxBuf[port-1][packetEnd])
+					if (crc8 == UARTRxBuf[port-1][packetEnd])
 					{	
 						portStatus[port] = MSG;
 						messageLength[port-1] = packetLength;	
