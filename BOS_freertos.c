@@ -82,6 +82,7 @@ SemaphoreHandle_t PxTxSemaphoreHandle[7];
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 //extern uint8_t UARTTxBuf[3][MSG_TX_BUF_SIZE];
 extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
+extern uint8_t UARTRxBufIndex[NumOfPorts];
 
 /* Function prototypes -------------------------------------------------------*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -232,49 +233,50 @@ void BackEndTask(void * argument)
 			{	
 				/* A.1. Look for HZ delimiter and determine packet start */
 				/* Note this parses only a single packet on each pass TODO update to parse all */
-				if (UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z') 
+
+				for (int i=UARTRxBufIndex[port-1]; i<MSG_RX_BUF_SIZE ; i++)
 				{
-					packetStart = MSG_RX_BUF_SIZE-1;
-				} 
-				else 
-				{
-					for (int i=1 ; i<MSG_RX_BUF_SIZE ; i++)
+					if (i < (MSG_RX_BUF_SIZE-1) && UARTRxBuf[port-1][i] == 'H' && UARTRxBuf[port-1][i+1] == 'Z')	
+					{	
+						packetStart = i;	
+						break;
+					}	
+					else if (i == (MSG_RX_BUF_SIZE-1) && UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z')	// HZ wrap around
+					{	
+						packetStart = MSG_RX_BUF_SIZE-1;	
+						break;
+					}							
+					else 
 					{
-						if (UARTRxBuf[port-1][i-1] == 'H' && UARTRxBuf[port-1][i] == 'Z')	
-						{	
-							packetStart = i-1;	
-							break;
-						}	
-						else 
+						/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
+						if (i == MSG_RX_BUF_SIZE-1)		
 						{
-							/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
-							if (i == MSG_RX_BUF_SIZE-1)		
+							for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
 							{
-								for (int j=0 ; j<MSG_RX_BUF_SIZE ; j++)
-								{
-									if (UARTRxBuf[port-1][j] == 0xD) {		
-										UARTRxBuf[port-1][j] = 0;
-										portStatus[PcPort] = FREE;			// Free the previous CLI port 
-										portStatus[port] = CLI;					// Continue the CLI session on this port
-										PcPort = port;
-										/* Activate the CLI task */
-										xTaskNotifyGive(xCommandConsoleTaskHandle);		
-										break;
-									}
+								if (UARTRxBuf[port-1][j] == 0xD) {
+									UARTRxBuf[port-1][j] = 0;
+									UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
+									portStatus[PcPort] = FREE;			// Free the previous CLI port 
+									portStatus[port] = CLI;					// Continue the CLI session on this port
+									PcPort = port;
+									/* Activate the CLI task */
+									xTaskNotifyGive(xCommandConsoleTaskHandle);		
+									break;
 								}
-								/* Circular buffer is empty. */
-								emptyBuffer = true;
 							}
-						}						
-					}
-				}			
+							/* Circular buffer is empty. */
+							emptyBuffer = true;
+						}
+					}						
+				}
+						
 				/* Check parse status */
 				if (emptyBuffer) {	
 					emptyBuffer = false;
 					continue;
 				}
 				
-				/* A.2. Parse the length byte - When used for length calculation, make sure to ignnore MSB (long message flag) */
+				/* A.2. Parse the length byte */
 				if (packetStart == MSG_RX_BUF_SIZE-3) {
 					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1];
 					parseStart = 0;				
@@ -305,10 +307,10 @@ void BackEndTask(void * argument)
 					}
 
 					crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (packetLength + 3)/4);
-					if ((packetLength + 3)%4 !=0)
+					if ((packetLength + 3)%4 !=0)		// Non-word-aligned packet
 						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
 						
-					memset(crcBuffer, 0,sizeof(crcBuffer));
+					memset(crcBuffer, 0, sizeof(crcBuffer));
 					
 					//if(!crc8){crc8=1;} /*Making sure CRC Value Is not Zero*/
 					
@@ -322,21 +324,23 @@ void BackEndTask(void * argument)
 						if ((packetLength) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
 							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
 						} else {				// Message wraps around
-							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
-							memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
+							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart);
+							memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart], &UARTRxBuf[port-1][0], (packetLength)-(MSG_RX_BUF_SIZE-parseStart));	// wrap-around
 						}
-							
-						/* A.5.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+						
+						/* A.5.2 Clear packet location in the circular buffer */                
 						if (packetStart < packetEnd) {
-							memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);						
-						} else {				// wrap around
-							memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart-1);
-							memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart-1));
-						}											
-		
+								memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);                        
+						} else {                // wrap around
+								memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart);
+								memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart));
+						}                                            
+							
+						/* A.5.3 Advance buffer index */													
+						UARTRxBufIndex[port-1] = (packetEnd+1);			// Set buffer pointer after the CRC byte 
 						++acceptedMsg;
 				
-						/* A.5.3. Notify messaging tasks */
+						/* A.5.4. Notify messaging tasks */
 						NotifyMessagingTask(port);	
 
 						continue;		// Inspect the next port circular buffer
@@ -346,15 +350,16 @@ void BackEndTask(void * argument)
 				
 				/* A.6. If you are still here, then this packet is rejected TODO do something */
 
-		
-				/* A.6.1 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+				/* A.6.1 Clear packet location in the circular buffer */                
 				if (packetStart < packetEnd) {
-					memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);						
-				} else {				// wrap around
-					memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart-1);
-					memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart-1));
-				}	
+						memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);                        
+				} else {                // wrap around
+						memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart);
+						memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart));
+				}    
 				
+				/* A.6.2 Advance buffer index */				
+				UARTRxBufIndex[port-1] = (packetEnd+1);			// Set buffer pointer after the CRC byte 
 				++rejectedMsg;							
 			}	
 			

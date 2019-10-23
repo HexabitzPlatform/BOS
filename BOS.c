@@ -132,6 +132,7 @@ uint8_t numOfBosCommands;
 /* Variables exported internally */
 extern FLASH_ProcessTypeDef pFlash;
 extern uint8_t numOfRecordedSnippets;
+extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 
 /* RTC */
 RTC_HandleTypeDef RtcHandle;
@@ -3649,10 +3650,12 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	message[2] = length;
 	
 	/* End of message - Calculate CRC8 */	
-	HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], (length + 3)/4);
-	if ((length + 3)%4 !=0)
-		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&message[((length + 3)/4)*4], 1);
+	memcpy(crcBuffer, &message[0], length + 3);	
+	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (length + 3)/4);
+	if ((length + 3)%4 != 0) 							// Non-word-aligned packet
+		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((length + 3)/4)*4], 1);
 
+	memset(crcBuffer, 0, sizeof(crcBuffer));
 	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
 	
 	/* Transmit the message - single-cast */
@@ -5222,6 +5225,18 @@ BOS_Status Unbridge(uint8_t port1, uint8_t port2)
 	else if (streamDMA[port2-1].Instance != 0)
 			{SwitchStreamDMAToMsg(port2);return BOS_OK;}	
 	else {return BOS_ERR_WrongValue;}
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Print formatted text to one of the module ports
+*/
+BOS_Status printfp(uint8_t port, char* str)
+{		
+	if (writePxMutex(port, str, strlen(str), 1, 1) == HAL_OK)
+		return BOS_OK;
+	else 
+		return BOS_ERROR;
 }
 
 /*-----------------------------------------------------------*/
