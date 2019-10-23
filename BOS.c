@@ -192,8 +192,8 @@ extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t s
 
 extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
 
-const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
-"\r\nBOS.trace: all, msg, none\r\n",
+const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, message, cli, none\r\n",
+"\r\nBOS.trace: all, message, response, none\r\n",
 "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
 you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n",
 																															 "BOS.debounce: 1 ... 65536 msec\r\n",
@@ -5831,8 +5831,11 @@ you must connect to a CLI port on each startup to restore other array ports into
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
 				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
-			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
+			} else if (!strncmp((const char *)pcParameterString2, "message", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+		  } else if (!strncmp((const char *)pcParameterString2, "cli", xParameterStringLength2)) {
+				BOS.response = BOS_RESPONSE_CLI;
 				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
@@ -5845,8 +5848,11 @@ you must connect to a CLI port on each startup to restore other array ports into
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.trace = TRACE_BOTH;
 				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
-			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
+			} else if (!strncmp((const char *)pcParameterString2, "message", xParameterStringLength2)) {
 				BOS.trace = TRACE_MESSAGE;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "response", xParameterStringLength2)) {
+				BOS.trace = TRACE_RESPONSE;
 				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.trace = TRACE_NONE;
