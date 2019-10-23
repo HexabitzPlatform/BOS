@@ -3554,7 +3554,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		
 		/* Options */
 		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] = (BOS.response) | (BOS.trace<<2) | (extendCode<<1) | (extendOptions);
+		message[5] |= ((BOS.response) | (BOS.trace<<2) | (extendCode<<1) | (extendOptions));
 		if (extendOptions == true) {
 			++shift;
 		}
@@ -3925,33 +3925,33 @@ BOS_Status Explore(void)
 			
 	/* >>> Step 6 - Test new port directions by pinging all modules */
 	
-	if (result == BOS_OK) 
-	{		
-		osDelay(100);
-		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
-		for (i=2 ; i<=N ; i++) 
-		{
-			SendMessageToModule(i, CODE_PING, 0);
-			osDelay(300*NumberOfHops(i));	
-			//osDelay(100);
-			if (responseStatus == BOS_OK)
-				result = BOS_OK;
-			else if (responseStatus == BOS_ERR_NoResponse)
-				result = BOS_ERR_NoResponse;
-		}
-	}
+//	if (result == BOS_OK) 
+//	{		
+//		osDelay(100);
+//		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
+//		for (i=2 ; i<=N ; i++) 
+//		{
+//			SendMessageToModule(i, CODE_PING, 0);
+//			osDelay(300*NumberOfHops(i));	
+//			//osDelay(100);
+//			if (responseStatus == BOS_OK)
+//				result = BOS_OK;
+//			else if (responseStatus == BOS_ERR_NoResponse)
+//				result = BOS_ERR_NoResponse;
+//		}
+//	}
 	
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
 	
-	if (result == BOS_OK)
-	{
-		/* Save data in the master */
-		SaveToRO();
-		SaveEEportsDir();
-		osDelay(100);
-		/* Ask other modules to save their data too */
-		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
-	}	
+//	if (result == BOS_OK)
+//	{
+//		/* Save data in the master */
+//		SaveToRO();
+//		SaveEEportsDir();
+//		osDelay(100);
+//		/* Ask other modules to save their data too */
+//		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
+//	}	
 
 	return result;
 }
