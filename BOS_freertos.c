@@ -303,14 +303,17 @@ void BackEndTask(void * argument)
 						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart);
 						memcpy(&crcBuffer[MSG_RX_BUF_SIZE-packetStart], &UARTRxBuf[port-1][0], (packetLength + 3) - (MSG_RX_BUF_SIZE-packetStart));
 					}
+
 					crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (packetLength + 3)/4);
 					if ((packetLength + 3)%4 !=0)
 						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
 						
 					memset(crcBuffer, 0,sizeof(crcBuffer));
 					
+					//if(!crc8){crc8=1;} /*Making sure CRC Value Is not Zero*/
+					
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
-					if (crc8 && crc8 == UARTRxBuf[port-1][packetEnd])
+					if (crc8 == UARTRxBuf[port-1][packetEnd])
 					{	
 						portStatus[port] = MSG;
 						messageLength[port-1] = packetLength;	
@@ -343,15 +346,8 @@ void BackEndTask(void * argument)
 				
 				/* A.6. If you are still here, then this packet is rejected TODO do something */
 
-				/* A.6.1 Copy the packet to message buffer (temp just for debugging) */	
-				if ((packetLength) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
-					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
-				} else {				// Message wraps around
-					memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart-1);
-					memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart-1], &UARTRxBuf[port-1][0], (packetLength)-(MSG_RX_BUF_SIZE-parseStart-1));	// wrap-around
-				}
-				
-				/* A.6.2 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
+		
+				/* A.6.1 Clear packet location in the circular buffer - TODO do not waste time clearing buffer */				
 				if (packetStart < packetEnd) {
 					memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);						
 				} else {				// wrap around

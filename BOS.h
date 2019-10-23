@@ -227,8 +227,8 @@ snippet_t;
 /* BOS Parameters and constants */ 
 #define	NUM_OF_MODULE_PN							21
 #define P_LAST 												NumOfPorts
-#define MAX_MESSAGE_SIZE							56											// Must be word-aligned for CRC calculations
-#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-6)		// Dst + Src + 1 x Options + 2 x Code + CRC
+#define MAX_MESSAGE_SIZE							56
+#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								25
 #define	MaxNumOfGroups								10

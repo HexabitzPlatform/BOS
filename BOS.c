@@ -46,7 +46,7 @@ static const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursda
 /* Routing and topology */
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
-uint16_t neighbors2[MaxNumOfPorts][2] = {0};
+uint16_t neighbors2[NumOfPorts][2] = {0};
 uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 bool AddBcastPayload = false;
 uint8_t dstGroupID = BOS_BROADCAST;
@@ -3648,10 +3648,12 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	/* Copy message length */
 	message[2] = length;
 	
-	/* End of message - Calculate CRC8 */
+	/* End of message - Calculate CRC8 */	
 	HAL_CRC_Calculate(&hcrc, (uint32_t *)&message[0], (length + 3)/4);
 	if ((length + 3)%4 !=0)
 		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&message[((length + 3)/4)*4], 1);
+
+	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
 	
 	/* Transmit the message - single-cast */
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
