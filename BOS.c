@@ -5226,6 +5226,18 @@ BOS_Status Unbridge(uint8_t port1, uint8_t port2)
 
 /*-----------------------------------------------------------*/
 
+/* --- Print formatted text to one of the module ports
+*/
+BOS_Status printfp(uint8_t port, char* str)
+{		
+	if (writePxMutex(port, str, strlen(str), 1, 1) == HAL_OK)
+		return BOS_OK;
+	else 
+		return BOS_ERROR;
+}
+
+/*-----------------------------------------------------------*/
+
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
