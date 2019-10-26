@@ -56,6 +56,7 @@
 	|											Module Message Codes	 														|
    ----------------------------------------------------------------------- 
 */
+// Reserve 50 messages for each PN based on its decimal value
 
 // H01R0x
 #define	CODE_H01R0_ON						  100
@@ -67,9 +68,10 @@
 #define	CODE_H01R0_DIM						106
 
 // H07R3x
-#define CODE_H07R3_PLAY_SINE				350
-#define CODE_H07R3_PLAY_WAVE				351
-#define CODE_H07R3_PLAY_TUNE				352
+#define CODE_H07R3_PLAY_SINE								350
+#define CODE_H07R3_PLAY_WAVE								351
+#define CODE_H07R3_PLAY_TUNE								352
+#define CODE_H07R3_SCAN_WAVE_RESPONSE				353
 
 // H08R6x
 #define CODE_H08R6_GET_INFO                 400
@@ -108,7 +110,9 @@
 #define	CODE_H0FR6_PWM						753
 
 // H1BR6x
-#define CODE_H1BR6_READ_WAVE            		800
+#define CODE_H1BR6_READ_WAVE            		1350
+#define CODE_H1BR6_SCAN_WAVE								1351
+
 // H23R0x
 #define CODE_H23Rx_GET_INFO                 1700
 #define CODE_H23Rx_DOWNLOAD_SCRIPT_OTA      1701
