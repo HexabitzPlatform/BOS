@@ -2172,10 +2172,11 @@ BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, 
 {
 	TimerHandle_t xTimerStream = NULL; 
 	
-	if (src == dst) {		// Streaming inside the module
+	/* Sanity check */
+	if (src == dst) {							// Streaming inside destination module. Lock this port to streaming but no need to setup DMA
 		portStatus[src] = STREAM;
 		return BOS_ERR_WrongParam;
-	} else if (!src || !dst) 
+	} else if (!src || !dst) 			// Streaming outside source module or wrong destination pport. Do not lock the port and do not setup DMA
 		return BOS_ERR_WrongParam;
 	
 	/* Start DMA streams */

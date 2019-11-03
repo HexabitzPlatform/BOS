@@ -253,7 +253,7 @@ void BackEndTask(void * argument)
 						{
 							for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
 							{
-								if (UARTRxBuf[port-1][j] == 0xD) {
+								if (UARTRxBuf[port-1][j] == 0xD && ((j < MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][j+1] == 0) || (j == MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][0] == 0) ) ) {
 									UARTRxBuf[port-1][j] = 0;
 									UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
 									portStatus[PcPort] = FREE;			// Free the previous CLI port 
