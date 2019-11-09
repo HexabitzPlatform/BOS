@@ -13,7 +13,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			1
-#define	_firmPatch			5
+#define	_firmPatch			6
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 

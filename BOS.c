@@ -32,6 +32,9 @@ static const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
 static const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 static const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 	
+static const char mathStr[NUM_MATH_OPERATORS][2] = {"==", ">", "<", ">=", "<=", "!="};
+
+	
 /* Number of modules in the array */
 #ifndef _N
 	uint8_t N = 1;
@@ -6325,10 +6328,12 @@ act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet
 	static const int8_t *pcMessageSnipButtonEventDblClicked = ( int8_t * ) "%sif b%d.double clicked";
 	static const int8_t *pcMessageSnipButtonEventPressed = ( int8_t * ) "%sif b%d.pressed for %d";
 	static const int8_t *pcMessageSnipButtonEventReleased = ( int8_t * ) "%sif b%d.released for %d";	
+	static const int8_t *pcMessageSnipModuleParamConst = ( int8_t * ) "%sif %s %s %.1f";
 	static const int8_t *pcMessageCmds = ( int8_t * ) "%s\n\r\t%s";
 	static const int8_t *pcMessageEnd = ( int8_t * ) "\n\rend if\n\n\r";
 	char status[2][7] = {"Paused", "Active"};
 	static int8_t commands[ cmdMAX_INPUT_SIZE ];
+	float flt1;
 	
 	/* Remove compile time warnings about unused parameters, and check the
 	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -6376,6 +6381,9 @@ act-snip x\n\rTo pause a Snippet, type: pause-snip x\n\n\rwhere x is the Snippet
 				break;
 				
 			case SNIP_COND_MODULE_PARAM_CONST:
+				// Get the module parameter, math operator and constant values. 
+				memcpy( (uint8_t *)&flt1, &snippets[s].cond.buffer2, sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageSnipModuleParamConst, ( char * ) pcWriteBuffer, modParam[snippets[s].cond.buffer1[1]-1].paramName, mathStr[snippets[s].cond.mathOperator-1], flt1);				      		
 				break;
 			
 			default:
