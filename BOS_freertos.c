@@ -50,7 +50,7 @@ uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
 	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
-TaskHandle_t userTaskHandle = NULL;
+TaskHandle_t UserTaskHandle = NULL;
 TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
@@ -112,7 +112,7 @@ void MX_FREERTOS_Init(void)
 	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
 	
 	/* Create the User task */
-	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &userTaskHandle);
+	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &UserTaskHandle);
 	
 	/* Register command line commands */
 	vRegisterCLICommands();
