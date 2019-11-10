@@ -32,7 +32,7 @@ static const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
 static const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 static const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 	
-static const char mathStr[NUM_MATH_OPERATORS][2] = {"==", ">", "<", ">=", "<=", "!="};
+static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
 
 	
 /* Number of modules in the array */
