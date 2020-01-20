@@ -292,12 +292,13 @@ void BackEndTask(void * argument)
 				}
 				
 				/* A.3. Set packet end from packet start and length */			
-				packetEnd = packetStart + (packetLength + 3);			// Packet length is counted from Dst to before CRC
+						packetEnd = packetStart + (packetLength + 3);			// Packet length is counted from Dst to before CRC
 				if (packetEnd > MSG_RX_BUF_SIZE-1)												// wrap-around
 					packetEnd -= MSG_RX_BUF_SIZE;
 			
 				if (packetStart != packetEnd)										// Non-empty packet
 				{				
+					Delay_ms(10);
 					/* A.4. Calculate packet CRC */				
 					if (packetStart < packetEnd) {
 						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], packetLength + 3);						
@@ -308,7 +309,7 @@ void BackEndTask(void * argument)
 
 					crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (packetLength + 3)/4);
 					if ((packetLength + 3)%4 !=0)		// Non-word-aligned packet
-						crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
+					crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
 						
 					memset(crcBuffer, 0, sizeof(crcBuffer));
 					
