@@ -50,7 +50,7 @@ uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
 	
 /* Tasks */
 TaskHandle_t defaultTaskHandle = NULL;
-TaskHandle_t userTaskHandle = NULL;
+TaskHandle_t UserTaskHandle = NULL;
 TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
 
@@ -112,7 +112,7 @@ void MX_FREERTOS_Init(void)
 	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
 	
 	/* Create the User task */
-	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &userTaskHandle);
+	xTaskCreate(UserTask, (const char *) "UserTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &UserTaskHandle);
 	
 	/* Register command line commands */
 	vRegisterCLICommands();
@@ -253,7 +253,7 @@ void BackEndTask(void * argument)
 						{
 							for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
 							{
-								if (UARTRxBuf[port-1][j] == 0xD) {
+								if (UARTRxBuf[port-1][j] == 0xD && ((j < MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][j+1] == 0) || (j == MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][0] == 0) ) ) {
 									UARTRxBuf[port-1][j] = 0;
 									UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
 									portStatus[PcPort] = FREE;			// Free the previous CLI port 
