@@ -3779,7 +3779,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 BOS_Status Explore(void)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, p = 0, port = 0;
+	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, port = 0,Hi_count=0;
 	uint16_t temp16 = 0;
 	
 	myID = 1; 		/* Master ID */
