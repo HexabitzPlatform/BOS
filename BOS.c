@@ -3841,7 +3841,7 @@ BOS_Status Explore(void)
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
 			Topology_count++;
-			osDelay(60);
+			osDelay(100);
 		}
 		Topology_ok=0;
 		Topology_count=0;
@@ -3868,7 +3868,7 @@ BOS_Status Explore(void)
 			
 			/* Step 3b - Ask the module to explore adjacent neighbors */
 			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-			osDelay(200);		
+			osDelay(500);		
 		
 			/* Step 3c - Assign IDs to new modules */
 			for (j=1 ; j<=MaxNumOfPorts ; j++) 
@@ -3924,7 +3924,7 @@ BOS_Status Explore(void)
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
 			Topology_count++;
-			osDelay(60);
+			osDelay(100);
 		}
 		Topology_ok=0;
 		Topology_count=0;
@@ -3946,7 +3946,7 @@ BOS_Status Explore(void)
 	for (i=2 ; i<=currentID ; i++) 
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-		osDelay(100);	
+		osDelay(200);	
 		/* Check for any unIDed neighbors */
 		for (j=1 ; j<=MaxNumOfPorts ; j++) 
 		{
@@ -4040,9 +4040,9 @@ BOS_Status Explore(void)
 			while(Ping_count<50)
 			{
 				SendMessageToModule(i, CODE_PING, 0);
-				osDelay(500*NumberOfHops(i));
+				//osDelay(500*NumberOfHops(i));
 				Ping_count++;				
-				//osDelay(1000);
+				osDelay(1000);
 				if (responseStatus == BOS_OK){
 					result = BOS_OK;
 					Ping_count=51;
@@ -4100,7 +4100,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
 			SendMessageFromPort(port, 0, 0, CODE_HI, 3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
-			osDelay(10);
+			osDelay(50);
 		}
 	}
 	
