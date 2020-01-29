@@ -3790,7 +3790,12 @@ BOS_Status Explore(void)
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	
-	again: ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+	while(Hi_count<5)
+	{
+		ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+		Hi_count++;
+	}
+	Hi_count=0;
 	
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 	
