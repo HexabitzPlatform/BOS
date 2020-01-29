@@ -33,7 +33,7 @@ static const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
 
 static const char *monthStringAbreviated[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 static const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-	
+uint16_t Dolp,lock;
 /* Number of modules in the array */
 #ifndef _N
 	uint8_t N = 1;
@@ -44,6 +44,9 @@ static const char *weekdayString[] = {"Monday", "Tuesday", "Wednesday", "Thursda
 #endif
 
 /* Routing and topology */
+bool Topology_ok;
+uint16_t iteration=0,Nid,longMessagecount,numoflongmsg,totalofrcvmsg;
+uint8_t mcount,rcount,Topology_count,Ping_count;
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[NumOfPorts][2] = {0};
@@ -71,6 +74,7 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 #endif
 
 /* Buffers and communication */
+uint8_t num=0;	// COUNTER FOR SENDEING MESSAGE IN EXPLORE
 uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};		// Buffer for messages received and ready to be parsed 
 char message[MAX_MESSAGE_SIZE] = {0};										// Buffer to construct a message to be sent
 uint8_t messageLength[NumOfPorts] = {0};
@@ -537,7 +541,7 @@ void PxMessagingTask(void * argument)
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		
+		if(port>6){port=7;}
 		if (messageLength[port-1])
 		{						
 			/* Long message? Read Options Byte MSB */
@@ -704,6 +708,7 @@ void PxMessagingTask(void * argument)
 								}
 							}
 							SendMessageToModule(src, CODE_EXPLORE_ADJ_RESPONSE, temp);
+							osDelay(10);
 							break;
 						
 						case CODE_EXPLORE_ADJ_RESPONSE :
@@ -724,33 +729,85 @@ void PxMessagingTask(void * argument)
 							SwapUartPins(GetUart(port), cMessage[port-1][shift+MaxNumOfPorts]);
 							break;
 							
-						case CODE_MODULE_ID :
-							if (cMessage[port-1][shift] == 0)						/* Change my own ID */
-								myID = cMessage[port-1][1+shift];
-							else if (cMessage[port-1][shift] == 1) {		/* Change my neighbor's ID */
-								messageParams[0] = 0;											/* change own ID */
-								messageParams[1] = cMessage[port-1][1+shift];		/* The new ID */
-								SendMessageFromPort(cMessage[port-1][2+shift], 0, 0, CODE_MODULE_ID, 3);
+						case CODE_PORT_DIRECTION_FINAL:
+							
+							for (port=1 ; port<=NumOfPorts ; port++) 
+							{
+								if(array[myID-1][port])
+								{
+									Nid=array[myID-1][port]>>3;
+									if(Nid>myID)
+									{
+										SwapUartPins(GetUart(port),NORMAL);
+									}
+									else 
+									{
+										SwapUartPins(GetUart(port),REVERSED);
+									}
+								}
+								else 
+								{
+									SwapUartPins(GetUart(port),NORMAL);
+								}
 							}
 							break;
+							
+						case CODE_MODULE_ID :
+								myID = cMessage[port-1][shift];
+						break;
+						
+						case CODE_NEIGHBORS_ID:
+								/* Change my neighbor's ID */
+								messageParams[0] = cMessage[port-1][shift];		/* The new ID */
+								SendMessageFromPort(cMessage[port-1][1+shift], 0, 0, CODE_MODULE_ID, 2);
+						break;
 							
 						case CODE_TOPOLOGY :
-							if (longMessage) {
-								/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
-								/* Use a 1-byte oriented scratchpad */
-								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );	
-								longMessageLastPtr += numOfParams;
-							} else {
-								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
-								longMessageLastPtr += numOfParams;
-								N = (longMessageLastPtr / (MaxNumOfPorts+1)) / 2;
-								/* Copy the scratchpad to array */
-								memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
-								longMessageLastPtr = 0;
-								//indMode = IND_TOPOLOGY;
-							}
-							break;
+								totalofrcvmsg = cMessage[port-1][shift+1];
+								mcount = totalofrcvmsg / (MAX_PARAMS_PER_MESSAGE-2); 
+								if((totalofrcvmsg % (MAX_PARAMS_PER_MESSAGE-2))!=0){mcount=mcount+1;}
 							
+								numoflongmsg=cMessage[port-1][shift];
+								longMessageLastPtr = (MAX_PARAMS_PER_MESSAGE-1) * (numoflongmsg-1);
+								
+								if(rcount & (0x01 << (numoflongmsg-1))){;}
+								else {
+									rcount |= (0x01 << (numoflongmsg-1));
+									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift+2],  (size_t) numOfParams );	
+								}
+								
+								if(rcount == (0xff >> (8 - mcount)))
+								{
+									N = (totalofrcvmsg / (MaxNumOfPorts+1)) / 2;
+									memcpy(&array, &longMessageScratchpad, totalofrcvmsg);
+									longMessageLastPtr = 0;
+									totalofrcvmsg=0 , numoflongmsg=0 , rcount=0 , mcount=0;
+									
+									SendMessageToModule(1, CODE_TOPOLOGY_RESPONSE,0);
+								}
+//								if (longMessage) {
+//									/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
+//									/* Use a 1-byte oriented scratchpad */
+//									numoflongmsg=cMessage[port-1][shift];
+//									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift+1], (size_t) numOfParams );	
+//									longMessageLastPtr += numOfParams;
+//								} else {
+//									numoflongmsg=cMessage[port-1][shift];
+//									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift+1], (size_t) numOfParams );
+//									longMessageLastPtr += numOfParams;
+//									N = (longMessageLastPtr / (MaxNumOfPorts+1)) / 2;
+//									/* Copy the scratchpad to array */
+//									memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
+//									longMessageLastPtr = 0;
+
+//									SendMessageToModule(1, CODE_TOPOLOGY_RESPONSE,0);
+//									//indMode = IND_TOPOLOGY;
+//								}	
+							break;
+						case CODE_TOPOLOGY_RESPONSE:
+							Topology_ok=1;
+						break;
+						
 						case CODE_READ_PORT_DIR :
 							temp = 0;
 							/* Check my own ports */
@@ -3424,7 +3481,7 @@ BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16
 
 	/* Reset messageParams buffer */
 	memset( messageParams, 0, numberOfParams );
-	
+	AddBcastPayload = false;
 	return BOS_OK;
 }
 
@@ -3506,7 +3563,7 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
 	BOS_Status result = BOS_OK; 
-	uint8_t length = 0, shift = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0;
+	uint8_t length = 0, shift = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0; static uint16_t totalParams=0;
 	bool extendOptions = false, extendCode = false;
 	UBaseType_t TaskPriority;
 	
@@ -3569,35 +3626,54 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 		
 		/* Parameters */
 		
-		if (numberOfParams <= MAX_PARAMS_PER_MESSAGE ) {				
-			memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
-			/* Calculate message length */
-			length = numberOfParams + shift + 4;
+		if (numberOfParams <= MAX_PARAMS_PER_MESSAGE ) {	
+			if(longMessagecount>0)
+			{
+				message[7+shift] = longMessagecount;
+				message[8+shift] = totalParams;
+				memcpy((char*)&message[9+shift], (&messageParams[0]+ptrShift), numberOfParams);
+				/* Calculate message length */
+				length = numberOfParams + shift + 4 + 2;
+			}
+			else
+			{
+				memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
+				/* Calculate message length */
+				length = numberOfParams + shift + 4;
+			}
 		} else {
 			/* Long message: Set Options byte 8th bit */
 			message[5] |= 0x80;		
-			totalNumberOfParams = numberOfParams;
-			numberOfParams = MAX_PARAMS_PER_MESSAGE;
+			totalNumberOfParams = numberOfParams-2;				// Leave one byte for long msg counter
+			totalParams = numberOfParams-2;
+			numberOfParams = MAX_PARAMS_PER_MESSAGE-1;
 			/* Break into multiple messages */
 			while (totalNumberOfParams != 0)
 			{		
 				if ( (totalNumberOfParams/numberOfParams) >= 1) 
 				{	
+					longMessagecount++;
 					/* Call this function recursively */
 					SendMessageFromPort(port, src, dst, code, numberOfParams);
-					osDelay(10);
+					osDelay(500);
+					/* Increase the priority of current running task */
+					TaskPriority = uxTaskPriorityGet( NULL );
+					vTaskPrioritySet( NULL, osPriorityHigh-osPriorityIdle );
 					/* Update remaining number of parameters */
-					totalNumberOfParams -= numberOfParams;
-					ptrShift += numberOfParams;
+					totalNumberOfParams -= (numberOfParams-1);
+					ptrShift += (numberOfParams);
 				} 
 				else 
 				{
+					longMessagecount++;
 					message[5] &= 0x7F;		/* Last message. Reset long message flag */
-					numberOfParams = totalNumberOfParams;
-					memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
-					ptrShift = 0; totalNumberOfParams = 0;
+					numberOfParams = totalNumberOfParams-1;
+					message[7+shift] = longMessagecount;
+					message[8+shift] = totalParams;
+					memcpy((char*)&message[9+shift], (&messageParams[0]+ptrShift), numberOfParams);
+					ptrShift = 0; totalNumberOfParams = 0; longMessagecount = 0;
 					/* Calculate message length */
-					length = numberOfParams + shift + 4;
+					length = numberOfParams + shift + 4 + 2;					
 				}
 			}
 		}	
@@ -3650,10 +3726,10 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	message[2] = length;
 	
 	/* End of message - Calculate CRC8 */	
-	memcpy(crcBuffer, &message[0], length + 3);	
-	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (length + 3)/4);
-	if ((length + 3)%4 != 0) 							// Non-word-aligned packet
-		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((length + 3)/4)*4], 1);
+	memcpy(crcBuffer, &message[0], length + shift + 3);	
+	message[length+shift+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (length + shift + 3)/4);
+	if ((length + shift + 3)%4 != 0) 							// Non-word-aligned packet
+		message[length+shift+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((length + shift + 3)/4)*4], 1);
 
 	memset(crcBuffer, 0, sizeof(crcBuffer));
 	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
@@ -3662,6 +3738,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
 	{
 		writePxDMAMutex(port, message, length+4, cmd50ms);
+		num++;
 	}
 	/* Transmit the message - multi-cast or broadcast */
 	else
@@ -3712,8 +3789,8 @@ BOS_Status Explore(void)
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
-
+	
+	again: ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
 	
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 	
@@ -3724,11 +3801,10 @@ BOS_Status Explore(void)
 		if (neighbors[port-1][0])
 		{
 			/* New ID */
-			messageParams[1] = ++currentID;
+			messageParams[0] = ++currentID;
 			N = currentID;			/* Update number of modules in the array */
 			/* Inform module to change ID */
-			messageParams[0] = 0;		/* change own ID */
-			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);			
+			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 1);			
 			/* Modify neighbors table */
 			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
 			osDelay(10);
@@ -3755,9 +3831,15 @@ BOS_Status Explore(void)
 	/* Step 2c - Ask neighbors to update their topology array */
 	for (i=2 ; i<=currentID ; i++) 
 	{
-		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-		osDelay(60);
+		while(Topology_ok==0 && Topology_count<50)
+		{
+			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+			Topology_count++;
+			osDelay(60);
+		}
+		Topology_ok=0;
+		Topology_count=0;
 	}
 	
 	
@@ -3781,7 +3863,7 @@ BOS_Status Explore(void)
 			
 			/* Step 3b - Ask the module to explore adjacent neighbors */
 			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-			osDelay(100);		
+			osDelay(200);		
 		
 			/* Step 3c - Assign IDs to new modules */
 			for (j=1 ; j<=MaxNumOfPorts ; j++) 
@@ -3791,14 +3873,13 @@ BOS_Status Explore(void)
 				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
 				{
 					/* New ID */
-					messageParams[1] = ++currentID;		
+					messageParams[0] = ++currentID;		
 					N = currentID;			/* Update number of modules in the array */
 					/* Modify neighbors table */
 					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
 					/* Ask the module to ID its yet unIDed neighbors */
-					messageParams[0] = 1;			/* change neighbor ID */
-					messageParams[2] = j;		/* neighbor port */
-					SendMessageToModule(i, CODE_MODULE_ID, 3);
+					messageParams[1] = j;		/* neighbor port */
+					SendMessageToModule(i, CODE_NEIGHBORS_ID, 2);
 					osDelay(10);
 				}
 			}
@@ -3828,18 +3909,22 @@ BOS_Status Explore(void)
 			
 			/* Reset neighbors2 array */
 			memset(neighbors2, 0, sizeof(neighbors2) );
-			
-			/* Step 3e - Ask all discovered modules to update their topology array */
-			for (j=2 ; j<=currentID ; j++) 
-			{
-				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-				osDelay(60);
-			}
 		}
 	}
+	/* Step 3e - Ask all discovered modules to update their topology array */
+	for (j=2 ; j<=currentID ; j++) 
+	{
+		while(Topology_ok==0 && Topology_count<50)
+		{
+			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+			SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+			Topology_count++;
+			osDelay(60);
+		}
+		Topology_ok=0;
+		Topology_count=0;
+	}
 
-	
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	
 	ExploreNeighbors(PcPort);
@@ -3868,57 +3953,70 @@ BOS_Status Explore(void)
 		}				
 	}
 	
+//	if(result==BOS_ERR_UnIDedModule)
+//	{
+//		iteration++;
+////		memset(array, 0, sizeof(array) );
+////		memset(neighbors, 0, sizeof(neighbors2) );
+////		memset(neighbors2, 0, sizeof(array) );
+//		//printf
+//		goto again;
+//	}
 	
 	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
 	
 	if (result == BOS_OK)
 	{	
-		/* Step 5a - Virtually reset the state of master ports to Normal */
-		for (port=1 ; port<=NumOfPorts ; port++) {
-			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
-		}
-		
-		/* Step 5b - Update other modules ports starting from the last one */
-		for (i=currentID ; i>=2 ; i--) 
-		{
-			for (p=1 ; p<=MaxNumOfPorts ; p++) 
-			{		
-				if (!array[i-1][p])	{
-					/* If empty port leave normal */
-					messageParams[p-1] = NORMAL;
-					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
-				} else {
-					/* If not empty, check neighbor */			
-					temp16 = array[i-1][p];
-					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
-					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
-					/* Check neighbor port direction */
-					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
-						/* Neighbor port is normal */
-						messageParams[p-1] = REVERSED;
-						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
-					} else {
-						/* Neighbor port is reversed */
-						messageParams[p-1] = NORMAL;
-						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
-					}				
-				}
-			}
-			
-			/* Step 5c - Check if an inport is reversed */
-			/* Find out the inport to this module from master */
-			FindRoute(1, i);
-			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
-			temp2 = FindRoute(i, temp1);
-			/* Is the inport reversed? */
-			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
-				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
-			
-			/* Step 5d - Update module ports directions */
-			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
-			osDelay(10);			
-		}			
-	
+//		/* Step 5a - Virtually reset the state of master ports to Normal */
+//		for (port=1 ; port<=NumOfPorts ; port++) {
+//			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
+//		}
+//		
+//		/* Step 5b - Update other modules ports starting from the last one */
+//		for (i=currentID ; i>=2 ; i--) 
+//		{
+//			for (p=1 ; p<=MaxNumOfPorts ; p++) 
+//			{		
+//				if (!array[i-1][p])	{
+//					/* If empty port leave normal */
+//					messageParams[p-1] = NORMAL;
+//					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
+//				} else {
+//					/* If not empty, check neighbor */			
+//					temp16 = array[i-1][p];
+//					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
+//					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
+//					/* Check neighbor port direction */
+//					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
+//						/* Neighbor port is normal */
+//						messageParams[p-1] = REVERSED;
+//						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
+//					} else {
+//						/* Neighbor port is reversed */
+//						messageParams[p-1] = NORMAL;
+//						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
+//					}				
+//				}
+//			}
+//			
+//			/* Step 5c - Check if an inport is reversed */
+//			/* Find out the inport to this module from master */
+//			FindRoute(1, i);
+//			temp1 = route[NumberOfHops(i)-1];			0	/* previous module = route[Number of hops - 1] */
+//			temp2 = FindRoute(i, temp1);
+//			/* Is the inport reversed? */
+//			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
+//				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
+//			
+//			/* Step 5d - Update module ports directions */
+//			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
+//			osDelay(10);			
+//		}
+
+
+		SendMessageToModule(BOS_BROADCAST, CODE_PORT_DIRECTION_FINAL, MaxNumOfPorts+1);
+		osDelay(500);
+
 		/* Step 5e - Update master ports > all normal */
 		for (port=1 ; port<=NumOfPorts ; port++) {
 			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
@@ -3928,21 +4026,39 @@ BOS_Status Explore(void)
 			
 	/* >>> Step 6 - Test new port directions by pinging all modules */
 	
-//	if (result == BOS_OK) 
-//	{		
-//		osDelay(100);
-//		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
-//		for (i=2 ; i<=N ; i++) 
-//		{
-//			SendMessageToModule(i, CODE_PING, 0);
-//			osDelay(300*NumberOfHops(i));	
-//			//osDelay(100);
-//			if (responseStatus == BOS_OK)
-//				result = BOS_OK;
-//			else if (responseStatus == BOS_ERR_NoResponse)
-//				result = BOS_ERR_NoResponse;
-//		}
+	if (result == BOS_OK) 
+	{		
+		osDelay(100);
+		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
+		for (i=2 ; i<=N ; i++) 
+		{
+			while(Ping_count<50)
+			{
+				SendMessageToModule(i, CODE_PING, 0);
+				osDelay(500*NumberOfHops(i));
+				Ping_count++;				
+				//osDelay(1000);
+				if (responseStatus == BOS_OK){
+					result = BOS_OK;
+					Ping_count=51;
+				}
+				else if (responseStatus == BOS_ERR_NoResponse){
+					result = BOS_ERR_NoResponse;
+				}
+			}
+			Ping_count=0;
+		}
+	}
+	
+//	if(result==BOS_ERR_NoResponse)
+//	{
+//		iteration++;
+////		memset(array, 0, sizeof(array) );
+////		memset(neighbors, 0, sizeof(neighbors2) );
+////		memset(neighbors2, 0, sizeof(array) );
+//		goto again;
 //	}
+	
 	
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
 	

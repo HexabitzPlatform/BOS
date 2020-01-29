@@ -358,6 +358,7 @@ snippet_t;
 
 
 /* External variables ---------------------------------------------------------*/
+
 extern char cRxedChar;
 extern uint8_t myID, bcastID;
 extern uint16_t myPN;
@@ -396,7 +397,6 @@ extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 extern snippet_t snippets[MAX_SNIPPETS];
 extern uint8_t numOfBosCommands;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-
 /* Exported internal functions ---------------------------------------------------------*/
 
 extern void StringToLowerCase(char *string);
