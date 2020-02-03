@@ -3801,35 +3801,35 @@ BOS_Status Explore(void)
 	
 	/* Step 2a - Assign IDs to new modules */
 	currentID = 1;
-	for (port=1 ; port<=NumOfPorts ; port++) 
+	for (portn=1 ; portn<=NumOfPorts ; portn++) 
 	{
-		if (neighbors[port-1][0])
+		if (neighbors[portn-1][0])
 		{
 			/* New ID */
 			messageParams[0] = ++currentID;
 			N = currentID;			/* Update number of modules in the array */
 			/* Inform module to change ID */
-			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 1);			
+			SendMessageFromPort(portn, 0, 0, CODE_MODULE_ID, 1);			
 			/* Modify neighbors table */
-			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
+			neighbors[portn-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[portn-1][0]);
 			osDelay(10);
 		}
 	}
 	
 	/* Step 2b - Update master topology array */
 	array[0][0]	= myPN;					
-	for (port=1 ; port<=NumOfPorts ; port++) 
+	for (porta=1 ; porta<=NumOfPorts ; porta++) 
 	{
-		if (neighbors[port-1][0])
+		if (neighbors[porta-1][0])
 		{
-			temp16 = neighbors[port-1][0];
+			temp16 = neighbors[porta-1][0];
 			temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
-			temp2 = (uint8_t)(neighbors[port-1][0]);				/* Neighbor port */
+			temp2 = (uint8_t)(neighbors[porta-1][0]);				/* Neighbor port */
 			/* Module 1 (master) */
-			array[0][port] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
+			array[0][porta] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
 			/* Rest of the neighbors */
-			array[temp1-1][0]	= neighbors[port-1][1];				/* Neighbor PN */
-			array[temp1-1][temp2] = ( myID << 3 ) | port;		/* Module 1 ID | Module 1 port */
+			array[temp1-1][0]	= neighbors[porta-1][1];				/* Neighbor PN */
+			array[temp1-1][temp2] = ( myID << 3 ) | porta;		/* Module 1 ID | Module 1 port */
 		}
 	}		
 	
