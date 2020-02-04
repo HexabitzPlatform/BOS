@@ -770,7 +770,9 @@ void PxMessagingTask(void * argument)
 								numoflongmsg=cMessage[port-1][shift];
 								longMessageLastPtr = (MAX_PARAMS_PER_MESSAGE-1) * (numoflongmsg-1);
 								
-								if(rcount & (0x01 << (numoflongmsg-1))){;}
+								if(rcount & (0x01 << (numoflongmsg-1))){
+									rcount=0,mcount=0;
+								}
 								else {
 									rcount |= (0x01 << (numoflongmsg-1));
 									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift+2],  (size_t) numOfParams );	
@@ -3836,6 +3838,7 @@ BOS_Status Explore(void)
 	/* Step 2c - Ask neighbors to update their topology array */
 	for (i=2 ; i<=currentID ; i++) 
 	{
+		while(Topology_ok==0 && Topology_count<10)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
