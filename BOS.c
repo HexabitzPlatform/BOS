@@ -749,6 +749,7 @@ void PxMessagingTask(void * argument)
 								{
 									SwapUartPins(GetUart(port),NORMAL);
 								}
+								Delay_ms(10);
 							}
 							break;
 							
@@ -771,17 +772,20 @@ void PxMessagingTask(void * argument)
 								longMessageLastPtr = (MAX_PARAMS_PER_MESSAGE-1) * (numoflongmsg-1);
 								
 								if(rcount & (0x01 << (numoflongmsg-1))){
-									rcount=0,mcount=0;
 								}
 								else {
 									rcount |= (0x01 << (numoflongmsg-1));
+									Delay_ms(1);
 									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift+2],  (size_t) numOfParams );	
 								}
 								
-								if(rcount == (0xff >> (8 - mcount)))
+								if((rcount == (0xff >> (8 - mcount))) && numoflongmsg==mcount )
 								{
-									N = (totalofrcvmsg / (MaxNumOfPorts+1)) / 2;
+									Delay_ms(1);
 									memcpy(&array, &longMessageScratchpad, totalofrcvmsg);
+									
+									while(array[in][0]){ in++; }
+									N = in;
 									longMessageLastPtr = 0;
 									totalofrcvmsg=0 , numoflongmsg=0 , rcount=0 , mcount=0;
 									
