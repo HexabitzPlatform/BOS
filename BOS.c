@@ -541,7 +541,7 @@ void PxMessagingTask(void * argument)
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		if(port>6){port=7;}
+		if(port>6){port=6;}
 		if (messageLength[port-1])
 		{						
 			/* Long message? Read Options Byte MSB */
