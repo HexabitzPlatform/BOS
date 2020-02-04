@@ -298,7 +298,8 @@ void BackEndTask(void * argument)
 					packetEnd -= MSG_RX_BUF_SIZE;
 			
 				if (packetStart != packetEnd)										// Non-empty packet
-				{				
+				{			
+					Delay_ms(1);
 					/* A.4. Calculate packet CRC */				
 					if (packetStart < packetEnd) {
 						memcpy(crcBuffer, &UARTRxBuf[portf-1][packetStart], packetLength + 3);						
