@@ -3960,16 +3960,6 @@ BOS_Status Explore(void)
 		}				
 	}
 	
-//	if(result==BOS_ERR_UnIDedModule)
-//	{
-//		iteration++;
-////		memset(array, 0, sizeof(array) );
-////		memset(neighbors, 0, sizeof(neighbors2) );
-////		memset(neighbors2, 0, sizeof(array) );
-//		//printf
-//		goto again;
-//	}
-	
 	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
 	
 	if (result == BOS_OK)
@@ -4056,17 +4046,7 @@ BOS_Status Explore(void)
 			Ping_count=0;
 		}
 	}
-	
-//	if(result==BOS_ERR_NoResponse)
-//	{
-//		iteration++;
-////		memset(array, 0, sizeof(array) );
-////		memset(neighbors, 0, sizeof(neighbors2) );
-////		memset(neighbors2, 0, sizeof(array) );
-//		goto again;
-//	}
-	
-	
+		
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
 	
 //	if (result == BOS_OK)
