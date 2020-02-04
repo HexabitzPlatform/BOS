@@ -3836,7 +3836,6 @@ BOS_Status Explore(void)
 	/* Step 2c - Ask neighbors to update their topology array */
 	for (i=2 ; i<=currentID ; i++) 
 	{
-		while(Topology_ok==0 && Topology_count<50)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
