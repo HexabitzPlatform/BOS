@@ -46,7 +46,7 @@ uint16_t Dolp,lock;
 /* Routing and topology */
 bool Topology_ok;
 uint16_t iteration=0,Nid,longMessagecount,numoflongmsg,totalofrcvmsg;
-uint8_t mcount,rcount,Topology_count,Ping_count,Hi_count;
+uint8_t mcount,rcount,Topology_count,Ping_count,Hi_count,in;
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[NumOfPorts][2] = {0};
