@@ -3842,6 +3842,7 @@ BOS_Status Explore(void)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+			
 			Topology_count++;
 			osDelay(100);
 		}
@@ -3921,7 +3922,7 @@ BOS_Status Explore(void)
 	/* Step 3e - Ask all discovered modules to update their topology array */
 	for (j=2 ; j<=currentID ; j++) 
 	{
-		while(Topology_ok==0 && Topology_count<50)
+		while(Topology_ok==0 && Topology_count<10)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
@@ -4020,7 +4021,6 @@ BOS_Status Explore(void)
 		}
 	}
 	
-			
 	/* >>> Step 6 - Test new port directions by pinging all modules */
 	
 	if (result == BOS_OK) 
@@ -4029,12 +4029,11 @@ BOS_Status Explore(void)
 		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
 		for (i=2 ; i<=N ; i++) 
 		{
-			while(Ping_count<50)
+			while(Ping_count<10)
 			{
 				SendMessageToModule(i, CODE_PING, 0);
 				osDelay(500*NumberOfHops(i));
 				Ping_count++;				
-				//osDelay(1000);
 				if (responseStatus == BOS_OK){
 					result = BOS_OK;
 					Ping_count=51;
