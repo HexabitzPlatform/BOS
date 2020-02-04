@@ -4039,9 +4039,9 @@ BOS_Status Explore(void)
 			while(Ping_count<50)
 			{
 				SendMessageToModule(i, CODE_PING, 0);
-				//osDelay(500*NumberOfHops(i));
+				osDelay(500*NumberOfHops(i));
 				Ping_count++;				
-				osDelay(1000);
+				//osDelay(1000);
 				if (responseStatus == BOS_OK){
 					result = BOS_OK;
 					Ping_count=51;
@@ -4099,7 +4099,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
 			SendMessageFromPort(port, 0, 0, CODE_HI, 3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
-			osDelay(50);
+			osDelay(10);
 		}
 	}
 	
