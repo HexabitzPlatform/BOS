@@ -46,7 +46,7 @@ uint16_t Dolp,lock;
 /* Routing and topology */
 bool Topology_ok;
 uint16_t iteration=0,Nid,longMessagecount,numoflongmsg,totalofrcvmsg;
-uint8_t mcount,rcount,Topology_count,Ping_count,Hi_count,in;
+uint8_t mcount,rcount,Topology_count,Ping_count,Hi_count,in,countid;
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
 uint16_t neighbors2[NumOfPorts][2] = {0};
@@ -3884,15 +3884,20 @@ BOS_Status Explore(void)
 				temp1 = (uint8_t)(temp16>>8);											
 				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
 				{
-					/* New ID */
-					messageParams[0] = ++currentID;		
-					N = currentID;			/* Update number of modules in the array */
-					/* Modify neighbors table */
-					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
-					/* Ask the module to ID its yet unIDed neighbors */
-					messageParams[1] = j;		/* neighbor port */
-					SendMessageToModule(i, CODE_NEIGHBORS_ID, 2);
+					N = ++currentID;	/* Update number of modules in the array */
+					while(countid<3)
+					{
+						/* New ID */
+						messageParams[0] = 	N;		
+						/* Modify neighbors table */
+						neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
+						/* Ask the module to ID its yet unIDed neighbors */
+						messageParams[1] = j;		/* neighbor port */
+						SendMessageToModule(i, CODE_NEIGHBORS_ID, 2);
+						countid++;
+					}
 					osDelay(10);
+					countid=0;
 				}
 			}
 			
