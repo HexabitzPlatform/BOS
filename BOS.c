@@ -4033,16 +4033,16 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 	BOS_Status result = BOS_OK; 
 
 	/* Send Hi messages to adjacent neighbors */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++)  
+	for (uint8_t portex=1 ; portex<=NumOfPorts ; portex++)  
 	{
-		if (port != ignore) 
+		if (portex != ignore) 
 		{
 			/* This module info */
 			messageParams[0] = (uint8_t) (myPN >> 8);
 			messageParams[1] = (uint8_t) myPN;
-			messageParams[2] = port;
+			messageParams[2] = portex;
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
-			SendMessageFromPort(port, 0, 0, CODE_HI, 3);
+			SendMessageFromPort(portex, 0, 0, CODE_HI, 3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
 			osDelay(10);
 		}
