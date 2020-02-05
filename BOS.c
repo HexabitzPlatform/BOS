@@ -5492,7 +5492,7 @@ static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 		DisplayTopology(PcPort);
-		DisplayPortsDir(PcPort);
+		//DisplayPortsDir(PcPort);
 	} else {
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
@@ -5689,7 +5689,7 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 
 	/* Read Ports directions when a pre-defined topology file is used */
 	if (N > 1)
-		result = ReadPortsDir();
+	//	result = ReadPortsDir();
 	
 	/* Respond to the info command */
 	sprintf( ( char * ) pcWriteBuffer, "\n\rNumber of modules: %d\n", N);
@@ -5697,7 +5697,7 @@ static portBASE_TYPE infoCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 	sprintf( ( char * ) pcWriteBuffer, "\n\rArray topology:\n");
 	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 	DisplayTopology(PcPort);
-	DisplayPortsDir(PcPort);
+	//DisplayPortsDir(PcPort);
 	if (result == BOS_ERR_NoResponse) {
 		sprintf( ( char * ) pcWriteBuffer, "Could not read ports direction for some modules! Please try again\n\r");
 		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);		
