@@ -3744,7 +3744,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
 	{
 		writePxDMAMutex(port, message, length+4, cmd50ms);
-		num++;
+		Delay_ms(1);
 	}
 	/* Transmit the message - multi-cast or broadcast */
 	else
