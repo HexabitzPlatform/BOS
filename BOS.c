@@ -3969,59 +3969,13 @@ BOS_Status Explore(void)
 	
 	if (result == BOS_OK)
 	{	
-//		/* Step 5a - Virtually reset the state of master ports to Normal */
-//		for (port=1 ; port<=NumOfPorts ; port++) {
-//			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
-//		}
-//		
-//		/* Step 5b - Update other modules ports starting from the last one */
-//		for (i=currentID ; i>=2 ; i--) 
-//		{
-//			for (p=1 ; p<=MaxNumOfPorts ; p++) 
-//			{		
-//				if (!array[i-1][p])	{
-//					/* If empty port leave normal */
-//					messageParams[p-1] = NORMAL;
-//					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
-//				} else {
-//					/* If not empty, check neighbor */			
-//					temp16 = array[i-1][p];
-//					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
-//					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
-//					/* Check neighbor port direction */
-//					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
-//						/* Neighbor port is normal */
-//						messageParams[p-1] = REVERSED;
-//						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
-//					} else {
-//						/* Neighbor port is reversed */
-//						messageParams[p-1] = NORMAL;
-//						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
-//					}				
-//				}
-//			}
-//			
-//			/* Step 5c - Check if an inport is reversed */
-//			/* Find out the inport to this module from master */
-//			FindRoute(1, i);
-//			temp1 = route[NumberOfHops(i)-1];			0	/* previous module = route[Number of hops - 1] */
-//			temp2 = FindRoute(i, temp1);
-//			/* Is the inport reversed? */
-//			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
-//				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
-//			
-//			/* Step 5d - Update module ports directions */
-//			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
-//			osDelay(10);			
-//		}
-
-
+		/*Send message brodcast for every discovered module*/
 		SendMessageToModule(BOS_BROADCAST, CODE_PORT_DIRECTION_FINAL, MaxNumOfPorts+1);
 		osDelay(500);
 
 		/* Step 5e - Update master ports > all normal */
 		for (ports=1 ; ports<=NumOfPorts ; ports++) {
-			if (ports != PcPort)	SwapUartPins(GetUart(ports), NORMAL);
+			if (ports != PcPort)	SwapUartPins(GetUart(ports), NORMAL);   //return master port to its normal state
 		}
 	}
 	
