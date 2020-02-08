@@ -3972,7 +3972,7 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{	
 		/*Send message brodcast for every discovered module*/
-		SendMessageToModule(BOS_BROADCAST, CODE_PORT_DIRECTION_FINAL, MaxNumOfPorts+1);
+		SendMessageToModule(BOS_BROADCAST, CODE_PORT_DIRECTION_FINAL, 0);
 		osDelay(500);
 
 		/* Step 5e - Update master ports > all normal */
@@ -3983,28 +3983,28 @@ BOS_Status Explore(void)
 	
 	/* >>> Step 6 - Test new port directions by pinging all modules */
 	
-//	if (result == BOS_OK) 
-//	{		
-//		osDelay(100);
-//		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
-//		for (i=2 ; i<=N ; i++) 
-//		{
-//			while(Ping_count<10)
-//			{
-//				SendMessageToModule(i, CODE_PING, 0);
-//				osDelay(500*NumberOfHops(i));
-//				Ping_count++;				
-//				if (responseStatus == BOS_OK){
-//					result = BOS_OK;
-//					Ping_count=51;
-//				}
-//				else if (responseStatus == BOS_ERR_NoResponse){
-//					result = BOS_ERR_NoResponse;
-//				}
-//			}
-//			Ping_count=0;
-//		}
-//	}
+	if (result == BOS_OK) 
+	{		
+		osDelay(100);
+		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
+		for (i=2 ; i<=N ; i++) 
+		{
+			while(Ping_count<10)
+			{
+				SendMessageToModule(i, CODE_PING, 0);
+				osDelay(500*NumberOfHops(i));
+				Ping_count++;				
+				if (responseStatus == BOS_OK){
+					result = BOS_OK;
+					Ping_count=11;
+				}
+				else if (responseStatus == BOS_ERR_NoResponse){
+					result = BOS_ERR_NoResponse;
+				}
+			}
+			Ping_count=0;
+		}
+	}
 		
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
 	
