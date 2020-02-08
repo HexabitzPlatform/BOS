@@ -3782,7 +3782,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 BOS_Status Explore(void)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, ports = 0, portn = 0, porta=0, Hi_count=0;
+	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, ports = 0, portn = 0, porta=0, Hi_count=0, adj_count=0;
 	uint16_t temp16 = 0;
 	
 	myID = 1; 		/* Master ID */
@@ -3843,7 +3843,7 @@ BOS_Status Explore(void)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-			
+	
 			Topology_count++;
 			osDelay(100);
 		}
@@ -3871,9 +3871,14 @@ BOS_Status Explore(void)
 			osDelay(10);
 			
 			/* Step 3b - Ask the module to explore adjacent neighbors */
-			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-			osDelay(500);		
-		
+			while(adj_count<3)
+			{
+				SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
+				osDelay(120);	
+				adj_count++;
+			}
+			adj_count=0;
+			
 			/* Step 3c - Assign IDs to new modules */
 			for (j=1 ; j<=MaxNumOfPorts ; j++) 
 			{
@@ -3932,6 +3937,7 @@ BOS_Status Explore(void)
 		{
 			memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 			SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+			
 			Topology_count++;
 			osDelay(100);
 		}
@@ -3955,7 +3961,7 @@ BOS_Status Explore(void)
 	for (i=2 ; i<=currentID ; i++) 
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-		osDelay(200);	
+		osDelay(120);	
 		/* Check for any unIDed neighbors */
 		for (j=1 ; j<=MaxNumOfPorts ; j++) 
 		{
