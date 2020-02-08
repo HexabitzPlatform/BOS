@@ -539,7 +539,7 @@ void PxMessagingTask(void * argument)
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		if(portr>6){portr=6;}
+
 		if (messageLength[portr-1])
 		{						
 			/* Long message? Read Options Byte MSB */
@@ -729,23 +729,23 @@ void PxMessagingTask(void * argument)
 							
 						case CODE_PORT_DIRECTION_FINAL:
 							
-							for (portr=1 ; portr<=NumOfPorts ; portr++) 
+							for (int8_t portd=1 ; portd<=NumOfPorts ; portd++) 
 							{
-								if(array[myID-1][portr])
+								if(array[myID-1][portd])
 								{
-									Nid=array[myID-1][portr]>>3;
+									Nid=array[myID-1][portd]>>3;
 									if(Nid>myID)
 									{
-										SwapUartPins(GetUart(portr),NORMAL);
+										SwapUartPins(GetUart(portd),NORMAL);
 									}
 									else 
 									{
-										SwapUartPins(GetUart(portr),REVERSED);
+										SwapUartPins(GetUart(portd),REVERSED);
 									}
 								}
 								else 
 								{
-									SwapUartPins(GetUart(portr),NORMAL);
+									SwapUartPins(GetUart(portd),NORMAL);
 								}
 								Delay_ms(10);
 							}
