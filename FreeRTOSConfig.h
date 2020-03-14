@@ -68,7 +68,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -101,9 +101,9 @@
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)145)		
-#define configTOTAL_HEAP_SIZE                    ((size_t)18000)
-#define configMAX_TASK_NAME_LEN                  ( 16 )
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)160)		
+#define configTOTAL_HEAP_SIZE                    ((size_t)19000)
+#define configMAX_TASK_NAME_LEN                  ( 13 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
 #define configUSE_MUTEXES                        1
@@ -125,10 +125,8 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil             0
 #define INCLUDE_vTaskDelay                  1
 #define INCLUDE_xTaskGetSchedulerState      1
-
-#if defined(H08R6)
 #define INCLUDE_xTimerPendFunctionCall      1
-#endif
+
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -195,8 +193,8 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 
 /* Software Timers */
 #define configUSE_TIMERS 	1
-#define	configTIMER_TASK_PRIORITY		1	
-#define configTIMER_QUEUE_LENGTH	4
+#define	configTIMER_TASK_PRIORITY		3			// (osPriorityNormal-osPriorityIdle)	
+#define configTIMER_QUEUE_LENGTH		4
 #define configTIMER_TASK_STACK_DEPTH		configMINIMAL_STACK_SIZE	
 
 /* USe uxTaskGetStackHighWaterMark */

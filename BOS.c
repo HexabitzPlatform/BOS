@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -8,23 +8,25 @@
 		Required MCU resources : 
 		
 			>> Timer 14 for micro-sec delay.
+			>> Timer 15 for milli-sec delay.
 
 */
 	
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
-/* Private variables ---------------------------------------------------------*/
+/* Private and global variables ---------------------------------------------------------*/
 
 BOS_t BOS; 
-BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = 1, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
+BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = TRACE_BOTH, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
 											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
+TIM_HandleTypeDef htim15;	/* milli-second delay counter */
 uint8_t indMode = IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[19][6] = {"", "H01R0", "P01R0", "H23R0", "H23R1", "H07R3", "H08R6", "H09R0", "H1BR6", "H12R0", "H13R7", "H0FR6", "H1AR2", "H0AR9", "H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0"};
+const char modulePNstring[NUM_OF_MODULE_PN][6] = {"", "H01R0", "P01R0", "H23R0", "H23R1", "H07R3", "H08R6", "P08R6", "H09R0", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H1AR2", "H0AR9", "H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0"};
 
 /* Define BOS keywords */
 static const char BOSkeywords[NumOfKeywords][4] = {"me", "all", "if", "for"};
@@ -47,8 +49,10 @@ static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", 
 /* Routing and topology */
 uint8_t portStatus[NumOfPorts+1] = {0};
 uint16_t neighbors[NumOfPorts][2] = {0};
-uint16_t neighbors2[MaxNumOfPorts][2] = {0};
+uint16_t neighbors2[NumOfPorts][2] = {0};
 uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
+bool AddBcastPayload = false;
+uint8_t dstGroupID = BOS_BROADCAST;
 char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 #ifndef _N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
@@ -69,10 +73,11 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 	uint16_t groupModules[_N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
-/* Dimension the buffer into which the input messages are placed. */
-uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};
+/* Buffers and communication */
+uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};		// Buffer for messages received and ready to be parsed 
+char message[MAX_MESSAGE_SIZE] = {0};										// Buffer to construct a message to be sent
 uint8_t messageLength[NumOfPorts] = {0};
-uint8_t messageParams[20*(MAX_MESSAGE_SIZE-5)] = {0};
+uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] = {0};
 char cRxedChar = 0; 
 uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
@@ -84,6 +89,7 @@ uint8_t BOS_initialized = 0;
 uint32_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
 uint64_t remoteBuffer = 0;
 varFormat_t remoteVarFormat = FMT_UINT8;
+uint8_t CLI_LOW_Baudrate_Flag = 0; 			//Flage for Lower CLI baudrate is set
 
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -124,10 +130,12 @@ typedef struct xCOMMAND_INPUT_LIST
 } 
 CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
+uint8_t numOfBosCommands;
 
 /* Variables exported internally */
 extern FLASH_ProcessTypeDef pFlash;
 extern uint8_t numOfRecordedSnippets;
+extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 
 /* RTC */
 RTC_HandleTypeDef RtcHandle;
@@ -137,7 +145,6 @@ uint8_t bootStatus = POWER_ON_BOOT;
 
 uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
-void NotifyMessagingTaskFromISR(uint8_t port);
 void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
@@ -160,8 +167,7 @@ BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, ui
 BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
 BOS_Status LoadEEbuttons(void);
-void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
-	uint8_t dst2, uint8_t src3, uint8_t dst3);
+BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst);
 void StreamTimerCallback( TimerHandle_t xTimerStream );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
@@ -183,14 +189,15 @@ void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t ou
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
 /* Module exported internal functions */
+extern uint8_t IsModuleParameter(char* name);
 extern void Module_Init(void);
 extern void RegisterModuleCLICommands(void);
-extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst);
+extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift);
 
 extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);
 
-const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, msg, none\r\n",
-"\r\nBOS.trace: true, false\r\n",
+const char * pcParamsHelpString[NumOfParamsHelpStrings] = {"\r\nBOS.response: all, message, cli, none\r\n",
+"\r\nBOS.trace: all, message, response, none\r\n",
 "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
 you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n",
 																															 "BOS.debounce: 1 ... 65536 msec\r\n",
@@ -228,6 +235,8 @@ static portBASE_TYPE snipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen,
 static portBASE_TYPE actSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -471,6 +480,24 @@ static const CLI_Command_Definition_t delSnipCommandDefinition =
 	1 /* One parameters is expected. */
 };
 /*-----------------------------------------------------------*/
+/* CLI command structure : bridge */
+static const CLI_Command_Definition_t bridgeCommandDefinition =
+{
+	( const int8_t * ) "bridge", /* The command string to type. */
+	( const int8_t * ) "bridge:\r\n Bridge two array ports\r\n\r\n",
+	bridgeCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
+};
+/*-----------------------------------------------------------*/
+/* CLI command structure : Unbridge */
+static const CLI_Command_Definition_t unbridgeCommandDefinition =
+{
+	( const int8_t * ) "unbridge", /* The command string to type. */
+	( const int8_t * ) "unbridge:\r\n Un-bridge two array ports\r\n\r\n",
+	unbridgeCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
+};
+/*-----------------------------------------------------------*/
 
 
 /* Define long messages -------------------------------------------------------*/
@@ -498,8 +525,9 @@ static char * pcRemoteBootloaderUpdateWarningMessage = 	\
 void PxMessagingTask(void * argument)
 {
 	BOS_Status result = BOS_OK; HAL_StatusTypeDef status = HAL_OK;
-	uint8_t port, src, dst, responseMode, traceMode, oldTraceMode, temp, i, p; uint16_t code;
+	uint8_t port, src, dst, temp, i, p, shift, numOfParams; uint16_t code;
 	uint32_t count, timeout, temp32;
+	bool extendCode = false, extendOptions = false; 
 	static int8_t cCLIString[ cmdMAX_INPUT_SIZE ];
 	portBASE_TYPE xReturned; int8_t *pcOutputString;
 	static uint8_t bcastLastID;
@@ -512,230 +540,246 @@ void PxMessagingTask(void * argument)
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-			
+		
 		if (messageLength[port-1])
 		{						
+			/* Long message? Read Options Byte MSB */
+			if (cMessage[port-1][2]>>7) {
+				longMessage = 1;
+			} else {
+				longMessage = 0;
+			}
+			
 			/* Read message source and destination */
 			dst = cMessage[port-1][0]; 
 			src = cMessage[port-1][1];	
 			
-			/* Read message code (remove response and trace options and kepp long message bit (MSB)) */
-			code = ( ( (uint16_t) cMessage[port-1][2] << 8 ) + cMessage[port-1][3] ) & 0x8FFF;	
+			/* Reset array index shift */
+			shift = 0;
 			
-			/* Read response and trace modes */
-			responseMode = cMessage[port-1][2] & 0x60;
-			traceMode = cMessage[port-1][2] & 0x10;
-			oldTraceMode = BOS.trace;
-			BOS.trace = traceMode;
+			/* Read message options */
+			if (cMessage[port-1][2] & 0x01) {						// 1st bit (LSB) Extended options - TODO handle extended options case
+				extendOptions = true;	
+				(void) extendOptions;		// remove warning		
+				++shift;				
+			} 
+			extendCode = (cMessage[port-1][2]>>1)&0x01;									// 2nd bit Extended code
+			BOS.trace = (traceOptions_t)((cMessage[port-1][2]>>2)&0x03);	// 3rd-4th bits Trace 
+																																	// 5th bit Reserved
+			BOS.response = (cMessage[port-1][2])&0x60;									// 6th-7th bits Response mode
+																																	// 8th bit (MSB) Long message
 			
-			/* Is it a long message? Check MSB */
-			if (code>>15) {
-				longMessage = 1;
-				code &= 0x7FFF;
+			/* Read message code - LSB first */
+			if (extendCode == true) {		
+				code = ( ( (uint16_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][3+shift] );	
+				++shift;
 			} else {
-				longMessage = 0;
+				code = cMessage[port-1][3+shift];
 			}
 	
-			/* Check the end of message char 0x75 */
-			if (cMessage[port-1][messageLength[port-1]-1] == 0x75)
+			/* Is it a transit message? Check for the case when module is being IDed */
+			if ( ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1) ) || 
+					 ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID) ) )
 			{
-				/* Is it a transit message? Check for the case when module is being IDed */
-				if ( ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1) ) || 
-						 ( dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_module_id) ) )
-				{
-					/* Forward the message to its destination */		
-					ForwardReceivedMessage(port);
-					if (traceMode)
-						indMode = IND_SHORT_BLINK;
+				/* Forward the message to its destination */		
+				ForwardReceivedMessage(port);
+				if (BOS.trace)
+					indMode = IND_SHORT_BLINK;
 					
 					/* Special messages that require local action */
-					if (code == CODE_update) {		// Remote bootloader update
+					if (code == CODE_UPDATE) {		// Remote bootloader update
 						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, 0);								
-					} else if (code == CODE_update_via_port) {		// Remote 'via port' bootloader update
-						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, cMessage[port-1][4]);								
+					} else if (code == CODE_UPDATE_VIA_PORT) {		// Remote 'via port' bootloader update
+						Delay_ms(100); remoteBootloaderUpdate(src, dst, port, cMessage[port-1][shift]);								
 					}
+			}
+			/* Either broadcast or multicast local message */
+			else 
+			{				
+				/* Is it a broadcast message with unique ID? */
+				if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-1] != bcastLastID) 
+				{
+					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-1];			// Store bcastID 		
+					BroadcastReceivedMessage(BOS_BROADCAST, port);
+					cMessage[port-1][messageLength[port-1]-1] = 0;								// Reset bcastID location 
+				} 
+				/* Reflection of last broadcast message! */
+				else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-1] == bcastLastID) 
+				{
+					result = BOS_ERR_MSG_Reflection;
 				}
-				/* Either broadcast or multicast local message */
-				else 
-				{				
-					/* Is it a broadcast message with unique ID? */
-					if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+								
+				/* Is it a multicast message with unique ID? */
+				if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-1] != bcastLastID) 
+				{
+					bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-1];			// Store bcastID 		
+					BroadcastReceivedMessage(BOS_MULTICAST, port);
+					cMessage[port-1][messageLength[port-1]-1] = 0;								// Reset bcastID location 
+					temp = cMessage[port-1][messageLength[port-1]-2];							// Number of members in this multicast group - TODO breaks when message is 14 length and padded
+					/* Am I part of this multicast group? */
+					result = BOS_ERR_WrongID;
+					for(i=0 ; i<temp ; i++)
 					{
-						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
-						BroadcastReceivedMessage(BOS_BROADCAST, port);
-						cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
-					} 
-					/* Reflection of last broadcast message! */
-					else if (dst == BOS_BROADCAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
-					{
-						result = BOS_ERR_MSG_Reflection;
+						if (myID == cMessage[port-1][messageLength[port-1]-2-temp+i]) {
+							result = BOS_OK;
+							break;
+						}
 					}
-									
-					/* Is it a multicast message with unique ID? */
-					if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] != bcastLastID) 
+				} 
+				/* Reflection of last multi-cast message! */
+				else if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-1] == bcastLastID) 
+				{
+					result = BOS_ERR_MSG_Reflection;
+				}
+				
+				/* Set shift index to the start of message payload (parameters) */
+				shift += 4;
+				
+				/* Message payload size */
+				numOfParams = messageLength[port-1] - shift;
+				
+				/* Process BOS Messages payload */
+				if (result == BOS_OK)
+				{
+					switch (code)
 					{
-						bcastID = bcastLastID = cMessage[port-1][messageLength[port-1]-2];			// Store bcastID 		
-						BroadcastReceivedMessage(BOS_MULTICAST, port);
-						cMessage[port-1][messageLength[port-1]-2] = 0;								// Reset bcastID location 
-						temp = cMessage[port-1][messageLength[port-1]-3];							// Number of members in this multicast group - TODO breaks when message is 14 length and padded
-						/* Am I part of this multicast group? */
-						result = BOS_ERR_WrongID;
-						for(i=0 ; i<temp ; i++)
-            {
-							if (myID == cMessage[port-1][messageLength[port-1]-3-temp+i]) {
-								result = BOS_OK;
-								break;
+						case CODE_UNKNOWN_MESSAGE :					
+							break;
+						
+						case CODE_PING :
+							indMode = IND_PING;	osDelay(10);
+							if (BOS.response == BOS_RESPONSE_ALL || BOS.response == BOS_RESPONSE_MSG)
+								SendMessageToModule(src, CODE_PING_RESPONSE, 0);	
+							break;
+
+						case CODE_PING_RESPONSE :
+							if (!moduleAlias[myID][0])
+								sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
+							else
+								sprintf( ( char * ) pcUserMessage, "Hi from module %d (%s)\r\n", src, moduleAlias[src]);
+							writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
+							responseStatus = BOS_OK;								
+							break;
+							
+						case CODE_IND_ON :
+							IND_ON();
+							break;
+						
+						case CODE_IND_OFF :
+							IND_OFF();
+							break;
+						
+						case CODE_IND_TOGGLE :
+							IND_toggle();
+							break;
+						
+						case CODE_HI :					
+							/* Record your neighbor info */
+							neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][2+shift];			/* Neighbor ID + Neighbor own port */
+							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift];		/* Neighbor PN */
+							/* Send your own info */
+							messageParams[1] = (uint8_t) myPN;
+							messageParams[0] = (uint8_t) (myPN >> 8);	
+							messageParams[2] = port;
+							osDelay(2);
+							/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
+							SendMessageFromPort(port, 0, 0, CODE_HI_RESPONSE, 3);
+							break;
+						
+						case CODE_HI_RESPONSE :
+							/* Record your neighbor info */
+							neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][2+shift];		/* Neighbor ID + Neighbor own port */
+							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift];		/* Neighbor PN */	
+							responseStatus = BOS_OK;
+							break;
+					#ifndef _N
+						case CODE_EXPLORE_ADJ :
+							ExploreNeighbors(port);	indMode = IND_TOPOLOGY;
+							osDelay(10); temp = 0;
+							/* Exploration response message */
+							for (uint8_t p=1 ; p<=NumOfPorts ; p++)  
+							{
+								if (neighbors[p-1][0])
+								{
+									messageParams[temp] = p;
+									memcpy(messageParams+temp+1, neighbors[p-1], (size_t)(4));
+									temp += 5;		
+								}
 							}
-            }
-					} 
-					/* Reflection of last broadcast message! */
-					else if (dst == BOS_MULTICAST && cMessage[port-1][messageLength[port-1]-2] == bcastLastID) 
-					{
-						result = BOS_ERR_MSG_Reflection;
-					}
-					
-					/* Process BOS Messages */
-					if (result == BOS_OK)
-					{
-						switch (code)
-						{
-							case CODE_unknown_message :					
-								break;
+							SendMessageToModule(src, CODE_EXPLORE_ADJ_RESPONSE, temp);
+							break;
+						
+						case CODE_EXPLORE_ADJ_RESPONSE :
+							/* Extract the other module neighbors */
+							temp = numOfParams/5;
+							for (uint8_t k=0 ; k<temp ; k++)  {
+								memcpy(&neighbors2[(cMessage[port-1][shift+k*5])-1][0], &cMessage[port-1][1+shift+k*5], (size_t)(4));
+							}
+							responseStatus = BOS_OK;
+							break;
+					#endif						
+						case CODE_PORT_DIRECTION :
+							/* Reverse/un-reverse ports according to command parameters */
+							for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
+								if (p != port)	SwapUartPins(GetUart(p), cMessage[port-1][shift+p-1]); 
+							}
+							/* Check the input port direction */
+							SwapUartPins(GetUart(port), cMessage[port-1][shift+MaxNumOfPorts]);
+							break;
 							
-							case CODE_ping :
-								indMode = IND_PING;	osDelay(10);
-								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG)
-									SendMessageToModule(src, CODE_ping_response, 0);	
-								break;
-
-							case CODE_ping_response :
-								if (!moduleAlias[myID][0])
-									sprintf( ( char * ) pcUserMessage, "Hi from module %d\r\n", src);
-								else
-									sprintf( ( char * ) pcUserMessage, "Hi from module %d (%s)\r\n", src, moduleAlias[src]);
-								writePxMutex(PcPort, pcUserMessage, strlen(pcUserMessage), cmd50ms, HAL_MAX_DELAY);
-								responseStatus = BOS_OK;								
-								break;
-								
-							case CODE_IND_on :
-								IND_ON();
-								break;
+						case CODE_MODULE_ID :
+							if (cMessage[port-1][shift] == 0)						/* Change my own ID */
+								myID = cMessage[port-1][1+shift];
+							else if (cMessage[port-1][shift] == 1) {		/* Change my neighbor's ID */
+								messageParams[0] = 0;											/* change own ID */
+								messageParams[1] = cMessage[port-1][1+shift];		/* The new ID */
+								SendMessageFromPort(cMessage[port-1][2+shift], 0, 0, CODE_MODULE_ID, 3);
+							}
+							break;
 							
-							case CODE_IND_off :
-								IND_OFF();
-								break;
+						case CODE_TOPOLOGY :
+							if (longMessage) {
+								/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
+								/* Use a 1-byte oriented scratchpad */
+								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );	
+								longMessageLastPtr += numOfParams;
+							} else {
+								memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
+								longMessageLastPtr += numOfParams;
+								N = (longMessageLastPtr / (MaxNumOfPorts+1)) / 2;
+								/* Copy the scratchpad to array */
+								memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
+								longMessageLastPtr = 0;
+								//indMode = IND_TOPOLOGY;
+							}
+							break;
 							
-							case CODE_IND_toggle :
-								IND_toggle();
-								break;
-							
-							case CODE_hi :					
-								/* Record your neighbor info */
-								neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][6];			/* Neighbor ID + Neighbor own port */
-								neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */
-								/* Send your own info */
-								messageParams[1] = (uint8_t) myPN;
-								messageParams[0] = (uint8_t) (myPN >> 8);	
-								messageParams[2] = port;
-								osDelay(2);
-								/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
-								SendMessageFromPort(port, 0, 0, CODE_hi_response, 3);
-								break;
-							
-							case CODE_hi_response :
-								/* Record your neighbor info */
-								neighbors[port-1][0] = ( (uint16_t) src << 8 ) + cMessage[port-1][6];		/* Neighbor ID + Neighbor own port */
-								neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][4] << 8 ) + cMessage[port-1][5];		/* Neighbor PN */	
-								responseStatus = BOS_OK;
-								break;
-						#ifndef _N
-							case CODE_explore_adj :
-								ExploreNeighbors(port);	indMode = IND_TOPOLOGY;
-								osDelay(10); temp = 0;
-								/* Exploration response message */
-								for (uint8_t p=1 ; p<=NumOfPorts ; p++)  
-								{
-									if (neighbors[p-1][0])
-									{
-										messageParams[temp] = p;
-										memcpy(messageParams+temp+1, neighbors[p-1], (size_t)(4));
-										temp += 5;		
-									}
-								}
-								SendMessageToModule(src, CODE_explore_adj_response, temp);
-								break;
-							
-							case CODE_explore_adj_response :
-								/* Extract the other module neighbors */
-								temp = (messageLength[port-1]-5)/5;
-								for (uint8_t k=0 ; k<temp ; k++)  {
-									memcpy(&neighbors2[(cMessage[port-1][4+k*5])-1][0], &cMessage[port-1][5+k*5], (size_t)(4));
-								}
-								responseStatus = BOS_OK;
-								break;
-						#endif						
-							case CODE_port_dir :
-								/* Reverse/un-reverse ports according to command parameters */
-								for (uint8_t p=1 ; p<=NumOfPorts ; p++) {
-									if (p != port)	SwapUartPins(GetUart(p), cMessage[port-1][3+p]); 
-								}
-								/* Check the input port direction */
-								SwapUartPins(GetUart(port), cMessage[port-1][4+MaxNumOfPorts]);
-								break;
-								
-							case CODE_module_id :
-								if (cMessage[port-1][4] == 0)						/* Change my own ID */
-									myID = cMessage[port-1][5];
-								else if (cMessage[port-1][4] == 1) {		/* Change my neighbor's ID */
-									messageParams[0] = 0;											/* change own ID */
-									messageParams[1] = cMessage[port-1][5];		/* The new ID */
-									SendMessageFromPort(cMessage[port-1][6], 0, 0, CODE_module_id, 3);
-								}
-								break;
-								
-							case CODE_topology :
-								if (longMessage) {
-									/* array is 2-byte oriented thus memcpy can copy only even number of bytes */
-									/* Use a 1-byte oriented scratchpad */
-									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
-									longMessageLastPtr += messageLength[port-1]-5;
-								} else {
-									memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
-									longMessageLastPtr += messageLength[port-1]-5;
-									N = (longMessageLastPtr / (MaxNumOfPorts+1)) / 2;
-									/* Copy the scratchpad to array */
-									memcpy(&array, &longMessageScratchpad, longMessageLastPtr);
-									longMessageLastPtr = 0;
-									//indMode = IND_TOPOLOGY;
-								}
-								break;
-								
-							case CODE_read_port_dir :
-								temp = 0;
-								/* Check my own ports */
+						case CODE_READ_PORT_DIR :
+							temp = 0;
+							/* Check my own ports */
 								for (p=1 ; p<=NumOfPorts ; p++) {
-									if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
-										messageParams[temp++] = p;
-									}									
-								}
-								/* Send response */
-								SendMessageToModule(src, CODE_read_port_dir_response, temp);
-								break;
-							
-							case CODE_read_port_dir_response :
-								/* Read module ports directions */
-								for (p=0 ; p<(messageLength[port-1]-5) ; p++) 
-								{
-									arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][4+p])-1));								
-								}
-								responseStatus = BOS_OK;
-								break;		
+								if (GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE) {
+									messageParams[temp++] = p;
+								}									
+							}
+							/* Send response */
+							SendMessageToModule(src, CODE_READ_PORT_DIR_RESPONSE, temp);
+							break;
+						
+						case CODE_READ_PORT_DIR_RESPONSE :
+							/* Read module ports directions */
+							for (p=0 ; p<numOfParams ; p++) 
+							{
+								arrayPortsDir[src-1] |= (0x8000>>((cMessage[port-1][shift+p])-1));								
+							}
+							responseStatus = BOS_OK;
+							break;		
 
-							case CODE_baudrate :
+							case CODE_BAUDRATE :
 								/* Change baudrate of specified ports */
 								temp = temp32 = 0;
-								temp32 = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];		
-								if (cMessage[port-1][8] == 0xFF)					// All ports
+								temp32 = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];		
+								if (cMessage[port-1][4+shift] == 0xFF)					// All ports
 								{
 									for (p=1 ; p<=NumOfPorts ; p++) 
 									{
@@ -744,9 +788,9 @@ void PxMessagingTask(void * argument)
 								}
 								else
 								{
-									for (p=0 ; p<(messageLength[port-1]-5) ; p++) 
+									for (p=0 ; p<numOfParams ; p++) 
 									{
-										temp = cMessage[port-1][8+p];
+										temp = cMessage[port-1][4+shift+p];
 										if (temp>0 && temp<=NumOfPorts)	{
 											UpdateBaudrate(temp, temp32); 
 										}
@@ -754,71 +798,73 @@ void PxMessagingTask(void * argument)
 								}
 								break;
 								
-							case CODE_exp_eeprom :
+						case CODE_EXP_EEPROM :
 								SaveToRO();
-								SaveEEportsDir();
-								indMode = IND_PING;
-								break;
-							
-							case CODE_def_array :					
-								/* Clear the topology */
-								ClearEEportsDir();
-								#ifndef _N
-								ClearROtopology();
-								#endif
-								osDelay(100);
-								indMode = IND_TOPOLOGY;
-								break;
-							
-							case CODE_CLI_command :
-								/* Obtain the address of the output buffer */
-								pcOutputString = FreeRTOS_CLIGetOutputBuffer();
-								/* Copy the command */
-								if (dst == BOS_BROADCAST)
-									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5-1));					// remove bcastID
-								else if (dst == BOS_MULTICAST)
-									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5-temp-2));		// remove bcastID + groupm members + group count
-								else
-									memcpy(cCLIString, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5));
-								do 
+							SaveEEportsDir();
+							indMode = IND_PING;
+							break;
+						
+						case CODE_DEF_ARRAY :					
+							/* Clear the topology */
+							ClearEEportsDir();
+							#ifndef _N
+							ClearROtopology();
+							#endif
+							osDelay(100);
+							indMode = IND_TOPOLOGY;
+							break;
+						
+						case CODE_CLI_COMMAND :
+							/* Obtain the address of the output buffer */
+							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+							/* Copy the command */
+							if (dst == BOS_BROADCAST)
+								memcpy(cCLIString, &cMessage[port-1][shift], (size_t) (numOfParams-1));					// remove bcastID
+							else if (dst == BOS_MULTICAST)
+								memcpy(cCLIString, &cMessage[port-1][shift], (size_t) (numOfParams-temp-2));		// remove bcastID + groupm members + group count
+							else
+								memcpy(cCLIString, &cMessage[port-1][shift], (size_t) numOfParams);
+							do 
+							{
+								/* Pass the inport to CLI command parsers temporarily through PcPort */
+								temp = PcPort; PcPort = port;
+								/* Process the command locally */
+								xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
+								/* Restore back PcPort */
+								PcPort = temp;
+								/* Respond to the CLI command */
+								if (BOS.response == BOS_RESPONSE_ALL)
 								{
-									/* Pass the inport to CLI command parsers temporarily through PcPort */
-									temp = PcPort; PcPort = port;
-									/* Process the command locally */
-									xReturned = FreeRTOS_CLIProcessCommand( cCLIString, pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
-									/* Restore back PcPort */
-									PcPort = temp;
-									/* Respond to the CLI command */
-									if (responseMode == BOS_RESPONSE_ALL)
-									{
-										/* Copy the generated string to messageParams */
-										memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
-										/* Send command response */	
-										SendMessageToModule(src, CODE_CLI_response, strlen((char*) pcOutputString));
-										osDelay(10); 
-									}
-								} 
-								while( xReturned != pdFALSE );								
-								/* Reset the buffer */
-								memset( cCLIString, 0x00, cmdMAX_INPUT_SIZE );
-								break;
-								
-							case CODE_CLI_response :
-								/* Obtain the address of the output buffer. */
-								pcOutputString = FreeRTOS_CLIGetOutputBuffer();
-								/* Copy the response */
-								if (longMessage) {
-									memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
-									longMessageLastPtr += messageLength[port-1]-5;
-								} else {
-									memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][4], (size_t) (messageLength[port-1]-5) );
-									longMessageLastPtr = 0;
-									responseStatus = BOS_OK;
-									/* Wake up the UARTCmd task again */
-								}							
-								break;							
-								
-							case CODE_update :
+									/* Copy the generated string to messageParams */
+									memcpy(messageParams, pcOutputString, strlen((char*) pcOutputString));
+									/* Send command response */	
+									SendMessageToModule(src, CODE_CLI_RESPONSE, strlen((char*) pcOutputString));
+									osDelay(10); 
+								}
+							} 
+							while( xReturned != pdFALSE );								
+							/* Reset the buffer */
+							memset( cCLIString, 0x00, cmdMAX_INPUT_SIZE );
+							break;
+							
+						case CODE_CLI_RESPONSE :
+							/* Obtain the address of the output buffer and clear the buffer. */
+							pcOutputString = FreeRTOS_CLIGetOutputBuffer();
+							memset( pcOutputString, 0x00, strlen((char*)pcOutputString) );
+							/* Copy the response */
+							if (longMessage) {
+								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
+								longMessageLastPtr += numOfParams;
+							} else {
+								memcpy(&pcOutputString[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
+								longMessageLastPtr = 0;
+								responseStatus = BOS_OK;
+								/* Wake up the CliTask again */
+								xTaskNotify( ( xCommandConsoleTaskHandle ), 0, eNoAction );			// Notify the task without modifying its notification value
+							}							
+							break;
+							
+							case CODE_UPDATE :
 								/* Trigger ST factory bootloader update */
 								/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 								*((unsigned long *)0x20007FF0) = 0xDEADBEEF;   
@@ -827,437 +873,482 @@ void PxMessagingTask(void * argument)
 								NVIC_SystemReset();												
 								break;
 							
-							case CODE_update_via_port :
+							case CODE_UPDATE_VIA_PORT :
 								/* I'm the last module before target. First, ask the target to jump to factory bootloader */
-								SendMessageFromPort(cMessage[port-1][4], 0, 0, CODE_update, 0);
+								SendMessageFromPort(cMessage[port-1][shift], 0, 0, CODE_UPDATE, 0);
 								osDelay(100);
 								/* Then, setup myself for remote 'via port' update */
-								remoteBootloaderUpdate(src, myID, port, cMessage[port-1][4]);
+								remoteBootloaderUpdate(src, myID, port, cMessage[port-1][shift]);
 								break;
 								
-							case CODE_DMA_channel :
-								/* Read EEPROM storage flag */
-								temp = cMessage[port-1][15];
-								if (messageLength[port-1] == 19)	temp = cMessage[port-1][17];							
-								if (messageLength[port-1] == 21)	temp = cMessage[port-1][19];
-								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
-								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];									
+						case CODE_DMA_CHANNEL :
+							/* Read EEPROM storage flag */
+							temp = cMessage[port-1][11+shift];
+							if (numOfParams == 15)	temp = cMessage[port-1][13+shift];							
+							if (numOfParams == 17)	temp = cMessage[port-1][15+shift];
+								count = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];
+								timeout = ( (uint32_t) cMessage[port-1][4+shift] << 24 ) + ( (uint32_t) cMessage[port-1][5+shift] << 16 ) + ( (uint32_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift];									
 									
-								/* Activate the stream */
-								if (temp == false)
+							/* Activate the stream */
+							if (temp == false)
+							{
+								count = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];
+								timeout = ( (uint32_t) cMessage[port-1][4+shift] << 24 ) + ( (uint32_t) cMessage[port-1][5+shift] << 16 ) + ( (uint32_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift];									
+								if (cMessage[port-1][9+shift] && cMessage[port-1][10+shift])
+									SetupDMAStreams(cMessage[port-1][8+shift], count, timeout, cMessage[port-1][9+shift], cMessage[port-1][10+shift]);
+								if (cMessage[port-1][11+shift] && cMessage[port-1][12+shift])
+									SetupDMAStreams(cMessage[port-1][8+shift], count, timeout, cMessage[port-1][11+shift], cMessage[port-1][12+shift]);
+								if (cMessage[port-1][13+shift] && cMessage[port-1][14+shift])
+									SetupDMAStreams(cMessage[port-1][8+shift], count, timeout, cMessage[port-1][13+shift], cMessage[port-1][14+shift]);
+							}
+							/* Save stream paramters in EEPROM */
+							else
+							{
+								EE_WriteVariable(_EE_DMA_STREAM_BASE, cMessage[port-1][8+shift]);			/* Direction */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+1, ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift]);			/* Count high half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+2, ( (uint16_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift]);			/* Count low half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+3, ( (uint16_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][5+shift]);			/* Timeout high half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+4, ( (uint16_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift]);			/* Timeout low half-word */
+								EE_WriteVariable(_EE_DMA_STREAM_BASE+5, ( (uint16_t) cMessage[port-1][9+shift] << 8 ) + cMessage[port-1][10+shift]);			/* src1 | dst1 */
+								if (numOfParams == 19)
+									EE_WriteVariable(_EE_DMA_STREAM_BASE+6, ( (uint16_t) cMessage[port-1][11+shift] << 8 ) + cMessage[port-1][12+shift]);			/* src2 | dst2 */
+								if (numOfParams == 21)
+									EE_WriteVariable(_EE_DMA_STREAM_BASE+7, ( (uint16_t) cMessage[port-1][13+shift] << 8 ) + cMessage[port-1][14+shift]);			/* src3 | dst3 */
+								/* Reset MCU */
+								NVIC_SystemReset();
+							}
+							break;
+						
+						case CODE_DMA_SCAST_STREAM :
+							count = ( (uint32_t) cMessage[port-1][shift] << 24 ) + ( (uint32_t) cMessage[port-1][1+shift] << 16 ) + ( (uint32_t) cMessage[port-1][2+shift] << 8 ) + cMessage[port-1][3+shift];
+							timeout = ( (uint32_t) cMessage[port-1][4+shift] << 24 ) + ( (uint32_t) cMessage[port-1][5+shift] << 16 ) + ( (uint32_t) cMessage[port-1][6+shift] << 8 ) + cMessage[port-1][7+shift];
+							StartScastDMAStream(cMessage[port-1][9+shift], myID, cMessage[port-1][11+shift], cMessage[port-1][10+shift], cMessage[port-1][8+shift], count, timeout, cMessage[port-1][12+shift]);
+							break;								
+						
+						
+							case CODE_READ_REMOTE :	
+							 if	(cMessage[port-1][shift]==REMOTE_MEMORY_ADD)											// request for a memory address
+							{
+									// Get requested address
+									temp32 = ( (uint32_t) cMessage[port-1][2+shift] << 24 ) + ( (uint32_t) cMessage[port-1][3+shift] << 16 ) + ( (uint32_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][5+shift];				
+									// Get variable according to requested format
+									switch (cMessage[port-1][1+shift])											// requested format
+                  {
+										case FMT_BOOL:
+                  	case FMT_UINT8: 
+											messageParams[0] = *(__IO uint8_t *)temp32; 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 1); break;
+                  	case FMT_INT8: 
+											messageParams[0] = *(__IO int8_t *)temp32; 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 1); break;
+                  	case FMT_UINT16: 
+											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8);  
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
+                  	case FMT_INT16: 
+											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
+                  	case FMT_UINT32: 
+											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 4); break;
+                  	case FMT_INT32: 
+											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 4); break;										
+                  	case FMT_FLOAT:
+											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); 
+											messageParams[2] = *(__IO uint8_t *)(temp32+2); messageParams[3] = *(__IO uint8_t *)(temp32+3); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 8); break;	// You cannot bitwise floats	
+                  	default:
+                  		break;
+                  }		
+								}	
+								else if(cMessage[port-1][shift]==REMOTE_MODULE_PARAM)			// request for a Module param
 								{
-									SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
-									if (messageLength[port-1] == 19)
-										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
-									if (messageLength[port-1] == 21)
-										SetupDMAStreamsFromMessage(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], cMessage[port-1][17], cMessage[port-1][18]);
+									cMessage[port-1][messageLength[port-1]-1] = 0;		 // adding string termination
+									temp=IsModuleParameter((char *)&cMessage[port-1][1+shift]);          // extrating module parameter
+									if (temp == 0) {																					// Parameter does not exist
+									SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 1);							
+								} else {
+										// Parameter exists. Get its pointer
+										temp32 = (uint32_t) modParam[temp-1].paramPtr;
+										messageParams[0] = modParam[temp-1].paramFormat;
+										// Send parameter according to its format
+									switch (messageParams[0])											// requested format
+									{
+										case FMT_BOOL:
+										case FMT_UINT8: 
+											messageParams[1] = *(__IO uint8_t *)temp32; 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
+										case FMT_INT8: 
+											messageParams[1] = *(__IO int8_t *)temp32; 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
+										case FMT_UINT16: 
+											messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 3); break;
+										case FMT_INT16: 
+											messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 3); break;
+										case FMT_UINT32: 
+											messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
+											messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 5); break;
+										case FMT_INT32: 
+											messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
+											messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 5); break;										
+										case FMT_FLOAT:
+											messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1);  
+											messageParams[3] = *(__IO uint8_t *)(temp32+2); messageParams[4] = *(__IO uint8_t *)(temp32+3);  			// You cannot bitwise floats	
+											SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 9); break;			
+										default:
+											break;
+									}											
 								}
-								/* Save stream paramters in EEPROM */
-								else
-								{
-									if (messageLength[port-1] == 17)				/* src1 | dst1 */
-										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], 0, 0, 0, 0);
-									else if (messageLength[port-1] == 19)		/* src1 | dst1, src2 | dst2 */
-										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], 0, 0);
-									else if (messageLength[port-1] == 21)		/* src1 | dst1, src2 | dst2, src3 | dst3 */
-										SaveEEstreams(cMessage[port-1][12], count, timeout, cMessage[port-1][13], cMessage[port-1][14], cMessage[port-1][15], cMessage[port-1][16], cMessage[port-1][17], cMessage[port-1][18]);
-									
-									/* Reset MCU */
-									NVIC_SystemReset();
-								}
-								break;
-							
-							case CODE_DMA_scast_stream :
-								count = ( (uint32_t) cMessage[port-1][4] << 24 ) + ( (uint32_t) cMessage[port-1][5] << 16 ) + ( (uint32_t) cMessage[port-1][6] << 8 ) + cMessage[port-1][7];
-								timeout = ( (uint32_t) cMessage[port-1][8] << 24 ) + ( (uint32_t) cMessage[port-1][9] << 16 ) + ( (uint32_t) cMessage[port-1][10] << 8 ) + cMessage[port-1][11];
-								StartScastDMAStream(cMessage[port-1][13], myID, cMessage[port-1][15], cMessage[port-1][14], cMessage[port-1][12], count, timeout, cMessage[port-1][16]);
-								break;								
-							
-							
-							case CODE_read_remote :								
-								if(cMessage[port-1][4])			// request for a BOS var
-								{
-									messageParams[0] = BOS_var_reg[cMessage[port-1][4]-1]&0x000F;					// send variable format (lower 4 bits)
+							}
+								else if(cMessage[port-1][shift]>=REMOTE_BOS_VAR)			// request for a BOS var
+							{
+									messageParams[0] = BOS_var_reg[cMessage[port-1][shift]-REMOTE_BOS_VAR-1]&0x000F;					// send variable format (lower 4 bits)
 									if (messageParams[0] == 0) {																					// Variable does not exist
-										SendMessageToModule(src, CODE_read_remote_response, 1);							
+										SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 1);							
 									} else {
 										// Variable exists. Get its memory address
-										temp32 = (BOS_var_reg[cMessage[port-1][4]-1]>>16) + SRAM_BASE;
+										temp32 = (BOS_var_reg[cMessage[port-1][shift]-REMOTE_BOS_VAR-1]>>16) + SRAM_BASE;
 										// Send variable according to its format
 										switch (messageParams[0])											// requested format
 										{
 											case FMT_BOOL:
 											case FMT_UINT8: 
 												messageParams[1] = *(__IO uint8_t *)temp32; 
-												SendMessageToModule(src, CODE_read_remote_response, 2); break;
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
 											case FMT_INT8: 
 												messageParams[1] = *(__IO int8_t *)temp32; 
-												SendMessageToModule(src, CODE_read_remote_response, 2); break;
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 2); break;
 											case FMT_UINT16: 
 												messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint16_t *)temp32)>>8); 
-												SendMessageToModule(src, CODE_read_remote_response, 3); break;
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 3); break;
 											case FMT_INT16: 
 												messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
-												SendMessageToModule(src, CODE_read_remote_response, 3); break;
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 3); break;
 											case FMT_UINT32: 
 												messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
 												messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
-												SendMessageToModule(src, CODE_read_remote_response, 5); break;
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 5); break;
 											case FMT_INT32: 
 												messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
 												messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[4] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
-												SendMessageToModule(src, CODE_read_remote_response, 5); break;										
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 5); break;										
 											case FMT_FLOAT:
-												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); messageParams[3] = *(__IO uint8_t *)(temp32+2); 
-												messageParams[4] = *(__IO uint8_t *)(temp32+3); messageParams[5] = *(__IO uint8_t *)(temp32+4); messageParams[6] = *(__IO uint8_t *)(temp32+5); 
-												messageParams[7] = *(__IO uint8_t *)(temp32+6); messageParams[8] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
-												SendMessageToModule(src, CODE_read_remote_response, 9); break;			
+												messageParams[1] = *(__IO uint8_t *)(temp32+0); messageParams[2] = *(__IO uint8_t *)(temp32+1); 
+												messageParams[3] = *(__IO uint8_t *)(temp32+2); messageParams[4] = *(__IO uint8_t *)(temp32+3);  			// You cannot bitwise floats	
+												SendMessageToModule(src, CODE_READ_REMOTE_RESPONSE, 9); break;			
 											default:
 												break;
 										}											
 									}
 								}
-								else												// request for a memory address
-								{
-									// Get requested address
-									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
-									// Get variable according to requested format
-									switch (cMessage[port-1][5])											// requested format
-                  {
-										case FMT_BOOL:
-                  	case FMT_UINT8: 
-											messageParams[0] = *(__IO uint8_t *)temp32; 
-											SendMessageToModule(src, CODE_read_remote_response, 1); break;
-                  	case FMT_INT8: 
-											messageParams[0] = *(__IO int8_t *)temp32; 
-											SendMessageToModule(src, CODE_read_remote_response, 1); break;
-                  	case FMT_UINT16: 
-											messageParams[0] = (uint8_t)((*(__IO uint16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint16_t *)temp32)>>8);  
-											SendMessageToModule(src, CODE_read_remote_response, 2); break;
-                  	case FMT_INT16: 
-											messageParams[0] = (uint8_t)((*(__IO int16_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int16_t *)temp32)>>8); 
-											SendMessageToModule(src, CODE_read_remote_response, 2); break;
-                  	case FMT_UINT32: 
-											messageParams[0] = (uint8_t)((*(__IO uint32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO uint32_t *)temp32)>>8); 
-											messageParams[2] = (uint8_t)((*(__IO uint32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO uint32_t *)temp32)>>24); 
-											SendMessageToModule(src, CODE_read_remote_response, 4); break;
-                  	case FMT_INT32: 
-											messageParams[0] = (uint8_t)((*(__IO int32_t *)temp32)>>0); messageParams[1] = (uint8_t)((*(__IO int32_t *)temp32)>>8); 
-											messageParams[2] = (uint8_t)((*(__IO int32_t *)temp32)>>16); messageParams[3] = (uint8_t)((*(__IO int32_t *)temp32)>>24);
-											SendMessageToModule(src, CODE_read_remote_response, 4); break;										
-                  	case FMT_FLOAT:
-											messageParams[0] = *(__IO uint8_t *)(temp32+0); messageParams[1] = *(__IO uint8_t *)(temp32+1); messageParams[2] = *(__IO uint8_t *)(temp32+2); 
-											messageParams[3] = *(__IO uint8_t *)(temp32+3); messageParams[4] = *(__IO uint8_t *)(temp32+4); messageParams[5] = *(__IO uint8_t *)(temp32+5); 
-											messageParams[6] = *(__IO uint8_t *)(temp32+6); messageParams[7] = *(__IO uint8_t *)(temp32+7); 			// You cannot bitwise floats	
-											SendMessageToModule(src, CODE_read_remote_response, 8); break;
-                  	default:
-                  		break;
-                  }	
-								}
+
 								break;			
+							
+						case CODE_READ_REMOTE_RESPONSE :
+							if (remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)				// We requested a BOS variable or module param
+							{
+								// Read variable according to its format
+								remoteVarFormat = (varFormat_t) cMessage[port-1][shift];
+								switch (cMessage[port-1][shift])											// Remote format
+								{																									// Note that cMessage[port-1][5+shift] can be unaligned. That's why we cannot use simple memory access
+									case 0:																					// This variable does not exist
+										responseStatus = BOS_ERR_REMOTE_READ_NO_VAR; break;
+									case FMT_BOOL:
+									case FMT_UINT8: 
+										remoteBuffer = cMessage[port-1][1+shift]; break;
+									case FMT_INT8:
+										remoteBuffer = (int8_t)cMessage[port-1][1+shift]; break;
+									case FMT_UINT16: 
+										remoteBuffer = ((uint16_t)cMessage[port-1][1+shift]<<0) + ((uint16_t)cMessage[port-1][2+shift]<<8); break;
+									case FMT_INT16: 
+										remoteBuffer = ((int16_t)cMessage[port-1][1+shift]<<0) + ((int16_t)cMessage[port-1][2+shift]<<8); break;
+									case FMT_UINT32: 
+										remoteBuffer = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24); break;
+									case FMT_INT32:
+										remoteBuffer = ((int32_t)cMessage[port-1][1+shift]<<0) + ((int32_t)cMessage[port-1][2+shift]<<8) + ((int32_t)cMessage[port-1][3+shift]<<16) + ((int32_t)cMessage[port-1][4+shift]<<24); break;									
+									case FMT_FLOAT:
+										remoteBuffer = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24); break;
+									default:
+										break;
+								}										
+							}
+							else if (remoteBuffer == REMOTE_MEMORY_ADD)										// We requested a memory location
+							{
+								// Read variable according to requested format
+								switch (remoteBuffer)															// Requested format
+								{																									// Note that cMessage[port-1][shift] can be unaligned. That's why we cannot use simple memory access
+									case FMT_BOOL:
+									case FMT_UINT8: 
+										remoteBuffer = cMessage[port-1][shift]; break;
+									case FMT_INT8:
+										remoteBuffer = (int8_t)cMessage[port-1][shift]; break;
+									case FMT_UINT16: 
+										remoteBuffer = ((uint16_t)cMessage[port-1][shift]<<0) + ((uint16_t)cMessage[port-1][1+shift]<<8); break;
+									case FMT_INT16: 
+										remoteBuffer = ((int16_t)cMessage[port-1][shift]<<0) + ((int16_t)cMessage[port-1][1+shift]<<8); break;
+									case FMT_UINT32: 
+										remoteBuffer = ((uint32_t)cMessage[port-1][shift]<<0) + ((uint32_t)cMessage[port-1][1+shift]<<8) + ((uint32_t)cMessage[port-1][2+shift]<<16) + ((uint32_t)cMessage[port-1][3+shift]<<24); break;
+									case FMT_INT32:
+										remoteBuffer = ((int32_t)cMessage[port-1][shift]<<0) + ((int32_t)cMessage[port-1][1+shift]<<8) + ((int32_t)cMessage[port-1][2+shift]<<16) + ((int32_t)cMessage[port-1][3+shift]<<24); break;									
+									case FMT_FLOAT:
+										remoteBuffer = ((uint32_t)cMessage[port-1][shift]<<0) + ((uint32_t)cMessage[port-1][1+shift]<<8) + ((uint32_t)cMessage[port-1][2+shift]<<16) + ((uint32_t)cMessage[port-1][3+shift]<<24); break;
+									default:
+										break;
+								}															
+							}
+							else
+							{
+							}
+							// Remote read status
+							if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
+							break;	
 
-								
-							case CODE_read_remote_response :
-								if (remoteBuffer == 0)				// We requested a BOS variable
+							
+						case CODE_WRITE_REMOTE :
+						case CODE_WRITE_REMOTE_FORCE :
+							
+							responseStatus = BOS_OK;		// Initialize response
+							if(cMessage[port-1][shift])			// request for a BOS var
+							{
+								// Check variable index is within the limit of MAX_BOS_VARS
+								if(cMessage[port-1][shift] <= MAX_BOS_VARS)
 								{
-									// Read variable according to its format
-									remoteVarFormat = (varFormat_t) cMessage[port-1][4];
-									switch (cMessage[port-1][4])											// Remote format
-                  {																									// Note that cMessage[port-1][5] can be unaligned. That's why we cannot use simple memory access
-                  	case 0:																					// This variable does not exist
-											responseStatus = BOS_ERR_REMOTE_READ_NO_VAR; break;
+									temp32 = (BOS_var_reg[cMessage[port-1][shift]-1]>>16) + SRAM_BASE;				// Get var memory addres
+									// Modify the variable or create a new one if it does not exist
+									switch (cMessage[port-1][1+shift])											// requested format
+									{
 										case FMT_BOOL:
 										case FMT_UINT8: 
-											remoteBuffer = cMessage[port-1][5]; break;
-										case FMT_INT8:
-											remoteBuffer = (int8_t)cMessage[port-1][5]; break;
-                  	case FMT_UINT16: 
-											remoteBuffer = ((uint16_t)cMessage[port-1][5]<<0) + ((uint16_t)cMessage[port-1][6]<<8); break;
-                  	case FMT_INT16: 
-											remoteBuffer = ((int16_t)cMessage[port-1][5]<<0) + ((int16_t)cMessage[port-1][6]<<8); break;
-                  	case FMT_UINT32: 
-											remoteBuffer = ((uint32_t)cMessage[port-1][5]<<0) + ((uint32_t)cMessage[port-1][6]<<8) + ((uint32_t)cMessage[port-1][7]<<16) + ((uint32_t)cMessage[port-1][8]<<24); break;
-										case FMT_INT32:
-											remoteBuffer = ((int32_t)cMessage[port-1][5]<<0) + ((int32_t)cMessage[port-1][6]<<8) + ((int32_t)cMessage[port-1][7]<<16) + ((int32_t)cMessage[port-1][8]<<24); break;									
-                  	case FMT_FLOAT:
-											remoteBuffer = ((uint64_t)cMessage[port-1][5]<<0) + ((uint64_t)cMessage[port-1][6]<<8) + ((uint64_t)cMessage[port-1][7]<<16) + ((uint64_t)cMessage[port-1][8]<<24) + \
-																		 ((uint64_t)cMessage[port-1][9]<<32) + ((uint64_t)cMessage[port-1][10]<<40) + ((uint64_t)cMessage[port-1][11]<<48) + ((uint64_t)cMessage[port-1][12]<<56); break;
-                  	default:
-                  		break;
-                  }										
-								}
-								else										// We requested a memory location
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(uint8_t));							// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO uint8_t *)temp32 = cMessage[port-1][2+shift];					
+											break;
+											
+										case FMT_INT8: 
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(int8_t));							// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][2+shift];		
+											break;
+											
+										case FMT_UINT16: 
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(uint16_t));						// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][2+shift]<<0) + ((uint16_t)cMessage[port-1][3+shift]<<8);					
+											break;
+											
+										case FMT_INT16: 
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(int16_t));							// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][2+shift]<<0) + ((int16_t)cMessage[port-1][3+shift]<<8);					
+											break;
+											
+										case FMT_UINT32: 
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(uint32_t));						// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][2+shift]<<0) + ((uint32_t)cMessage[port-1][3+shift]<<8) + ((uint32_t)cMessage[port-1][4+shift]<<16) + ((uint32_t)cMessage[port-1][5+shift]<<24);					
+											break;
+											
+										case FMT_INT32: 
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(int32_t));							// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
+												*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][2+shift]<<0) + ((int32_t)cMessage[port-1][3+shift]<<8) + ((int32_t)cMessage[port-1][4+shift]<<16) + ((int32_t)cMessage[port-1][5+shift]<<24);					
+											break;
+											
+										case FMT_FLOAT:
+											if ((BOS_var_reg[cMessage[port-1][shift]-1]&0x000F) == 0) {		// Variable does not exist																															
+												temp32 = (uint32_t)malloc(sizeof(float));								// Create a new one
+												if (temp32 != 0) {
+													BOS_var_reg[cMessage[port-1][shift]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][1+shift];
+												} else {																								// Cannot alocate memory
+													responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
+												}
+											}
+											if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) {			// Write remote value
+												remoteBuffer = ((uint32_t)cMessage[port-1][2+shift]<<0) + ((uint32_t)cMessage[port-1][3+shift]<<8) + ((uint32_t)cMessage[port-1][4+shift]<<16) + ((uint32_t)cMessage[port-1][5+shift]<<24);
+												*(float *)temp32 = *(float *)&remoteBuffer;																		
+											}
+											break;												
+													
+										default:
+											break;
+									}			
+									
+									/* Update local format if needed - Todo give local warning later */
+									if ( (BOS_var_reg[cMessage[port-1][shift]-1] & 0x000F) != cMessage[port-1][1+shift] ) {		
+										BOS_var_reg[cMessage[port-1][shift]-1] &= (0xFFF0+cMessage[port-1][1+shift]);
+										responseStatus = BOS_ERR_LOCAL_FORMAT_UPDATED;
+									}								
+								}		
+								else
+								{		
+									responseStatus = BOS_ERR_REMOTE_WRITE_INDEX;		// BOS var index out of range
+								}	
+							}
+							else												// request for a memory address
+							{
+								// Get the requested address
+								temp32 = ( (uint32_t) cMessage[port-1][2+shift] << 24 ) + ( (uint32_t) cMessage[port-1][3+shift] << 16 ) + ( (uint32_t) cMessage[port-1][4+shift] << 8 ) + cMessage[port-1][5+shift];				
+								// Write data to Flash or SRAM based on requested format
+								if ( temp32 >= SRAM_BASE && temp32 < (SRAM_BASE+SRAM_SIZE) )			// SRAM
 								{
-									// Read variable according to requested format
-									switch (remoteBuffer)															// Requested format
-                  {																									// Note that cMessage[port-1][4] can be unaligned. That's why we cannot use simple memory access
-                  	case FMT_BOOL:
+									switch (cMessage[port-1][1+shift])															// Requested format
+									{																									
+										case FMT_BOOL:
 										case FMT_UINT8: 
-											remoteBuffer = cMessage[port-1][4]; break;
+											*(__IO uint8_t *)temp32 = cMessage[port-1][6+shift]; break;
 										case FMT_INT8:
-											remoteBuffer = (int8_t)cMessage[port-1][4]; break;
-                  	case FMT_UINT16: 
-											remoteBuffer = ((uint16_t)cMessage[port-1][4]<<0) + ((uint16_t)cMessage[port-1][5]<<8); break;
-                  	case FMT_INT16: 
-											remoteBuffer = ((int16_t)cMessage[port-1][4]<<0) + ((int16_t)cMessage[port-1][5]<<8); break;
-                  	case FMT_UINT32: 
-											remoteBuffer = ((uint32_t)cMessage[port-1][4]<<0) + ((uint32_t)cMessage[port-1][5]<<8) + ((uint32_t)cMessage[port-1][6]<<16) + ((uint32_t)cMessage[port-1][7]<<24); break;
+											*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][6+shift]; break;
+										case FMT_UINT16: 
+											*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][6+shift]<<0) + ((uint16_t)cMessage[port-1][7+shift]<<8);	break;
+										case FMT_INT16: 
+											*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][6+shift]<<0) + ((int16_t)cMessage[port-1][7+shift]<<8);	break;
+										case FMT_UINT32: 
+											*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24); break;
 										case FMT_INT32:
-											remoteBuffer = ((int32_t)cMessage[port-1][4]<<0) + ((int32_t)cMessage[port-1][5]<<8) + ((int32_t)cMessage[port-1][6]<<16) + ((int32_t)cMessage[port-1][7]<<24); break;									
-                  	case FMT_FLOAT:
-											remoteBuffer = ((uint64_t)cMessage[port-1][4]<<0) + ((uint64_t)cMessage[port-1][5]<<8) + ((uint64_t)cMessage[port-1][6]<<16) + ((uint64_t)cMessage[port-1][7]<<24) + \
-																		 ((uint64_t)cMessage[port-1][8]<<32) + ((uint64_t)cMessage[port-1][9]<<40) + ((uint64_t)cMessage[port-1][10]<<48) + ((uint64_t)cMessage[port-1][11]<<56); break;
-                  	default:
-                  		break;
-                  }															
+											*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][6+shift]<<0) + ((int32_t)cMessage[port-1][7+shift]<<8) + ((int32_t)cMessage[port-1][8+shift]<<16) + ((int32_t)cMessage[port-1][9+shift]<<24); break; 									
+										case FMT_FLOAT:
+											remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24);
+											*(float *)temp32 = *(float *)&remoteBuffer;	break;
+										default:
+											break;
+									}												
 								}
-								// Remote read status
-								if (responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)	responseStatus = BOS_OK;
-								break;	
-
-								
-							case CODE_write_remote :
-							case CODE_write_remote_force :
-								
-								responseStatus = BOS_OK;		// Initialize response
-								if(cMessage[port-1][4])			// request for a BOS var
-								{
-									// Check variable index is within the limit of MAX_BOS_VARS
-									if(cMessage[port-1][4] <= MAX_BOS_VARS)
+								else if ( temp32 >= FLASH_BASE && temp32 < (FLASH_BASE+FLASH_SIZE) )			// Flash
+								{								
+									HAL_FLASH_Unlock();
+									/* Erase page if force write is requested */
+									if (code == CODE_WRITE_REMOTE_FORCE)
 									{
-										temp32 = (BOS_var_reg[cMessage[port-1][4]-1]>>16) + SRAM_BASE;				// Get var memory addres
-										// Modify the variable or create a new one if it does not exist
-										switch (cMessage[port-1][5])											// requested format
-										{
-											case FMT_BOOL:
-											case FMT_UINT8: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(uint8_t));							// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO uint8_t *)temp32 = cMessage[port-1][6];					
-												break;
-												
-											case FMT_INT8: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(int8_t));							// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][6];		
-												break;
-												
-											case FMT_UINT16: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(uint16_t));						// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][6]<<0) + ((uint16_t)cMessage[port-1][7]<<8);					
-												break;
-												
-											case FMT_INT16: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(int16_t));							// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][6]<<0) + ((int16_t)cMessage[port-1][7]<<8);					
-												break;
-												
-											case FMT_UINT32: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(uint32_t));						// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][6]<<0) + ((uint32_t)cMessage[port-1][7]<<8) + ((uint32_t)cMessage[port-1][8]<<16) + ((uint32_t)cMessage[port-1][9]<<24);					
-												break;
-												
-											case FMT_INT32: 
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(int32_t));							// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)			// Write remote value
-													*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][6]<<0) + ((int32_t)cMessage[port-1][7]<<8) + ((int32_t)cMessage[port-1][8]<<16) + ((int32_t)cMessage[port-1][9]<<24);					
-												break;
-												
-											case FMT_FLOAT:
-												if ((BOS_var_reg[cMessage[port-1][4]-1]&0x000F) == 0) {		// Variable does not exist																															
-													temp32 = (uint32_t)malloc(sizeof(float));								// Create a new one
-													if (temp32 != 0) {
-														BOS_var_reg[cMessage[port-1][4]-1] = ((temp32-SRAM_BASE)<<16) + cMessage[port-1][5];
-													} else {																								// Cannot alocate memory
-														responseStatus = BOS_ERR_REMOTE_WRITE_MEM_FULL;
-													}
-												}
-												if (responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) {			// Write remote value
-													remoteBuffer = ((uint64_t)cMessage[port-1][6]<<0) + ((uint64_t)cMessage[port-1][7]<<8) + ((uint64_t)cMessage[port-1][8]<<16) + ((uint64_t)cMessage[port-1][9]<<24) + \
-																				 ((uint64_t)cMessage[port-1][10]<<32) + ((uint64_t)cMessage[port-1][11]<<40) + ((uint64_t)cMessage[port-1][12]<<48) + ((uint64_t)cMessage[port-1][13]<<56);
-													*(float *)temp32 = *(float *)&remoteBuffer;																		
-												}
-												break;												
-														
-											default:
-												break;
-										}			
-										
-										/* Update local format if needed - Todo give local warning later */
-										if ( (BOS_var_reg[cMessage[port-1][4]-1] & 0x000F) != cMessage[port-1][5] ) {		
-											BOS_var_reg[cMessage[port-1][4]-1] &= (0xFFF0+cMessage[port-1][5]);
-											responseStatus = BOS_ERR_LOCAL_FORMAT_UPDATED;
-										}								
-									}		
-									else
-									{		
-										responseStatus = BOS_ERR_REMOTE_WRITE_INDEX;		// BOS var index out of range
-									}	
-								}
-								else												// request for a memory address
-								{
-									// Get the requested address
-									temp32 = ( (uint32_t) cMessage[port-1][6] << 24 ) + ( (uint32_t) cMessage[port-1][7] << 16 ) + ( (uint32_t) cMessage[port-1][8] << 8 ) + cMessage[port-1][9];				
-									// Write data to Flash or SRAM based on requested format
-									if ( temp32 >= SRAM_BASE && temp32 < (SRAM_BASE+SRAM_SIZE) )			// SRAM
+										FLASH_EraseInitTypeDef erase; uint32_t eraseError;
+										erase.TypeErase = FLASH_TYPEERASE_PAGES;
+										erase.PageAddress = temp32;
+										erase.NbPages = 1;
+										status = HAL_FLASHEx_Erase(&erase, &eraseError);
+										if (status != HAL_OK || eraseError != 0xFFFFFFFF) responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;							
+									}
+									/* Write new value */
+									if (responseStatus == BOS_OK)
 									{
-										switch (cMessage[port-1][5])															// Requested format
+										switch (cMessage[port-1][1+shift])															// Requested format
 										{																									
 											case FMT_BOOL:
 											case FMT_UINT8: 
-												*(__IO uint8_t *)temp32 = cMessage[port-1][10]; break;
 											case FMT_INT8:
-												*(__IO int8_t *)temp32 = (int8_t)cMessage[port-1][10]; break;
+												if (*(__IO uint16_t *)temp32 != 0xFFFF) {
+													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+												} else {
+													remoteBuffer = cMessage[port-1][6+shift]; status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+												}
 											case FMT_UINT16: 
-												*(__IO uint16_t *)temp32 = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);	break;
-											case FMT_INT16: 
-												*(__IO int16_t *)temp32 = ((int16_t)cMessage[port-1][10]<<0) + ((int16_t)cMessage[port-1][11]<<8);	break;
+											case FMT_INT16:
+												if (*(__IO uint16_t *)temp32 != 0xFFFF) {
+													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+												} else {
+													remoteBuffer = ((uint16_t)cMessage[port-1][6+shift]<<0) + ((uint16_t)cMessage[port-1][7+shift]<<8);
+													status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
+												}
 											case FMT_UINT32: 
-												*(__IO uint32_t *)temp32 = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); break;
 											case FMT_INT32:
-												*(__IO int32_t *)temp32 = ((int32_t)cMessage[port-1][10]<<0) + ((int32_t)cMessage[port-1][11]<<8) + ((int32_t)cMessage[port-1][12]<<16) + ((int32_t)cMessage[port-1][13]<<24); break; 									
+												if (*(__IO uint32_t *)temp32 != 0xFFFFFFFF) {
+													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+												} else {
+													remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24); 
+													status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
+												}				
 											case FMT_FLOAT:
-												remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
-																			 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
-												*(float *)temp32 = *(float *)&remoteBuffer;	break;
+												if (*(__IO uint32_t *)temp32 != 0xFFFFFFFF) {
+													responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
+												} else {
+													remoteBuffer = ((uint32_t)cMessage[port-1][6+shift]<<0) + ((uint32_t)cMessage[port-1][7+shift]<<8) + ((uint32_t)cMessage[port-1][8+shift]<<16) + ((uint32_t)cMessage[port-1][9+shift]<<24);
+													status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
+												}
 											default:
 												break;
-										}												
-									}
-									else if ( temp32 >= FLASH_BASE && temp32 < (FLASH_BASE+FLASH_SIZE) )			// Flash
-									{								
-										HAL_FLASH_Unlock();
-										/* Erase page if force write is requested */
-										if (code == CODE_write_remote_force)
-										{
-											FLASH_EraseInitTypeDef erase; uint32_t eraseError;
-											erase.TypeErase = FLASH_TYPEERASE_PAGES;
-											erase.PageAddress = temp32;
-											erase.NbPages = 1;
-											status = HAL_FLASHEx_Erase(&erase, &eraseError);
-											if (status != HAL_OK || eraseError != 0xFFFFFFFF) responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;							
-										}
-										/* Write new value */
-										if (responseStatus == BOS_OK)
-										{
-											switch (cMessage[port-1][5])															// Requested format
-											{																									
-												case FMT_BOOL:
-												case FMT_UINT8: 
-												case FMT_INT8:
-													if (*(__IO uint16_t *)temp32 != 0xFFFF) {
-														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
-													} else {
-														remoteBuffer = cMessage[port-1][10]; status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
-													}
-												case FMT_UINT16: 
-												case FMT_INT16:
-													if (*(__IO uint16_t *)temp32 != 0xFFFF) {
-														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
-													} else {
-														remoteBuffer = ((uint16_t)cMessage[port-1][10]<<0) + ((uint16_t)cMessage[port-1][11]<<8);
-														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, temp32, remoteBuffer); break;
-													}
-												case FMT_UINT32: 
-												case FMT_INT32:
-													if (*(__IO uint32_t *)temp32 != 0xFFFFFFFF) {
-														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
-													} else {
-														remoteBuffer = ((uint32_t)cMessage[port-1][10]<<0) + ((uint32_t)cMessage[port-1][11]<<8) + ((uint32_t)cMessage[port-1][12]<<16) + ((uint32_t)cMessage[port-1][13]<<24); 
-														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, temp32, remoteBuffer); break;
-													}				
-												case FMT_FLOAT:
-													if (*(__IO uint64_t *)temp32 != 0xFFFFFFFFFFFFFFFF) {
-														responseStatus = BOS_ERR_REMOTE_WRITE_FLASH; break;
-													} else {
-														remoteBuffer = ((uint64_t)cMessage[port-1][10]<<0) + ((uint64_t)cMessage[port-1][11]<<8) + ((uint64_t)cMessage[port-1][12]<<16) + ((uint64_t)cMessage[port-1][13]<<24) + \
-																					 ((uint64_t)cMessage[port-1][14]<<32) + ((uint64_t)cMessage[port-1][15]<<40) + ((uint64_t)cMessage[port-1][16]<<48) + ((uint64_t)cMessage[port-1][17]<<56);
-														status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, temp32, remoteBuffer); break;
-													}
-												default:
-													break;
-											}		
-										}										
-										HAL_FLASH_Lock();
-										if (status != HAL_OK)	responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;
-									}	
-									else	
-										responseStatus = BOS_ERR_REMOTE_WRITE_ADDRESS;
-								}
-								
-								/* Send confirmation back */
-								if (responseMode == BOS_RESPONSE_ALL || responseMode == BOS_RESPONSE_MSG) {
-									messageParams[0] = responseStatus;
-									SendMessageToModule(src, CODE_write_remote_response, 1);											
-								}
-								break;	
+										}		
+									}										
+									HAL_FLASH_Lock();
+									if (status != HAL_OK)	responseStatus = BOS_ERR_REMOTE_WRITE_FLASH;
+								}	
+								else	
+									responseStatus = BOS_ERR_REMOTE_WRITE_ADDRESS;
+							}
+							
+							/* Send confirmation back */
+							if (BOS.response == BOS_RESPONSE_ALL || BOS.response == BOS_RESPONSE_MSG) {
+								messageParams[0] = responseStatus;
+								SendMessageToModule(src, CODE_WRITE_REMOTE_RESPONSE, 1);											
+							}
+							break;	
 
-								
-							case CODE_write_remote_response :
-								responseStatus = (BOS_Status) cMessage[port-1][4];
-								break;	
 							
-							
-							default :
-								/* Process module tasks */
-								result = (BOS_Status) Module_MessagingTask(code, port, src, dst);
-								break;
-						}
+						case CODE_WRITE_REMOTE_RESPONSE :
+							responseStatus = (BOS_Status) cMessage[port-1][shift];
+							break;	
+						
+						case CODE_PORT_FORWARD :
+							writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
+							break;
+						
+						default :
+							/* Process module messages */
+							result = (BOS_Status) Module_MessagingTask(code, port, src, dst, shift);
+							break;
 					}
 				}
-
 			}	
-			
 		}
 		
 		/* Is it unknown message? */
 		if (result == BOS_ERR_UnknownMessage) {
-			SendMessageToModule(src, CODE_unknown_message, 0);
+			SendMessageToModule(src, CODE_UNKNOWN_MESSAGE, 0);
 			result = BOS_OK;			
 		}
 		
@@ -1267,10 +1358,7 @@ void PxMessagingTask(void * argument)
 		if (portStatus[port] != STREAM && portStatus[port] != CLI && portStatus[port] != PORTBUTTON) {
 			/* Free the port */
 			portStatus[port] = FREE;
-			/* Read this port again */
-			HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
 		}
-		BOS.trace = oldTraceMode;
 		
 		taskYIELD();
 	}
@@ -1281,7 +1369,7 @@ void PxMessagingTask(void * argument)
 
 /*  Micro-seconds timebase init function - TIM14 (16-bit)
 */
-void MX_TIM_USEC_Init(void)
+void TIM_USEC_Init(void)
 {
   TIM_MasterConfigTypeDef sMasterConfig;
 	
@@ -1290,15 +1378,43 @@ void MX_TIM_USEC_Init(void)
 
 	/* Peripheral configuration */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
+  htim14.Init.Prescaler = HAL_RCC_GetPCLK1Freq()/1000000;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim14.Init.Period = 1;
+  htim14.Init.Period = 0xFFFF;
   HAL_TIM_Base_Init(&htim14);
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim14, &sMasterConfig);
+	
+	HAL_TIM_Base_Start(&htim14);
+}
 
+/*-----------------------------------------------------------*/
+
+/*-----------------------------------------------------------*/
+
+/*  Milli-seconds timebase init function - TIM15 (16-bit)
+*/
+void TIM_MSEC_Init(void)
+{
+  TIM_MasterConfigTypeDef sMasterConfig;
+	
+	/* Peripheral clock enable */
+	__TIM15_CLK_ENABLE();
+
+	/* Peripheral configuration */
+  htim15.Instance = TIM15;
+  htim15.Init.Prescaler = HAL_RCC_GetPCLK1Freq()/1000;
+  htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim15.Init.Period = 0xFFFF;
+  HAL_TIM_Base_Init(&htim15);
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  HAL_TIMEx_MasterConfigSynchronization(&htim15, &sMasterConfig);
+	
+	HAL_TIM_Base_Start(&htim15);
 }
 
 /*-----------------------------------------------------------*/
@@ -1345,68 +1461,47 @@ uint8_t QnotEmpty(uint8_t* Q)
 BOS_Status ForwardReceivedMessage(uint8_t incomingPort)
 {
 	BOS_Status result = BOS_OK;
-	uint8_t length = 0, port = 0, src = 0; uint16_t code = 0;
-	
-	/* Message length */
-	length = messageLength[incomingPort-1];
-	/* Message source */
-	src = cMessage[incomingPort-1][1];
-	/* Message code */
-	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
-	/* Message parameters */
-	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
+	uint8_t port, dst;
+
+	/* Single-cast. Do not add broadcast ID */
+	AddBcastPayload = false; 	
+
+	dst = cMessage[incomingPort-1][0];
 	
 	/* Find best output port for destination module */
-	port = FindRoute(myID, cMessage[incomingPort-1][0]); 
+	port = FindRoute(myID, dst); 
 	
-	/* Transmit the message from this port */
-	SendMessageFromPort(port, src, cMessage[incomingPort-1][0], code, length-5);	
-
+	/* Forward the message. Set src and code to 0 to inform the API to copy the exact message received on incomingPort 
+			which is passed thru numberOfParams and to use port as output port */
+	SendMessageFromPort(port, 0, dst, 0, incomingPort);
+	
 	return result;	
 }
 
 /*-----------------------------------------------------------*/
 
-/* --- Activate Messaging Tasks from ISR
+/* --- Broadcast a received message to all connected modules - TODO update with new protocol
 */
-void NotifyMessagingTaskFromISR(uint8_t port)
+BOS_Status BroadcastReceivedMessage(uint8_t dstGroup, uint8_t incomingPort)
 {
-	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+	BOS_Status result = BOS_OK;
 	
-	switch (port)
-	{
-	#ifdef _P1
-		case P1 : 
-			vTaskNotifyGiveFromISR(P1MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P2
-		case P2 :
-			vTaskNotifyGiveFromISR(P2MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P3
-		case P3 :
-			vTaskNotifyGiveFromISR(P3MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P4
-		case P4 :
-			vTaskNotifyGiveFromISR(P4MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P5
-		case P5 :
-			vTaskNotifyGiveFromISR(P5MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-	#ifdef _P6
-		case P6 :
-			vTaskNotifyGiveFromISR(P6MsgTaskHandle, &( xHigherPriorityTaskWoken ) );	
-	#endif
-		default:
-			;
-	}		
+	/* Broadcast ID and groups are already in the payload. Don't add new ones */
+	AddBcastPayload = false; dstGroupID = dstGroup;	
+	
+	/* Forward the message with a broadcast flag. Set src and code to 0 to inform the API to copy the exact message received on 
+		incomingPort which is passed thru numberOfParams. Src will be updated with original source inside the function */
+	if (dstGroup == BOS_BROADCAST)
+		SendMessageFromPort(0, 0, BOS_BROADCAST, 0, incomingPort);
+	else
+		SendMessageFromPort(0, 0, BOS_MULTICAST, 0, incomingPort);
+	
+	return result;
 }
 
 /*-----------------------------------------------------------*/
 
-/* --- Activate Messaging Tasks 
+/* --- Activate Messaging Tasks
 */
 void NotifyMessagingTask(uint8_t port)
 {
@@ -1414,30 +1509,29 @@ void NotifyMessagingTask(uint8_t port)
 	{
 	#ifdef _P1
 		case P1 : 
-			xTaskNotifyGive(P1MsgTaskHandle);	
+			xTaskNotifyGive(P1MsgTaskHandle);	break;
 	#endif
 	#ifdef _P2
 		case P2 :
-			xTaskNotifyGive(P2MsgTaskHandle);	
+			xTaskNotifyGive(P2MsgTaskHandle);	break;
 	#endif
 	#ifdef _P3
 		case P3 :
-			xTaskNotifyGive(P3MsgTaskHandle);	
+			xTaskNotifyGive(P3MsgTaskHandle);	break;
 	#endif
 	#ifdef _P4
 		case P4 :
-			xTaskNotifyGive(P4MsgTaskHandle);	
+			xTaskNotifyGive(P4MsgTaskHandle);	break;
 	#endif
 	#ifdef _P5
 		case P5 :
-			xTaskNotifyGive(P5MsgTaskHandle);	
+			xTaskNotifyGive(P5MsgTaskHandle);	break;
 	#endif
 	#ifdef _P6
 		case P6 :
-			xTaskNotifyGive(P6MsgTaskHandle);	
+			xTaskNotifyGive(P6MsgTaskHandle);	break;
 	#endif
-		default:
-			;
+		default: break;
 	}		
 }
 
@@ -1635,36 +1729,7 @@ uint8_t LoadROsnippets(void)
 
 /*-----------------------------------------------------------*/
 
-///* --- Save array topology in EEPROM --- 
-//*/
-//BOS_Status SaveEEtopology(void)
-//{
-//	BOS_Status result = BOS_OK; 
-//	uint16_t add = 0, temp = 0;
-//	
-//	/* Save number of modules and myID */
-//	temp = (uint16_t) (N<<8) + myID;
-//	EE_WriteVariable(VirtAddVarTab[_EE_NBase], temp);
-//	
-//	/* Save topology */
-//	for(uint8_t i=1 ; i<=N ; i++)
-//	{
-//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
-//		{
-//			if (array[i-1][0]) {
-//				EE_WriteVariable(VirtAddVarTab[_EE_topologyBase+add], array[i-1][j]);
-//				add++;
-//			}				
-//		}
-//	}
-//	
-//	if ((add+_EE_NBase) >= _EE_portDirBase)
-//		result = BOS_ERR_EEPROM;
-//	
-//	return result;
-//}
 
-/*-----------------------------------------------------------*/
 
 /* --- Load array topology stored in Flash RO --- 
 */
@@ -1703,33 +1768,6 @@ uint8_t LoadROtopology(void)
 }
 /*-----------------------------------------------------------*/
 
-///* --- Load array topology stored in EEPROM --- 
-//*/
-//BOS_Status LoadEEtopology(void)
-//{
-//	BOS_Status result = BOS_OK; 
-//	uint16_t add = 0, temp = 0;
-//	
-//	/* Load number of modules */
-//	EE_ReadVariable(VirtAddVarTab[_EE_NBase], &temp);
-//	N = (uint8_t) (temp>>8);
-//	if (N == 0)	N = 1;
-//	myID = (uint8_t) temp;
-//	
-//	/* Load topology */
-//	for(uint8_t i=1 ; i<=N ; i++)
-//	{
-//		for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
-//		{
-//			EE_ReadVariable(VirtAddVarTab[_EE_topologyBase+add], &array[i-1][j]);
-//			add++;			
-//		}
-//	}	
-//	
-//	return result;
-//}
-
-/*-----------------------------------------------------------*/
 
 /* --- Save array ports directions in EEPROM --- 
 */
@@ -1740,9 +1778,9 @@ BOS_Status SaveEEportsDir(void)
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
 		if (arrayPortsDir[i-1])
-			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+			EE_WriteVariable(_EE_PORT_DIR_BASE+i-1, arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1762,9 +1800,9 @@ BOS_Status ClearEEportsDir(void)
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
 		if (arrayPortsDir[i-1])
-			EE_WriteVariable(VirtAddVarTab[_EE_portDirBase+i-1], arrayPortsDir[i-1]);		
+			EE_WriteVariable(_EE_PORT_DIR_BASE+i-1, arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1781,9 +1819,9 @@ BOS_Status LoadEEportsDir(void)
 	
 	for(uint8_t i=1 ; i<=N ; i++)
 	{
-		EE_ReadVariable(VirtAddVarTab[_EE_portDirBase+i-1], &arrayPortsDir[i-1]);		
+		EE_ReadVariable(_EE_PORT_DIR_BASE+i-1, &arrayPortsDir[i-1]);		
 		
-		if ((i+_EE_portDirBase) >= _EE_aliasBase)
+		if ((i+_EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result = BOS_ERR_EEPROM;
 	}
 	
@@ -1806,7 +1844,7 @@ BOS_Status SaveEEalias(void)
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
 				temp = (uint16_t) (moduleAlias[i][j-1]<<8) + moduleAlias[i][j];
-				EE_WriteVariable(VirtAddVarTab[_EE_aliasBase+add], temp);
+				EE_WriteVariable(_EE_ALIAS_BASE+add, temp);
 				add++;			
 			}
 		}			
@@ -1829,7 +1867,7 @@ BOS_Status SaveEEgroup(void)
 	{
 		if (groupModules[i]) 
 		{
-			EE_WriteVariable(VirtAddVarTab[_EE_groupModulesBase+add], groupModules[i]);
+			EE_WriteVariable(_EE_GROUP_MODULES_BASE+add, groupModules[i]);
 			add++;			
 		}			
 	}
@@ -1842,7 +1880,7 @@ BOS_Status SaveEEgroup(void)
 			for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 			{
 				temp = (uint16_t) (groupAlias[i][j-1]<<8) + groupAlias[i][j];
-				EE_WriteVariable(VirtAddVarTab[_EE_groupAliasBase+add], temp);
+				EE_WriteVariable(_EE_GROUP_ALIAS_BASE+add, temp);
 				add++;			
 			}
 		}			
@@ -1864,7 +1902,7 @@ BOS_Status LoadEEalias(void)
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
-			EE_ReadVariable(VirtAddVarTab[_EE_aliasBase+add], &temp);
+			EE_ReadVariable(_EE_ALIAS_BASE+add, &temp);
 			moduleAlias[i][j] = (uint8_t) temp;
 			moduleAlias[i][j-1] = (uint8_t) (temp>>8);
 			add++;			
@@ -1887,7 +1925,7 @@ BOS_Status LoadEEgroup(void)
 	/* Load group members */
 	for(i=0 ; i<N ; i++)			// N modules
 	{
-		EE_ReadVariable(VirtAddVarTab[_EE_groupModulesBase+add], &groupModules[i]);
+		EE_ReadVariable(_EE_GROUP_MODULES_BASE+add, &groupModules[i]);
 		add++;
 	}
 
@@ -1896,7 +1934,7 @@ BOS_Status LoadEEgroup(void)
 	{
 		for(uint8_t j=1 ; j<=MaxLengthOfAlias ; j+=2)
 		{
-			EE_ReadVariable(VirtAddVarTab[_EE_groupAliasBase+add], &temp);
+			EE_ReadVariable(_EE_GROUP_ALIAS_BASE+add, &temp);
 			groupAlias[i][j] = (uint8_t) temp;
 			groupAlias[i][j-1] = (uint8_t) (temp>>8);
 			add++;			
@@ -1919,48 +1957,53 @@ BOS_Status LoadEEstreams(void)
 	static uint8_t src1, dst1, src2, dst2, src3, dst3;
 	
 	/* Direction */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE, &temp1);
 	if (!status1) {
 		direction = (uint8_t) temp1;
 	}
 
 	/* Count */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], &temp2);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+1, &temp1);
+	status2 = EE_ReadVariable(_EE_DMA_STREAM_BASE+2, &temp2);
 	if (!status1 && !status2) {
 		count = ( (uint32_t) temp1 << 16 ) + temp2;
 	}
 	
 	/* Timeout */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], &temp2);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+3, &temp1);
+	status2 = EE_ReadVariable(_EE_DMA_STREAM_BASE+4, &temp2);
 	if (!status1 && !status2) {
 		timeout = ( (uint32_t) temp1 << 16 ) + temp2;
 	}
 	
 	/* src1 | dst1 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+5, &temp1);
 	if (!status1) {
 		src1 = (uint8_t) (temp1 >> 8);
 		dst1 = (uint8_t) temp1;
 	}
 	
 	/* src2 | dst2 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+6, &temp1);
 	if (!status1) {
 		src2 = (uint8_t) (temp1 >> 8);
 		dst2 = (uint8_t) temp1;	
 	}
 
 	/* src3 | dst3 */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], &temp1);
+	status1 = EE_ReadVariable(_EE_DMA_STREAM_BASE+7, &temp1);
 	if (!status1) {
 		src3 = (uint8_t) (temp1 >> 8);
 		dst3 = (uint8_t) temp1;
 	}
 	
 	/* Activate the DMA streams */
-	SetupDMAStreamsFromMessage(direction, count, timeout, src1, dst1, src2, dst2, src3, dst3);
+	if (src1 && dst1)
+		SetupDMAStreams(direction, count, timeout, src1, dst1);
+	if (src2 && dst2)
+		SetupDMAStreams(direction, count, timeout, src2, dst2);
+	if (src3 && dst3)
+		SetupDMAStreams(direction, count, timeout, src3, dst3);
 	
 	return result;
 }
@@ -1974,14 +2017,14 @@ BOS_Status SaveEEstreams(uint8_t direction, uint32_t count, uint32_t timeout, ui
 {
 	BOS_Status result = BOS_OK; 
 	
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase], direction);			/* Direction */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+1], ( (uint16_t) (count >> 8)));				/* Count high half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+2], ( (uint16_t) count));								/* Count low half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+3], ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+4], ( (uint16_t) timeout));							/* Timeout low half-word */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+5], ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+6], ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
-	EE_WriteVariable(VirtAddVarTab[_EE_DMAStreamsBase+7], ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE, direction);			/* Direction */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+1, ( (uint16_t) (count >> 8)));				/* Count high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+2, ( (uint16_t) count));								/* Count low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+3, ( (uint16_t) (timeout >> 8)));			/* Timeout high half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+4, ( (uint16_t) timeout));							/* Timeout low half-word */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+5, ( (uint16_t) (src1 << 8) ) + (uint16_t) dst1);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+6, ( (uint16_t) (src2 << 8) ) + (uint16_t) dst2);			/* src1 | dst1 */
+	EE_WriteVariable(_EE_DMA_STREAM_BASE+7, ( (uint16_t) (src3 << 8) ) + (uint16_t) dst3);			/* src1 | dst1 */
 	
 	return result;
 }
@@ -1996,11 +2039,11 @@ BOS_Status LoadEEparams(void)
 	uint16_t temp1, temp2, status1, status2; 
 	
 	/* Read params base - BOS response and BOS trace */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsBase], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_BASE, &temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if (!status1) {
 		BOS.response = (uint8_t)temp1;
-		BOS.trace = (bool)(temp1>>8);
+		BOS.trace = (traceOptions_t)(temp1>>8);
 	/* Couldn't find the variable, load default config */
 	} else {
 		BOS.response = BOS_default.response;
@@ -2008,21 +2051,21 @@ BOS_Status LoadEEparams(void)
 	}
 		
 	/* Read Button debounce */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDebounce], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_DEBOUNCE, &temp1);
 	if (!status1) 
 		BOS.buttons.debounce = temp1;
 	else
 		BOS.buttons.debounce = BOS_default.buttons.debounce;
 
 	/* Read Button single click time */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsSinClick], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_SINGLE_CLICK, &temp1);
 	if (!status1) 
 		BOS.buttons.singleClickTime = temp1;
 	else
 		BOS.buttons.singleClickTime = BOS_default.buttons.singleClickTime;	
 
 	/* Read Button double click time (min and max inter-click) */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsDblClick], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_DBL_CLICK, &temp1);
 	if (!status1) {
 		BOS.buttons.minInterClickTime = (uint8_t)temp1;
 		BOS.buttons.maxInterClickTime = (uint8_t)(temp1>>8);
@@ -2032,17 +2075,19 @@ BOS_Status LoadEEparams(void)
 	}
 	
 	/* Read CLI baudrate */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud], &temp1);
-	status2 = EE_ReadVariable(VirtAddVarTab[_EE_CLIBaud+1], &temp2);
+	status1 = EE_ReadVariable(_EE_CLI_BAUD, &temp1);
+	status2 = EE_ReadVariable(_EE_CLI_BAUD+1, &temp2);
 	if (!status1 && !status2) 
 	{
 		BOS.clibaudrate = (uint32_t)temp1 | (((uint32_t)temp2)<<16);
 	}
+	else if(CLI_LOW_Baudrate_Flag)
+		BOS.clibaudrate = CLI_BAUDRATE_1;
 	else
 		BOS.clibaudrate = BOS_default.clibaudrate;
 	
 	/* Read RTC hourformat and daylightsaving */
-	status1 = EE_ReadVariable(VirtAddVarTab[_EE_ParamsRTC], &temp1);
+	status1 = EE_ReadVariable(_EE_PARAMS_RTC, &temp1);
 	if (!status1) {
 		BOS.daylightsaving = (int8_t)temp1;
 		BOS.hourformat = (uint8_t)(temp1>>8);
@@ -2063,23 +2108,23 @@ BOS_Status SaveEEparams(void)
 	BOS_Status result = BOS_OK; 
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+	EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<5) | (uint16_t)BOS.response);
 		
 	/* Save Button debounce */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], BOS.buttons.debounce);
+	EE_WriteVariable(_EE_PARAMS_DEBOUNCE, BOS.buttons.debounce);
 
 	/* Save Button single click time */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], BOS.buttons.singleClickTime);
+	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK, BOS.buttons.singleClickTime);
 
 	/* Save Button double click time (min and max inter-click) */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.daylightsaving);
+	EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.daylightsaving);
 
 	/* Save CLI baudrate */
-	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
-	EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+	EE_WriteVariable(_EE_CLI_BAUD, (uint16_t)BOS.clibaudrate);
+	EE_WriteVariable(_EE_CLI_BAUD+1, (uint16_t)(BOS.clibaudrate>>16));
 	
 	/* Save RTC hourformat and daylightsaving */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 	
 	return result;
 }
@@ -2096,7 +2141,7 @@ BOS_Status LoadEEbuttons(void)
 	
 	for(uint8_t i=0 ; i<=NumOfPorts ; i++)
 	{
-		status1 = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)], &temp16);
+		status1 = EE_ReadVariable(_EE_BUTTON_BASE+4*(i), &temp16);
 		
 		if(!status1)																												// This variable exists
 		{
@@ -2105,13 +2150,13 @@ BOS_Status LoadEEbuttons(void)
 			{
 				button[i+1].type = temp8 & 0x0F;
 				button[i+1].events = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+1], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+1, &temp16);
 				button[i+1].pressedX1Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY1Sec = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+2], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+2, &temp16);
 				button[i+1].pressedX2Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY2Sec = (uint8_t)temp16;
-				EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(i)+3], &temp16);
+				EE_ReadVariable(_EE_BUTTON_BASE+4*(i)+3, &temp16);
 				button[i+1].pressedX3Sec = (uint8_t)(temp16 >> 8);
 				button[i+1].releasedY3Sec = (uint8_t)temp16;
 				/* Setup the button and its events */
@@ -2129,62 +2174,52 @@ BOS_Status LoadEEbuttons(void)
 
 /* --- Setup DMA streams upon request from another module --- 
 */
-void SetupDMAStreamsFromMessage(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src1, uint8_t dst1, uint8_t src2, \
-	uint8_t dst2, uint8_t src3, uint8_t dst3)
+BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst)
 {
-	TimerHandle_t xTimerStream = NULL;
+	TimerHandle_t xTimerStream = NULL; 
+	
+	/* Sanity check */
+	if (src == dst) {							// Streaming inside destination module. Lock this port to streaming but no need to setup DMA
+		portStatus[src] = STREAM;
+		return BOS_ERR_WrongParam;
+	} else if (src == 0 || dst == 0) 			// Streaming outside source module or inside destination module without defining ports. Do not lock the port and do not setup DMA
+		return BOS_ERR_WrongParam;
 	
 	/* Start DMA streams */
 	if (direction == FORWARD) 
-	{							
-		if (src1 && dst1) {
-			PortPortDMA1_Setup(GetUart(src1), GetUart(dst1), 1); DMAStream1total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-		}
-		if (src2 && dst2) {
-			PortPortDMA2_Setup(GetUart(src2), GetUart(dst2), 1); DMAStream2total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 2, StreamTimerCallback );
-		}
-		if (src3 && dst3) {
-			PortPortDMA3_Setup(GetUart(src3), GetUart(dst3), 1); DMAStream3total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 3, StreamTimerCallback );
-		}
+	{									
+		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
+		dmaStreamTotal[src-1] = count;
 	} 
 	else if (direction == BACKWARD) 
 	{
-		if (src1 && dst1) {
-			PortPortDMA1_Setup(GetUart(dst1), GetUart(src1), 1); DMAStream1total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-		}
-		if (src2 && dst2) {
-			PortPortDMA2_Setup(GetUart(dst2), GetUart(src2), 1); DMAStream2total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 2, StreamTimerCallback );
-		}
-		if (src3 && dst3) {
-			PortPortDMA3_Setup(GetUart(dst3), GetUart(src3), 1); DMAStream3total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 3, StreamTimerCallback );
-		}
+		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
+		dmaStreamTotal[src-1] = count;
 	} 
 	else if (direction == BIDIRECTIONAL) 
 	{
-		if (src1 && dst1) {
-			PortPortDMA1_Setup(GetUart(src1), GetUart(dst1), 1); DMAStream1total = count;
-			PortPortDMA2_Setup(GetUart(dst1), GetUart(src1), 1); DMAStream2total = count;
-			/* Create a timeout timer */
-			xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
-		}
+		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY;
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
+		dmaStreamTotal[src-1] = count;
+		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
+		/* Create a timeout timer */
+		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
+		dmaStreamTotal[dst-1] = count;
 	}
+	else
+		return BOS_ERR_WrongParam;
 
+	
 	/* Start the timeout timer */
 	if (xTimerStream != NULL)
 		xTimerStart( xTimerStream, portMAX_DELAY );
-
+	
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
@@ -2197,28 +2232,9 @@ void StreamTimerCallback( TimerHandle_t xTimerStream )
 	
 	tid = ( uint32_t ) pvTimerGetTimerID( xTimerStream );
 	
-	switch (tid)
-	{
-		case 1 :
-			StopPortPortDMA1();
-			break;
-		
-		case 2 :
-			StopPortPortDMA2();
-			break;
-		
-		case 3 :
-			StopPortPortDMA3();
-			break;
-		
-		case 12 :
-			StopPortPortDMA1();
-			StopPortPortDMA2();
-			break;
-		
-		default:
-			break;
-	}	
+	StopStreamDMA(tid);
+	
+	SwitchStreamDMAToMsg(tid);
 }
 
 /*-----------------------------------------------------------*/	
@@ -2345,113 +2361,6 @@ void EE_FormatForFactoryReset(void)
 }
 
 /*-----------------------------------------------------------*/	
-
-/* --- Broadcast a received message to all connected modules 
-*/
-BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t incomingPort)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t length = 0, src = 0; uint16_t code = 0;
-	
-	/* Broadcast ID is already there. Don't add a new one */
-	
-	/* Message length */
-	length = messageLength[incomingPort-1];
-	/* Message source */
-	src = cMessage[incomingPort-1][1];
-	/* Message code */
-	code = ( (uint16_t) cMessage[incomingPort-1][2] << 8 ) + cMessage[incomingPort-1][3];
-	/* Message parameters */
-	memcpy(messageParams, &cMessage[incomingPort-1][4], (size_t) (length-5) );
-
-	/* Get broadcast routes */
-	FindBroadcastRoutes(src);
-	
-	/* Send to all my broadcast ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
-		{
-			/* Transmit the message from this port */
-			if (dstType == BOS_BROADCAST)
-				SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);
-			else if (dstType == BOS_MULTICAST)
-				SendMessageFromPort(port, src, BOS_MULTICAST, code, length-5);
-		}	
-	}
-
-	/* Reset messageParams buffer */
-	memset( messageParams, 0, length-5 );
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a message to all connected modules 
-*/
-BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams)
-{
-	uint8_t length = 0, i = 0, groupMembers = 0;
-	
-	/* 1. Add group members if it's a multicast */
-	if (dstGroup < BOS_BROADCAST)
-	{
-		/* Extract and add group member IDs to the Message */
-		for(i=1 ; i<=N ; i++)						// N modules
-		{
-			if (InGroup(i, dstGroup))
-			{
-				++groupMembers;							// Add this member
-				if ((numberOfParams+groupMembers+1) < (MAX_MESSAGE_SIZE-5))
-					messageParams[numberOfParams+groupMembers-1] = i;
-				else
-					return BOS_ERR_MSG_DOES_NOT_FIT;
-			}
-		}
-		/* Add number of members */
-		messageParams[numberOfParams+groupMembers] = groupMembers;
-	}
-
-	/* 2. Add unique broadcast ID */
-	if ( (dstGroup == BOS_BROADCAST) && ((numberOfParams+1) < (MAX_MESSAGE_SIZE-5)) )
-		messageParams[numberOfParams] = ++bcastID;
-	else if (dstGroup == BOS_BROADCAST)
-		return BOS_ERR_MSG_DOES_NOT_FIT;
-	else if ( (dstGroup < BOS_BROADCAST) && ((numberOfParams+groupMembers+2) < (MAX_MESSAGE_SIZE-5)) )		// Multicast
-		messageParams[numberOfParams+groupMembers+1] = ++bcastID;
-	else if (dstGroup < BOS_BROADCAST)																																		// Multicast
-		return BOS_ERR_MSG_DOES_NOT_FIT;
-	
-	/* Calculate message length */
-	if (dstGroup == BOS_BROADCAST)
-		length = numberOfParams + 1 + 5;
-	else
-		length = numberOfParams + (groupMembers + 1) + 1 + 5;
-	
-	/* Get broadcast routes */
-	FindBroadcastRoutes(src);
-	
-	/* Send to all my broadcast ports */
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if ( (bcastRoutes[myID-1] >> (port-1)) & 0x01 ) 		
-		{
-			/* Transmit the message from this port */
-			if (dstGroup == BOS_BROADCAST)
-				SendMessageFromPort(port, src, BOS_BROADCAST, code, length-5);
-			else
-				SendMessageFromPort(port, src, BOS_MULTICAST, code, length-5);
-		}	
-	}
-
-	/* Reset messageParams buffer */
-	memset( messageParams, 0, numberOfParams+1 );
-	
-	return BOS_OK;
-}
-
-/*-----------------------------------------------------------*/
 
 /* --- Port buttons state parser
 */
@@ -2940,9 +2849,9 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 	
 	/* Check if a force write is needed */
 	if (force)
-		code = CODE_write_remote_force;
+		code = CODE_WRITE_REMOTE_FORCE;
 	else
-		code = CODE_write_remote;
+		code = CODE_WRITE_REMOTE;
 	
 	/* Writing to a BOS var */
 	if (remoteAddress < FLASH_BASE)
@@ -2955,29 +2864,29 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 			case FMT_BOOL:
 			case FMT_UINT8: 
 				messageParams[2] = *(__IO uint8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 3); break;
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 3); break;
 			case FMT_INT8: 
 				messageParams[2] = *(__IO int8_t *)localAddress; 
-				SendMessageToModule(module, CODE_write_remote, 3); break;
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 3); break;
 			case FMT_UINT16: 
 				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 4); break;
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 4); break;
 			case FMT_INT16: 
 				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
-				SendMessageToModule(module, CODE_write_remote, 4); break;
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 4); break;
 			case FMT_UINT32: 
 				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
 				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
-				SendMessageToModule(module, CODE_write_remote, 6); break;
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;
 			case FMT_INT32: 
 				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
 				messageParams[4] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_write_remote, 6); break;										
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;										
 			case FMT_FLOAT:
 				messageParams[2] = *(__IO uint8_t *)(localAddress+0); messageParams[3] = *(__IO uint8_t *)(localAddress+1); messageParams[4] = *(__IO uint8_t *)(localAddress+2); 
 				messageParams[5] = *(__IO uint8_t *)(localAddress+3); messageParams[6] = *(__IO uint8_t *)(localAddress+4); messageParams[7] = *(__IO uint8_t *)(localAddress+5); 
 				messageParams[8] = *(__IO uint8_t *)(localAddress+6); messageParams[9] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_write_remote, 10); break;			
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 10); break;			
 			default:
 				break;
 		}					
@@ -3336,9 +3245,11 @@ void BOS_Init(void)
 	EE_Init();
 	
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_TIM_USEC_Init();
+  GPIO_Init();
+	DMA_Init();
+	TIM_USEC_Init();
+	CRC_Init();
+	TIM_MSEC_Init();
 	
 	/* Check for factory reset */
 	if (IsFactoryReset())
@@ -3353,6 +3264,7 @@ void BOS_Init(void)
 	/* Check if booting at lower CLI baudrate */
 	if (IsLowerCLIbaud())
 	{
+		CLI_LOW_Baudrate_Flag = 1;
 		/* Initialize the module */
 		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();	
@@ -3378,6 +3290,9 @@ void BOS_Init(void)
 #ifndef _N
 	UpdateMyPortsDir();
 #endif	
+	
+	/* Start backend messaging DMAs */
+	SetupMessagingRxDMAs();
 
 	/* Startup indicator sequence */
 	if (myID == 0)		/* Native module */
@@ -3392,6 +3307,9 @@ void BOS_Init(void)
 		Delay_ms_no_rtos(100);
 		IND_ON();	Delay_ms_no_rtos(100); IND_OFF();
 	}
+	
+	/* Reset UART overrun errors in case other modules were already transmitting on startup */
+	ResetUartORE();
 
 	BOS_initialized = 1;
 }
@@ -3431,7 +3349,14 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &actSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &pauseSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &bridgeCommandDefinition);
+	FreeRTOS_CLIRegisterCommand( &unbridgeCommandDefinition);
 	
+	numOfBosCommands = 28;			// Add "help" command
+#ifndef _N	
+	numOfBosCommands = 29;
+#endif
+
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
 }
@@ -3484,13 +3409,57 @@ UART_HandleTypeDef* GetUart(uint8_t port)
 		case P10 :
 			return P10uart;
 	#endif
-	#ifdef _PUSB
-		case PUSB :
-			return PUSBuart;
-	#endif
 		default:
 			return 0;
 	}		
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Broadcast a message to all connected modules
+*/
+BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams)
+{
+	/* Set a flag to populate broadcast ID and groups */
+	AddBcastPayload = true; dstGroupID = dstGroup;
+	
+	/* Send the message out with a broadcast flag */
+	if (dstGroup == BOS_BROADCAST)
+		SendMessageFromPort(0, src, BOS_BROADCAST, code, numberOfParams);
+	else
+		SendMessageFromPort(0, src, BOS_MULTICAST, code, numberOfParams);
+
+	/* Reset messageParams buffer */
+	memset( messageParams, 0, numberOfParams );
+	
+	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
+*/
+BOS_Status SendMessageToGroup(char* group, uint16_t code, uint16_t numberOfParams)
+{
+	BOS_Status result = BOS_OK;
+	uint8_t i = 0; 
+	
+	/* Search for group alias*/
+
+	for(i=0 ; i<MaxNumOfGroups ; i++)
+	{
+		/* This group exists */
+		if (!strcmp(group, groupAlias[i]))	
+		{
+			/* Multicast the message to this group */
+			result = BroadcastMessage(myID, i, code, numberOfParams);
+			
+			return result;
+		}
+	}	
+	
+	/* This group does not exist */
+	return BOS_ERR_WrongGroup;
 }
 
 /*-----------------------------------------------------------*/
@@ -3525,391 +3494,478 @@ BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfPara
 
 /*-----------------------------------------------------------*/
 
-/* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
-*/
-BOS_Status SendMessageToGroup(char* group, uint16_t code, uint16_t numberOfParams)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t i = 0; 
-	
-	/* Search for group alias*/
-
-	for(i=0 ; i<MaxNumOfGroups ; i++)
-	{
-		/* This group exists */
-		if (!strcmp(group, groupAlias[i]))	
-		{
-			/* Multicast the message to this group */
-			result = BroadcastMessage(myID, i, code, numberOfParams);
-			
-			return result;
-		}
-	}	
-	
-	/* This group does not exist */
-	return BOS_ERR_WrongGroup;
-}
-
-/*-----------------------------------------------------------*/
-
 /* --- Send a message from a specific port 
+	 Note: The messageParams buffer does not get erased here to enable reuse for other transmissions.
+				Make sure you manually erase the buffer when you're done with it. 
+
+				#		port			src				dst							case
+				====================================================================================
+				1		0					!0				!0							Broadcast or multi-cast message.
+				2		0					0					!0							Broadcast or multi-cast message forwarded from another port (which is passed to the API thru numberOfParams).
+				3		0					!0				0								Not allowed.
+				4		0					0					0								Not allowed.
+				5		!0				!0				!0							Single-cast message.
+        6   !0        0					!0							Either single-cast message with myID as source module OR (if code == 0)
+																								 single-cast message forwarded from another port (which is passed to the API thru numberOfParams).
+        7   !0        !0				0								Not allowed.
+        8   !0        0					0								Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
 */
 BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams)
 {
 	BOS_Status result = BOS_OK; 
-	uint8_t length = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0;
-	char message[MAX_MESSAGE_SIZE] = {0};
+	uint8_t length = 0, shift = 0; static uint16_t totalNumberOfParams = 0; static uint16_t ptrShift = 0;
+	bool extendOptions = false, extendCode = false;
+	UBaseType_t TaskPriority;
+	
+	/* Sanity check broadcast/multi-cast and not allowed cases */
+	if ((port == 0 && dst == 0) ||																												// cases 3 & 4
+			(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 										// cases 1 & 2
+			(port != 0 && src != 0 && dst == 0)) {																						// case 7
+		return BOS_ERR_WrongParam; 
+	}
 	
 	/* Increase the priority of current running task */
-	vTaskPrioritySet( NULL, osPriorityHigh );
+	TaskPriority = uxTaskPriorityGet( NULL );
+	vTaskPrioritySet( NULL, osPriorityHigh-osPriorityIdle );
 	
-	if (!src)	src = myID;
-	
-	/* Construct the message */
-	message[0] = dst;						
-	message[1] = src;
-	message[3] = (uint8_t) code;
-	message[2] = (uint8_t) (code >> 8);	
-	
-	/* Apply response options */
-	message[2] |= BOS.response;												/* CODE 15th bit for Message response, 14th bit for CLI response */
+	/* HZ Delimiter */
+	message[0] = 'H';						
+	message[1] = 'Z';
 
-	/* Apply trace options */
-	message[2] |= (BOS.trace<<4);											/* CODE 13th bit for Message trace */
-	
-	/* Copy parameters */
-	if (numberOfParams <= (MAX_MESSAGE_SIZE-5) ) {				
-		memcpy((char*)&message[4], (&messageParams[0]+ptrShift), numberOfParams);
-		/* Calculate message length */
-		length = numberOfParams + 5;
-	} else {
-		/* Toggle code MSB (16th bit) to inform receiver about a long message */
-		code |= 0x8000;		
-		totalNumberOfParams = numberOfParams;
-		numberOfParams = MAX_MESSAGE_SIZE-5;
-		/* Break into multiple messages */
-		while (totalNumberOfParams != 0)
-		{		
-			if ( (totalNumberOfParams/numberOfParams) >= 1) 
-			{	
-				/* Call this function recursively */
-				SendMessageFromPort(port, src, dst, code, numberOfParams);
-				osDelay(10);
-				/* Update remaining number of parameters */
-				totalNumberOfParams -= numberOfParams;
-				ptrShift += numberOfParams;
-			} 
-			else 
-			{
-				code &= 0x7FFF;		/* Last message */
-				numberOfParams = totalNumberOfParams;
-				memcpy((char*)&message[4], (&messageParams[0]+ptrShift), numberOfParams);
-				ptrShift = 0; totalNumberOfParams = 0;
-				/* Calculate message length */
-				length = numberOfParams + 5;
-			}
+	/* Should I copy message buffer from another port or construct from scratch? */
+	if ((port == 0 && src == 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST)) || code == 0)					// case 2 and part of case 6
+	{
+		/* Get message length from the incoming port */
+		length = messageLength[numberOfParams-1];
+
+		/* Copy message buffer from the incoming port as is */
+		memcpy(&message[3], &cMessage[numberOfParams-1][0], (size_t) length);
+	}
+	/* Construct message from scratch - case 5 */
+	else
+	{		
+		/* Sending to adjacent neighbors - case 2, case 8 and part of case 6 */
+		if (src == 0)		src = myID;
+				
+		/* Extended code flag? */
+		if (code > 0xFF)	extendCode = true;
+		
+		/* TODO implement extended options */		
+
+		
+		/* Construct the message */
+		
+		/* Header */
+		message[2] = length;	
+		message[3] = dst;						
+		message[4] = src;
+		
+		/* Options */
+		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
+		message[5] = (BOS.response) | (BOS.trace<<2) | (extendCode<<1) | (extendOptions);
+		if (extendOptions == true) {
+			++shift;
 		}
-	}	
-	
-	/* if length is 0xD = 13, append by one zero byte. If it's a broadcast, append before bcastID */
-	if (length == 13) {
-		++length;
-		if (dst == BOS_BROADCAST || dst == BOS_MULTICAST) 
-			message[length-2] = message[length-3];		// Move bcastID to last byte before End of Message
-	}		
-	
-	/* 0x75 End of message */
-	message[length-1] = 0x75;		
-	
-	/* Give back the semaphore if needed. */
-	osSemaphoreRelease(PxRxSemaphoreHandle[port]);
-	
-	/* Transmit message length byte */
-	GetUart(port)->Instance->TDR = length;
+		
+		/* Code - LSB first */
+		message[6+shift] = (uint8_t) code;
+		if (extendCode == true) {
+			++shift;
+			message[6+shift] = (uint8_t) (code >> 8);		
+		}
+		
+		/* Parameters */
+		
+		if (numberOfParams <= MAX_PARAMS_PER_MESSAGE ) {				
+			memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
+			/* Calculate message length */
+			length = numberOfParams + shift + 4;
+		} else {
+			/* Long message: Set Options byte 8th bit */
+			message[5] |= 0x80;		
+			totalNumberOfParams = numberOfParams;
+			numberOfParams = MAX_PARAMS_PER_MESSAGE;
+			/* Break into multiple messages */
+			while (totalNumberOfParams != 0)
+			{		
+				if ( (totalNumberOfParams/numberOfParams) >= 1) 
+				{	
+					/* Call this function recursively */
+					SendMessageFromPort(port, src, dst, code, numberOfParams);
+					osDelay(10);
+					/* Update remaining number of parameters */
+					totalNumberOfParams -= numberOfParams;
+					ptrShift += numberOfParams;
+				} 
+				else 
+				{
+					message[5] &= 0x7F;		/* Last message. Reset long message flag */
+					numberOfParams = totalNumberOfParams;
+					memcpy((char*)&message[7+shift], (&messageParams[0]+ptrShift), numberOfParams);
+					ptrShift = 0; totalNumberOfParams = 0;
+					/* Calculate message length */
+					length = numberOfParams + shift + 4;
+				}
+			}
+		}	
 
-	/* Wait some time */
-	Delay_us(1500);
-	
-	/* Transmit the message */
-	writePxMutex(port, message, length, cmd50ms, 20);	
+		/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
+		/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
+		
+		if(AddBcastPayload == true)
+		{
+			uint8_t groupMembers = 0;
+		
+			/* Add group members if it's a multicast */
+			if (dstGroupID < BOS_BROADCAST)
+			{
+				/* Extract and add group member IDs to the Message */
+				for(uint16_t i=1 ; i<=N ; i++)						// N modules
+				{
+					if (InGroup(i, dstGroupID))
+					{
+						++groupMembers;							// Add this member
+						if ((numberOfParams+groupMembers+1) < MAX_PARAMS_PER_MESSAGE)
+							message[7+shift+numberOfParams+groupMembers-1] = i;
+						else
+							return BOS_ERR_MSG_DOES_NOT_FIT;
+					}
+				}
+				/* Add number of members */
+				message[7+shift+numberOfParams+groupMembers] = groupMembers;
+			}
 
-	/* Put the priority of current running task back to normal */
-	vTaskPrioritySet( NULL, osPriorityNormal );
+			/* Add unique broadcast ID */
+			if ( (dstGroupID == BOS_BROADCAST) && ((numberOfParams+1) < MAX_PARAMS_PER_MESSAGE) )
+				message[7+shift+numberOfParams] = ++bcastID;
+			else if (dstGroupID == BOS_BROADCAST)
+				return BOS_ERR_MSG_DOES_NOT_FIT;
+			else if ( (dstGroupID < BOS_BROADCAST) && ((numberOfParams+groupMembers+2) < MAX_PARAMS_PER_MESSAGE) )		// Multicast
+				message[7+shift+numberOfParams+groupMembers+1] = ++bcastID;
+			else if (dstGroupID < BOS_BROADCAST)																																		// Multicast
+				return BOS_ERR_MSG_DOES_NOT_FIT;
+			
+			/* Calculate new message length */
+			if (dstGroupID == BOS_BROADCAST)
+				length += 1;		// + bcastID
+			else
+				length += groupMembers + 2;		// + bcastID + number of group member + group members IDs 
+		}
+	}
+		
+	/* Copy message length */
+	message[2] = length;
 	
-	/* In case response is expected */
+	/* End of message - Calculate CRC8 */	
+	memcpy(crcBuffer, &message[0], length + 3);	
+	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (length + 3)/4);
+	if ((length + 3)%4 != 0) 							// Non-word-aligned packet
+		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((length + 3)/4)*4], 1);
+
+	memset(crcBuffer, 0, sizeof(crcBuffer));
+	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
+	
+	/* Transmit the message - single-cast */
+	if (dst != BOS_BROADCAST && dst != BOS_MULTICAST) 
+	{
+		writePxDMAMutex(port, message, length+4, cmd50ms);
+	}
+	/* Transmit the message - multi-cast or broadcast */
+	else
+	{
+		if (code == 0 && src == 0) {					// Forwarded broadcast or multicast. Update with original source.
+			src = message[4];
+		} 
+		
+		/* Get broadcast routes */
+		FindBroadcastRoutes(src);
+		
+		/* Send to all my broadcast ports */
+		for (uint8_t p=1 ; p<=NumOfPorts ; p++) 
+		{
+			if ( (bcastRoutes[myID-1] >> (p-1)) & 0x01 ) 		
+			{
+				/* Transmit the message from this port */
+				writePxDMAMutex(p, message, length+4, cmd50ms);
+				Delay_ms(1);
+			}	
+		}
+	}
+
+	/* Put the priority of current running task back to its default state */
+	vTaskPrioritySet( NULL, TaskPriority );
+	
+	/* Reset responseStatus in case response is expected - TODO should be tailored for each port */
 	responseStatus = BOS_ERR_NoResponse;
-
-	/* Read this port again */
-	HAL_UART_Receive_IT(GetUart(port), (uint8_t *)&cRxedChar, 1);
 	
 	return result;
 }
 
 /*-----------------------------------------------------------*/
 
-#ifndef _N
-/* --- Explore the array and create its topology (executed only by master)
-*/
-BOS_Status Explore(void)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, p = 0, port = 0;
-	uint16_t temp16 = 0;
-	
-	myID = 1; 		/* Master ID */
-	
-	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
-	
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
-		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
-	}
-	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+//#ifndef _N
+///* --- Explore the array and create its topology (executed only by master)
+//*/
+//BOS_Status Explore(void)
+//{
+//	BOS_Status result = BOS_OK;
+//	uint8_t currentID = 0, lastID = 0, temp1 = 0, temp2 = 0, i = 0, j = 0, p = 0, port = 0;
+//	uint16_t temp16 = 0;
+//	
+//	myID = 1; 		/* Master ID */
+//	
+//	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
+//	
+//	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+//		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
+//	}
+//	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
 
-	
-	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
-	
-	/* Step 2a - Assign IDs to new modules */
-	currentID = 1;
-	for (port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if (neighbors[port-1][0])
-		{
-			/* New ID */
-			messageParams[1] = ++currentID;
-			N = currentID;			/* Update number of modules in the array */
-			/* Inform module to change ID */
-			messageParams[0] = 0;		/* change own ID */
-			SendMessageFromPort(port, 0, 0, CODE_module_id, 3);			
-			/* Modify neighbors table */
-			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
-			osDelay(10);
-		}
-	}
-	
-	/* Step 2b - Update master topology array */
-	array[0][0]	= myPN;					
-	for (port=1 ; port<=NumOfPorts ; port++) 
-	{
-		if (neighbors[port-1][0])
-		{
-			temp16 = neighbors[port-1][0];
-			temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
-			temp2 = (uint8_t)(neighbors[port-1][0]);				/* Neighbor port */
-			/* Module 1 (master) */
-			array[0][port] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
-			/* Rest of the neighbors */
-			array[temp1-1][0]	= neighbors[port-1][1];				/* Neighbor PN */
-			array[temp1-1][temp2] = ( myID << 3 ) | port;		/* Module 1 ID | Module 1 port */
-		}
-	}		
-	
-	/* Step 2c - Ask neighbors to update their topology array */
-	for (i=2 ; i<=currentID ; i++) 
-	{
-		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-		SendMessageToModule(i, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-		osDelay(60);
-	}
-	
-	
-	/* >>> Step 3 - Ask each new module to explore and repeat */
-	
-	while (lastID != currentID)
-	{
-		/* Update lastID */
-		lastID = currentID;
-		
-		/* Scan all discovered modules */
-		for (i=2 ; i<=currentID ; i++) 
-		{
-			/* Step 3a - Ask the module to reverse ports */
-			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) {
-				messageParams[p-1] = REVERSED;
-			}
-			messageParams[MaxNumOfPorts] = NORMAL;		/* Make sure the inport is not reversed */
-			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
-			osDelay(10);
-			
-			/* Step 3b - Ask the module to explore adjacent neighbors */
-			SendMessageToModule(i, CODE_explore_adj, 0);
-			osDelay(100);		
-		
-			/* Step 3c - Assign IDs to new modules */
-			for (j=1 ; j<=MaxNumOfPorts ; j++) 
-			{
-				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
-				temp1 = (uint8_t)(temp16>>8);											
-				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
-				{
-					/* New ID */
-					messageParams[1] = ++currentID;		
-					N = currentID;			/* Update number of modules in the array */
-					/* Modify neighbors table */
-					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
-					/* Ask the module to ID its yet unIDed neighbors */
-					messageParams[0] = 1;			/* change neighbor ID */
-					messageParams[2] = j;		/* neighbor port */
-					SendMessageToModule(i, CODE_module_id, 3);
-					osDelay(10);
-				}
-			}
-			
-			/* Step 3d - Update master topology array */
-			for (j=1 ; j<=MaxNumOfPorts ; j++) 
-			{
-				if (neighbors2[j-1][0])
-				{	
-					temp16 = neighbors2[j-1][0];
-					temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
-					temp2 = (uint8_t)(neighbors2[j-1][0]);					/* Neighbor port */		
-					if (temp1 != 1)			/* Execlude the master */
-					{
-						/* Update module i section */
-						if (array[i-1][j] == 0) {
-							array[i-1][j] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
-						}
-						/* Update module i neighbors */
-						if (array[temp1-1][temp2] == 0) {
-							array[temp1-1][0]	= neighbors2[j-1][1];				/* Neighbor PN */
-							array[temp1-1][temp2] = ( i << 3 ) | j;				/* Module i ID | Module i port */								
-						}
-					}
-				}
-			}	
-			
-			/* Reset neighbors2 array */
-			memset(neighbors2, 0, sizeof(neighbors2) );
-			
-			/* Step 3e - Ask all discovered modules to update their topology array */
-			for (j=2 ; j<=currentID ; j++) 
-			{
-				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-				SendMessageToModule(j, CODE_topology, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-				osDelay(60);
-			}
-		}
-	}
+//	
+//	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
+//	
+//	/* Step 2a - Assign IDs to new modules */
+//	currentID = 1;
+//	for (port=1 ; port<=NumOfPorts ; port++) 
+//	{
+//		if (neighbors[port-1][0])
+//		{
+//			/* New ID */
+//			messageParams[1] = ++currentID;
+//			N = currentID;			/* Update number of modules in the array */
+//			/* Inform module to change ID */
+//			messageParams[0] = 0;		/* change own ID */
+//			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);			
+//			/* Modify neighbors table */
+//			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
+//			osDelay(10);
+//		}
+//	}
+//	
+//	/* Step 2b - Update master topology array */
+//	array[0][0]	= myPN;					
+//	for (port=1 ; port<=NumOfPorts ; port++) 
+//	{
+//		if (neighbors[port-1][0])
+//		{
+//			temp16 = neighbors[port-1][0];
+//			temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
+//			temp2 = (uint8_t)(neighbors[port-1][0]);				/* Neighbor port */
+//			/* Module 1 (master) */
+//			array[0][port] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
+//			/* Rest of the neighbors */
+//			array[temp1-1][0]	= neighbors[port-1][1];				/* Neighbor PN */
+//			array[temp1-1][temp2] = ( myID << 3 ) | port;		/* Module 1 ID | Module 1 port */
+//		}
+//	}		
+//	
+//	/* Step 2c - Ask neighbors to update their topology array */
+//	for (i=2 ; i<=currentID ; i++) 
+//	{
+//		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//		osDelay(60);
+//	}
+//	
+//	
+//	/* >>> Step 3 - Ask each new module to explore and repeat */
+//	
+//	while (lastID != currentID)
+//	{
+//		/* Update lastID */
+//		lastID = currentID;
+//		
+//		/* Scan all discovered modules */
+//		for (i=2 ; i<=currentID ; i++) 
+//		{
+//			/* Step 3a - Ask the module to reverse ports */
+//			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) {
+//				messageParams[p-1] = REVERSED;
+//			}
+//			messageParams[MaxNumOfPorts] = NORMAL;		/* Make sure the inport is not reversed */
+//			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
+//			osDelay(10);
+//			
+//			/* Step 3b - Ask the module to explore adjacent neighbors */
+//			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
+//			osDelay(100);		
+//		
+//			/* Step 3c - Assign IDs to new modules */
+//			for (j=1 ; j<=MaxNumOfPorts ; j++) 
+//			{
+//				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
+//				temp1 = (uint8_t)(temp16>>8);											
+//				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
+//				{
+//					/* New ID */
+//					messageParams[1] = ++currentID;		
+//					N = currentID;			/* Update number of modules in the array */
+//					/* Modify neighbors table */
+//					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
+//					/* Ask the module to ID its yet unIDed neighbors */
+//					messageParams[0] = 1;			/* change neighbor ID */
+//					messageParams[2] = j;		/* neighbor port */
+//					SendMessageToModule(i, CODE_MODULE_ID, 3);
+//					osDelay(10);
+//				}
+//			}
+//			
+//			/* Step 3d - Update master topology array */
+//			for (j=1 ; j<=MaxNumOfPorts ; j++) 
+//			{
+//				if (neighbors2[j-1][0])
+//				{	
+//					temp16 = neighbors2[j-1][0];
+//					temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
+//					temp2 = (uint8_t)(neighbors2[j-1][0]);					/* Neighbor port */		
+//					if (temp1 != 1)			/* Execlude the master */
+//					{
+//						/* Update module i section */
+//						if (array[i-1][j] == 0) {
+//							array[i-1][j] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
+//						}
+//						/* Update module i neighbors */
+//						if (array[temp1-1][temp2] == 0) {
+//							array[temp1-1][0]	= neighbors2[j-1][1];				/* Neighbor PN */
+//							array[temp1-1][temp2] = ( i << 3 ) | j;				/* Module i ID | Module i port */								
+//						}
+//					}
+//				}
+//			}	
+//			
+//			/* Reset neighbors2 array */
+//			memset(neighbors2, 0, sizeof(neighbors2) );
+//			
+//			/* Step 3e - Ask all discovered modules to update their topology array */
+//			for (j=2 ; j<=currentID ; j++) 
+//			{
+//				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//				osDelay(60);
+//			}
+//		}
+//	}
 
-	
-	/* >>> Step 4 - Make sure all connected modules have been discovered */
-	
-	ExploreNeighbors(PcPort);
-	/* Check for any unIDed neighbors */
-	for (i=1 ; i<=NumOfPorts ; i++) 
-	{
-		temp16 = neighbors[i-1][0];		/* Neighbor ID */
-		temp1 = (uint8_t)(temp16>>8);											
-		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
-			result = BOS_ERR_UnIDedModule;
-		}		
-	}
-	/* Ask other modules for any unIDed neighbors */
-	for (i=2 ; i<=currentID ; i++) 
-	{
-		SendMessageToModule(i, CODE_explore_adj, 0);
-		osDelay(100);	
-		/* Check for any unIDed neighbors */
-		for (j=1 ; j<=MaxNumOfPorts ; j++) 
-		{
-			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
-			temp1 = (uint8_t)(temp16>>8);											
-			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
-				result = BOS_ERR_UnIDedModule;
-			}
-		}				
-	}
-	
-	
-	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
-	
-	if (result == BOS_OK)
-	{	
-		/* Step 5a - Virtually reset the state of master ports to Normal */
-		for (port=1 ; port<=NumOfPorts ; port++) {
-			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
-		}
-		
-		/* Step 5b - Update other modules ports starting from the last one */
-		for (i=currentID ; i>=2 ; i--) 
-		{
-			for (p=1 ; p<=MaxNumOfPorts ; p++) 
-			{		
-				if (!array[i-1][p])	{
-					/* If empty port leave normal */
-					messageParams[p-1] = NORMAL;
-					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
-				} else {
-					/* If not empty, check neighbor */			
-					temp16 = array[i-1][p];
-					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
-					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
-					/* Check neighbor port direction */
-					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
-						/* Neighbor port is normal */
-						messageParams[p-1] = REVERSED;
-						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
-					} else {
-						/* Neighbor port is reversed */
-						messageParams[p-1] = NORMAL;
-						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
-					}				
-				}
-			}
-			
-			/* Step 5c - Check if an inport is reversed */
-			/* Find out the inport to this module from master */
-			FindRoute(1, i);
-			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
-			temp2 = FindRoute(i, temp1);
-			/* Is the inport reversed? */
-			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
-				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
-			
-			/* Step 5d - Update module ports directions */
-			SendMessageToModule(i, CODE_port_dir, MaxNumOfPorts+1);
-			osDelay(10);			
-		}			
-	
-		/* Step 5e - Update master ports > all normal */
-		for (port=1 ; port<=NumOfPorts ; port++) {
-			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
-		}
-	}
-	
-			
-	/* >>> Step 6 - Test new port directions by pinging all modules */
-	
-	if (result == BOS_OK) 
-	{		
-		osDelay(100);
-		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
-		for (i=2 ; i<=N ; i++) 
-		{
-			SendMessageToModule(i, CODE_ping, 0);
-			osDelay(300*NumberOfHops(i));	
-			//osDelay(100);
-			if (responseStatus == BOS_OK)
-				result = BOS_OK;
-			else if (responseStatus == BOS_ERR_NoResponse)
-				result = BOS_ERR_NoResponse;
-		}
-	}
-	
-	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
-	
-	if (result == BOS_OK)
-	{
-		/* Save data in the master */
-		SaveToRO();
-		SaveEEportsDir();
-		osDelay(100);
-		/* Ask other modules to save their data too */
-		SendMessageToModule(BOS_BROADCAST, CODE_exp_eeprom, 0);
-	}	
+//	
+//	/* >>> Step 4 - Make sure all connected modules have been discovered */
+//	
+//	ExploreNeighbors(PcPort);
+//	/* Check for any unIDed neighbors */
+//	for (i=1 ; i<=NumOfPorts ; i++) 
+//	{
+//		temp16 = neighbors[i-1][0];		/* Neighbor ID */
+//		temp1 = (uint8_t)(temp16>>8);											
+//		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+//			result = BOS_ERR_UnIDedModule;
+//		}		
+//	}
+//	/* Ask other modules for any unIDed neighbors */
+//	for (i=2 ; i<=currentID ; i++) 
+//	{
+//		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
+//		osDelay(100);	
+//		/* Check for any unIDed neighbors */
+//		for (j=1 ; j<=MaxNumOfPorts ; j++) 
+//		{
+//			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
+//			temp1 = (uint8_t)(temp16>>8);											
+//			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+//				result = BOS_ERR_UnIDedModule;
+//			}
+//		}				
+//	}
+//	
+//	
+//	/* >>> Step 5 - If no unIDed modules found, generate and distribute port directions */
+//	
+//	if (result == BOS_OK)
+//	{	
+//		/* Step 5a - Virtually reset the state of master ports to Normal */
+//		for (port=1 ; port<=NumOfPorts ; port++) {
+//			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		/* Set bit to zero */
+//		}
+//		
+//		/* Step 5b - Update other modules ports starting from the last one */
+//		for (i=currentID ; i>=2 ; i--) 
+//		{
+//			for (p=1 ; p<=MaxNumOfPorts ; p++) 
+//			{		
+//				if (!array[i-1][p])	{
+//					/* If empty port leave normal */
+//					messageParams[p-1] = NORMAL;
+//					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
+//				} else {
+//					/* If not empty, check neighbor */			
+//					temp16 = array[i-1][p];
+//					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
+//					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */	
+//					/* Check neighbor port direction */
+//					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
+//						/* Neighbor port is normal */
+//						messageParams[p-1] = REVERSED;
+//						arrayPortsDir[i-1] |= (0x8000>>(p-1));		/* Set bit to one */
+//					} else {
+//						/* Neighbor port is reversed */
+//						messageParams[p-1] = NORMAL;
+//						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */						
+//					}				
+//				}
+//			}
+//			
+//			/* Step 5c - Check if an inport is reversed */
+//			/* Find out the inport to this module from master */
+//			FindRoute(1, i);
+//			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
+//			temp2 = FindRoute(i, temp1);
+//			/* Is the inport reversed? */
+//			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
+//				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
+//			
+//			/* Step 5d - Update module ports directions */
+//			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
+//			osDelay(10);			
+//		}			
+//	
+//		/* Step 5e - Update master ports > all normal */
+//		for (port=1 ; port<=NumOfPorts ; port++) {
+//			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
+//		}
+//	}
+//	
+//			
+//	/* >>> Step 6 - Test new port directions by pinging all modules */
+//	
+//	if (result == BOS_OK) 
+//	{		
+//		osDelay(100);
+//		BOS.response = BOS_RESPONSE_MSG;		// Enable response for pings
+//		for (i=2 ; i<=N ; i++) 
+//		{
+//			SendMessageToModule(i, CODE_PING, 0);
+//			osDelay(300*NumberOfHops(i));	
+//			//osDelay(100);
+//			if (responseStatus == BOS_OK)
+//				result = BOS_OK;
+//			else if (responseStatus == BOS_ERR_NoResponse)
+//				result = BOS_ERR_NoResponse;
+//		}
+//	}
+//	
+//	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
+//	
+//	if (result == BOS_OK)
+//	{
+//		/* Save data in the master */
+//		SaveToRO();
+//		SaveEEportsDir();
+//		osDelay(100);
+//		/* Ask other modules to save their data too */
+//		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
+//	}	
 
-	return result;
-}
-#endif
+//	return result;
+//}
+//#endif
 /*-----------------------------------------------------------*/
 #ifndef _N
 /* --- Explore adjacent neighbors 
@@ -3928,7 +3984,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore)
 			messageParams[1] = (uint8_t) myPN;
 			messageParams[2] = port;
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
-			SendMessageFromPort(port, 0, 0, CODE_hi, 3);
+			SendMessageFromPort(port, 0, 0, CODE_HI, 3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
 			osDelay(10);
 		}
@@ -4005,21 +4061,15 @@ BOS_Status FindBroadcastRoutes(uint8_t src)
 */
 void StartMicroDelay(uint16_t Delay)
 {
+	uint32_t t0=0;
+
 	portENTER_CRITICAL();
-	
-	/* Setup the timer to 1-usec base */
-	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000000;
-	HAL_TIM_Base_Init(&htim14);
 	
 	if (Delay)
 	{
-		htim14.Instance->ARR = Delay;
+		t0 = htim14.Instance->CNT;
 
-		HAL_TIM_Base_Start(&htim14);	
-
-		while(htim14.Instance->CNT < Delay) {};
-		
-		HAL_TIM_Base_Stop(&htim14);
+		while(htim14.Instance->CNT - t0 <= Delay) {};
 	}
 	
 	portEXIT_CRITICAL();
@@ -4031,21 +4081,15 @@ void StartMicroDelay(uint16_t Delay)
 */
 void StartMilliDelay(uint16_t Delay)
 {
-	portENTER_CRITICAL();
+	uint32_t t0=0;
 	
-	/* Setup the timer to 1-msec base */
-	htim14.Init.Prescaler = HAL_RCC_GetHCLKFreq()/1000;
-	HAL_TIM_Base_Init(&htim14);
+	portENTER_CRITICAL();
 	
 	if (Delay)
 	{
-		htim14.Instance->ARR = Delay;
-		
-		HAL_TIM_Base_Start(&htim14);	
+		t0 = htim15.Instance->CNT;
 
-		while(htim14.Instance->CNT < Delay) {};
-		
-		HAL_TIM_Base_Stop(&htim14);
+		while(htim15.Instance->CNT - t0 <= Delay) {};
 	}
 	
 	portEXIT_CRITICAL();
@@ -4305,26 +4349,17 @@ void DisplayModuleStatus(uint8_t port)
 	}	
 
 	/* P2P DMAs */
-	sprintf(pcUserMessage, "\n\rPort-to-port DMAs Status:\n\r");
+	sprintf(pcUserMessage, "\n\rDMA Streams Status:\n\r");
 	strcat( (char *) pcOutputString, pcUserMessage);	
-	if (portPortDMA1.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 1 is streaming from P%d to P%d", GetPort(portPortDMA1.Parent), GetPort(dmaStreamDst[0]));
+	for (char i=1 ; i<=6 ; i++) {
+		if (streamDMA[i-1].Instance == 0) {
+				sprintf(pcUserMessage, "\n\rStreaming DMA %d is free", i);
+				strcat( (char *) pcOutputString, pcUserMessage);
+		} else {
+				sprintf(pcUserMessage, "\n\rStreaming DMA %d is streaming from P%d to P%d", i, GetPort(streamDMA[i-1].Parent), GetPort(dmaStreamDst[i-1]));
+				strcat( (char *) pcOutputString, pcUserMessage);
+		}
 	}
-	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA2.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 2 is streaming from P%d to P%d", GetPort(portPortDMA2.Parent), GetPort(dmaStreamDst[1]));
-	}
-	strcat( (char *) pcOutputString, pcUserMessage);
-	if (portPortDMA3.Instance->CNDTR == 0) {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is free");
-	} else {
-			sprintf(pcUserMessage, "\n\rPort-to-port DMA 3 is streaming from P%d to P%d", GetPort(portPortDMA3.Parent), GetPort(dmaStreamDst[2]));
-	}
-	strcat( (char *) pcOutputString, pcUserMessage);
 	strcat( (char *) pcOutputString, "\n\r");
 	
 	/* Ports direction */
@@ -4375,7 +4410,7 @@ int16_t GetID(char* string)
 	{															
 		/* Check module alias */
 		for (i=0 ; i<N ; i++) {
-			if(!strcmp(string, moduleAlias[i]) && (*string != 0))	return (i+1);	
+			if(!strcmp(string, moduleAlias[i]) && (*string != 0))	return (i);	
 		}
 		
 		/* Check group alias */
@@ -4531,7 +4566,7 @@ BOS_Status ReadPortsDir(void)
 	for (uint8_t i=1 ; i<=N ; i++) 
 	{
 		if (i != myID) {
-			SendMessageToModule(i, CODE_read_port_dir, 0);
+			SendMessageToModule(i, CODE_READ_PORT_DIR, 0);
 			Delay_ms_no_rtos(50);
 			if (responseStatus != BOS_OK)	{
 				result = BOS_ERR_NoResponse;
@@ -4580,7 +4615,6 @@ BOS_Status UpdateMyPortsDir(void)
 BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
-	TimerHandle_t xTimerStream = NULL;
 	uint8_t port = 0, temp1 = 0, temp2 = 0;
 	
 	/* Is the source a different module? */
@@ -4599,7 +4633,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		messageParams[10] = dstM;												/* destination module */
 		messageParams[11] = dstP;												/* destination port */
 		messageParams[12] = stored;											/* EEPROM storage */
-		SendMessageToModule(srcM, CODE_DMA_scast_stream, 13);		
+		SendMessageToModule(srcM, CODE_DMA_SCAST_STREAM, 13);		
 		
 		return result;
 	}
@@ -4637,7 +4671,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 			messageParams[10] = temp2;											/* destination port */
 			messageParams[11] = stored;											/* EEPROM storage */
 			FindRoute(srcM, dstM);
-			SendMessageToModule(route[i], CODE_DMA_channel, 12);
+			SendMessageToModule(route[i], CODE_DMA_CHANNEL, 12);
 			osDelay(10);
 		}
 	}
@@ -4648,29 +4682,13 @@ BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t
 		port = FindRoute(srcM, dstM);
 	
 	/* Setup my own DMA stream */
-	if (direction == FORWARD) {
-		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-	} else if (direction == BACKWARD) {
-		PortPortDMA1_Setup(GetUart(port), GetUart(srcP), 1); DMAStream1total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 1, StreamTimerCallback );
-	} else if (direction == BIDIRECTIONAL) {
-		PortPortDMA1_Setup(GetUart(srcP), GetUart(port), 1); DMAStream1total = count;
-		PortPortDMA2_Setup(GetUart(port), GetUart(srcP), 1); DMAStream2total = count;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * ) 12, StreamTimerCallback );
-	}
+	SetupDMAStreams(direction, count, timeout, srcP, port);
 	
 	// Store my own streams to EEPROM
-	if (stored) {
-		SaveEEstreams(cMessage[port-1][12], count, timeout, srcP, port, 0, 0, 0, 0);
+	if (stored) {		
+		SaveEEstreams(direction, count, timeout, srcP, port, 0, 0, 0, 0);
 	}
 	
-	/* Start the timeout timer */
-	if (xTimerStream != NULL)
-		xTimerStart( xTimerStream, portMAX_DELAY );
 	
 	return result;
 }
@@ -4689,7 +4707,7 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	uint16_t TX_Pin, RX_Pin, temp16, res;
 	uint8_t temp8 = 0;
 	
-	/* 1. Stop communication at this port (only if the scheduler is running) */
+	/* 1. Stop communication at this port (only if the scheduler is running) - TODO update*/
 	if (BOS_initialized) {
 		osSemaphoreRelease(PxRxSemaphoreHandle[port]);		/* Give back the semaphore if it was taken */
 		osSemaphoreRelease(PxTxSemaphoreHandle[port]);
@@ -4719,7 +4737,7 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	button[port].type = buttonType;	
 	
 	/* 5. Add to EEPROM if not already there */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists
 	{
 		temp8 = (uint8_t)(temp16 >> 8);
@@ -4728,21 +4746,21 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 		else 																															// Update the variable
 		{																														
 			temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);
 			/* Reset times */
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
 		}
 	}
 	else																																// Variable does not exist. Create a new one
 	{
 		temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);		
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);		
 		/* Reset times */
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
 	}
 	
 	return result;
@@ -4766,14 +4784,14 @@ BOS_Status RemovePortButton(uint8_t port)
 	button[port].releasedY1Sec = 0; button[port].releasedY2Sec = 0; button[port].releasedY3Sec = 0;
 	
 	/* 2. Remove from EEPROM if it's already there */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists, reset all to zeros
 	{
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), 0);
 		/* Reset times */
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], 0);
-		EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], 0);		
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);		
 	}
 	
 	/* 3. Initialize UART at this port */
@@ -4902,28 +4920,28 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 	}
 	
 	/* Add to EEPROM */
-	res = EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], &temp16);
+	res = EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1), &temp16);
 	if(!res)																														// This variable exists
 	{
 		temp8 = (uint8_t)(temp16 >> 8);																		// Keep upper byte
 		/* Store event flags */
 		if ((uint8_t)(temp16) != button[port].events) {										// Update only if different
 			temp16 = ((uint16_t)temp8 << 8) | (uint16_t)button[port].events;
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)], temp16);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);
 		}
 		
 		/* Store times - only if different */
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+1, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+1], ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, ((uint16_t)pressed_x1sec << 8) | (uint16_t) released_y1sec);
 		
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+2, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+2], ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, ((uint16_t)pressed_x2sec << 8) | (uint16_t) released_y2sec);
 		
-		EE_ReadVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], &temp16);
+		EE_ReadVariable(_EE_BUTTON_BASE+4*(port-1)+3, &temp16);
 		if ( temp16 != (((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec) )
-			EE_WriteVariable(VirtAddVarTab[_EE_ButtonBase+4*(port-1)+3], ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
+			EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, ((uint16_t)pressed_x3sec << 8) | (uint16_t) released_y3sec);
 	}	// TODO - var does not exist after adding button!
 	else																																// Variable does not exist. Return error
 		return BOS_ERR_BUTTON_NOT_DEFINED;	
@@ -4945,12 +4963,11 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
-	remoteBuffer = 0;
+	remoteBuffer = REMOTE_BOS_VAR;
 	
 	/* Send the Message */
-	messageParams[0] = remoteAddress;			// Send BOS variable index
-	SendMessageToModule(module, CODE_read_remote, 1);
-	remoteBuffer = 0;											// Set a flag that we requested a BOS var
+	messageParams[0] = remoteAddress + REMOTE_BOS_VAR;			// Send BOS variable index
+	SendMessageToModule(module, CODE_READ_REMOTE, 1);
 	
 	/* Wait until read is complete */
 	uint32_t t0 = HAL_GetTick();
@@ -4981,14 +4998,14 @@ uint32_t *ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *rem
 uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout)
 {
 	/* Reset local buffer */
-	remoteBuffer = 0;
+	remoteBuffer = REMOTE_MEMORY_ADD;
 	
 	/* Send the Message */
-	messageParams[0] = 0;
+	messageParams[0] = REMOTE_MEMORY_ADD;
 	messageParams[1] = requestedFormat;						// Requested format
 	messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
 	messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 		
-	SendMessageToModule(module, CODE_read_remote, 6);
+	SendMessageToModule(module, CODE_READ_REMOTE, 6);
 	remoteBuffer = requestedFormat;								// Set a flag that we requested a memory location
 	
 	/* Wait until read is complete */
@@ -4998,6 +5015,42 @@ uint32_t *ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t r
 	/* Return the read value address */
 	if (responseStatus == BOS_OK)
 		return ((uint32_t *)&remoteBuffer);	
+	else 
+		return NULL;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Read a parameter from a remote module. 
+			 This API returns a pointer to the remote parameter. Cast this pointer to match the appropriate format.
+			 If the returned parameter is NULL, then remote parameter does not exist or remote module is not responsive.
+					module: Remote module ID. 
+					paramString: Remote parameter string address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS parameters with unknown addresses.
+					remoteFormat (output): Pointer to format of remote BOS variable. 					
+					timeout: Read timeout in msec.
+*/
+uint32_t *ReadRemoteParam(uint8_t module, char* paramString, varFormat_t *remoteFormat, uint32_t timeout)
+{
+	/* Reset local buffer */
+	remoteBuffer = REMOTE_MODULE_PARAM;
+	
+	/* Send the Message */
+	messageParams[0] = REMOTE_MODULE_PARAM;
+	memcpy(&messageParams[1], paramString, strlen(paramString));   // copy BOS parameter index to location
+	SendMessageToModule(module, CODE_READ_REMOTE, strlen(paramString)+1);
+	
+	/* Wait until read is complete */
+	uint32_t t0 = HAL_GetTick();
+	while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
+	
+	/* Return the read value address */
+	if (responseStatus == BOS_OK) 
+	{
+		/* Return the remote var format */
+		*remoteFormat = remoteVarFormat;
+		
+		return ((uint32_t *)&remoteBuffer);		
+	}
 	else 
 		return NULL;
 }
@@ -5095,7 +5148,7 @@ BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t
 		return BOS_ERROR;
 	
 	/* Save RTC hourformat and daylightsaving to EEPROM */
-	EE_WriteVariable(VirtAddVarTab[_EE_ParamsRTC], ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 
   /* Writes a data in a RTC Backup data Register1 */
   HAL_RTCEx_BKUPWrite(&RtcHandle, RTC_BKP_DR1, 0x32F2);
@@ -5154,15 +5207,43 @@ char *GetTimeString(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Link two array/communication ports together
+/* --- Bridge two array/communication ports together
 */
-BOS_Status link(uint8_t port1, uint8_t port2)
+BOS_Status Bridge(uint8_t port1, uint8_t port2)
 {
-	// Unlink these ports from any other DMA streams
-	
-	// Link the ports together
+	// Link the ports together with an infinite DMA stream
 	return StartScastDMAStream(port1, myID, port2, myID, BIDIRECTIONAL, 0xFFFFFFFF, 0xFFFFFFFF, true);
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Un-bridge two array/communication ports
+*/
+BOS_Status Unbridge(uint8_t port1, uint8_t port2)
+{		
+	// Remove the stream from EEPROM
+	SaveEEstreams(0, 0, 0, 0, 0, 0, 0, 0, 0);
 	
+	// Stop the DMA streams and enable messaging back on these ports
+	if(streamDMA[port1-1].Instance != 0 && streamDMA[port2-1].Instance != 0) 
+			{SwitchStreamDMAToMsg(port1);SwitchStreamDMAToMsg(port2);return BOS_OK;}
+	else if (streamDMA[port1-1].Instance != 0)
+			{SwitchStreamDMAToMsg(port1);return BOS_OK;}
+	else if (streamDMA[port2-1].Instance != 0)
+			{SwitchStreamDMAToMsg(port2);return BOS_OK;}	
+	else {return BOS_ERR_WrongValue;}
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Print formatted text to one of the module ports
+*/
+BOS_Status printfp(uint8_t port, char* str)
+{		
+	if (writePxMutex(port, str, strlen(str), 1, 1) == HAL_OK)
+		return BOS_OK;
+	else 
+		return BOS_ERROR;
 }
 
 /*-----------------------------------------------------------*/
@@ -5303,7 +5384,7 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 				BOS.response = BOS_RESPONSE_NONE;							
 				
 				/* Forward the command */
-				messageParams[0] = port; SendMessageToModule(module, CODE_update_via_port, 1);
+				messageParams[0] = port; SendMessageToModule(module, CODE_UPDATE_VIA_PORT, 1);
 				osDelay(100);			
 				/* Execute locally */
 				remoteBootloaderUpdate(myID, module, PcPort, port);	
@@ -5312,7 +5393,7 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 			else
 			{
 				/* Ask the target to jump to factory bootloader */
-				SendMessageFromPort(port, myID, 0, CODE_update, 0);
+				SendMessageFromPort(port, 0, 0, CODE_UPDATE, 0);
 				osDelay(100);
 				/* Then, setup myself for remote 'via port' update */
 				remoteBootloaderUpdate(myID, myID, PcPort, port);							
@@ -5336,38 +5417,39 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 #ifndef _N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	BOS_Status result = BOS_OK;
-	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
-	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
-	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
-	
-	/* Remove compile time warnings about unused parameters, and check the
-	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-	write buffer length is adequate, so does not check for buffer overflows. */
-	( void ) pcCommandString;
-	( void ) xWriteBufferLen;
-	configASSERT( pcWriteBuffer );
+//	BOS_Status result = BOS_OK;
+//	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
+//	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
+//	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
+//	
+//	/* Remove compile time warnings about unused parameters, and check the
+//	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+//	write buffer length is adequate, so does not check for buffer overflows. */
+//	( void ) pcCommandString;
+//	( void ) xWriteBufferLen;
+//	configASSERT( pcWriteBuffer );
 
-	/* Respond to the update command */
-	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
-	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-	
-	/* Call array exploration routine */
-	result = Explore();
-	if (result == BOS_OK) {
-		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
-		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-		DisplayTopology(PcPort);
-		DisplayPortsDir(PcPort);
-	} else {
-		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
-		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-	}
-	sprintf( ( char * ) pcWriteBuffer, " ");
-	
-	/* There is no more data to return after this single string, so return
-	pdFALSE. */
-	return pdFALSE;
+//	/* Respond to the update command */
+//	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
+//	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+//	
+//	/* Call array exploration routine */
+//	result = Explore();
+//	if (result == BOS_OK) {
+//		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
+//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+//		DisplayTopology(PcPort);
+//		DisplayPortsDir(PcPort);
+//	} else {
+//		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
+//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+//	}
+//	sprintf( ( char * ) pcWriteBuffer, " ");
+//	
+//	/* There is no more data to return after this single string, so return
+//	pdFALSE. */
+//	return pdFALSE;
+return 0;
 }
 #endif
 
@@ -5720,7 +5802,7 @@ static portBASE_TYPE removebuttonCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 	configASSERT( pcWriteBuffer );
 	
 	/* Obtain the 1st parameter string. */
-	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength1);
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
 	if (pcParameterString1[0] == 'p') {
 		port = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
 	}
@@ -5773,24 +5855,33 @@ you must connect to a CLI port on each startup to restore other array ports into
 		{
 			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
-			} else if (!strncmp((const char *)pcParameterString2, "msg", xParameterStringLength2)) {
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "message", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+		  } else if (!strncmp((const char *)pcParameterString2, "cli", xParameterStringLength2)) {
+				BOS.response = BOS_RESPONSE_CLI;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
 				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
-			if (!strncmp((const char *)pcParameterString2, "true", xParameterStringLength2)) {
-				BOS.trace = 1;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
-			} else if (!strncmp((const char *)pcParameterString2, "false", xParameterStringLength2)) {
-				BOS.trace = 0;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsBase], ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			if (!strncmp((const char *)pcParameterString2, "all", xParameterStringLength2)) {
+				BOS.trace = TRACE_BOTH;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "message", xParameterStringLength2)) {
+				BOS.trace = TRACE_MESSAGE;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+			} else if (!strncmp((const char *)pcParameterString2, "response", xParameterStringLength2)) {
+				BOS.trace = TRACE_RESPONSE;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
+		  } else if (!strncmp((const char *)pcParameterString2, "none", xParameterStringLength2)) {
+				BOS.trace = TRACE_NONE;
+				EE_WriteVariable(_EE_PARAMS_BASE, ((uint16_t)BOS.trace<<8) | (uint16_t)BOS.response);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5799,8 +5890,8 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp2 = atoi((const char *)pcParameterString2);
 			if (temp2 <= DEF_CLI_BAUDRATE) {
 				BOS.clibaudrate = temp2;
-				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud], (uint16_t)BOS.clibaudrate);
-				EE_WriteVariable(VirtAddVarTab[_EE_CLIBaud+1], (uint16_t)(BOS.clibaudrate>>16));
+				EE_WriteVariable(_EE_CLI_BAUD, (uint16_t)BOS.clibaudrate);
+				EE_WriteVariable(_EE_CLI_BAUD+1, (uint16_t)(BOS.clibaudrate>>16));
 				extraMessage = 1;
 			} else
 				result = BOS_ERR_WrongValue;			
@@ -5810,7 +5901,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
 				BOS.buttons.debounce = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDebounce], temp16);
+				EE_WriteVariable(_EE_PARAMS_DEBOUNCE, temp16);
 			} else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -5819,7 +5910,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= USHRT_MAX) {
 				BOS.buttons.singleClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsSinClick], temp16);
+				EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK, temp16);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 
@@ -5828,7 +5919,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
 				BOS.buttons.minInterClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;			
 		} 		
@@ -5837,7 +5928,7 @@ you must connect to a CLI port on each startup to restore other array ports into
 			temp16 = atoi((const char *)pcParameterString2);
 			if (temp16 >= 1 && temp16 <= UCHAR_MAX) {
 				BOS.buttons.maxInterClickTime = temp16;
-				EE_WriteVariable(VirtAddVarTab[_EE_ParamsDblClick], ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK, ((uint16_t)BOS.buttons.maxInterClickTime<<8) | (uint16_t)BOS.buttons.minInterClickTime);
 			} else
 				result = BOS_ERR_WrongValue;					
 		} 
@@ -5997,10 +6088,12 @@ static portBASE_TYPE getCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, 
 		} 
 		else if (!strncmp((const char *)pcParameterString1+4, "trace", xParameterStringLength1-4)) 
 		{
-			if (BOS.trace == 1)
-				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "true");
-			else if (BOS.trace == 0)
-				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "false");
+			if (BOS.trace == TRACE_BOTH)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "all");
+			else if (BOS.trace == TRACE_MESSAGE)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "msg");
+			else if (BOS.trace == TRACE_NONE)
+				sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, "none");
 			else
 				result = BOS_ERR_WrongValue;
 		} 
@@ -6101,7 +6194,7 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	else if (!strncmp((const char *)pcParameterString1, "array", xParameterStringLength1)) 
 	{
 		/* Broadcast the default array Message */
-		SendMessageToModule(BOS_BROADCAST, CODE_def_array, 0);
+		SendMessageToModule(BOS_BROADCAST, CODE_DEF_ARRAY, 0);
 		indMode = IND_TOPOLOGY; osDelay(100);
 		/* Clear the topology */
 		ClearEEportsDir();
@@ -6539,6 +6632,111 @@ static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 	return pdFALSE;
 }
 
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "P%d and P%d are bridged together\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
+	static const int8_t *pcMessageFail = ( int8_t * ) "Port bridging failed\n\r";
+	int8_t *pcParameterString1, *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t port1, port2;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'p') {
+		port1 = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	if (pcParameterString2[0] == 'p') {
+		port2 = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	
+	/* Build the bridge */
+	if (result == BOS_OK) 
+		result = Bridge(port1, port2);
+	else
+		result = BOS_ERR_WrongParam;
+	
+	/* Return CLI output */
+	if (result == BOS_OK) 
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, port1, port2 );
+	else if (result == BOS_ERR_WrongParam) 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
+	else 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail );	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+	
+/*-----------------------------------------------------------*/
+
+
+static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "P%d and P%d are un-bridged\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
+	static const int8_t *pcMessageFail = ( int8_t * ) "Port unbridging failed\n\r";
+	int8_t *pcParameterString1, *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0, xParameterStringLength2 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t port1, port2;
+	
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+	if (pcParameterString1[0] == 'p') {
+		port1 = ( uint8_t ) atol( ( char * ) pcParameterString1+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	/* Obtain the 2nd parameter string. */
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+	if (pcParameterString2[0] == 'p') {
+		port2 = ( uint8_t ) atol( ( char * ) pcParameterString2+1 );
+	} else {
+		result = BOS_ERR_WrongParam;
+	}
+	
+	/* Build the bridge */
+	if (result == BOS_OK) 
+		result = Unbridge(port1, port2);
+	else
+		result = BOS_ERR_WrongParam;
+	
+	/* Return CLI output */
+	if (result == BOS_OK) 
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, port1, port2 );
+	else if (result == BOS_ERR_WrongParam) 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
+	else 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail );	
+	
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+	
 /*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

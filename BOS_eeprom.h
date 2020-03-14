@@ -26,7 +26,7 @@
   ******************************************************************************
   */ 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 	
@@ -39,19 +39,6 @@
 
 /* Exported constants --------------------------------------------------------*/
 
-/* Memory map: - STM32F091CB
-				- Application: 0x08000000 - 0x0801D7FF >> 118 KB
-		 - Read-only (RO): 0x0801D800 - 0x0801DFFF >> 2 KB, used to store topology information and Command Snippets
-		- Emulated EEPROM: 0x0801E000 - 0x0801FFFF >> 8 KB, fits 1024 16-bit variables in 2 main-duplicate pages (A and B)
-*/
-#define APP_START_ADDRESS  		((uint32_t)0x08000000) 
-#define RO_START_ADDRESS  		((uint32_t)0x0801D800) 
-#define RO_MID_ADDRESS  			((uint32_t)0x0801DC00) 	// Snippets are stored here
-#define EEPROM_START_ADDRESS  ((uint32_t)0x0801E000) 
-#define FLASH_SIZE						((uint32_t)0x20000)			// All sizes in bytes
-#define SRAM_SIZE							((uint32_t)0x8000)
-#define PAGE_SIZE             ((uint32_t)0x0800)  		/* Page size = 2KByte for STM32F07x and STM32F09x devices */
-#define NumOfPages						(FLASH_SIZE/PAGE_SIZE)
 
 /* Pages A and B base and end addresses - Each page is extended into two pages 1 and 2 */
 #define PAGEA1_BASE_ADDRESS    ((uint32_t)(EEPROM_START_ADDRESS + 0x0000))
@@ -85,39 +72,39 @@
 #define PAGE_FULL             ((uint8_t)0x80)
 
 /* EEPROM Variables' number (up to 1024 16-bit variables) */
-#define MaxNumOfEEPROMvar       1024	
-#define NumOfEEPROMvar        	310				
+#define NumOfEEPROMvar       1024				
 
 
 /* EEPROM virtual addresses - Consider MaxNumOfModules is 25 */
-#define _EE_NBase								1	
-#define _EE_portDirBase					2					// Move to RO - 25 modules - 25 variables
-#define _EE_aliasBase						28				// 25 modules/10 chars - 125 variables
-#define _EE_groupAliasBase			153				// 10 groups/10 chars - 50 variables
-#define _EE_groupModulesBase		203				// 25 modules - 25 variables
-#define _EE_DMAStreamsBase			228				// 8 variables				
-#define _EE_ButtonBase					236				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
+// BOS Addressing Space 1 - 499
+#define _EE_NBASE									1	
+#define _EE_PORT_DIR_BASE					2					// Todo: Move to RO - 25 modules - 25 variables
+#define _EE_ALIAS_BASE						28				// 25 modules/10 chars - 125 variables
+#define _EE_GROUP_ALIAS_BASE			153				// 10 groups/10 chars - 50 variables
+#define _EE_GROUP_MODULES_BASE		203				// 25 modules - 25 variables
+#define _EE_DMA_STREAM_BASE				228				// 8 variables				
+#define _EE_BUTTON_BASE						236				// 4 * MaxNumOfPorts (10) variables for buttons: port(4 bits), type (4 bits), events (8 bits)
 																					// pressed_for_x_1 (8 bits), released_for_y_1 (8 bits), etc.
-#define _EE_ParamsBase					276				// Parameter base: BOS trace (MSB) | BOS response - 1 variable 
-#define _EE_ParamsDebounce			277				// Parameter: Button debounce - 1 variable
-#define _EE_ParamsSinClick			278				// Parameter: Button single click - 1 variable
-#define _EE_ParamsDblClick			279				// Parameter: Button double click (inter-click min and max) - 1 variable
-#define _EE_CLIBaud							280				// Parameter: CLI baudrate - LSB halfword, MSB halfword - 2 variables
-#define _EE_ParamsRTC						282				// Parameter: RTC hourformat | RTC daylightsaving - 1 variable
+#define _EE_PARAMS_BASE						276				// Parameter base: BOS trace (MSB) | BOS response - 1 variable 
+#define _EE_PARAMS_DEBOUNCE				277				// Parameter: Button debounce - 1 variable
+#define _EE_PARAMS_SINGLE_CLICK		278				// Parameter: Button single click - 1 variable
+#define _EE_PARAMS_DBL_CLICK			279				// Parameter: Button double click (inter-click min and max) - 1 variable
+#define _EE_CLI_BAUD							280				// Parameter: CLI baudrate - LSB halfword, MSB halfword - 2 variables
+#define _EE_PARAMS_RTC						282				// Parameter: RTC hourformat | RTC daylightsaving - 1 variable
 
-// Temporary - H23Rx Bluetooth module VSP mode
-#define _EE_H23xVSP							300
+// Module Addressing Space 500 - 599
+#define _EE_MODULE_BASE						500
 
-#define _EE_EmptyVarBase				301
+// User Addressing Space 600 - 1024
+#define _EE_EMPTY_VAR_BASE				600
 
 
 #if MaxNumOfModules > 25						// Update
- #warning "Only data for 25 modules will be stored in EEPROM."
+ #warning "Data for 25 modules only will be stored in EEPROM."
 #endif
 
 
 /* Exported variables --------------------------------------------------------*/
-extern uint16_t VirtAddVarTab[NumOfEEPROMvar+1];
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/

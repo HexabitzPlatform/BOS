@@ -52,7 +52,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.1.6 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
     All rights reserved
 */
 
@@ -80,6 +80,10 @@ static char * pcNewLine = "\r\n";
 static char * pcEndOfCommandOutputString = "\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] = {0};
 
+/* Exported Variables --------------------------------------------------------*/
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint16_t timedoutMsg;
+
 /* Internal functions ---------------------------------------------------------*/
 
 BOS_Status AddSnippet(uint8_t code, char *string);
@@ -96,17 +100,19 @@ extern uint8_t SaveToRO(void);
 
 /*-----------------------------------------------------------*/
 
-void prvUARTCommandConsoleTask( void *pvParameters )
+void prvCLITask( void *pvParameters )
 {
-char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; uint8_t port;
+char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; 
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
+uint16_t chr = 0; static uint16_t lastChr = 0;
 
 	( void ) pvParameters;
 	
 	/* Wait indefinitly until a '\r' is received on one of the ports */
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-	port = PcPort;
 	cRxedChar = '\0';
+
+	/* Note: DMA is not being used on transmit functions because it caused output errors. Maybe due to high baudrate. */
 	
 	/* Obtain the address of the output buffer.  Note there is no mutual
 	exclusion on this buffer as it is assumed only one command console
@@ -123,7 +129,7 @@ static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_
 	/* Set baudrate back to default for all other ports */
 	if (BOS.clibaudrate != DEF_ARRAY_BAUDRATE)
 	{
-		for (port=1 ; port<=NumOfPorts ; port++) 
+		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
 		{	
 			if (port != PcPort)
 				UpdateBaudrate(port, DEF_ARRAY_BAUDRATE);
@@ -132,17 +138,29 @@ static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_
 	
 	/* Send the welcome message. */
 	sprintf(pcWelcomePortMessage, "Connected to module %d (%s), port P%d.\n\n\r>", myID, modulePNstring[myPN], PcPort);
-	writePxITMutex(PcPort, pcWelcomeMessage, strlen(pcWelcomeMessage), cmd50ms);
-	writePxITMutex(PcPort, pcWelcomePortMessage, strlen(pcWelcomePortMessage), cmd50ms);
+	writePxITMutex(PcPort, pcWelcomeMessage, strlen(pcWelcomeMessage), 10);
+	writePxITMutex(PcPort, pcWelcomePortMessage, strlen(pcWelcomePortMessage), 10);
 
 	
 	for( ;; )
 	{
-		/* Only interested in reading one character at a time. */
-		readPxMutex(PcPort, &cRxedChar, sizeof( cRxedChar ), cmd50ms, HAL_MAX_DELAY);
+		/* Only interested in reading one character at a time from the circular buffer. Start looping from last character. */
+		for (chr=lastChr ; chr<MSG_RX_BUF_SIZE ; chr++)
+		{
+			if (UARTRxBuf[PcPort-1][chr]) {
+				cRxedChar = UARTRxBuf[PcPort-1][chr];
+				UARTRxBuf[PcPort-1][chr] = 0;
+				lastChr = chr;
+				break;
+			}
+			if (chr == MSG_RX_BUF_SIZE-1)	{
+				chr = lastChr = 0;
+			}			
+			taskYIELD();
+		}
 			
 		/* Echo the character back. */
-		writePxMutex(PcPort, &cRxedChar, 1, cmd50ms, HAL_MAX_DELAY);
+		writePxITMutex(PcPort, &cRxedChar, 1, 10);
 		
 		if( cRxedChar == '\r' )
 		{
@@ -151,7 +169,7 @@ static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_
 			This task will be held in the Blocked state while the Tx completes,
 			if it has not already done so, so no CPU time will be wasted by
 			polling. */
-			writePxMutex(PcPort, pcNewLine, strlen(pcNewLine), cmd50ms, HAL_MAX_DELAY);
+			writePxITMutex(PcPort, pcNewLine, strlen(pcNewLine), 10);
 			
 			
 			/* See if the command is empty, indicating that the last command is
@@ -205,8 +223,8 @@ static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_
 					}
 				}
 			}
-		}
-
+		}   
+    
 		taskYIELD();
 	}
 }
@@ -292,7 +310,7 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 					/* Broadcast the command */								
 					memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 					strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-					BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
+							BroadcastMessage(myID, BOS_BROADCAST, CODE_CLI_COMMAND, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 					/* Execute locally */
 					xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
 					strcat( ( char * ) pcOutputString, "Command broadcasted to all\n\r");
@@ -300,12 +318,12 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 					//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);	
 				}	else if ((uint8_t)id == BOS_MULTICAST) {	
 					group = id >> 8;
-					/* Check if command is broadcastable */									
+							/* Todo: Check if command is broadcastable */									
 
 					/* Multicast the command */								
 					memset( broadcastResponse, 0x00, sizeof(broadcastResponse) );
 					strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen( (char*) cInputString)-strlen( (char*) idString)-1));
-					BroadcastMessage(myID, group, CODE_CLI_command, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
+							BroadcastMessage(myID, group, CODE_CLI_COMMAND, strlen( (char*) cInputString)-strlen( (char*) idString));		// Send terminating zero
 					/* Do I need to execute locally? */
 					if (InGroup(myID, group))
 						xReturned = FreeRTOS_CLIProcessCommand( (const signed char*)(loc+1), pcOutputString, configCOMMAND_INT_MAX_OUTPUT_SIZE );	
@@ -316,7 +334,7 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 					/* Special commands that convert into custom a Message */
 					if (!strncmp((char *)loc+1, "update", 6)) {			// remote update
 						BOS.response = BOS_RESPONSE_NONE;				
-						SendMessageToModule(id, CODE_update, 0);
+								SendMessageToModule(id, CODE_UPDATE, 0);
 						osDelay(100);
 						/* Execute locally */
 						remoteBootloaderUpdate(myID, id, PcPort, 0);
@@ -325,7 +343,7 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 					{						
 						/* Forward the command */
 						strncpy( ( char * ) messageParams, loc+1, (size_t)(strlen((char*) cInputString)-strlen((char*) idString)-1));
-						SendMessageToModule(id, CODE_CLI_command, strlen((char*) cInputString)-strlen((char*) idString)-1);
+								SendMessageToModule(id, CODE_CLI_COMMAND, strlen((char*) cInputString)-strlen((char*) idString)-1);
 						sprintf( ( char * ) pcOutputString, "Command forwarded to Module %d\n\r", id);
 
 						if ((strlen((char*)pcOutputString) > 0) && enableOutput)
@@ -338,9 +356,11 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 					{
 						ulTaskNotifyTake(pdTRUE, 1000);		//cmd500ms
 						/* If timeout */
-						if (responseStatus != BOS_OK)
-							sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", id);
+								if (responseStatus != BOS_OK) {
+									++timedoutMsg;
+									sprintf( ( char * ) pcOutputString, "%sModule %d is not reachable.\n\r", ( char * ) pcOutputString, id);
 					}	
+							}	
 					xReturned = pdFALSE;
 				}						
 			} 
@@ -363,6 +383,7 @@ void CLI_CommandParser(uint8_t port, bool enableOutput, int8_t *cInputString, in
 	/* Start to transmit a line separator, just to make the output easier to read. */
 	if(!recordSnippet && enableOutput)
 		writePxMutex(port, pcEndOfCommandOutputString, strlen(pcEndOfCommandOutputString), cmd50ms, HAL_MAX_DELAY);		
+
 }
 
 /*-----------------------------------------------------------*/
