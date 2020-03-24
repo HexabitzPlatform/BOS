@@ -6745,7 +6745,7 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 	pdFALSE. */
 	return pdFALSE;
 }
-	static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {	
 	static const int8_t *pcMessageOK = ( int8_t * ) "P%d is working correctly\n\r";
 	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
@@ -6794,7 +6794,6 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
        writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), 10, 100);
        while(UARTRxBuf[PcPort-1][LastEnter+1]==0){Delay_ms(1);}
        LastEnter++;
-
         }
       }
     }
@@ -6803,11 +6802,11 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
     if(portt>0 && portt<NumOfPorts)
     {
       if (result == BOS_OK) 
-    {
-       WriteVaule[0]=rand();
-       writePxMutex(portt, WriteVaule,1, cmd50ms, 100);
-       ReadValue[0]= (GetUart(portt)->Instance->RDR);
-    }
+      {
+        WriteVaule[0]=rand();
+        writePxMutex(portt, WriteVaule,1, cmd50ms, 100);
+        ReadValue[0]= (GetUart(portt)->Instance->RDR);
+      }
   if(WriteVaule[0]==ReadValue[0])
       result = BOS_OK;
 	else
@@ -6823,7 +6822,6 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 	else if (result == BOS_ERR_Keyword)  
     sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail, portt );
     }
-  
     else {
     strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
 	}
