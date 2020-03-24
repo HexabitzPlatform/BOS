@@ -237,6 +237,7 @@ static portBASE_TYPE pauseSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBuffe
 static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -498,7 +499,15 @@ static const CLI_Command_Definition_t unbridgeCommandDefinition =
 	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-
+/* CLI command structure : Unbridge */
+static const CLI_Command_Definition_t testportCommandDefinition =
+{
+	( const int8_t * ) "test-port", /* The command string to type. */
+	( const int8_t * ) "test-port:\r\n test port functionality. you can choose either to test one specific port or to test all ports. please type Px where x stands for the number of port or type <all> to test all port\r\n\r\n",
+	testportCommand, /* The function to run. */
+	1 /* Two parameters are expected. */
+};
+/*-----------------------------------------------------------*/
 
 /* Define long messages -------------------------------------------------------*/
 
@@ -3351,7 +3360,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &delSnipCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &bridgeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &unbridgeCommandDefinition);
-	
+	FreeRTOS_CLIRegisterCommand( &testportCommandDefinition);
 	numOfBosCommands = 28;			// Add "help" command
 #ifndef _N	
 	numOfBosCommands = 29;
@@ -6736,7 +6745,92 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 	pdFALSE. */
 	return pdFALSE;
 }
+	static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{	
+	static const int8_t *pcMessageOK = ( int8_t * ) "P%d is working correctly\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong syntax\n\r";
+	static const int8_t *pcMessageFail = ( int8_t * ) "P%d test failed\n\r";
+  static const int8_t *pcMessageWrong1 = ( int8_t * ) "the port number is wrong\n\r";
+  static const int8_t *pcMessageWait = ( int8_t * )"Please shorten the next port and press any key to continue testing the next one\n\r\n\r";
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t portt,ports;
+  extern uint8_t UARTRxBufIndex[NumOfPorts];
+  char WriteVaule[1]="H";
+  char ReadValue[1];
+  int LastEnter=0;
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
 	
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+  if(strcmp((char *)pcParameterString1,"all")==0)
+  { 
+    if(LastEnter==0)
+      LastEnter=  UARTRxBufIndex[PcPort-1];
+    for (ports=1;ports<=NumOfPorts;ports++)
+    {
+      if(PcPort!=ports)
+      {
+        WriteVaule[0]=rand();
+        writePxMutex(ports, WriteVaule,1, 10, 100);
+        ReadValue[0]= (GetUart(ports)->Instance->RDR);
+      if(WriteVaule[0]==ReadValue[0])
+        result = BOS_OK;
+      else
+        result = BOS_ERR_Keyword;
+      
+      if (result == BOS_OK){ 
+       sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, ports);
+       writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), 10, 100);}
+     	else if (result == BOS_ERR_Keyword){
+       sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail, ports );	
+       writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), 10, 100);}
+       strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWait );	
+       writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), 10, 100);
+       while(UARTRxBuf[PcPort-1][LastEnter+1]==0){Delay_ms(1);}
+       LastEnter++;
+
+        }
+      }
+    }
+	else if (pcParameterString1[0] == 'p') {
+		portt = ( uint8_t ) atol( ( char * ) pcParameterString1+1);
+    if(portt>0 && portt<NumOfPorts)
+    {
+      if (result == BOS_OK) 
+    {
+       WriteVaule[0]=rand();
+       writePxMutex(portt, WriteVaule,1, cmd50ms, 100);
+       ReadValue[0]= (GetUart(portt)->Instance->RDR);
+    }
+  if(WriteVaule[0]==ReadValue[0])
+      result = BOS_OK;
+	else
+      result = BOS_ERR_Keyword;
+	} 
+  else {
+   result= BOS_ERR_WrongID;
+      }
+  if (result == BOS_OK) 
+   sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, portt);
+  else if (result == BOS_ERR_WrongID) 
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong1 );	
+	else if (result == BOS_ERR_Keyword)  
+    sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageFail, portt );
+    }
+  
+    else {
+    strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageWrong );	
+	}
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
 /*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
