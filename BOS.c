@@ -2826,6 +2826,16 @@ __weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
 
 /*-----------------------------------------------------------*/	
 
+/* --- Register user CLI Commands 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void RegisterUserCLICommands(void)
+{
+
+}
+
+/*-----------------------------------------------------------*/	
+
 /* --- Read a value from a remote module. 
 			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
@@ -3359,6 +3369,9 @@ void vRegisterCLICommands(void)
 
 	/* Register module CLI commands */	
 	RegisterModuleCLICommands();
+	
+	/* Register user CLI commands */	
+	RegisterUserCLICommands();
 }
 
 /*-----------------------------------------------------------*/
