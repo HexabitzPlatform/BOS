@@ -135,6 +135,7 @@ typedef struct
 	time_t time;						// Not saved with BOS parameters
 	date_t date;						// Not saved with BOS parameters
 	uint8_t overrun;
+	uint8_t disableCLI;
 } 
 BOS_t;
 
