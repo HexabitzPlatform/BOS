@@ -187,6 +187,7 @@ BOS_Status RTC_Init(void);
 BOS_Status RTC_CalendarConfig(void);
 void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);
+BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift);
 
 /* Module exported internal functions */
 extern uint8_t IsModuleParameter(char* name);
@@ -1338,8 +1339,12 @@ void PxMessagingTask(void * argument)
 							break;
 						
 						default :
-							/* Process module messages */
-							result = (BOS_Status) Module_MessagingTask(code, port, src, dst, shift);
+							/* First check user-defined messages */
+							result = (BOS_Status) User_MessagingParser(code, port, src, dst, shift);			
+							/* If not found, then check module messages */
+							if (result == BOS_ERR_UnknownMessage) {
+								result = (BOS_Status) Module_MessagingTask(code, port, src, dst, shift);
+							}
 							break;
 					}
 				}
@@ -2822,6 +2827,19 @@ __weak void buttonPressedForXCallback(uint8_t port, uint8_t eventType)
 */
 __weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
 {	
+}
+
+/*-----------------------------------------------------------*/	
+
+/* --- User message parser. 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift)
+
+{
+	BOS_Status result = BOS_ERR_UnknownMessage;
+	
+	return result;
 }
 
 /*-----------------------------------------------------------*/	
