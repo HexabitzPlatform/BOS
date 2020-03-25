@@ -2096,6 +2096,16 @@ BOS_Status LoadEEparams(void)
 		BOS.daylightsaving = DAYLIGHT_NONE;
 	}		
 	
+	/* Read disableCLI */
+	status1 = EE_ReadVariable(_EE_PARAMS_DISABLE_CLI, &temp1);
+	/* Found the variable (EEPROM is not cleared) */
+	if (!status1) {
+		BOS.disableCLI = (uint8_t)temp1;
+	/* Couldn't find the variable, load default config */
+	} else {
+		BOS.disableCLI = BOS_default.disableCLI;
+	}
+	
 	return result;
 }
 
@@ -2125,6 +2135,9 @@ BOS_Status SaveEEparams(void)
 	
 	/* Save RTC hourformat and daylightsaving */
 	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+
+	/* Save disableCLI */
+	EE_WriteVariable(_EE_PARAMS_DISABLE_CLI, (uint16_t)BOS.disableCLI);
 	
 	return result;
 }
