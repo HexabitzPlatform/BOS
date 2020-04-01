@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 		
     File Name     : BOS_MsgCodes.h
@@ -50,6 +50,12 @@
 #define	CODE_WRITE_REMOTE_FORCE					34
 
 #define	CODE_PORT_FORWARD     					35
+
+
+/* -----------------------------------------------------------------------
+	|											User Message Codes (70-99)	 											|
+   ----------------------------------------------------------------------- 
+*/
 
 
 /* -----------------------------------------------------------------------

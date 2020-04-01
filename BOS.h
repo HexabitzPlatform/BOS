@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -20,7 +20,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
-#define	_firmPatch			0
+#define	_firmPatch			1
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -135,6 +135,7 @@ typedef struct
 	time_t time;						// Not saved with BOS parameters
 	date_t date;						// Not saved with BOS parameters
 	uint8_t overrun;
+	uint8_t disableCLI;
 } 
 BOS_t;
 

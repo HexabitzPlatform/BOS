@@ -52,7 +52,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 */
 
@@ -67,7 +67,7 @@ static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
      \n\r====================================================	\
      \n\r||            Welcome to BitzOS CLI!              ||	\
-		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2019.        ||	\
+		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2020.        ||	\
      \n\r||                                                ||	\
 		 \n\r||      Please check the project website at       ||	\
 		 \n\r||             http://hexabitz.com/               ||	\
@@ -83,6 +83,7 @@ char pcWelcomePortMessage[40] = {0};
 /* Exported Variables --------------------------------------------------------*/
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 extern uint16_t timedoutMsg;
+extern uint8_t UARTRxBufIndex[NumOfPorts];
 
 /* Internal functions ---------------------------------------------------------*/
 
@@ -104,7 +105,7 @@ void prvCLITask( void *pvParameters )
 {
 char cRxedChar; int8_t cInputIndex = 0, *pcOutputString; 
 static int8_t cInputString[ cmdMAX_INPUT_SIZE ], cLastInputString[ cmdMAX_INPUT_SIZE ];
-uint16_t chr = 0; static uint16_t lastChr = 0;
+uint16_t chr = 0;
 
 	( void ) pvParameters;
 	
@@ -145,16 +146,16 @@ uint16_t chr = 0; static uint16_t lastChr = 0;
 	for( ;; )
 	{
 		/* Only interested in reading one character at a time from the circular buffer. Start looping from last character. */
-		for (chr=lastChr ; chr<MSG_RX_BUF_SIZE ; chr++)
+		for (chr=UARTRxBufIndex[PcPort-1] ; chr<MSG_RX_BUF_SIZE ; chr++)
 		{
 			if (UARTRxBuf[PcPort-1][chr]) {
 				cRxedChar = UARTRxBuf[PcPort-1][chr];
 				UARTRxBuf[PcPort-1][chr] = 0;
-				lastChr = chr;
+				UARTRxBufIndex[PcPort-1] = chr;
 				break;
 			}
 			if (chr == MSG_RX_BUF_SIZE-1)	{
-				chr = lastChr = 0;
+				chr = UARTRxBufIndex[PcPort-1] = 0;
 			}			
 			taskYIELD();
 		}

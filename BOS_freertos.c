@@ -32,7 +32,7 @@
   */
 
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 */
 
@@ -251,17 +251,21 @@ void BackEndTask(void * argument)
 						/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
 						if (i == MSG_RX_BUF_SIZE-1)		
 						{
-							for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
+							if (BOS.disableCLI == false)
 							{
-								if (UARTRxBuf[port-1][j] == 0xD && ((j < MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][j+1] == 0) || (j == MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][0] == 0) ) ) {
-									UARTRxBuf[port-1][j] = 0;
-									UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
-									portStatus[PcPort] = FREE;			// Free the previous CLI port 
-									portStatus[port] = CLI;					// Continue the CLI session on this port
-									PcPort = port;
-									/* Activate the CLI task */
-									xTaskNotifyGive(xCommandConsoleTaskHandle);		
-									break;
+								for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
+								{
+									if (UARTRxBuf[port-1][j] == 0xD && ((j < MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][j+1] == 0) || (j == MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][0] == 0) ) ) 
+									{
+										UARTRxBuf[port-1][j] = 0;
+										UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
+										portStatus[PcPort] = FREE;			// Free the previous CLI port 
+										portStatus[port] = CLI;					// Continue the CLI session on this port
+										PcPort = port;
+										/* Activate the CLI task */
+										xTaskNotifyGive(xCommandConsoleTaskHandle);		
+										break;
+									}
 								}
 							}
 							/* Circular buffer is empty. */
@@ -298,7 +302,7 @@ void BackEndTask(void * argument)
 			
 				if (packetStart != packetEnd)										// Non-empty packet
 				{				
-					Delay_ms(10);
+					Delay_ms(1);
 					/* A.4. Calculate packet CRC */				
 					if (packetStart < packetEnd) {
 						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], packetLength + 3);						
