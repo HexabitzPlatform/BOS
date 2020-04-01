@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.0 - Copyright (C) 2017-2019 Hexabitz
+    BitzOS (BOS) V0.2.1 - Copyright (C) 2020-2021 Hexabitz
     All rights reserved
 		
     File Name     : BOS_utils.h
