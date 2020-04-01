@@ -500,7 +500,7 @@ static const CLI_Command_Definition_t unbridgeCommandDefinition =
 	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-/* CLI command structure : Testport */
+/* CLI command structure : Unbridge */
 static const CLI_Command_Definition_t testportCommandDefinition =
 {
 	( const int8_t * ) "test-port", /* The command string to type. */
@@ -2853,6 +2853,14 @@ __weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
 
 /*-----------------------------------------------------------*/	
 
+<<<<<<< HEAD
+/* --- Register user CLI Commands 
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void RegisterUserCLICommands(void)
+{
+
+=======
 /* --- User message parser. 
 		This function is declared as __weak to be overwritten by other implementations in user file.
 */
@@ -2862,16 +2870,7 @@ __weak BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src,
 	BOS_Status result = BOS_ERR_UnknownMessage;
 	
 	return result;
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Register user CLI Commands 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void RegisterUserCLICommands(void)
-{
-
+>>>>>>> feature-user-messages
 }
 
 /*-----------------------------------------------------------*/	
