@@ -6843,7 +6843,7 @@ static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
     }
 	else if (pcParameterString1[0] == 'p') {
 		portt = ( uint8_t ) atol( ( char * ) pcParameterString1+1);
-    if(portt>0 && portt<NumOfPorts)
+    if(portt>0 && portt<=NumOfPorts)
     {
       if (result == BOS_OK) 
       {
