@@ -19,7 +19,7 @@
 
 BOS_t BOS; 
 BOS_t BOS_default = { .clibaudrate = DEF_CLI_BAUDRATE, .response = BOS_RESPONSE_ALL, .trace = TRACE_BOTH, .buttons.debounce = DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, 
-											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24 };
+											.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving = DAYLIGHT_NONE, .hourformat = 24, .disableCLI = false};
 uint16_t myPN = modulePN;
 TIM_HandleTypeDef htim14;	/* micro-second delay counter */
 TIM_HandleTypeDef htim15;	/* milli-second delay counter */
@@ -2096,6 +2096,16 @@ BOS_Status LoadEEparams(void)
 		BOS.daylightsaving = DAYLIGHT_NONE;
 	}		
 	
+	/* Read disableCLI */
+	status1 = EE_ReadVariable(_EE_PARAMS_DISABLE_CLI, &temp1);
+	/* Found the variable (EEPROM is not cleared) */
+	if (!status1) {
+		BOS.disableCLI = (uint8_t)temp1;
+	/* Couldn't find the variable, load default config */
+	} else {
+		BOS.disableCLI = BOS_default.disableCLI;
+	}
+	
 	return result;
 }
 
@@ -2125,6 +2135,9 @@ BOS_Status SaveEEparams(void)
 	
 	/* Save RTC hourformat and daylightsaving */
 	EE_WriteVariable(_EE_PARAMS_RTC, ((uint16_t)BOS.hourformat<<8) | (uint16_t)BOS.buttons.minInterClickTime);
+
+	/* Save disableCLI */
+	EE_WriteVariable(_EE_PARAMS_DISABLE_CLI, (uint16_t)BOS.disableCLI);
 	
 	return result;
 }
