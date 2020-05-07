@@ -376,14 +376,14 @@ static char pcUserMessage[80];
 extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
-#ifndef _N
+#ifndef __N
 	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
 	extern uint16_t groupModules[MaxNumOfModules];
 #else
-	extern char moduleAlias[_N+1][MaxLengthOfAlias+1];
-	extern uint8_t broadcastResponse[_N];
-	extern uint16_t groupModules[_N];
+	extern char moduleAlias[__N+1][MaxLengthOfAlias+1];
+	extern uint8_t broadcastResponse[__N];
+	extern uint16_t groupModules[__N];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 

@@ -38,11 +38,11 @@ static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", 
 
 	
 /* Number of modules in the array */
-#ifndef _N
+#ifndef __N
 	uint8_t N = 1;
 	uint8_t myID = 0;
 #else
-	uint8_t N = _N;
+	uint8_t N = __N;
 	uint8_t myID = _module;
 #endif
 
@@ -54,7 +54,7 @@ uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 bool AddBcastPayload = false;
 uint8_t dstGroupID = BOS_BROADCAST;
 char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
-#ifndef _N
+#ifndef __N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
 	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
@@ -64,13 +64,13 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 	uint16_t groupModules[MaxNumOfModules] = {0};			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-	uint16_t arrayPortsDir[_N]= {0};
-	uint8_t routeDist[_N] = {0}; 
-	uint8_t routePrev[_N] = {0}; 
-	uint8_t route[_N] = {0};
-	char moduleAlias[_N+1][MaxLengthOfAlias+1] = {0};
-	uint8_t broadcastResponse[_N] = {0};
-	uint16_t groupModules[_N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
+	uint16_t arrayPortsDir[__N]= {0};
+	uint8_t routeDist[__N] = {0};
+	uint8_t routePrev[__N] = {0};
+	uint8_t route[__N] = {0};
+	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
+	uint8_t broadcastResponse[__N] = {0};
+	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
 /* Buffers and communication */
@@ -149,7 +149,7 @@ void NotifyMessagingTask(uint8_t port);
 //BOS_Status SaveEEtopology(void);								
 //BOS_Status LoadEEtopology(void);
 uint8_t SaveToRO(void);
-#ifndef _N
+#ifndef __N
 uint8_t ClearROtopology(void);
 #endif
 uint8_t LoadROsnippets(void);
@@ -212,7 +212,7 @@ static portBASE_TYPE prvTaskStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBu
 static portBASE_TYPE prvRunTimeStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE pingCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
-#ifndef _N
+#ifndef __N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 #endif
 static portBASE_TYPE resetCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
@@ -282,7 +282,7 @@ target module is not part of the topology or if programming port is not in the s
 };
 /*-----------------------------------------------------------*/
 /* CLI command structure : explore */
-#ifndef _N
+#ifndef __N
 static const CLI_Command_Definition_t exploreCommandDefinition =
 {
 	( const int8_t * ) "explore", /* The command string to type. */
@@ -702,7 +702,7 @@ void PxMessagingTask(void * argument)
 							neighbors[port-1][1] = ( (uint16_t) cMessage[port-1][shift] << 8 ) + cMessage[port-1][1+shift];		/* Neighbor PN */	
 							responseStatus = BOS_OK;
 							break;
-					#ifndef _N
+					#ifndef __N
 						case CODE_EXPLORE_ADJ :
 							ExploreNeighbors(port);	indMode = IND_TOPOLOGY;
 							osDelay(10); temp = 0;
@@ -817,7 +817,7 @@ void PxMessagingTask(void * argument)
 						case CODE_DEF_ARRAY :					
 							/* Clear the topology */
 							ClearEEportsDir();
-							#ifndef _N
+							#ifndef __N
 							ClearROtopology();
 							#endif
 							osDelay(100);
@@ -1556,7 +1556,7 @@ void NotifyMessagingTask(uint8_t port)
 void LoadEEvars(void)
 {
 	/* Load array topology */
-#ifndef _N
+#ifndef __N
 	LoadROtopology();
 #endif	
 	/* Load port directions */
@@ -3337,7 +3337,7 @@ void BOS_Init(void)
 	LoadEEvars();
 	
 /* If no pre-defined topology, initialize ports direction */
-#ifndef _N
+#ifndef __N
 	UpdateMyPortsDir();
 #endif	
 	
@@ -3375,7 +3375,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &prvRunTimeStatsCommandDefinition );	
 	FreeRTOS_CLIRegisterCommand( &pingCommandDefinition );
 	FreeRTOS_CLIRegisterCommand( &bootloaderUpdateCommandDefinition );
-#ifndef _N
+#ifndef __N
 	FreeRTOS_CLIRegisterCommand( &exploreCommandDefinition );
 #endif
 	FreeRTOS_CLIRegisterCommand( &resetCommandDefinition );
@@ -3403,7 +3403,7 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &unbridgeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &testportCommandDefinition);
 	numOfBosCommands = 28;			// Add "help" command
-#ifndef _N	
+#ifndef __N
 	numOfBosCommands = 29;
 #endif
 
@@ -4020,7 +4020,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 //}
 //#endif
 /*-----------------------------------------------------------*/
-#ifndef _N
+#ifndef __N
 /* --- Explore adjacent neighbors 
 */
 BOS_Status ExploreNeighbors(uint8_t ignore)
@@ -4202,8 +4202,8 @@ set it as the new "current node", and go back to step 3.
  */
 uint8_t FindRoute(uint8_t sourceID, uint8_t desID)
 {
-#ifdef _N
-	uint8_t Q[_N] = {0};		// All nodes initially in Q (unvisited nodes)
+#ifdef ___N
+	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
 	uint8_t Q[50] = {0};		// All nodes initially in Q (unvisited nodes)
 #endif
@@ -4638,7 +4638,7 @@ BOS_Status ReadPortsDir(void)
 }
 
 /*-----------------------------------------------------------*/
-#ifndef _N
+#ifndef __N
 /* --- Update module port directions based on what is stored in eeprom --- 
 */
 BOS_Status UpdateMyPortsDir(void)
@@ -5467,7 +5467,7 @@ static portBASE_TYPE bootloaderUpdateCommand( int8_t *pcWriteBuffer, size_t xWri
 }
 
 /*-----------------------------------------------------------*/
-#ifndef _N
+#ifndef __N
 static portBASE_TYPE exploreCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 //	BOS_Status result = BOS_OK;
@@ -6251,7 +6251,7 @@ static portBASE_TYPE defaultCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 		indMode = IND_TOPOLOGY; osDelay(100);
 		/* Clear the topology */
 		ClearEEportsDir();
-		#ifndef _N
+		#ifndef __N
 		ClearROtopology();
 		#endif
 		osDelay(100);
