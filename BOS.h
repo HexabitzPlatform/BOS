@@ -113,7 +113,7 @@ typedef struct
 	uint8_t hours;
 	uint8_t ampm;
 } 
-time_t;
+BOS_time_t;
 typedef struct
 {
 	uint8_t weekday;
@@ -121,7 +121,7 @@ typedef struct
 	uint8_t month;
 	uint16_t year;
 } 
-date_t;
+BOS_date_t;
 
 /* BOS Struct Type Definition */  
 typedef struct
@@ -132,8 +132,8 @@ typedef struct
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
-	time_t time;						// Not saved with BOS parameters
-	date_t date;						// Not saved with BOS parameters
+	BOS_time_t time;						// Not saved with BOS parameters
+	BOS_date_t date;						// Not saved with BOS parameters
 	uint8_t overrun;
 	uint8_t disableCLI;
 } 
