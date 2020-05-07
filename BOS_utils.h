@@ -59,7 +59,7 @@
 	
 #define array_size(a)										(sizeof(a)/sizeof(a))
 
-#define isblank(c) 											((c == ' ') || (c == '\t') || (c == '\v'))
+//#define isblank(c) 											((c == ' ') || (c == '\t') || (c == '\v'))
 #define isbacksplash(c) 								(c == '/')
 #define ishex(c)           							(isxdigit(c))
 
