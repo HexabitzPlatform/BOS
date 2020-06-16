@@ -3300,7 +3300,8 @@ void BOS_Init(void)
 	TIM_USEC_Init();
 	CRC_Init();
 	TIM_MSEC_Init();
-	MX_ADC_Init();
+	ADC_Init();
+
 	/* Check for factory reset */
 	if (IsFactoryReset())
 	{
@@ -3318,7 +3319,7 @@ void BOS_Init(void)
 		/* Initialize the module */
 		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();	
-		
+
 		BOS.clibaudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
@@ -3360,7 +3361,7 @@ void BOS_Init(void)
 	
 	/* Reset UART overrun errors in case other modules were already transmitting on startup */
 	ResetUartORE();
-
+	
 	BOS_initialized = 1;
 }
 

@@ -17,7 +17,7 @@ extern DMA_HandleTypeDef hdma_adc;
 
 /* External definitions -------------------------------------------------------*/
 
-extern void MX_ADC_Init(void);
+extern void ADC_Init(void);
 
 
 /* External variables ---------------------------------------------------------*/
