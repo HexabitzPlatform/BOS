@@ -188,7 +188,7 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 #define portGET_RUN_TIME_COUNTER_VALUE() ulMainGetRunTimeCounterValue()
 
 /* No MPU in Cortex-M0 */
-#define portUSING_MPU_WRAPPERS 0
+
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
 /* Software Timers */

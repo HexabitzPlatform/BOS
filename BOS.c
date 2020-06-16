@@ -3300,7 +3300,7 @@ void BOS_Init(void)
 	TIM_USEC_Init();
 	CRC_Init();
 	TIM_MSEC_Init();
-	
+	MX_ADC_Init();
 	/* Check for factory reset */
 	if (IsFactoryReset())
 	{
@@ -4905,7 +4905,6 @@ BOS_Status RemovePortButton(uint8_t port)
 	portStatus[port] = FREE;
 	/* Read this port again */
 	HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);	
-	
 	return result;
 }
 
