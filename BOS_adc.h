@@ -19,12 +19,6 @@ extern DMA_HandleTypeDef hdma_adc;
 
 extern void ADC_Init(void);
 
-
-/* External variables ---------------------------------------------------------*/
-
-
-
-/* External functions ---------------------------------------------------------*/
 #endif
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

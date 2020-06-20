@@ -26,20 +26,37 @@ uint8_t ADC_Error_Status;
 /* External functions --------------------------------------------------------*/
 void ADC_Init(void)
 {
+  GPIO_InitTypeDef ADC_pin;
 
   ADC_ChannelConfTypeDef sConfig;
 	/* Enable ADC clock */
 	
-	__HAL_RCC_ADC1_CLK_ENABLE();
+	__HAL_RCC_DMA1_CLK_ENABLE();
+
+	/** Configure the global features of the DMA (Direction, PeriphInc, Mode,...etc) */
+  hdma_adc.Instance = DMA1_Channel1;
+  hdma_adc.Init.Direction = DMA_PERIPH_TO_MEMORY;
+  hdma_adc.Init.PeriphInc = DMA_PINC_DISABLE;
+  hdma_adc.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_adc.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+  hdma_adc.Init.MemDataAlignment = DMA_PDATAALIGN_HALFWORD;
+  hdma_adc.Init.Mode = DMA_CIRCULAR;
+  hdma_adc.Init.Priority = DMA_PRIORITY_MEDIUM;
+  HAL_DMA_Init(&hdma_adc);
+	
+	__HAL_DMA2_REMAP(HAL_DMA1_CH1_ADC);
+
+   __HAL_LINKDMA(&hadc,DMA_Handle,hdma_adc);
 
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) */
-
+	
+  __HAL_RCC_ADC1_CLK_ENABLE();
   hadc.Instance = ADC1;
   hadc.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-  hadc.Init.Resolution = ADC_RESOLUTION_8B;
+  hadc.Init.Resolution = ADC_RESOLUTION_12B;
   hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
-  hadc.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  hadc.Init.EOCSelection = ADC_EOC_SINGLE_SEQ_CONV;
   hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.LowPowerAutoPowerOff = DISABLE;
   hadc.Init.ContinuousConvMode = ENABLE;
@@ -48,7 +65,14 @@ void ADC_Init(void)
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.DMAContinuousRequests = ENABLE;
   hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	
 
+
+ 	__HAL_RCC_GPIOA_CLK_ENABLE();
+	ADC_pin.Pin=GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4;
+	ADC_pin.Mode=GPIO_MODE_ANALOG;
+	ADC_pin.Pull= GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA,&ADC_pin);
 	/** initialize ADC **/
 	
   if (HAL_ADC_Init(&hadc) != HAL_OK){
@@ -94,25 +118,12 @@ void ADC_Init(void)
 	/** initialize DMA controller **/
 	
 	/** Enable DMA1 controller clock **/
-	__HAL_RCC_DMA1_CLK_ENABLE();
-	
-	/** Configure the global features of the DMA (Direction, PeriphInc, Mode,...etc) */
 
-  hdma_adc.Instance = DMA1_Channel1;
-  hdma_adc.Init.Direction = DMA_PERIPH_TO_MEMORY;
-  hdma_adc.Init.PeriphInc = DMA_PINC_DISABLE;
-  hdma_adc.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_adc.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-  hdma_adc.Init.MemDataAlignment = DMA_PDATAALIGN_BYTE;
-  hdma_adc.Init.Mode = DMA_CIRCULAR;
-  hdma_adc.Init.Priority = DMA_PRIORITY_HIGH;
-  HAL_DMA_Init(&hdma_adc);
 	
 	/** Remap and link ADC with DMA **/
 	
-	__HAL_DMA1_REMAP(HAL_DMA1_CH1_ADC);   
-  __HAL_LINKDMA(&hadc,DMA_Handle,hdma_adc);
-	
+//  __HAL_LINKDMA(&hadc,DMA_Handle,hdma_adc);
+//	__HAL_DMA1_REMAP(HAL_DMA1_CH1_ADC);   
 	/* DMA interrupt init */
 	
   /* DMA1_Ch1_IRQn interrupt configuration */
