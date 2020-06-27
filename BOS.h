@@ -356,7 +356,8 @@ snippet_t;
 
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
-#include "BOS_adc.h"
+
+
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
 extern uint8_t myID, bcastID;
@@ -463,7 +464,6 @@ extern char *GetTimeString(void);
 extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
 extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 extern BOS_Status printfp(uint8_t port, char* str);
-extern void MX_ADC_Init(void);
 
 #endif /* BOS_H */
 
