@@ -113,7 +113,7 @@ typedef struct
 	uint8_t hours;
 	uint8_t ampm;
 } 
-time_t;
+BOS_time_t;
 typedef struct
 {
 	uint8_t weekday;
@@ -121,7 +121,7 @@ typedef struct
 	uint8_t month;
 	uint16_t year;
 } 
-date_t;
+BOS_date_t;
 
 /* BOS Struct Type Definition */  
 typedef struct
@@ -132,8 +132,8 @@ typedef struct
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
-	time_t time;						// Not saved with BOS parameters
-	date_t date;						// Not saved with BOS parameters
+	BOS_time_t time;						// Not saved with BOS parameters
+	BOS_date_t date;						// Not saved with BOS parameters
 	uint8_t overrun;
 	uint8_t disableCLI;
 } 
@@ -376,14 +376,14 @@ static char pcUserMessage[80];
 extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
-#ifndef _N
+#ifndef ___N
 	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
 	extern uint16_t groupModules[MaxNumOfModules];
 #else
-	extern char moduleAlias[_N+1][MaxLengthOfAlias+1];
-	extern uint8_t broadcastResponse[_N];
-	extern uint16_t groupModules[_N];
+	extern char moduleAlias[___N+1][MaxLengthOfAlias+1];
+	extern uint8_t broadcastResponse[___N];
+	extern uint16_t groupModules[___N];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
