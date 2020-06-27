@@ -189,7 +189,11 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 
 /* No MPU in Cortex-M0 */
 <<<<<<< HEAD
+<<<<<<< HEAD
 //#define portUSING_MPU_WRAPPERS 0
+=======
+
+>>>>>>> ba72cdc05d7f9ddcebf616328f85e36859c4920a
 =======
 
 >>>>>>> ba72cdc05d7f9ddcebf616328f85e36859c4920a
