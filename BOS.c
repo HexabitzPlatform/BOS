@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.3 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -38,7 +38,7 @@ static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", 
 
 	
 /* Number of modules in the array */
-#ifndef ___N
+#ifndef __N
 	uint8_t N = 1;
 	uint8_t myID = 0;
 #else
@@ -54,7 +54,7 @@ uint16_t bcastRoutes[MaxNumOfModules] = {0};				/* P1 is LSB */
 bool AddBcastPayload = false;
 uint8_t dstGroupID = BOS_BROADCAST;
 char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
-#ifndef ___N
+#ifndef __N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
 	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
@@ -3294,14 +3294,13 @@ void BOS_Init(void)
 	/* EEPROM Init */
 	EE_Init();
 	
-	/* Initialize all configured peripherals */
-	GPIO_Init();
+  /* Initialize all configured peripherals */
+  GPIO_Init();
 	DMA_Init();
 	TIM_USEC_Init();
 	CRC_Init();
 	TIM_MSEC_Init();
-	ADC_Init();
-
+	
 	/* Check for factory reset */
 	if (IsFactoryReset())
 	{
@@ -3319,7 +3318,7 @@ void BOS_Init(void)
 		/* Initialize the module */
 		Delay_ms_no_rtos(50);					// Give other modules time to finish factory reset and baudrate check
 		Module_Init();	
-
+		
 		BOS.clibaudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for (uint8_t port=1 ; port<=NumOfPorts ; port++) 
@@ -3361,7 +3360,7 @@ void BOS_Init(void)
 	
 	/* Reset UART overrun errors in case other modules were already transmitting on startup */
 	ResetUartORE();
-	
+
 	BOS_initialized = 1;
 }
 
@@ -3757,7 +3756,7 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 
 /*-----------------------------------------------------------*/
 
-//#ifndef __N
+//#ifndef _N
 ///* --- Explore the array and create its topology (executed only by master)
 //*/
 //BOS_Status Explore(void)
@@ -4203,7 +4202,7 @@ set it as the new "current node", and go back to step 3.
  */
 uint8_t FindRoute(uint8_t sourceID, uint8_t desID)
 {
-#ifdef __N
+#ifdef ___N
 	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
 	uint8_t Q[50] = {0};		// All nodes initially in Q (unvisited nodes)
@@ -4906,6 +4905,7 @@ BOS_Status RemovePortButton(uint8_t port)
 	portStatus[port] = FREE;
 	/* Read this port again */
 	HAL_UART_Receive_IT(huart, (uint8_t *)&cRxedChar, 1);	
+	
 	return result;
 }
 

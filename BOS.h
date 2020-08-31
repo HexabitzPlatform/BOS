@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.3 - Copyright (C) 2017-2020 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -356,7 +356,8 @@ snippet_t;
 
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
-#include "BOS_adc.h"
+
+
 /* External variables ---------------------------------------------------------*/
 extern char cRxedChar;
 extern uint8_t myID, bcastID;
@@ -375,14 +376,14 @@ static char pcUserMessage[80];
 extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
-#ifndef ___N
+#ifndef __N
 	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
 	extern uint8_t broadcastResponse[MaxNumOfModules];
 	extern uint16_t groupModules[MaxNumOfModules];
 #else
-	extern char moduleAlias[___N+1][MaxLengthOfAlias+1];
-	extern uint8_t broadcastResponse[___N];
-	extern uint16_t groupModules[___N];
+	extern char moduleAlias[__N+1][MaxLengthOfAlias+1];
+	extern uint8_t broadcastResponse[__N];
+	extern uint16_t groupModules[__N];
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
@@ -463,7 +464,6 @@ extern char *GetTimeString(void);
 extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
 extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 extern BOS_Status printfp(uint8_t port, char* str);
-extern void MX_ADC_Init(void);
 
 #endif /* BOS_H */
 
