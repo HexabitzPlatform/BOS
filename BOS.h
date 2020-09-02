@@ -29,7 +29,7 @@ enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485};
 enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM};
 enum UartDirection_e{NORMAL, REVERSED};
-enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _P08R6, _H09R0, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0};
+enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _P08R6, _H09R0, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0};
 enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
@@ -226,7 +226,7 @@ snippet_t;
 
 
 /* BOS Parameters and constants */ 
-#define	NUM_OF_MODULE_PN							21
+#define	NUM_OF_MODULE_PN							22
 #define P_LAST 												NumOfPorts
 #define MAX_MESSAGE_SIZE							56
 #define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -352,6 +352,9 @@ snippet_t;
 #endif
 #ifdef H26R0
 	#include "H26R0.h"	
+#endif
+#ifdef H15R0
+	#include "H15R0.h"	
 #endif
 
 /* More BOS header files - must be defined after module headers */
