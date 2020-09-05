@@ -2874,8 +2874,6 @@ __weak void RegisterUserCLICommands(void)
 
 }
 
-/*-----------------------------------------------------------*/	
-
 /* --- Read a value from a remote module. 
 			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
@@ -2912,71 +2910,69 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 		switch (format)											
 		{
 			case FMT_BOOL:
-			case FMT_UINT8: 
-				messageParams[2] = *(__IO uint8_t *)localAddress; 
+			case FMT_UINT8:
+				messageParams[2] = localAddress;
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 3); break;
-			case FMT_INT8: 
-				messageParams[2] = *(__IO int8_t *)localAddress; 
+			case FMT_INT8:
+				messageParams[2] =*(__IO int8_t *)localAddress;
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 3); break;
-			case FMT_UINT16: 
-				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
+			case FMT_UINT16:
+				messageParams[2] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8);
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 4); break;
-			case FMT_INT16: 
-				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
+			case FMT_INT16:
+				messageParams[2] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int16_t *)localAddress)>>8);
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 4); break;
-			case FMT_UINT32: 
-				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
-				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
+			case FMT_UINT32:
+				messageParams[2] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8);
+				messageParams[4] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24);
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;
-			case FMT_INT32: 
-				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
+			case FMT_INT32:
+				messageParams[2] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[3] = (uint8_t)((*(__IO int32_t *)localAddress)>>8);
 				messageParams[4] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[5] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
-				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;										
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;
 			case FMT_FLOAT:
-				messageParams[2] = *(__IO uint8_t *)(localAddress+0); messageParams[3] = *(__IO uint8_t *)(localAddress+1); messageParams[4] = *(__IO uint8_t *)(localAddress+2); 
-				messageParams[5] = *(__IO uint8_t *)(localAddress+3); messageParams[6] = *(__IO uint8_t *)(localAddress+4); messageParams[7] = *(__IO uint8_t *)(localAddress+5); 
-				messageParams[8] = *(__IO uint8_t *)(localAddress+6); messageParams[9] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, CODE_WRITE_REMOTE, 10); break;			
+				messageParams[2] =(uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[3] =(uint8_t)((*(__IO uint32_t *)localAddress)>>8);
+  			messageParams[4] =(uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[5] =(uint8_t)((*(__IO uint32_t *)localAddress)>>24);			// You cannot bitwise floats
+				SendMessageToModule(module, CODE_WRITE_REMOTE, 6); break;
 			default:
 				break;
-		}					
+		}
 	}
 	/* Writing to a memory address */
 	else
 	{
-		messageParams[0] = 0;													
+		messageParams[0] = 0;										
 		messageParams[1] = format;						// Local format
 		messageParams[2] = (uint8_t)(remoteAddress>>24); messageParams[3] = (uint8_t)(remoteAddress>>16); // Remote address
-		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress; 				
+		messageParams[4] = (uint8_t)(remoteAddress>>8); messageParams[5] = (uint8_t)remoteAddress;		
 		/* Send variable value based on local format */
-		switch (format)											
+		switch (format)								
 		{
 			case FMT_BOOL:
-			case FMT_UINT8: 
-				messageParams[6] = *(__IO uint8_t *)localAddress; 
+			case FMT_UINT8:
+				messageParams[6] = localAddress;
 				SendMessageToModule(module, code, 7); break;
-			case FMT_INT8: 
-				messageParams[6] = *(__IO int8_t *)localAddress; 
+			case FMT_INT8:
+				messageParams[6] = *(__IO int8_t *)localAddress;
 				SendMessageToModule(module, code, 7); break;
-			case FMT_UINT16: 
-				messageParams[6] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8); 
+			case FMT_UINT16:
+				messageParams[6] = (uint8_t)((*(__IO uint16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint16_t *)localAddress)>>8);
 				SendMessageToModule(module, code, 8); break;
-			case FMT_INT16: 
-				messageParams[6] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int16_t *)localAddress)>>8); 
+			case FMT_INT16:
+				messageParams[6] = (uint8_t)((*(__IO int16_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int16_t *)localAddress)>>8);
 				SendMessageToModule(module, code, 8); break;
 			case FMT_UINT32: 
-				messageParams[6] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8); 
-				messageParams[8] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24); 
+				messageParams[6] = (uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO uint32_t *)localAddress)>>8);
+				messageParams[8] = (uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO uint32_t *)localAddress)>>24);
 				SendMessageToModule(module, code, 10); break;
 			case FMT_INT32: 
-				messageParams[6] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int32_t *)localAddress)>>8); 
+				messageParams[6] = (uint8_t)((*(__IO int32_t *)localAddress)>>0); messageParams[7] = (uint8_t)((*(__IO int32_t *)localAddress)>>8);
 				messageParams[8] = (uint8_t)((*(__IO int32_t *)localAddress)>>16); messageParams[9] = (uint8_t)((*(__IO int32_t *)localAddress)>>24);
 				SendMessageToModule(module, code, 10); break;										
 			case FMT_FLOAT:
-				messageParams[6] = *(__IO uint8_t *)(localAddress+0); messageParams[7] = *(__IO uint8_t *)(localAddress+1); messageParams[8] = *(__IO uint8_t *)(localAddress+2); 
-				messageParams[9] = *(__IO uint8_t *)(localAddress+3); messageParams[10] = *(__IO uint8_t *)(localAddress+4); messageParams[11] = *(__IO uint8_t *)(localAddress+5); 
-				messageParams[12] = *(__IO uint8_t *)(localAddress+6); messageParams[13] = *(__IO uint8_t *)(localAddress+7); 			// You cannot bitwise floats	
-				SendMessageToModule(module, code, 14); break;			
+				messageParams[6] =(uint8_t)((*(__IO uint32_t *)localAddress)>>0); messageParams[7] =(uint8_t)((*(__IO uint32_t *)localAddress)>>8);
+  			messageParams[8] =(uint8_t)((*(__IO uint32_t *)localAddress)>>16); messageParams[9] =(uint8_t)((*(__IO uint32_t *)localAddress)>>24);			// You cannot bitwise floats
+				SendMessageToModule(module, code, 10); break;			
 			default:
 				break;
 		}			
