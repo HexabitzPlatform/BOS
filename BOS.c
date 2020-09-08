@@ -2911,7 +2911,7 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 		{
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[2] = localAddress;
+				messageParams[2] = *(__IO int8_t *)localAddress;
 				SendMessageToModule(module, CODE_WRITE_REMOTE, 3); break;
 			case FMT_INT8:
 				messageParams[2] =*(__IO int8_t *)localAddress;
@@ -2950,7 +2950,7 @@ BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteA
 		{
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[6] = localAddress;
+				messageParams[6] = *(__IO int8_t *)localAddress;
 				SendMessageToModule(module, code, 7); break;
 			case FMT_INT8:
 				messageParams[6] = *(__IO int8_t *)localAddress;
