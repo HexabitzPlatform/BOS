@@ -464,6 +464,7 @@ extern char *GetTimeString(void);
 extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
 extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 extern BOS_Status printfp(uint8_t port, char* str);
+uint8_t CalculateCRC8(uint32_t pData[], uint16_t size);
 
 #endif /* BOS_H */
 
