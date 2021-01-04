@@ -93,7 +93,6 @@ uint8_t messageLength[NumOfPorts] = {0};
 uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] = {0};
 char cRxedChar = 0; 
 uint8_t longMessage = 0; uint16_t longMessageLastPtr = 0;
-//static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules] = {0};
 static char pcUserMessage[80];
 BOS_Status responseStatus = BOS_OK; 
 uint8_t bcastID = 0;			// Counter for unique broadcast ID
@@ -103,13 +102,6 @@ uint32_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register: Bits 31-16: var
 uint64_t remoteBuffer = 0;
 varFormat_t remoteVarFormat = FMT_UINT8;
 uint8_t CLI_LOW_Baudrate_Flag = 0; 			//Flage for Lower CLI baudrate is set
-
-/* Buttons */
-//button_t button[NumOfPorts+1] = {0};
-//uint32_t pressCounter[NumOfPorts+1] = {0};
-//uint32_t releaseCounter[NumOfPorts+1] = {0};
-//uint8_t dblCounter[NumOfPorts+1] = {0};
-//bool needToDelayButtonStateReset = false, delayButtonStateReset = false;
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
@@ -136,7 +128,6 @@ extern TaskHandle_t P6MsgTaskHandle;
 extern TaskHandle_t xCommandConsoleTaskHandle;
 
 /* Variables exported internally */
-//extern FLASH_ProcessTypeDef pFlash;
 extern uint8_t numOfRecordedSnippets;
 extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 
@@ -147,8 +138,6 @@ extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 uint8_t minArr(uint8_t* arr, uint8_t* Q);
 uint8_t QnotEmpty(uint8_t* Q);
 void NotifyMessagingTask(uint8_t port);
-//BOS_Status SaveEEtopology(void);								
-//BOS_Status LoadEEtopology(void);
 uint8_t SaveToRO(void);
 #ifndef __N
 uint8_t ClearROtopology(void);
@@ -173,8 +162,6 @@ void StreamTimerCallback( TimerHandle_t xTimerStream );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
 BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
-//BOS_Status CheckForTimedButtonPress(uint8_t port);
-//BOS_Status CheckForTimedButtonRelease(uint8_t port);
 void buttonPressedCallback(uint8_t port);
 void buttonReleasedCallback(uint8_t port);
 void buttonClickedCallback(uint8_t port);
@@ -184,8 +171,6 @@ void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
-//BOS_Status RTC_Init(void);
-//BOS_Status RTC_CalendarConfig(void);
 void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift);
@@ -196,7 +181,6 @@ extern void Module_Init(void);
 extern void TIM_USEC_Init(void);
 extern void TIM_MSEC_Init(void);
 extern BOS_Status RTC_Init(void);
-//extern void RegisterModuleCLICommands(void);
 extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift);
 
 extern bool ParseSnippetCommand(char *snippetBuffer, int8_t *cliBuffer);

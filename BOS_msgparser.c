@@ -19,15 +19,12 @@ extern char cRxedChar;
 extern uint8_t longMessage; 
 extern uint16_t longMessageLastPtr;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts+1)*MaxNumOfModules];
-//static char pcUserMessage[80];
 extern BOS_Status responseStatus; 
 extern uint8_t bcastID;			// Counter for unique broadcast ID
 extern uint8_t PcPort;
 extern uint8_t BOS_initialized;
-//uint32_t BOS_var_reg[MAX_BOS_VARS];			// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
 extern uint64_t remoteBuffer;
 extern varFormat_t remoteVarFormat;
-//uint8_t CLI_LOW_Baudrate_Flag = 0; 			//Flage for Lower CLI baudrate is set
 #ifndef __N
 extern 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
 extern	uint16_t arrayPortsDir[MaxNumOfModules];

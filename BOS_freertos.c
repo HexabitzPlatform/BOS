@@ -311,14 +311,8 @@ void BackEndTask(void * argument)
 						memcpy(&crcBuffer[MSG_RX_BUF_SIZE-packetStart], &UARTRxBuf[port-1][0], (packetLength + 3) - (MSG_RX_BUF_SIZE-packetStart));
 					}
 
-					/* Adding crc8 calculation */
-					crc8 = CalculateCRC8((uint32_t *)&crcBuffer, (packetLength + 3));
-					/* End of addition of crc8 calculation */
-					
-//					crc8 = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (packetLength + 3)/4);
-//					if ((packetLength + 3)%4 !=0)		// Non-word-aligned packet
-//					crc8 = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((packetLength + 3)/4)*4], 1);
-						
+					/* crc8 calculation */
+					crc8 = CalculateCRC8((uint32_t *)&crcBuffer, (packetLength + 3));						
 					memset(crcBuffer, 0, sizeof(crcBuffer));
 					
 					//if(!crc8){crc8=1;} /*Making sure CRC Value Is not Zero*/
