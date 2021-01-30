@@ -158,7 +158,7 @@ BOS_Status LoadEEparams(void);
 BOS_Status SaveEEparams(void);
 BOS_Status LoadEEbuttons(void);
 BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst);
-void StreamTimerCallback( TimerHandle_t xTimerStream );
+//void StreamTimerCallback( TimerHandle_t xTimerStream );
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
 BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
@@ -783,73 +783,6 @@ BOS_Status LoadEEbuttons(void)
 	}
 	
 	return result;
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Setup DMA streams upon request from another module --- 
-*/
-BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, uint8_t src, uint8_t dst)
-{
-	TimerHandle_t xTimerStream = NULL; 
-	
-	/* Sanity check */
-	if (src == dst) {							// Streaming inside destination module. Lock this port to streaming but no need to setup DMA
-		portStatus[src] = STREAM;
-		return BOS_ERR_WrongParam;
-	} else if (src == 0 || dst == 0) 			// Streaming outside source module or inside destination module without defining ports. Do not lock the port and do not setup DMA
-		return BOS_ERR_WrongParam;
-	
-	/* Start DMA streams */
-	if (direction == FORWARD) 
-	{									
-		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
-		dmaStreamTotal[src-1] = count;
-	} 
-	else if (direction == BACKWARD) 
-	{
-		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
-		dmaStreamTotal[src-1] = count;
-	} 
-	else if (direction == BIDIRECTIONAL) 
-	{
-		if (StartDMAstream(GetUart(src), GetUart(dst), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY;
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&src, StreamTimerCallback );
-		dmaStreamTotal[src-1] = count;
-		if (StartDMAstream(GetUart(dst), GetUart(src), 1) == BOS_ERR_PORT_BUSY)	return BOS_ERR_PORT_BUSY; 
-		/* Create a timeout timer */
-		xTimerStream = xTimerCreate( "StreamTimer", pdMS_TO_TICKS(timeout), pdFALSE, ( void * )&dst, StreamTimerCallback );
-		dmaStreamTotal[dst-1] = count;
-	}
-	else
-		return BOS_ERR_WrongParam;
-
-	
-	/* Start the timeout timer */
-	if (xTimerStream != NULL)
-		xTimerStart( xTimerStream, portMAX_DELAY );
-	
-	return BOS_OK;
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- DMA stream timer callback --- 
-*/
-void StreamTimerCallback( TimerHandle_t xTimerStream )
-{
-	uint32_t tid = 0;
-	
-	tid = ( uint32_t ) pvTimerGetTimerID( xTimerStream );
-	
-	StopStreamDMA(tid);
-	
-	SwitchStreamDMAToMsg(tid);
 }
 
 /*-----------------------------------------------------------*/	
@@ -2083,91 +2016,6 @@ BOS_Status UpdateMyPortsDir(void)
 	return result;
 }
 #endif
-/*-----------------------------------------------------------*/
-
-/* --- Start a single-cast DMA stream across the array. Transfer ends after (count) bytes are transferred 
-			or timeout (ms), whichever comes first. If stored = true, the stream is stored in emulated eeprom --- 
-*/
-BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port = 0, temp1 = 0, temp2 = 0;
-	
-	/* Is the source a different module? */
-	if (srcM != myID) {
-		/* Forward this task to the source module */
-		messageParams[0] = (uint8_t) (count >> 24);			/* Count */
-		messageParams[1] = (uint8_t) (count >> 16);
-		messageParams[2] = (uint8_t) (count >> 8);
-		messageParams[3] = (uint8_t) count;
-		messageParams[4] = (uint8_t) (timeout >> 24);		/* Timeout */
-		messageParams[5] = (uint8_t) (timeout >> 16);
-		messageParams[6] = (uint8_t) (timeout >> 8);
-		messageParams[7] = (uint8_t) timeout;
-		messageParams[8] = direction;										/* Stream direction */
-		messageParams[9] = srcP;												/* Source port */
-		messageParams[10] = dstM;												/* destination module */
-		messageParams[11] = dstP;												/* destination port */
-		messageParams[12] = stored;											/* EEPROM storage */
-		SendMessageToModule(srcM, CODE_DMA_SCAST_STREAM, 13);		
-		
-		return result;
-	}
-	
-	/* Inform participating modules */
-	for(uint8_t i=0 ; i<sizeof(route) ; i++)
-	{
-		FindRoute(srcM, dstM);
-		/* Message other modules */
-		if (route[i]) 
-		{
-			/* Find out the inport and outport to this module from previous one */
-			if (route[i+1]) {
-				temp1 = FindRoute(route[i], route[i+1]);
-			} else {
-				temp1 = FindRoute(route[i], srcM);
-			}
-			FindRoute(srcM, dstM);
-			if (route[i] == dstM) {
-				temp2 = dstP;
-			} else {
-				temp2 = FindRoute(route[i], route[i-1]);
-			}
-			/* Message parameters*/
-			messageParams[0] = (uint8_t) (count >> 24);			/* Count */
-			messageParams[1] = (uint8_t) (count >> 16);
-			messageParams[2] = (uint8_t) (count >> 8);
-			messageParams[3] = (uint8_t) count;
-			messageParams[4] = (uint8_t) (timeout >> 24);		/* Timeout */
-			messageParams[5] = (uint8_t) (timeout >> 16);
-			messageParams[6] = (uint8_t) (timeout >> 8);
-			messageParams[7] = (uint8_t) timeout;
-			messageParams[8] = direction;										/* Stream direction */
-			messageParams[9] = temp1;												/* Source port */
-			messageParams[10] = temp2;											/* destination port */
-			messageParams[11] = stored;											/* EEPROM storage */
-			FindRoute(srcM, dstM);
-			SendMessageToModule(route[i], CODE_DMA_CHANNEL, 12);
-			osDelay(10);
-		}
-	}
-	
-	if (srcM == dstM)
-		port = dstP;
-	else
-		port = FindRoute(srcM, dstM);
-	
-	/* Setup my own DMA stream */
-	SetupDMAStreams(direction, count, timeout, srcP, port);
-	
-	// Store my own streams to EEPROM
-	if (stored) {		
-		SaveEEstreams(direction, count, timeout, srcP, port, 0, 0, 0, 0);
-	}
-	
-	
-	return result;
-}
 
 /*-----------------------------------------------------------*/
 
