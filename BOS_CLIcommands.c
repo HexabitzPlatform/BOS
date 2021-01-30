@@ -167,7 +167,7 @@ static const CLI_Command_Definition_t statusCommandDefinition =
 static const CLI_Command_Definition_t infoCommandDefinition =
 {
 	( const int8_t * ) "info", /* The command string to type. */
-	( const int8_t * ) "info:\r\n Display array infromation\r\n\r\n",
+	( const int8_t * ) "info:\r\n Display array information\r\n\r\n",
 	infoCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
