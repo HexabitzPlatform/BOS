@@ -11,8 +11,15 @@
 #include "BOS.h"
 
 /* Private and global variables ----------------------------------------------*/
+/* Used in the run time stats calculations */
+uint16_t stackWaterMark;
+uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
+
+/* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed 
 extern char message[MAX_MESSAGE_SIZE];										// Buffer to construct a message to be sent
+extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
+extern uint8_t UARTRxBufIndex[NumOfPorts];
 extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 extern char cRxedChar; 
@@ -80,6 +87,11 @@ extern Module_Status Module_MessagingTask(uint16_t code, uint8_t port, uint8_t s
 /* Module exported internal functions */
 extern uint8_t IsModuleParameter(char* name);
 
+/* BOS exported internal functions */
+extern void CheckAttachedButtons(void);
+extern void ResetAttachedButtonStates(uint8_t *deferReset);
+extern BOS_Status ExecuteSnippet(void);
+extern void NotifyMessagingTask(uint8_t port);
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
    ----------------------------------------------------------------------- 
@@ -932,6 +944,171 @@ void PxMessagingTask(void * argument)
 		taskYIELD();
 	}
 
+}
+
+/*-----------------------------------------------------------*/
+
+/* BackEndTask function */
+void BackEndTask(void * argument)
+{
+	int packetStart = 0, packetEnd = 0, packetLength = 0, parseStart = 0;
+	uint8_t port; bool emptyBuffer = false;
+	static uint8_t crc8;
+	
+  /* Infinite loop */
+  for(;;)
+  {
+		/* Search the circular receive buffers for any complete packets */	
+		for (port=1 ; port <= NumOfPorts; port++)
+		{
+			/* A. Check for BOS messages */	
+			if (portStatus[port] == MSG || portStatus[port] == FREE) 
+			{	
+				/* A.1. Look for HZ delimiter and determine packet start */
+				/* Note this parses only a single packet on each pass TODO update to parse all */
+
+				for (int i=UARTRxBufIndex[port-1]; i<MSG_RX_BUF_SIZE ; i++)
+				{
+					if (i < (MSG_RX_BUF_SIZE-1) && UARTRxBuf[port-1][i] == 'H' && UARTRxBuf[port-1][i+1] == 'Z')	
+					{	
+						packetStart = i;	
+						break;
+					}	
+					else if (i == (MSG_RX_BUF_SIZE-1) && UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1] == 'H' && UARTRxBuf[port-1][0] == 'Z')	// HZ wrap around
+					{	
+						packetStart = MSG_RX_BUF_SIZE-1;	
+						break;
+					}							
+					else 
+					{
+						/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
+						if (i == MSG_RX_BUF_SIZE-1)		
+						{
+							if (BOS.disableCLI == false)
+							{
+								for (int j=UARTRxBufIndex[port-1] ; j<MSG_RX_BUF_SIZE ; j++)
+								{
+									if (UARTRxBuf[port-1][j] == 0xD && ((j < MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][j+1] == 0) || (j == MSG_RX_BUF_SIZE-1 && UARTRxBuf[port-1][0] == 0) ) ) 
+									{
+										UARTRxBuf[port-1][j] = 0;
+										UARTRxBufIndex[port-1] = j+1;		// Advance buffer index
+										portStatus[PcPort] = FREE;			// Free the previous CLI port 
+										portStatus[port] = CLI;					// Continue the CLI session on this port
+										PcPort = port;
+										/* Activate the CLI task */
+										xTaskNotifyGive(xCommandConsoleTaskHandle);		
+										break;
+									}
+								}
+							}
+							/* Circular buffer is empty. */
+							emptyBuffer = true;
+						}
+					}						
+				}
+						
+				/* Check parse status */
+				if (emptyBuffer) {	
+					emptyBuffer = false;
+					continue;
+				}
+				
+				/* A.2. Parse the length byte */
+				if (packetStart == MSG_RX_BUF_SIZE-3) {
+					packetLength = UARTRxBuf[port-1][MSG_RX_BUF_SIZE-1];
+					parseStart = 0;				
+				} else if (packetStart == MSG_RX_BUF_SIZE-2) {
+					packetLength = UARTRxBuf[port-1][0];
+					parseStart = 1;
+				} else if (packetStart == MSG_RX_BUF_SIZE-1) {
+					packetLength = UARTRxBuf[port-1][1];
+					parseStart = 2;
+				} else {
+					packetLength = UARTRxBuf[port-1][packetStart+2];
+					parseStart = packetStart+3;
+				}
+				
+				/* A.3. Set packet end from packet start and length */			
+						packetEnd = packetStart + (packetLength + 3);			// Packet length is counted from Dst to before CRC
+				if (packetEnd > MSG_RX_BUF_SIZE-1)												// wrap-around
+					packetEnd -= MSG_RX_BUF_SIZE;
+			
+				if (packetStart != packetEnd)										// Non-empty packet
+				{				
+					Delay_ms(1);
+					/* A.4. Calculate packet CRC */				
+					if (packetStart < packetEnd) {
+						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], packetLength + 3);						
+					} else {				// wrap around
+						memcpy(crcBuffer, &UARTRxBuf[port-1][packetStart], MSG_RX_BUF_SIZE-packetStart);
+						memcpy(&crcBuffer[MSG_RX_BUF_SIZE-packetStart], &UARTRxBuf[port-1][0], (packetLength + 3) - (MSG_RX_BUF_SIZE-packetStart));
+					}
+
+					/* crc8 calculation */
+					crc8 = CalculateCRC8((uint32_t *)&crcBuffer, (packetLength + 3));						
+					memset(crcBuffer, 0, sizeof(crcBuffer));
+					
+					//if(!crc8){crc8=1;} /*Making sure CRC Value Is not Zero*/
+					
+					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
+					if (crc8 == UARTRxBuf[port-1][packetEnd])
+					{	
+						portStatus[port] = MSG;
+						messageLength[port-1] = packetLength;	
+
+						/* A.5.1. Copy the packet to message buffer */	
+						if ((packetLength) <= (MSG_RX_BUF_SIZE-parseStart-1)) {
+							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], packetLength);	
+						} else {				// Message wraps around
+							memcpy(&cMessage[port-1][0], &UARTRxBuf[port-1][parseStart], MSG_RX_BUF_SIZE-parseStart);
+							memcpy(&cMessage[port-1][MSG_RX_BUF_SIZE-parseStart], &UARTRxBuf[port-1][0], (packetLength)-(MSG_RX_BUF_SIZE-parseStart));	// wrap-around
+						}
+						
+						/* A.5.2 Clear packet location in the circular buffer */                
+						if (packetStart < packetEnd) {
+								memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);                        
+						} else {                // wrap around
+								memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart);
+								memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart));
+						}                                            
+							
+						/* A.5.3 Advance buffer index */													
+						UARTRxBufIndex[port-1] = (packetEnd+1);			// Set buffer pointer after the CRC byte 
+						++acceptedMsg;
+				
+						/* A.5.4. Notify messaging tasks */
+						NotifyMessagingTask(port);	
+
+						continue;		// Inspect the next port circular buffer
+
+					}
+				}
+				
+				/* A.6. If you are still here, then this packet is rejected TODO do something */
+
+				/* A.6.1 Clear packet location in the circular buffer */                
+				if (packetStart < packetEnd) {
+						memset(&UARTRxBuf[port-1][packetStart], 0, (packetLength) + 4);                        
+				} else {                // wrap around
+						memset(&UARTRxBuf[port-1][packetStart], 0, MSG_RX_BUF_SIZE-packetStart);
+						memset(&UARTRxBuf[port-1][0], 0, ((packetLength) + 4) - (MSG_RX_BUF_SIZE-packetStart));
+				}    
+				
+				/* A.6.2 Advance buffer index */				
+				UARTRxBufIndex[port-1] = (packetEnd+1);			// Set buffer pointer after the CRC byte 
+				++rejectedMsg;							
+			}	
+			
+			/* C. If DMA stopped due to communication errors, restart again */
+			if (MsgDMAStopped[port-1] == true) {
+				MsgDMAStopped[port-1] = false;
+				if (portStatus[port] == OVERRUN)	portStatus[port] = FREE;
+				HAL_UART_Receive_DMA(GetUart(port), (uint8_t *)&UARTRxBuf[port-1], MSG_RX_BUF_SIZE);
+			}				
+		}
+		
+		taskYIELD();
+	}
 }
 
 /*-----------------------------------------------------------*/	
