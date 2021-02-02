@@ -260,16 +260,7 @@ void LoadEEvars(void)
 
 /*-----------------------------------------------------------*/
 
-/* --- Clear array topology in SRAM and Flash RO --- 
-*/
-uint8_t ClearROtopology(void)
-{
-	// Clear the array 
-	memset(array, 0, sizeof(array));
-	N = 1; myID = 0;
-	
-	return SaveToRO();
-}
+
 
 /*-----------------------------------------------------------*/
 
