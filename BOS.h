@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.2 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -20,7 +20,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
-#define	_firmPatch			2
+#define	_firmPatch			4
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -293,6 +293,8 @@ snippet_t;
 /* BOS */
 #include "BOS_eeprom.h"
 #include "BOS_utils.h"
+#include "BOS_messaging.h"
+
 
 /* C STD Library */
 #include <stdio.h>
@@ -378,7 +380,6 @@ extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
 #ifndef __N
 extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
-extern	uint16_t arrayPortsDir[MaxNumOfModules];									/* Array ports directions */
 extern	uint8_t routeDist[MaxNumOfModules]; 
 extern	uint8_t routePrev[MaxNumOfModules]; 
 extern uint8_t route[MaxNumOfModules];
@@ -386,14 +387,9 @@ extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[
 extern	uint8_t broadcastResponse[MaxNumOfModules];
 extern	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
-extern	uint16_t arrayPortsDir[MaxNumOfModules];									/* Array ports directions */
-extern	uint8_t routeDist[MaxNumOfModules]; 
-extern	uint8_t routePrev[MaxNumOfModules]; 
-extern uint8_t route[MaxNumOfModules];
-extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[0] used to store alias for module 0 */
-extern	uint8_t broadcastResponse[MaxNumOfModules];
-extern	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
+extern char moduleAlias[__N+1][MaxLengthOfAlias+1];
+extern	uint8_t broadcastResponse[__N];
+extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 

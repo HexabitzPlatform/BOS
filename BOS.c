@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.2 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 
     File Name     : BOS.c
@@ -66,18 +66,14 @@ uint8_t dstGroupID = BOS_BROADCAST;
 char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 #ifndef __N
 	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1] = {{0}};			/* Array topology */
-	uint16_t arrayPortsDir[MaxNumOfModules]= {0};									/* Array ports directions */
 	uint8_t routeDist[MaxNumOfModules] = {0}; 
 	uint8_t routePrev[MaxNumOfModules] = {0}; 
-	uint8_t route[MaxNumOfModules] = {0};
 	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1] = {0};		/* moduleAlias[0] used to store alias for module 0 */
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 	uint16_t groupModules[MaxNumOfModules] = {0};			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-	uint16_t arrayPortsDir[__N]= {0};
 	uint8_t routeDist[__N] = {0};
 	uint8_t routePrev[__N] = {0};
-	uint8_t route[__N] = {0};
 	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[__N] = {0};
 	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */

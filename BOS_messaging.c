@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.2 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 
     File Name     : BOS_messaging.c
@@ -8,7 +8,8 @@
 */
 	
 /* Includes ------------------------------------------------------------------*/
-#include "BOS.h"
+#include "BOS_messaging.h"
+
 
 /* Private and global variables ----------------------------------------------*/
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed 
@@ -41,9 +42,9 @@ extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
 #ifndef __N
-	extern uint8_t route[MaxNumOfModules];
+	 uint8_t route[MaxNumOfModules];
 #else
-	extern uint8_t route[__N];
+	 uint8_t route[__N];
 #endif
 	
 /* UARTcmd task */
