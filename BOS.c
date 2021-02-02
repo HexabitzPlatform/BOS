@@ -5,10 +5,7 @@
     File Name     : BOS.c
     Description   : Source code for Bitz Operating System (BOS).
 		
-		Required MCU resources : 
-		
-			>> Timer 14 for micro-sec delay.
-			>> Timer 15 for milli-sec delay.
+	
 
 */
 	
@@ -162,14 +159,8 @@ BOS_Status SetupDMAStreams(uint8_t direction, uint32_t count, uint32_t timeout, 
 uint8_t IsFactoryReset(void);
 void EE_FormatForFactoryReset(void);
 BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
-void buttonPressedCallback(uint8_t port);
-void buttonReleasedCallback(uint8_t port);
-void buttonClickedCallback(uint8_t port);
-void buttonDblClickedCallback(uint8_t port);
-void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
-void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
-BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
-BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
+
+
 BOS_Status WriteToRemote(uint8_t module, uint32_t localAddress, uint32_t remoteAddress, varFormat_t format, uint32_t timeout, uint8_t force);
 void remoteBootloaderUpdate(uint8_t src, uint8_t dst, uint8_t inport, uint8_t outport);
 void SetupPortForRemoteBootloaderUpdate(uint8_t port);

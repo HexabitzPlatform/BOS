@@ -1896,6 +1896,9 @@ static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 	pdFALSE. */
 	return pdFALSE;
 }
+
+/*-----------------------------------------------------------*/
+
 static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {	
 	static const int8_t *pcMessageOK = ( int8_t * ) "P%d is working correctly\n\r";

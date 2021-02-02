@@ -17,7 +17,8 @@ extern uint8_t dstGroupID;
 extern uint16_t bcastRoutes[MaxNumOfModules];				/* P1 is LSB */
 extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 extern bool AddBcastPayload;
-
+BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
+BOS_Status BroadcastReceivedMessage(uint8_t dstType, uint8_t IncomingPort);
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1

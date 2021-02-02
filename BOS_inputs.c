@@ -22,7 +22,12 @@ bool needToDelayButtonStateReset = false, delayButtonStateReset = false;
 BOS_Status CheckForTimedButtonPress(uint8_t port);
 BOS_Status CheckForTimedButtonRelease(uint8_t port);
 extern BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
-
+void buttonPressedCallback(uint8_t port);
+void buttonReleasedCallback(uint8_t port);
+void buttonClickedCallback(uint8_t port);
+void buttonDblClickedCallback(uint8_t port);
+void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
+void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
    ----------------------------------------------------------------------- 
@@ -461,12 +466,12 @@ BOS_Status AddPortButton(uint8_t buttonType, uint8_t port)
 	}
 	else																																// Variable does not exist. Create a new one
 	{
-		temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
-		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);		
-		/* Reset times */
-		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
-		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
-		EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
+	  	temp16 = ((uint16_t)port << 12) | ((uint16_t)buttonType << 8);
+	  	EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1), temp16);		
+	  	/* Reset times */
+	  	EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+1, 0);
+	  	EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+2, 0);
+	  	EE_WriteVariable(_EE_BUTTON_BASE+4*(port-1)+3, 0);
 	}
 	
 	return result;
