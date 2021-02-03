@@ -390,7 +390,7 @@ extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
 extern	uint16_t arrayPortsDir[MaxNumOfModules];									/* Array ports directions */
 extern	uint8_t routeDist[MaxNumOfModules]; 
 extern	uint8_t routePrev[MaxNumOfModules]; 
-extern uint8_t route[MaxNumOfModules];
+extern 	uint8_t route[MaxNumOfModules];
 extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[0] used to store alias for module 0 */
 extern	uint8_t broadcastResponse[MaxNumOfModules];
 extern	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
