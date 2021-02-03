@@ -382,25 +382,15 @@ extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
 extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
 extern	uint8_t routeDist[MaxNumOfModules]; 
 extern	uint8_t routePrev[MaxNumOfModules]; 
-extern uint8_t route[MaxNumOfModules];
 extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[0] used to store alias for module 0 */
 extern	uint8_t broadcastResponse[MaxNumOfModules];
-extern	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
+extern 	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-<<<<<<< HEAD
-extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
-extern	uint16_t arrayPortsDir[MaxNumOfModules];									/* Array ports directions */
-extern	uint8_t routeDist[MaxNumOfModules]; 
-extern	uint8_t routePrev[MaxNumOfModules]; 
-extern 	uint8_t route[MaxNumOfModules];
-extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[0] used to store alias for module 0 */
-extern	uint8_t broadcastResponse[MaxNumOfModules];
-extern	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
-=======
-extern char moduleAlias[__N+1][MaxLengthOfAlias+1];
+extern	uint8_t routeDist[__N];
+extern	uint8_t routePrev[__N];
+extern	char moduleAlias[__N+1][MaxLengthOfAlias+1];
 extern	uint8_t broadcastResponse[__N];
 extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
->>>>>>> 156d99c98effa0c02d6450c4a26ef410be544457
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 

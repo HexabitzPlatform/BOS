@@ -79,6 +79,7 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
+
 /* Buffers and communication */
 uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] = {0};		// Buffer for messages received and ready to be parsed 
 char message[MAX_MESSAGE_SIZE] = {0};										// Buffer to construct a message to be sent
