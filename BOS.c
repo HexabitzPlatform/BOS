@@ -337,7 +337,7 @@ uint8_t LoadROtopology(void)
 		/* Load topology */
 		for(uint8_t i=1 ; i<=N ; i++)
 		{
-			for(uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
+			for(volatile uint8_t j=0 ; j<=MaxNumOfPorts ; j++)
 			{
 				array[i-1][j] = (*(__IO uint16_t*)(RO_START_ADDRESS+add));
 				add += 2;			
