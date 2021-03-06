@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 		
     File Name     : BOS_MsgCodes.h
@@ -161,6 +161,17 @@
 #define CODE_H26R0_STREAM_RAW               1911
 #define CODE_H26R0_SAMPLE_RAW               1912
 #define CODE_H26R0_STREAM_FORMAT            1913
+
+// H15R0x
+#define CODE_H15R0_AnalogPercentage          1950
+#define CODE_H15R0_AnalogOutValue            1951
+
+// H1DR1x
+#define CODE_H1DR1_MODE                      2900
+#define CODE_H1DR1_READ                      2901
+#define CODE_H1DR1_WRITE                     2902
+#define CODE_H1DR1_MULTIWRITE                2903
+#define CODE_H1DR1_STIMEOUT                  2904
 
 
 #endif /* BOS_MSGCODES_H */

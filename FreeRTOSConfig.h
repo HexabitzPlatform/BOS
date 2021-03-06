@@ -68,7 +68,7 @@
 */
 	
 /*
-		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
+		MODIFIED by Hexabitz for BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 */
 
@@ -188,7 +188,7 @@ uint32_t ulMainGetRunTimeCounterValue( void );
 #define portGET_RUN_TIME_COUNTER_VALUE() ulMainGetRunTimeCounterValue()
 
 /* No MPU in Cortex-M0 */
-#define portUSING_MPU_WRAPPERS 0
+//#define portUSING_MPU_WRAPPERS 0
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
 /* Software Timers */

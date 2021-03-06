@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.1 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 		
     File Name     : BOS_utils.h
@@ -59,7 +59,7 @@
 	
 #define array_size(a)										(sizeof(a)/sizeof(a))
 
-#define isblank(c) 											((c == ' ') || (c == '\t') || (c == '\v'))
+//#define isblank(c) 											((c == ' ') || (c == '\t') || (c == '\v'))
 #define isbacksplash(c) 								(c == '/')
 #define ishex(c)           							(isxdigit(c))
 
