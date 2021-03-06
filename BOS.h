@@ -1,5 +1,5 @@
 /*
-    BitzOS (BOS) V0.2.3 - Copyright (C) 2017-2020 Hexabitz
+    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
     All rights reserved
 		
     File Name     : BOS.h
@@ -20,7 +20,7 @@
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
-#define	_firmPatch			3
+#define	_firmPatch			4
 #define _firmDate				__DATE__
 #define _firmTime				__TIME__
 
@@ -29,7 +29,7 @@ enum PortNames_e{PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485};
 enum ButtonNames_e{B1=1, B2, B3, B4, B5, B6, B7, B8, B9, B10};
 enum PortStatus_e{FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM};
 enum UartDirection_e{NORMAL, REVERSED};
-enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _P08R6, _H09R0, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0};
+enum modulePartNumbers_e{_H01R0=1, _P01R0, _H23R0, _H23R1, _H07R3, _H08R6, _P08R6, _H09R0, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0,_H15R0};
 enum IndMode_e{IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK};
 enum DMAStreamDirection_e{FORWARD, BACKWARD, BIDIRECTIONAL};
 enum buttonType_e{NONE=0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC};		/* NO: Naturally Open, NC: Naturally CLosed */
@@ -293,6 +293,8 @@ snippet_t;
 /* BOS */
 #include "BOS_eeprom.h"
 #include "BOS_utils.h"
+#include "BOS_messaging.h"
+
 
 /* C STD Library */
 #include <stdio.h>
@@ -380,13 +382,18 @@ extern const char * pcParamsHelpString[];
 extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1];
 #ifndef __N
-	extern char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];
-	extern uint8_t broadcastResponse[MaxNumOfModules];
-	extern uint16_t groupModules[MaxNumOfModules];
+extern	uint16_t array[MaxNumOfModules][MaxNumOfPorts+1];			/* Array topology */
+extern	uint8_t routeDist[MaxNumOfModules]; 
+extern	uint8_t routePrev[MaxNumOfModules]; 
+extern	char moduleAlias[MaxNumOfModules+1][MaxLengthOfAlias+1];		/* moduleAlias[0] used to store alias for module 0 */
+extern	uint8_t broadcastResponse[MaxNumOfModules];
+extern 	uint16_t groupModules[MaxNumOfModules];			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-	extern char moduleAlias[__N+1][MaxLengthOfAlias+1];
-	extern uint8_t broadcastResponse[__N];
-	extern uint16_t groupModules[__N];
+extern	uint8_t routeDist[__N];
+extern	uint8_t routePrev[__N];
+extern	char moduleAlias[__N+1][MaxLengthOfAlias+1];
+extern	uint8_t broadcastResponse[__N];
+extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 extern uint8_t routeDist[]; 
 extern uint8_t routePrev[]; 
@@ -467,6 +474,7 @@ extern char *GetTimeString(void);
 extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
 extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 extern BOS_Status printfp(uint8_t port, char* str);
+uint8_t CalculateCRC8(uint32_t pData[], uint16_t size);
 
 #endif /* BOS_H */
 
