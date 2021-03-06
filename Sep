@@ -1,9 +1,6 @@
 /*
-<<<<<<< HEAD
-    BitzOS (BOS) V0.2.3 - Copyright (C) 2017-2020 Hexabitz
-=======
+
     BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
->>>>>>> BOS_files_separation
     All rights reserved
 
     File Name     : BOS.c
@@ -76,15 +73,10 @@ char groupAlias[MaxNumOfGroups][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[MaxNumOfModules] = {0};
 	uint16_t groupModules[MaxNumOfModules] = {0};			/* Group 0 (LSB) to Group 15 (MSB) */
 #else
-<<<<<<< HEAD
 	uint16_t arrayPortsDir[__N]= {0};
 	uint8_t routeDist[__N] = {0};
 	uint8_t routePrev[__N] = {0};
 	uint8_t route[__N] = {0};
-=======
-	uint8_t routeDist[__N] = {0};
-	uint8_t routePrev[__N] = {0};
->>>>>>> BOS_files_separation
 	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[__N] = {0};
 	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
@@ -193,7 +185,6 @@ you must connect to a CLI port on each startup to restore other array ports into
 																															 "BOS.mininterclicktime: 1 ... 255 msec\r\n",
 																															 "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
 
-<<<<<<< HEAD
 /* Create CLI commands --------------------------------------------------------*/
 
 static portBASE_TYPE prvTaskStatsCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
@@ -511,14 +502,11 @@ static char * pcRemoteBootloaderUpdateWarningMessage = 	\
 "\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
 \n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
 - You must power cycle the entire array after the update is finished.\n\r";	
-=======
->>>>>>> BOS_files_separation
 
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
    ----------------------------------------------------------------------- 
 */
-<<<<<<< HEAD
 
 
 /* PxMessagingTask function 
@@ -1424,9 +1412,7 @@ void TIM_MSEC_Init(void)
 
 /*-----------------------------------------------------------*/
 
-=======
 																															 
->>>>>>> BOS_files_separation
 /* --- Used by FoundRoute: Find the index of the minimum module in dist that is still unvisited 
 */
 uint8_t minArr(uint8_t* arr, uint8_t* Q)
@@ -2073,7 +2059,6 @@ void EE_FormatForFactoryReset(void)
 
 /*-----------------------------------------------------------*/	
 
-<<<<<<< HEAD
 /* --- Port buttons state parser
 */
 void CheckAttachedButtons(void)
@@ -2560,7 +2545,6 @@ __weak void RegisterUserCLICommands(void)
 }
 
 =======
->>>>>>> BOS_files_separation
 /* --- Read a value from a remote module. 
 			 This API returns a void pointer to the remote value. Cast this pointer to match the appropriate format.
 			 If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
@@ -2877,7 +2861,6 @@ void BOS_Init(void)
 }
 
 /*-----------------------------------------------------------*/
-<<<<<<< HEAD
 
 /* Register the commands.
 */
@@ -3270,7 +3253,6 @@ BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t 
 /*-----------------------------------------------------------*/
 
 =======
->>>>>>> BOS_files_separation
 //#ifndef _N
 ///* --- Explore the array and create its topology (executed only by master)
 //*/
@@ -4335,7 +4317,6 @@ BOS_Status printfp(uint8_t port, char* str)
 
 /*-----------------------------------------------------------*/
 
-<<<<<<< HEAD
 /* -----------------------------------------------------------------------
 	|															Commands																 	|
    ----------------------------------------------------------------------- 
@@ -5911,5 +5892,4 @@ static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 /*-----------------------------------------------------------*/
 
 =======
->>>>>>> BOS_files_separation
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
