@@ -305,7 +305,6 @@ snippet_t;
 #include <ctype.h>
 #include <math.h>	 
 #include <limits.h>	
-
 /* Module includes and initialization */
 #if defined(H01R0) || defined(P01R0)
 	#include "H01R0.h"

@@ -200,6 +200,7 @@ void StartDefaultTask(void * argument)
 		/* Read button state */
 		CheckAttachedButtons();
 		
+		readADCchannel();
 		/* Execute activated Command Snippets */
 		ExecuteSnippet();
 		

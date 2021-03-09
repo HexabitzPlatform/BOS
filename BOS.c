@@ -1082,7 +1082,7 @@ void BOS_Init(void)
 	EE_Init();
 	
   /* Initialize all configured peripherals */
-  GPIO_Init();
+	GPIO_Init();
 	DMA_Init();
 	TIM_USEC_Init();
 	CRC_Init();
@@ -1981,7 +1981,7 @@ BOS_Status UpdateMyPortsDir(void)
 	BOS_Status result = BOS_OK;
 	
 	/* Check port direction */
-	for (uint8_t p=1 ; p<=NumOfPorts ; p++) 
+	for (uint8_t p=1 ; p<=NumOfPorts ; p++)
 	{
 		if ( !(arrayPortsDir[myID-1] & (0x8000>>(p-1))) ) {
 			/* Port is normal */
