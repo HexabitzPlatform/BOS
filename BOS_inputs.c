@@ -35,11 +35,13 @@ void MX_ADC_Init(void);
 void Error_Handler(void);
 void readADCchannel(void);
 uint8_t Get_channel(UART_HandleTypeDef *huart, char * side);
+uint8_t Get_Rank(uint8_t Port, char* side);
+void Read_ADC(void);
 ADC_ChannelConfTypeDef sConfig = {0};
 
 #define Vref_Cal ((uint16_t *)((uint32_t)0x1ffff7BA))
-float V25 = 1.41;
-float Avg_Slope = 4.3;
+#define V25  1.41
+#define Avg_Slope 4.3
 uint8_t Channel=0;
 float  temp=0;
 float Vref_in=0;
@@ -681,11 +683,15 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 }
 
 
+/** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+ * for temperature and internal voltage reference which is equal in stm32f0 to around 1.2v.
+ *
+ * **/
+
+
 void ADC_TempandVref_init(void)
 {
 
-	  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-	  */
 		  hadc.Instance = ADC1;
 		  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
 		  hadc.Init.Resolution = ADC_RESOLUTION_12B;
@@ -708,7 +714,7 @@ void ADC_TempandVref_init(void)
 	  */
 	    /** Configure for the selected ADC regular channel to be converted.
 	    */
-	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+	   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
 	   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
 	   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
 	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
@@ -722,17 +728,19 @@ void ADC_TempandVref_init(void)
 	   {
 	     Error_Handler();
 	   }
-		ADC_lock=1;
 
+		ADC_lock=1;
 }
 
 /* ADC init function */
+
+/** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+ * to read multiple ADC channel in Port 2 and port 3 and for calculate
+ * internal temperature and internal voltage reference which is equal in stm32f0 to around 1.2v.
+ *
+  */
 void MX_ADC_Init(void)
 {
-
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
 	  hadc.Instance = ADC1;
 	  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
 	  hadc.Init.Resolution = ADC_RESOLUTION_12B;
@@ -747,31 +755,32 @@ void MX_ADC_Init(void)
 	  hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 	  hadc.Init.DMAContinuousRequests = DISABLE;
 	  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-  if (HAL_ADC_Init(&hadc) != HAL_OK)
-  {
-    Error_Handler();
-  }
+
+	  if (HAL_ADC_Init(&hadc) != HAL_OK)
+	  {
+		  Error_Handler();
+	  }
   /** Configure for the selected ADC regular channel to be converted.
   */
-  	sConfig.Channel = Channel;
-  	sConfig.Rank = Rank;
-  	sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
-  	if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-  			Error_Handler();
-  	}
+	  sConfig.Channel = Channel;
+	  sConfig.Rank = Rank_t;
+  	  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
+  	  	  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+  	  		  	  Error_Handler();
+  	  	  	  	}
     /** Configure for the selected ADC regular channel to be converted.
     */
-	sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-	sConfig.Rank = 4;
-	sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-	if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-			Error_Handler();
-	}
-	 sConfig.Channel = ADC_CHANNEL_VREFINT;
+	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+	  sConfig.Rank = 4;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
+	 	 if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+	     		Error_Handler();
+	 	 	 }
+
+	  sConfig.Channel = ADC_CHANNEL_VREFINT;
 	  sConfig.Rank = 5;
 	  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-	  {
+	  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
 	    Error_Handler();
 	  }
 
@@ -831,9 +840,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 
 void Error_Handler(void){
 
-
-	  /** Configure for the selected ADC regular channel to be converted.
-	  */
+for(;;);
 
 }
 
@@ -845,27 +852,25 @@ uint8_t Get_Rank(uint8_t Port, char* side){
 	else if(Port==3 && side== "bottom") Rank =3;
 
 	return Rank;
-
-
 }
-/** Configure port 2 & port 3 for the selected ADC regular channel to be converted.
-	  */
 
+
+/** select port 2 & port 3 for the selected ADC regular channel to be converted. */
 
 void ADC_select_channel(uint8_t ADC_port, char* side){
+
 	if(ADC_port==2 || ADC_port==3){
 
 			HAL_UART_DeInit(GetUart(ADC_port));
 			portStatus[ADC_port-1] = CUSTOM;
 
-		//	Rank_t=Get_Rank(ADC_port, side);
 			Channel=Get_channel(GetUart(ADC_port),side);
-
+			Rank_t=Get_Rank(ADC_port,side);
 			if(ADC_flag==0) MX_ADC_Init();
 
 				else {
 					sConfig.Channel = Channel;
-					sConfig.Rank = Rank++;
+					sConfig.Rank = Rank_t;
 					sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
 					if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
 								Error_Handler();
@@ -891,13 +896,12 @@ void Read_ADC(void ){
 
 					HAL_ADC_Start(&hadc);
 
-					for( Rank_index=0;Rank_index<6;Rank_index++){
+					for( Rank_index=0;Rank_index<4;Rank_index++){
 
 						if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
 							ADC_value[Rank_index] = HAL_ADC_GetValue(&hadc);
 						}
 					}
-					//Rank_t=Get_Rank(ADC_port, side);
 
 				   if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
 
@@ -914,12 +918,13 @@ void Read_ADC(void ){
 
 			}
 
-
 }
+
+/* --- Get the ADC_channel Number for a given UART.
+	*/
 uint8_t Get_channel(UART_HandleTypeDef *huart, char * side){
 
-	/* --- Get the ADC_channel Number for a given UART.
-	*/
+
 		 if (huart->Instance == USART2 &&  side=="top" )
 			return ADC_CHANNEL_2;
 		else if (huart->Instance == USART2 &&  side=="bottom" )
@@ -928,40 +933,26 @@ uint8_t Get_channel(UART_HandleTypeDef *huart, char * side){
 			return ADC_CHANNEL_4;
 		else if (huart->Instance == USART6 &&  side=="bottom" )
 			return ADC_CHANNEL_5;
-
 }
-
-
-//void readADCchannel(void){
-//
-//
-//
-// }
-
 
 void read_temp_and_Vref(float *temp, float *Vref){
 
 	if(0==ADC_lock) ADC_TempandVref_init();
 
-	HAL_ADC_Start(&hadc);
+		HAL_ADC_Start(&hadc);
 
-	   if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
+			if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
 
-		   ADC_value_temp = HAL_ADC_GetValue(&hadc);
+					ADC_value_temp = HAL_ADC_GetValue(&hadc);
 
-			*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
+					*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
+				}
+			if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
+
+					ADC_value_Vref = HAL_ADC_GetValue(&hadc);
+
+					*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
 		}
-	   if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
-
-		   ADC_value_Vref = HAL_ADC_GetValue(&hadc);
-
-			//*Vref = 3.3*ADC_value_Vref/4095;
-			*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
-
-		}
-
-
-
 	   HAL_ADC_Stop(&hadc);
 	 }
 
