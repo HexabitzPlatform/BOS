@@ -792,9 +792,8 @@ void ReadTempAndVref(float *temp, float *Vref){
 		HAL_ADC_Start(&hadc);
 
 		HAL_ADC_PollForConversion(&hadc,100);
-				ADC_value_temp = HAL_ADC_GetValue(&hadc);
-				*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
-
+		ADC_value_temp = HAL_ADC_GetValue(&hadc);
+		*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
 
 		   HAL_ADC_Stop(&hadc);
 
@@ -813,17 +812,18 @@ void ReadTempAndVref(float *temp, float *Vref){
 
 	   sConfig.Channel = ADC_CHANNEL_VREFINT;
 	   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
-	   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+	   sConfig.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;
 	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
 	     Error_Handler();
 	   }
+
 		HAL_ADC_Start(&hadc);
 
 		HAL_ADC_PollForConversion(&hadc,100);
-			ADC_value_Vref = HAL_ADC_GetValue(&hadc);
-			*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
+		ADC_value_Vref = HAL_ADC_GetValue(&hadc);
+		*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
 
-			   HAL_ADC_Stop(&hadc);
+		HAL_ADC_Stop(&hadc);
 
 
 	 /* Disable internal Voltage Reference channel */
