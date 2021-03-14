@@ -294,7 +294,7 @@ snippet_t;
 #include "BOS_eeprom.h"
 #include "BOS_utils.h"
 #include "BOS_messaging.h"
-
+#include "BOS_inputs.h"
 
 /* C STD Library */
 #include <stdio.h>

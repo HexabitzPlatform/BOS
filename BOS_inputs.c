@@ -8,10 +8,8 @@
 */
 	
 /* Includes ------------------------------------------------------------------*/
-#include "BOS.h"
-#include "stm32f0xx_hal_adc.h"
-#include "stm32f0xx_hal_adc_ex.h"
-#include "string.h"
+#include "BOS_inputs.h"
+
 /* Private and global variables ----------------------------------------------*/
 /* Buttons */
 button_t button[NumOfPorts+1] = {0};
@@ -20,8 +18,9 @@ uint32_t releaseCounter[NumOfPorts+1] = {0};
 uint8_t dblCounter[NumOfPorts+1] = {0};
 bool needToDelayButtonStateReset = false, delayButtonStateReset = false;
 ADC_HandleTypeDef hadc;
+ADC_ChannelConfTypeDef sConfig = {0};
 
-/* Private function prototypes -----------------------------------------------*/	
+/* Private buttons function prototypes -----------------------------------------------*/
 BOS_Status CheckForTimedButtonPress(uint8_t port);
 BOS_Status CheckForTimedButtonRelease(uint8_t port);
 extern BOS_Status GetPortGPIOs(uint8_t port, uint32_t *TX_Port, uint16_t *TX_Pin, uint32_t *RX_Port, uint16_t *RX_Pin);
@@ -31,24 +30,27 @@ void buttonClickedCallback(uint8_t port);
 void buttonDblClickedCallback(uint8_t port);
 void buttonPressedForXCallback(uint8_t port, uint8_t eventType);
 void buttonReleasedForYCallback(uint8_t port, uint8_t eventType);
+
+/* Private ADC function prototypes -----------------------------------------------*/
+
 void MX_ADC_Init(void);
 void Error_Handler(void);
-void readADCchannel(void);
 uint8_t Get_channel(UART_HandleTypeDef *huart, char * side);
 uint8_t Get_Rank(uint8_t Port, char* side);
-void Read_ADC(void);
-ADC_ChannelConfTypeDef sConfig = {0};
+void ReadTempAndVref(float *temp, float *Vref);
+void ReadADCChannel(uint8_t Port , char * side,float *ADC_Value);
+void ADCSelectChannel(uint8_t ADC_port, char* side);
+
+/* Private ADC variables -----------------------------------------------*/
 
 #define Vref_Cal ((uint16_t *)((uint32_t)0x1ffff7BA))
 #define V25  1.41
 #define Avg_Slope 4.3
-uint8_t Channel=0;
-float  temp=0;
-float Vref_in=0;
-uint16_t ADC_value[6]={0};
+uint8_t Channel=0;;
+uint16_t ADCchannelvalue[4]={0};
 uint16_t ADC_value_temp=0;
 uint16_t ADC_value_Vref=0;
-uint8_t ADC_flag=0,ADC_lock=0,Rank=0,Rank_index=0,Rank_t=0;
+uint8_t ADC_flag=0,Rank_t=0;
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
    ----------------------------------------------------------------------- 
@@ -63,51 +65,6 @@ __weak void buttonPressedCallback(uint8_t port)
 
 /*-----------------------------------------------------------*/	
 
-/* --- Button release callback. DO NOT MODIFY THIS CALLBACK. 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void buttonReleasedCallback(uint8_t port)
-{	
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Button single click callback. DO NOT MODIFY THIS CALLBACK. 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void buttonClickedCallback(uint8_t port)
-{	
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Button double click callback. DO NOT MODIFY THIS CALLBACK. 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void buttonDblClickedCallback(uint8_t port)
-{	
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Button pressed_for_x callbacks. DO NOT MODIFY THIS CALLBACK. 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void buttonPressedForXCallback(uint8_t port, uint8_t eventType)
-{	
-}
-
-/*-----------------------------------------------------------*/	
-
-/* --- Button released_for_y callbacks. DO NOT MODIFY THIS CALLBACK. 
-		This function is declared as __weak to be overwritten by other implementations in user file.
-*/
-__weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
-{	
-}
-
-/* --- Port buttons state parser
-*/
 void CheckAttachedButtons(void)
 {
 	uint32_t TX_Port, RX_Port; 
@@ -683,55 +640,6 @@ BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, u
 }
 
 
-/** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
- * for temperature and internal voltage reference which is equal in stm32f0 to around 1.2v.
- *
- * **/
-
-
-void ADC_TempandVref_init(void)
-{
-
-		  hadc.Instance = ADC1;
-		  hadc.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-		  hadc.Init.Resolution = ADC_RESOLUTION_12B;
-		  hadc.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-		  hadc.Init.ScanConvMode = ADC_SCAN_DIRECTION_FORWARD;
-		  hadc.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-		  hadc.Init.LowPowerAutoWait = DISABLE;
-		  hadc.Init.LowPowerAutoPowerOff = DISABLE;
-		  hadc.Init.ContinuousConvMode = ENABLE;
-		  hadc.Init.DiscontinuousConvMode = DISABLE;
-		  hadc.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-		  hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-		  hadc.Init.DMAContinuousRequests = DISABLE;
-		  hadc.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-	  if (HAL_ADC_Init(&hadc) != HAL_OK)
-	  {
-	    Error_Handler();
-	  }
-	  /** Configure for the selected ADC regular channel to be converted.
-	  */
-	    /** Configure for the selected ADC regular channel to be converted.
-	    */
-	   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-	   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
-	   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-	   {
-	     Error_Handler();
-	   }
-	   /** Configure for the selected ADC regular channel to be converted.
-	   */
-	   sConfig.Channel = ADC_CHANNEL_VREFINT;
-	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
-	   {
-	     Error_Handler();
-	   }
-
-		ADC_lock=1;
-}
-
 /* ADC init function */
 
 /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
@@ -760,30 +668,6 @@ void MX_ADC_Init(void)
 	  {
 		  Error_Handler();
 	  }
-  /** Configure for the selected ADC regular channel to be converted.
-  */
-	  sConfig.Channel = Channel;
-	  sConfig.Rank = Rank_t;
-  	  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
-  	  	  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-  	  		  	  Error_Handler();
-  	  	  	  	}
-    /** Configure for the selected ADC regular channel to be converted.
-    */
-	  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-	  sConfig.Rank = 4;
-	  sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;
-	 	 if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-	     		Error_Handler();
-	 	 	 }
-
-	  sConfig.Channel = ADC_CHANNEL_VREFINT;
-	  sConfig.Rank = 5;
-	  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
-	  if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-	    Error_Handler();
-	  }
-
 	ADC_flag=1;
 }
 
@@ -838,26 +722,12 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
   }
 }
 
-void Error_Handler(void){
 
-for(;;);
-
-}
-
-uint8_t Get_Rank(uint8_t Port, char* side){
-
-	if(Port==2 && side=="top") Rank=0;
-	else if(Port==2 && side== "bottom") Rank=1;
-	else if(Port==3 && side== "top") Rank =2;
-	else if(Port==3 && side== "bottom") Rank =3;
-
-	return Rank;
-}
 
 
 /** select port 2 & port 3 for the selected ADC regular channel to be converted. */
 
-void ADC_select_channel(uint8_t ADC_port, char* side){
+void ADCSelectChannel(uint8_t ADC_port, char* side){
 
 	if(ADC_port==2 || ADC_port==3){
 
@@ -867,58 +737,106 @@ void ADC_select_channel(uint8_t ADC_port, char* side){
 			Channel=Get_channel(GetUart(ADC_port),side);
 			Rank_t=Get_Rank(ADC_port,side);
 			if(ADC_flag==0) MX_ADC_Init();
-
-				else {
-					sConfig.Channel = Channel;
-					sConfig.Rank = Rank_t;
-					sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
-					if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
-								Error_Handler();
-						}
-
-				}
-	}
+	     }
 
 }
-void Read_ADC_Channel(uint8_t Port , char * side,float *ADC_Value){
+void ReadADCChannel(uint8_t Port , char * side,float *ADC_Value){
 
-	Read_ADC();
-	Rank_t=Get_Rank(Port, side);
-	*ADC_Value=(float )ADC_value[Rank_t];
-
-	}
-
-
-
-void Read_ADC(void ){
 
 	if(ADC_flag==1){
 
-					HAL_ADC_Start(&hadc);
+			/* --- Enable chosen channel to be read.*/
 
-					for( Rank_index=0;Rank_index<4;Rank_index++){
+				Channel=Get_channel(GetUart(Port),side);
+				Rank_t=Get_Rank(Port, side);
 
-						if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
-							ADC_value[Rank_index] = HAL_ADC_GetValue(&hadc);
-						}
+				sConfig.Channel = Channel;
+				sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+				sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
+				 if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+						Error_Handler();
+											}
+				HAL_ADC_Start(&hadc);
+				HAL_ADC_PollForConversion(&hadc,100);
+				ADCchannelvalue[Rank_t] = HAL_ADC_GetValue(&hadc);
+
+				HAL_ADC_Stop(&hadc);
+
+				/* --- Disable chosen channel.*/
+				sConfig.Channel = Channel;
+				sConfig.Rank = ADC_RANK_NONE;
+				sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
+				if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+						Error_Handler();
 					}
-
-				   if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
-
-						ADC_value[4] = HAL_ADC_GetValue(&hadc);
-						temp = ((3.3*ADC_value[4]/4095 - V25)/Avg_Slope)+25;
-					}
-				   if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
-
-						ADC_value[5] = HAL_ADC_GetValue(&hadc);
-						Vref_in=3.3 *(*Vref_Cal)/ADC_value[5];
-					}
-
-				   HAL_ADC_Stop(&hadc);
 
 			}
+	*ADC_Value=(float )ADCchannelvalue[Rank_t];
 
-}
+	}
+
+void ReadTempAndVref(float *temp, float *Vref){
+
+	if(0==ADC_flag) MX_ADC_Init();
+
+	/* --- Enable internal temperature channel.*/
+
+	   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+	   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+	   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+	   {
+	     Error_Handler();
+	   }
+
+		HAL_ADC_Start(&hadc);
+
+		HAL_ADC_PollForConversion(&hadc,100);
+				ADC_value_temp = HAL_ADC_GetValue(&hadc);
+				*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
+
+
+		   HAL_ADC_Stop(&hadc);
+
+
+/* --- Disable internal temperature channel.*/
+
+	   sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
+	   sConfig.Rank = ADC_RANK_NONE;
+	   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK)
+	   {
+	     Error_Handler();
+	   }
+
+	   /* Enable internal Voltage Reference channel */
+
+	   sConfig.Channel = ADC_CHANNEL_VREFINT;
+	   sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+	   sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+	   if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+	     Error_Handler();
+	   }
+		HAL_ADC_Start(&hadc);
+
+		HAL_ADC_PollForConversion(&hadc,100);
+			ADC_value_Vref = HAL_ADC_GetValue(&hadc);
+			*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
+
+			   HAL_ADC_Stop(&hadc);
+
+
+	 /* Disable internal Voltage Reference channel */
+
+	  sConfig.Channel = ADC_CHANNEL_VREFINT;
+	  sConfig.Rank = ADC_RANK_NONE;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+		if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+			  	     Error_Handler();
+			  	   }
+	}
+
+
 
 /* --- Get the ADC_channel Number for a given UART.
 	*/
@@ -935,26 +853,22 @@ uint8_t Get_channel(UART_HandleTypeDef *huart, char * side){
 			return ADC_CHANNEL_5;
 }
 
-void read_temp_and_Vref(float *temp, float *Vref){
+void Error_Handler(void){
 
-	if(0==ADC_lock) ADC_TempandVref_init();
+HAL_Delay(100);
 
-		HAL_ADC_Start(&hadc);
+}
 
-			if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
+uint8_t Get_Rank(uint8_t Port, char* side){
 
-					ADC_value_temp = HAL_ADC_GetValue(&hadc);
+	if(Port==2 && side=="top") Rank_t=0;
+	else if(Port==2 && side== "bottom") Rank_t=1;
+	else if(Port==3 && side== "top") Rank_t =2;
+	else if(Port==3 && side== "bottom") Rank_t =3;
+	return Rank_t;
+}
 
-					*temp =((3.3*ADC_value_temp/4095 - V25)/Avg_Slope)+25;
-				}
-			if(HAL_ADC_PollForConversion(&hadc,5)==HAL_OK){
 
-					ADC_value_Vref = HAL_ADC_GetValue(&hadc);
-
-					*Vref = 3.3 * (*Vref_Cal)/ADC_value_Vref;
-		}
-	   HAL_ADC_Stop(&hadc);
-	 }
 
 
 void Deinit_ADC_Channel(uint8_t port){
@@ -967,4 +881,49 @@ void Deinit_ADC_Channel(uint8_t port){
 
 /*-----------------------------------------------------------*/
 
+/* --- Button release callback. DO NOT MODIFY THIS CALLBACK.
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonReleasedCallback(uint8_t port)
+{
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Button single click callback. DO NOT MODIFY THIS CALLBACK.
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonClickedCallback(uint8_t port)
+{
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Button double click callback. DO NOT MODIFY THIS CALLBACK.
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonDblClickedCallback(uint8_t port)
+{
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Button pressed_for_x callbacks. DO NOT MODIFY THIS CALLBACK.
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonPressedForXCallback(uint8_t port, uint8_t eventType)
+{
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Button released_for_y callbacks. DO NOT MODIFY THIS CALLBACK.
+		This function is declared as __weak to be overwritten by other implementations in user file.
+*/
+__weak void buttonReleasedForYCallback(uint8_t port, uint8_t eventType)
+{
+}
+
+/* --- Port buttons state parser
+*/
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
