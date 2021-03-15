@@ -51,6 +51,7 @@ uint16_t ADCchannelvalue[4]={0};
 uint16_t ADC_value_temp=0;
 uint16_t ADC_value_Vref=0;
 uint8_t ADC_flag=0,Rank_t=0;
+float percentage=0;
 /* -----------------------------------------------------------------------
 	|												 Private Functions	 														|
    ----------------------------------------------------------------------- 
@@ -836,7 +837,60 @@ void ReadTempAndVref(float *temp, float *Vref){
 			  	   }
 	}
 
+uint16_t Get_PIN(UART_HandleTypeDef *huart){
 
+
+		 if (huart->Instance == USART2)
+			return GPIO_PIN_2;
+		else if (huart->Instance == USART6 )
+			return GPIO_PIN_4;
+}
+
+float GetReadPrecentage(uint8_t port ,float *precentageValue){
+	  GPIO_InitTypeDef GPIO_InitStruct;
+
+		if(port==2 || port==3){
+
+			HAL_UART_DeInit(GetUart(port));
+			HAL_GPIO_DeInit(GPIOA, GPIO_PIN_4);
+			if(0==ADC_flag){ MX_ADC_Init();
+
+
+			 GPIO_InitStruct.Pin = GPIO_PIN_4;
+			 GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+			 GPIO_InitStruct.Pull = GPIO_PULLUP;
+			 GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+			 HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+					portStatus[port-1] = CUSTOM;
+			}
+
+					Channel=Get_channel(GetUart(port),"bottom");
+					HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+					sConfig.Channel = Channel;
+					sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
+					sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+					 if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+							Error_Handler();
+												}
+					HAL_ADC_Start(&hadc);
+					HAL_ADC_PollForConversion(&hadc,100);
+					percentage = HAL_ADC_GetValue(&hadc);
+					percentage=3.3*percentage/4095;
+					percentage=(100*percentage)/3.3;
+					*precentageValue=percentage;
+				//	percentage=30.3*percentage;
+					HAL_ADC_Stop(&hadc);
+
+					/* --- Disable chosen channel.*/
+					sConfig.Channel = Channel;
+					sConfig.Rank = ADC_RANK_NONE;
+					sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+					if (HAL_ADC_ConfigChannel(&hadc, &sConfig) != HAL_OK){
+							Error_Handler();
+						}
+
+	 }
+}
 
 /* --- Get the ADC_channel Number for a given UART.
 	*/
@@ -852,6 +906,8 @@ uint8_t Get_channel(UART_HandleTypeDef *huart, char * side){
 		else if (huart->Instance == USART6 &&  side=="bottom" )
 			return ADC_CHANNEL_5;
 }
+
+
 
 void Error_Handler(void){
 
