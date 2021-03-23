@@ -913,7 +913,14 @@ void PxMessagingTask(void * argument)
 						case CODE_PORT_FORWARD :
 							writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
 							break;
-						
+
+						case CODE_READ_ADC_VALUE :
+
+//						 memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
+//
+//						 ReadADCChannel(cMessage[port-1][shift],cMessage[port-1][shift+1],&temp_ADC_Value);
+//
+//						// writePxMutex(souce, temp_ADC_Value, 1, 10, 10);
 						default :
 							/* First check user-defined messages */
 							result = (BOS_Status) User_MessagingParser(code, port, src, dst, shift);			

@@ -74,6 +74,7 @@ static portBASE_TYPE delSnipCommand( int8_t *pcWriteBuffer, size_t xWriteBufferL
 static portBASE_TYPE bridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE unbridgeCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+static portBASE_TYPE ADCReadCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 
 /* CLI command structure : run-time-stats 
 This generates a table that shows how much run time each task has */
@@ -335,13 +336,22 @@ static const CLI_Command_Definition_t unbridgeCommandDefinition =
 	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
-/* CLI command structure : Testport */
+/* CLI command structure : testport */
 static const CLI_Command_Definition_t testportCommandDefinition =
 {
 	( const int8_t * ) "test-port", /* The command string to type. */
 	( const int8_t * ) "test-port:\r\n test port functionality. you can choose either to test one specific port or to test all ports. please type Px where x stands for the number of port or type <all> to test all port\r\n\r\n",
 	testportCommand, /* The function to run. */
 	1 /* Two parameters are expected. */
+};
+
+/* CLI command structure : Read ADC value */
+static const CLI_Command_Definition_t ADCReadCommandDefinition =
+{
+	( const int8_t * ) "Read-ADC", /* The command string to type. */
+	( const int8_t * ) "Read-ADC:\r\n Read ADC Value from Port x where is 2 or 3 and choose the side whereas top or bottom\r\n\r\n",
+	ADCReadCommand, /* The function to run. */
+	2 /* Two parameters are expected. */
 };
 /*-----------------------------------------------------------*/
 
@@ -396,9 +406,10 @@ void vRegisterCLICommands(void)
 	FreeRTOS_CLIRegisterCommand( &bridgeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &unbridgeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand( &testportCommandDefinition);
-	numOfBosCommands = 28;			// Add "help" command
+	FreeRTOS_CLIRegisterCommand( &ADCReadCommandDefinition);
+	numOfBosCommands = 30;			// Add "help" command
 #ifndef __N
-	numOfBosCommands = 29;
+	numOfBosCommands = 31;
 #endif
 
 	/* Register module CLI commands */	
@@ -1985,4 +1996,50 @@ static portBASE_TYPE testportCommand( int8_t *pcWriteBuffer, size_t xWriteBuffer
 }
 /*-----------------------------------------------------------*/
 
+
+/*-----------------------------------------------------------*/
+
+static portBASE_TYPE ADCReadCommand( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
+{
+	//static const int8_t *pcMessageOK = ( int8_t * ) "P%d is working correctly\n\r";
+	static const int8_t *pcMessageWrong = ( int8_t * ) "Wrong Parameter\n\r";
+	//static const int8_t *pcMessageFail = ( int8_t * ) "P%d test failed\n\r";
+	static const int8_t *pcMessageWrong1 = ( int8_t * ) "the port number is wrong\n\r";
+	//static const int8_t *pcMessageWait = ( int8_t * )"Please shorten the next port and press any key to continue testing the next one\n\r\n\r";
+	int8_t *pcParameterString1;
+	int8_t *pcParameterString2;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	portBASE_TYPE xParameterStringLength2 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t ADCports;
+	float ADC_Value_CLI=0;
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Obtain the 1st parameter string. */
+	pcParameterString1 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameterStringLength1);
+
+	pcParameterString2 = ( int8_t * ) FreeRTOS_CLIGetParameter (pcCommandString, 2, &xParameterStringLength2);
+
+	if(strcmp((char *)pcParameterString1,"2")==0 || strcmp((char *)pcParameterString1,"3")==0){
+
+
+		ADCports = ( uint8_t ) atol( ( char * ) pcParameterString1+1);
+
+		if(strcmp((char *)pcParameterString2,"top")==0 || strcmp((char *)pcParameterString1,"bottom")==0){
+			ADCSelectChannel(ADCports,pcParameterString2);
+			ReadADCChannel(ADCports,pcParameterString1,&ADC_Value_CLI);
+
+		}
+
+
+	}
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+}
+/*-----------------------------------------------------------*/
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
