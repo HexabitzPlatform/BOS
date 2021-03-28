@@ -115,6 +115,16 @@
 #define	CODE_H0FR6_TOGGLE					752
 #define	CODE_H0FR6_PWM						753
 
+// H09R0
+#define CODE_H09R0_STREAM_PORT_C            900
+#define CODE_H09R0_STREAM_PORT_F            901
+#define CODE_H09R0_STREAM_PORT_K            902
+#define CODE_H09R0_SAMPLE_C                 903
+#define CODE_H09R0_SAMPLE_F                 904
+#define CODE_H09R0_SAMPLE_K                 905
+#define CODE_H09R0_STOP                     906
+
+
 // H1BR6x
 #define CODE_H1BR6_READ_WAVE            		1350
 #define CODE_H1BR6_SCAN_WAVE								1351
