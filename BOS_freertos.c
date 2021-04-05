@@ -195,6 +195,7 @@ void StartDefaultTask(void * argument)
 			
 			default:
 				break;
+
 		}
 		
 		/* Read button state */
@@ -203,6 +204,9 @@ void StartDefaultTask(void * argument)
 		/* Execute activated Command Snippets */
 		ExecuteSnippet();
 		
+		/* Execute activated STM32CubeMonitor */
+		ExecuteMonitor();
+
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)	delayButtonStateReset = false;
 				
