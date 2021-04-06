@@ -42,6 +42,7 @@ void ReadTempAndVref(float *temp, float *Vref);
 void ReadADCChannel(uint8_t Port, char *side, float *ADC_Value);
 void ADCSelectChannel(uint8_t ADC_port, char *side);
 float GetReadPrecentage(uint8_t port, float *precentageValue);
+void Deinit_ADC_Channel(uint8_t port);
 
 /* Private ADC variables -----------------------------------------------*/
 
