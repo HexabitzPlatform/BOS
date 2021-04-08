@@ -15,7 +15,7 @@
 uint16_t stackWaterMark;
 uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0,ADCPort=0,ADCSide=0;
 float InternalVoltageReferance=0,InternalTemperature=0,ADCPercentage=0,ADCValue=0;
-char ADC_side_top[3],ADC_side_bottom[6];
+
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
 extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
