@@ -13,8 +13,9 @@
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 uint16_t stackWaterMark;
-uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0;
-
+uint16_t rejectedMsg = 0, acceptedMsg = 0, timedoutMsg = 0,ADCPort=0,ADCSide=0;
+float InternalVoltageReferance=0,InternalTemperature=0,ADCPercentage=0,ADCValue=0;
+char ADC_side_top[3],ADC_side_bottom[6];
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
 extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
@@ -1513,12 +1514,22 @@ void PxMessagingTask(void *argument) {
 						break;
 
 					case CODE_READ_ADC_VALUE:
+						ADCPort=cMessage[port-1][shift];
+						ADCSide=cMessage[port-1][shift+1];
+						if(0==ADCSide){
+						ADCSelectChannel(ADCPort,"top");
+						ReadADCChannel(ADCPort,"top",&ADCValue);}
+						else if (1==ADCSide){
+							ADCSelectChannel(ADCPort,"bottom");
+							ReadADCChannel(ADCPort,"bottom",&ADCValue);}
 
-//						 memcpy(&longMessageScratchpad[0]+longMessageLastPtr, &cMessage[port-1][shift], (size_t) numOfParams );
-//
-//						 ReadADCChannel(cMessage[port-1][shift],cMessage[port-1][shift+1],&temp_ADC_Value);
-//
-//						// writePxMutex(souce, temp_ADC_Value, 1, 10, 10);
+					case CODE_READ_TEMPERATURE:
+					case CODE_READ_VREF:
+						ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
+
+					case CODE_READ_ADC_PERCENTAGE:
+						ADCPort=cMessage[port-1][shift];
+						GetReadPrecentage(ADCPort,&ADCPercentage);
 					default:
 						/* First check user-defined messages */
 						result = (BOS_Status) User_MessagingParser(code, port,
