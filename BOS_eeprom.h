@@ -100,8 +100,8 @@
 #define _EE_EMPTY_VAR_BASE				600
 
 
-#if MaxNumOfModules > 25						// Update
- #warning "Data for 25 modules only will be stored in EEPROM."
+#if MaxNumOfModules > 26						// Update
+ #warning "Data for 26 modules only will be stored in EEPROM."
 #endif
 
 

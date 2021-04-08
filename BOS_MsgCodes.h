@@ -1,21 +1,19 @@
 /*
-    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
-    All rights reserved
-		
-    File Name     : BOS_MsgCodes.h
-    Description   : Header file for for BOS communication message codes. 
-*/
-	
+ BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
+ All rights reserved
+
+ File Name     : BOS_MsgCodes.h
+ Description   : Header file for for BOS communication message codes.
+ */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef BOS_MSGCODES_H
 #define BOS_MSGCODES_H
 
-
-
 /* -----------------------------------------------------------------------
-	|												BOS Message Codes	 														 	|
-   ----------------------------------------------------------------------- 
-*/
+ |												BOS Message Codes	 														 	|
+ -----------------------------------------------------------------------
+ */
 #define	CODE_UNKNOWN_MESSAGE					0
 #define	CODE_PING								      1
 #define	CODE_PING_RESPONSE						2
@@ -51,21 +49,18 @@
 
 #define	CODE_PORT_FORWARD     					35
 
+/* -----------------------------------------------------------------------
+ |											User Message Codes (70-99)	 											|
+ -----------------------------------------------------------------------
+ */
 
 /* -----------------------------------------------------------------------
-	|											User Message Codes (70-99)	 											|
-   ----------------------------------------------------------------------- 
-*/
-
-
-/* -----------------------------------------------------------------------
-	|											Module Message Codes	 														|
-   ----------------------------------------------------------------------- 
-*/
+ |											Module Message Codes	 														|
+ -----------------------------------------------------------------------
+ */
 // Reserve 50 messages for each PN based on its decimal value
-
 // H01R0x
-#define	CODE_H01R0_ON						  100
+#define	CODE_H01R0_ON						100
 #define	CODE_H01R0_OFF						101
 #define	CODE_H01R0_TOGGLE					102
 #define	CODE_H01R0_COLOR					103
@@ -74,10 +69,10 @@
 #define	CODE_H01R0_DIM						106
 
 // H07R3x
-#define CODE_H07R3_PLAY_SINE								350
-#define CODE_H07R3_PLAY_WAVE								351
-#define CODE_H07R3_PLAY_TUNE								352
-#define CODE_H07R3_SCAN_WAVE_RESPONSE				353
+#define CODE_H07R3_PLAY_SINE				350
+#define CODE_H07R3_PLAY_WAVE				351
+#define CODE_H07R3_PLAY_TUNE				352
+#define CODE_H07R3_SCAN_WAVE_RESPONSE		353
 
 // H08R6x
 #define CODE_H08R6_GET_INFO                 400
@@ -93,41 +88,31 @@
 #define CODE_H08R6_MIN_RANGE                410
 #define CODE_H08R6_TIMEOUT                	411
 
-
 // H0BR4x
-#define CODE_H0BR4_GET_GYRO           550
-#define CODE_H0BR4_GET_ACC            551
-#define CODE_H0BR4_GET_MAG		        552
-#define CODE_H0BR4_GET_TEMP		        553
-#define CODE_H0BR4_RESULT_GYRO        554
-#define CODE_H0BR4_RESULT_ACC         555
+#define CODE_H0BR4_GET_GYRO           		550
+#define CODE_H0BR4_GET_ACC            		551
+#define CODE_H0BR4_GET_MAG		        	552
+#define CODE_H0BR4_GET_TEMP		        	553
+#define CODE_H0BR4_RESULT_GYRO        		554
+#define CODE_H0BR4_RESULT_ACC         		555
 #define CODE_H0BR4_RESULT_MAG		 	    556
-#define CODE_H0BR4_RESULT_TEMP		    557
+#define CODE_H0BR4_RESULT_TEMP		    	557
 #define CODE_H0BR4_STREAM_GYRO				558
-#define CODE_H0BR4_STREAM_ACC				  559
+#define CODE_H0BR4_STREAM_ACC				559
 #define CODE_H0BR4_STREAM_MAG			  	560
 #define CODE_H0BR4_STREAM_TEMP				561
 #define CODE_H0BR4_STREAM_STOP				562
 
 // H0FR6x
-#define	CODE_H0FR6_ON						  750
+#define	CODE_H0FR6_ON						750
 #define	CODE_H0FR6_OFF						751
 #define	CODE_H0FR6_TOGGLE					752
 #define	CODE_H0FR6_PWM						753
-
-// H09R0
-#define CODE_H09R0_STREAM_PORT_C            900
-#define CODE_H09R0_STREAM_PORT_F            901
-#define CODE_H09R0_STREAM_PORT_K            902
-#define CODE_H09R0_SAMPLE_C                 903
-#define CODE_H09R0_SAMPLE_F                 904
-#define CODE_H09R0_SAMPLE_K                 905
-#define CODE_H09R0_STOP                     906
-
+#define	CODE_H0FR7_CURRENT					754
 
 // H1BR6x
-#define CODE_H1BR6_READ_WAVE            		1350
-#define CODE_H1BR6_SCAN_WAVE								1351
+#define CODE_H1BR6_READ_WAVE            	1350
+#define CODE_H1BR6_SCAN_WAVE				1351
 
 // H23R0x
 #define CODE_H23Rx_GET_INFO                 1700
@@ -182,7 +167,6 @@
 #define CODE_H1DR1_WRITE                     2902
 #define CODE_H1DR1_MULTIWRITE                2903
 #define CODE_H1DR1_STIMEOUT                  2904
-
 
 #endif /* BOS_MSGCODES_H */
 
