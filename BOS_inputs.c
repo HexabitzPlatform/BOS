@@ -858,8 +858,6 @@ float GetReadPrecentage(uint8_t port, float *precentageValue) {
 		percentage = 3.3 * percentage / 4095;
 
 		current=(100*percentage)/3.3;
-//		percentage = (100 * percentage) / 3.3;
-//		percentage = ((percentage - 87.6) / 4.4);
 		*precentageValue = current;
 		HAL_ADC_Stop(&hadc);
 

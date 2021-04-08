@@ -108,6 +108,12 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,
 		size_t xWriteBufferLen, const int8_t *pcCommandString);
 static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,
 		size_t xWriteBufferLen, const int8_t *pcCommandString);
+static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString);
+static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString);
+static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString);
 
 /* CLI command structure : run-time-stats 
  This generates a table that shows how much run time each task has */
@@ -353,6 +359,24 @@ static const CLI_Command_Definition_t ADCReadCommandDefinition =
 				ADCReadCommand, /* The function to run. */
 				2 /* Two parameters are expected. */
 		};
+static const CLI_Command_Definition_t ReadTempDefinition =
+		{ (const int8_t*) "read-temp", /* The command string to type. */
+				(const int8_t*) "read-temp:\r\n Read internal temperature\r\n\r\n",
+				ReadTempCommand, /* The function to run. */
+				0 /* Two parameters are expected. */
+		};
+static const CLI_Command_Definition_t ReadVrefDefinition =
+		{ (const int8_t*) "read-vref", /* The command string to type. */
+				(const int8_t*) "read-vref:\r\n Read internal reference Voltage\r\n\r\n",
+				ReadVrefCommand, /* The function to run. */
+				0 /* Two parameters are expected. */
+		};
+static const CLI_Command_Definition_t GetReadPercentageDefinition =
+		{ (const int8_t*) "read-adc-percentage", /* The command string to type. */
+				(const int8_t*) "read-adc-percentage:\r\n Get percentage value from port 2 or port 3\r\n\r\n",
+				GetReadPrecentageCommand, /* The function to run. */
+				1 /* Two parameters are expected. */
+		};
 /*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
@@ -402,9 +426,12 @@ void vRegisterCLICommands(void) {
 	FreeRTOS_CLIRegisterCommand(&unbridgeCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&testportCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&ADCReadCommandDefinition);
-	numOfBosCommands = 31;			// Add "help" command
+	FreeRTOS_CLIRegisterCommand(&ReadTempDefinition);
+	FreeRTOS_CLIRegisterCommand(&ReadVrefDefinition);
+	FreeRTOS_CLIRegisterCommand(&GetReadPercentageDefinition);
+	numOfBosCommands = 34;			// Add "help" command
 #ifndef __N
-	numOfBosCommands = 32;
+	numOfBosCommands = 35;
 #endif
 
 	/* Register module CLI commands */
@@ -2169,12 +2196,103 @@ static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,
 					(uint16_t) ADC_Value_CLI);
 
 		}
-		Deinit_ADC_Channel(ADCports);
+		else
+			strcpy((char*) pcWriteBuffer, (char*) pcMessageWrong);
+
 	}
+	else
+		strcpy((char*) pcWriteBuffer, (char*) pcMessageWrong1);
+
 
 	/* There is no more data to return after this single string, so return
 	 pdFALSE. */
 	return pdFALSE;
+}
+
+static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString) {
+
+	float ADC_Value_TEMP = 0,ADC_Value_Vref=0;
+
+	/* Remove compile time warnings about unused parameters, and check the
+	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	 write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+
+	ReadTempAndVref(&ADC_Value_TEMP,&ADC_Value_Vref);
+
+			strcpy(pcWriteBuffer, (char*) &ADC_Value_TEMP);
+
+
+			sprintf(pcWriteBuffer, "internal temperature is %.2fC \r\n",
+					 ADC_Value_TEMP);
+
+
+	/* There is no more data to return after this single string, so return
+	 pdFALSE. */
+	return pdFALSE;
+}
+
+
+static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString) {
+
+	float ADC_Value_TEMP = 0,ADC_Value_Vref=0;
+
+	/* Remove compile time warnings about unused parameters, and check the
+	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	 write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+
+	ReadTempAndVref(&ADC_Value_TEMP,&ADC_Value_Vref);
+
+			strcpy(pcWriteBuffer, (char*) &ADC_Value_TEMP);
+
+			sprintf(pcWriteBuffer, "internal reference voltage is=%.2fV \r\n",
+					 ADC_Value_Vref);
+
+
+	/* There is no more data to return after this single string, so return
+	 pdFALSE. */
+	return pdFALSE;
+}
+
+static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,
+		size_t xWriteBufferLen, const int8_t *pcCommandString) {
+	static const int8_t *pcMessageWrong = (int8_t*) "Wrong Port number \n\r"; //wrong port number was entered
+	int8_t *pcParameterString1;
+	portBASE_TYPE xParameterStringLength1 = 0;
+	BOS_Status result = BOS_OK;
+	uint8_t ADCports;
+	float ADC_Value_CLI = 0;
+	/* Remove compile time warnings about unused parameters, and check the
+	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	 write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+	/* Obtain the 1st parameter string. */
+
+	pcParameterString1 = (int8_t*) FreeRTOS_CLIGetParameter(pcCommandString, 1,
+			&xParameterStringLength1);
+
+	if (*pcParameterString1 == '2' || *pcParameterString1 == '3') {
+		ADCports = (uint8_t) atol((char*) pcParameterString1);
+		GetReadPrecentage(ADCports, &ADC_Value_CLI);
+
+		sprintf(pcWriteBuffer, "ADC value percentage is=%.2f%% %\r\n",
+				ADC_Value_CLI);
+	} else
+		strcpy((char*) pcWriteBuffer, (char*) pcMessageWrong);
+
+	/* There is no more data to return after this single string, so return
+	 pdFALSE. */
+	return pdFALSE;
+
 }
 /*-----------------------------------------------------------*/
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
