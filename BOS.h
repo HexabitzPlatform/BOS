@@ -284,42 +284,42 @@ typedef struct {
 #define REMOTE_BOS_VAR                				3
 
 /* Math Operators */
-#define MATH_EQUAL										1
-#define MATH_GREATER									2
-#define MATH_SMALLER									3
-#define MATH_GREATER_EQUAL						4
-#define MATH_SMALLER_EQUAL						5
+#define MATH_EQUAL									1
+#define MATH_GREATER								2
+#define MATH_SMALLER								3
+#define MATH_GREATER_EQUAL						    4
+#define MATH_SMALLER_EQUAL						    5
 #define MATH_NOT_EQUAL								6
-#define NUM_MATH_OPERATORS						6
+#define NUM_MATH_OPERATORS						    6
 
 /* Command Snippets */
-#define MAX_SNIPPETS									5					// Max number of accepted Snippets
+#define MAX_SNIPPETS								5					// Max number of accepted Snippets
 #define SNIPPET_CONDITION							1					// Snippet state machine codes
 #define SNIPPET_COMMANDS							2					
 #define SNIPPET_ACTIVATE							3					
-#define SNIP_COND_BUTTON_EVENT				1					// Snippet command types
-#define SNIP_COND_MODULE_EVENT				2
-#define SNIP_COND_MODULE_PARAM_CONST	3
-#define SNIP_COND_MODULE_PARAM_PARAM	4
+#define SNIP_COND_BUTTON_EVENT				        1					// Snippet command types
+#define SNIP_COND_MODULE_EVENT				        2
+#define SNIP_COND_MODULE_PARAM_CONST	            3
+#define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
 #define	NUM_OF_MODULE_PN							23
-#define P_LAST 												NumOfPorts
+#define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56
-#define MAX_PARAMS_PER_MESSAGE				(MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
+#define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
 #define cmdMAX_INPUT_SIZE							50
 #define	MaxNumOfModules								26
 #define	MaxNumOfGroups								10
-#define MaxNumOfPorts									10
+#define MaxNumOfPorts								10
 #define MaxLengthOfAlias							9
-#define MAX_BOS_VARS									30
-#define NumOfKeywords									4
-#define NumOfParamsHelpStrings				7
-#define DEF_BUTTON_DEBOUNCE						30				// Button debounce time in ms
+#define MAX_BOS_VARS								30
+#define NumOfKeywords								4
+#define NumOfParamsHelpStrings				        7
+#define DEF_BUTTON_DEBOUNCE						    30				// Button debounce time in ms
 #define DEF_BUTTON_CLICK							50				// Button single click minimum time in ms
-#define DEF_BUTTON_MIN_INTER_CLICK		5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_BUTTON_MAX_INTER_CLICK		250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_ARRAY_BAUDRATE						921600
+#define DEF_BUTTON_MIN_INTER_CLICK		            5					// Button min inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_BUTTON_MAX_INTER_CLICK		            250				// Button max inter-click time (in ms) for double clicks (uint8_t size)
+#define DEF_ARRAY_BAUDRATE						    921600
 #define DEF_CLI_BAUDRATE							921600
 #define CLI_BAUDRATE_1								115200
 //#define MSG_RX_BUF_SIZE								(250)			// 2 Mbps UART at 1 KHz parsing rate
@@ -328,7 +328,7 @@ typedef struct {
 
 /* Delay macros */
 #define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
+#define	Delay_ms_no_rtos(t)			        StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 #define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
@@ -336,18 +336,18 @@ typedef struct {
 #define	InGroup(module, group)	( (groupModules[module-1] >> group) & 0x0001 )
 
 /* Serial Wire Interface */
-#define SWDIO_PIN			GPIO_PIN_13
-#define	SWDIO_PORT		GPIOA
-#define	SWCLK_PIN			GPIO_PIN_14
-#define	SWCLK_PORT		GPIOA
+#define SWDIO_PIN			            GPIO_PIN_13
+#define	SWDIO_PORT		                GPIOA
+#define	SWCLK_PIN			            GPIO_PIN_14
+#define	SWCLK_PORT		                GPIOA
 
 /* MCU UUID */
-#define MCU_F0_UUID_BASE					0x1FFFF7AC
-#define MCU_F0_FLASH_SIZE_BASE		0x1FFFF7CC
+#define MCU_F0_UUID_BASE				0x1FFFF7AC
+#define MCU_F0_FLASH_SIZE_BASE		    0x1FFFF7CC
 
 /* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
 #define	MSG_DMA_INT_PRIORITY			0
-#define	STREAM_DMA_INT_PRIORITY		1
+#define	STREAM_DMA_INT_PRIORITY		    1
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -446,6 +446,7 @@ extern const char modulePNstring[NUM_OF_MODULE_PN][6];
 extern uint8_t portStatus[NumOfPorts + 1];
 extern uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
+extern volatile uint32_t MBmessageParams[9];
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
 extern uint8_t messageLength[NumOfPorts];
 extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
@@ -492,7 +493,7 @@ extern void MX_FREERTOS_Init(void);
 extern void SystemClock_Config(void);
 
 /* -----------------------------------------------------------------------
- |																APIs	 																 	|
+ |								APIs	    						 	|
  -----------------------------------------------------------------------
  */
 
@@ -550,6 +551,10 @@ extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress,
 extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,
 		uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
+
+extern BOS_Status WriteToMBModule( uint8_t dst , uint8_t rank , float var1 , float var2 , float var3);
+extern BOS_Status ReadFromMBModule( uint8_t dst , uint8_t rank , uint32_t timeout);
+
 extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,
 		uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,
 		uint8_t AMPM, int8_t daylightsaving);

@@ -2146,6 +2146,95 @@ uint8_t AddBOSvar(varFormat_t format, uint32_t address)
 	
 	return 0;			// Memory full
 }
+/*-----------------------------------------------------------*/
+
+/*-----------------------------------------------------------*/
+/*  Read three variables From ModBus module , by sending a request
+    to MB module , which responed and send the variables and store it
+    in MBmessageParams.
+	 rank : represents a set of 3 variables.
+					ModBus module has nine variables.
+				 0 is var1 , var2 and var3 in mb-module.
+				 1 is var4 , var5 and var6 in mb-module.
+				 2 is var7 , var8 and var9 in mb-module.
+   dst : When creating topology , you have to consider :
+         MB module ID is 1.
+         BOS module ID is 2.
+*/
+BOS_Status ReadFromMBModule( uint8_t dst , uint8_t rank , uint32_t timeout)
+{
+	messageParams[0] = rank;
+	messageParams[1] = 0;        // the size of message buffer
+	messageParams[2] = 0;        //  of the MB module is 21 byte
+	messageParams[3] = 0;        // so , 13 bytes' messageParams '
+	messageParams[4] = 0;        // + 8 bytes ' message frame setting'
+	messageParams[5] = 0;        // = 21 bytes.
+	messageParams[6] = 0;
+	messageParams[7] = 0;
+	messageParams[8] = 0;
+	messageParams[9] = 0;
+	messageParams[10] = 0;
+	messageParams[11] = 0;
+	messageParams[12] = 0;
+	SendMessageToModule(dst , CODE_READ_REMOTE , 13);
+
+	/* Wait until read is complete */
+	uint32_t t0 = HAL_GetTick();
+	//while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
+		while ( ((HAL_GetTick()-t0) < timeout) ) { };
+	/* Return the read value address */
+	if (responseStatus == BOS_OK)
+	{
+
+      return 	BOS_OK;
+	}
+	else
+		return BOS_ERROR;
+
+}
+
+/*-----------------------------------------------------------*/
+/*  Write three variables to ModBus module:
+
+   rank : represents a set of 3 variables.
+					ModBus module has nine variables.
+				 0 is var1 , var2 and var3 in mb-module.
+				 1 is var4 , var5 and var6 in mb-module.
+				 2 is var7 , var8 and var9 in mb-module.
+   dst : When creating topology , you have to consider :
+         MB module ID is 1.
+         BOS module ID is 2.
+*/
+BOS_Status WriteToMBModule( uint8_t dst , uint8_t rank , float var1 , float var2 , float var3)
+{
+	BOS_Status result = BOS_OK;
+
+	if ( rank <= 3 )
+	{
+		messageParams[0] = rank;
+		messageParams[1] = (uint8_t)((*(uint32_t *) &var1) >> 0);   // first var
+		messageParams[2] = (uint8_t)((*(uint32_t *) &var1) >> 8);
+		messageParams[3] = (uint8_t)((*(uint32_t *) &var1) >> 16);
+		messageParams[4] = (uint8_t)((*(uint32_t *) &var1) >> 24);
+
+		messageParams[5] = (uint8_t)((*(uint32_t *) &var2) >> 0);   // second var
+		messageParams[6] = (uint8_t)((*(uint32_t *) &var2) >> 8);
+		messageParams[7] = (uint8_t)((*(uint32_t *) &var2) >> 16);
+		messageParams[8] = (uint8_t)((*(uint32_t *) &var2) >> 24);
+
+		messageParams[9] =  (uint8_t)((*(uint32_t *) &var3) >> 0);   // third var
+		messageParams[10] = (uint8_t)((*(uint32_t *) &var3) >> 8);
+		messageParams[11] = (uint8_t)((*(uint32_t *) &var3) >> 16);
+		messageParams[12] = (uint8_t)((*(uint32_t *) &var3) >> 24);
+
+		SendMessageToModule(dst , CODE_WRITE_REMOTE , 13);
+	}
+	else
+		result = BOS_ERR_WrongParam;
+
+	return result;
+}
+/*-----------------------------------------------------------*/
 
 /*-----------------------------------------------------------*/
 

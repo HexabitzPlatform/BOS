@@ -22,6 +22,7 @@ extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 extern uint8_t UARTRxBufIndex[NumOfPorts];
 extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
+volatile uint32_t MBmessageParams[9] = {0};
 extern char cRxedChar; 
 extern uint8_t longMessage; 
 extern uint16_t longMessageLastPtr;
@@ -914,6 +915,29 @@ void PxMessagingTask(void * argument)
 							writePxMutex(cMessage[port-1][shift], (char *)&cMessage[port-1][shift+1], numOfParams-1, 10, 10);
 							break;
 						
+						case CODE_READ_REMOTE_ModBus_RESPONSE:
+							 switch(cMessage[port-1][0+shift])
+							 {
+									case 0:
+										MBmessageParams[0] = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24);
+										MBmessageParams[1] = ((uint32_t)cMessage[port-1][5+shift]<<0) + ((uint32_t)cMessage[port-1][6+shift]<<8) + ((uint32_t)cMessage[port-1][7+shift]<<16) + ((uint32_t)cMessage[port-1][8+shift]<<24);
+										MBmessageParams[2] = ((uint32_t)cMessage[port-1][9+shift]<<0) + ((uint32_t)cMessage[port-1][10+shift]<<8) + ((uint32_t)cMessage[port-1][11+shift]<<16) + ((uint32_t)cMessage[port-1][12+shift]<<24);
+									break;
+
+									case 1:
+										MBmessageParams[3] = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24);
+										MBmessageParams[4] = ((uint32_t)cMessage[port-1][5+shift]<<0) + ((uint32_t)cMessage[port-1][6+shift]<<8) + ((uint32_t)cMessage[port-1][7+shift]<<16) + ((uint32_t)cMessage[port-1][8+shift]<<24);
+										MBmessageParams[5] = ((uint32_t)cMessage[port-1][9+shift]<<0) + ((uint32_t)cMessage[port-1][10+shift]<<8) + ((uint32_t)cMessage[port-1][11+shift]<<16) + ((uint32_t)cMessage[port-1][12+shift]<<24);
+									break;
+
+									case 2:
+										MBmessageParams[6] = ((uint32_t)cMessage[port-1][1+shift]<<0) + ((uint32_t)cMessage[port-1][2+shift]<<8) + ((uint32_t)cMessage[port-1][3+shift]<<16) + ((uint32_t)cMessage[port-1][4+shift]<<24);
+										MBmessageParams[7] = ((uint32_t)cMessage[port-1][5+shift]<<0) + ((uint32_t)cMessage[port-1][6+shift]<<8) + ((uint32_t)cMessage[port-1][7+shift]<<16) + ((uint32_t)cMessage[port-1][8+shift]<<24);
+										MBmessageParams[8] = ((uint32_t)cMessage[port-1][9+shift]<<0) + ((uint32_t)cMessage[port-1][10+shift]<<8) + ((uint32_t)cMessage[port-1][11+shift]<<16) + ((uint32_t)cMessage[port-1][12+shift]<<24);
+									break;
+							 }
+
+
 						default :
 							/* First check user-defined messages */
 							result = (BOS_Status) User_MessagingParser(code, port, src, dst, shift);			
