@@ -59,7 +59,8 @@ enum modulePartNumbers_e {
 	_H0BR4,
 	_H18R0,
 	_H26R0,
-	_H15R0
+	_H15R0,
+	_H10R4
 };
 enum IndMode_e {
 	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
@@ -430,7 +431,7 @@ typedef struct {
 	#include "H15R0.h"	
 #endif
 #ifdef H10R4
-	#include "H10R4.h"
+#include "H10R4.h"
 #endif
 
 /* More BOS header files - must be defined after module headers */
@@ -552,8 +553,9 @@ extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,
 		uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 
-extern BOS_Status WriteToMBModule( uint8_t dst , uint8_t rank , float var1 , float var2 , float var3);
-extern BOS_Status ReadFromMBModule( uint8_t dst , uint8_t rank , uint32_t timeout);
+extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1,
+		float var2, float var3);
+extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
 
 extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,
 		uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,

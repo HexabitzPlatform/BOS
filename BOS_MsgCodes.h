@@ -115,6 +115,15 @@
 #define CODE_H1BR6_READ_WAVE            	1350
 #define CODE_H1BR6_SCAN_WAVE				1351
 
+// H10R4x
+#define CODE_H10R4_STOP						1360
+#define CODE_H10R4_STREAM_PORT				1361
+#define CODE_H10R4_STREAM_CLI				1362
+#define CODE_H10R4_STREAM_RAW				1363
+#define CODE_H10R4_STREAM_VARIANT			1364
+#define CODE_H10R4_STREAM_BUFFER			1365
+#define CODE_H10R4_STREAM_TYPE				1366
+
 // H23R0x
 #define CODE_H23Rx_GET_INFO                 1700
 #define CODE_H23Rx_DOWNLOAD_SCRIPT_OTA      1701
@@ -159,15 +168,15 @@
 #define CODE_H26R0_STREAM_FORMAT            1913
 
 // H15R0x
-#define CODE_H15R0_AnalogPercentage          1950
-#define CODE_H15R0_AnalogOutValue            1951
+#define CODE_H15R0_AnalogPercentage         1950
+#define CODE_H15R0_AnalogOutValue           1951
 
 // H1DR1x
-#define CODE_H1DR1_MODE                      2900
-#define CODE_H1DR1_READ                      2901
-#define CODE_H1DR1_WRITE                     2902
-#define CODE_H1DR1_MULTIWRITE                2903
-#define CODE_H1DR1_STIMEOUT                  2904
+#define CODE_H1DR1_MODE                     2900
+#define CODE_H1DR1_READ                     2901
+#define CODE_H1DR1_WRITE                    2902
+#define CODE_H1DR1_MULTIWRITE               2903
+#define CODE_H1DR1_STIMEOUT                 2904
 
 #endif /* BOS_MSGCODES_H */
 
