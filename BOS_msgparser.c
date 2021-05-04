@@ -1749,7 +1749,7 @@ void BackEndTask(void *argument) {
 
 				/* A.6. If you are still here, then this packet is rejected TODO do something */
 
-s				/* A.6.1 Clear packet location in the circular buffer */
+				/* A.6.1 Clear packet location in the circular buffer */
 				if (packetStart < packetEnd) {
 					memset(&UARTRxBuf[port - 1][packetStart], 0,
 							(packetLength) + 4);

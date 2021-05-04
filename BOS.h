@@ -330,8 +330,8 @@ typedef struct {
 /* Delay macros */
 #define	Delay_us(t)							StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
 #define	Delay_ms_no_rtos(t)			        StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms(t)							HAL_Delay(t)					/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
-#define	Delay_s(t)							HAL_Delay(1000*t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+#define	Delay_ms(t)							HAL_Delay(t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+#define	Delay_s(t)							HAL_Delay(1000*t)		/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
 
 /* Misc macros */
 #define	InGroup(module, group)	( (groupModules[module-1] >> group) & 0x0001 )
@@ -367,6 +367,7 @@ typedef struct {
 #include "BOS_eeprom.h"
 #include "BOS_utils.h"
 #include "BOS_messaging.h"
+#include "BOS_inputs.h"
 
 /* C STD Library */
 #include <stdio.h>
@@ -487,8 +488,7 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 extern void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
-extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code,
-		uint16_t numberOfParams);
+extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code,uint16_t numberOfParams);
 extern void SystemClock_Config(void);
 extern void MX_FREERTOS_Init(void);
 extern void SystemClock_Config(void);
@@ -499,24 +499,21 @@ extern void SystemClock_Config(void);
  */
 
 /* Indicator LED */
-#define IND_toggle()		HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)		
+#define IND_toggle()			HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)
 #define IND_ON()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)		
 #define IND_OFF()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)		
-#define IND_blink(t)				IND_ON();	HAL_Delay(t); IND_OFF()		/* Use after starting the scheduler */
+#define IND_blink(t)			IND_ON();	HAL_Delay(t); IND_OFF()		/* Use after starting the scheduler */
 #define RTOS_IND_blink(t)		IND_ON();	osDelay(t); IND_OFF()			/* Use after starting the scheduler */
 
-#define	NumberOfHops(i)		routeDist[i-1]
+#define	NumberOfHops(i)			routeDist[i-1]
 
 extern void BOS_Init(void);
 extern UART_HandleTypeDef* GetUart(uint8_t port);
 extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern void vRegisterCLICommands(void);
-extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code,
-		uint16_t numberOfParams);
-extern BOS_Status SendMessageToGroup(char *group, uint16_t code,
-		uint16_t numberOfParams);
-extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst,
-		uint16_t code, uint16_t numberOfParams);
+extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code,uint16_t numberOfParams);
+extern BOS_Status SendMessageToGroup(char *group, uint16_t code,uint16_t numberOfParams);
+extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst,uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
 extern void StartMilliDelay(uint16_t Delay);
 extern BOS_Status Explore(void);
@@ -532,34 +529,19 @@ extern BOS_Status NameModule(uint8_t module, char *alias);
 extern BOS_Status AddModuleToGroup(uint8_t module, char *group);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
-extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP,
-		uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout,
-		bool stored);
+extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP,uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout,bool stored);
 extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
-extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked,
-		uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec,
-		uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec,
-		uint8_t released_y3sec, uint8_t mode);
-extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress,
-		varFormat_t *remoteFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress,
-		varFormat_t requestedFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString,
-		varFormat_t *remoteFormat, uint32_t timeout);
-extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress,
-		uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
-extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,
-		uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
+extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked,uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec,uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec,uint8_t released_y3sec, uint8_t mode);
+extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress,varFormat_t *remoteFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress,varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString,varFormat_t *remoteFormat, uint32_t timeout);
+extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress,uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
+extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
-
-extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1,
-		float var2, float var3);
+extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1,float var2, float var3);
 extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
-
-extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,
-		uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,
-		uint8_t AMPM, int8_t daylightsaving);
+extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,uint8_t AMPM, int8_t daylightsaving);
 extern void GetTimeDate(void);
 extern char* GetDateString(void);
 extern char* GetTimeString(void);
