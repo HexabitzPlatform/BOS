@@ -2006,8 +2006,9 @@ BOS_Status UpdateMyPortsDir(void) {
 	BOS_Status result = BOS_OK;
 
 	/* Check port direction */
-	for (uint8_t p = 1; p <= NumOfPorts; p++) {
-		if (!(arrayPortsDir[myID - 1] & (0x8000 >> (p - 1)))) {
+	for (uint8_t p=1 ; p<=NumOfPorts ; p++)
+	{
+		if ( !(arrayPortsDir[myID-1] & (0x8000>>(p-1))) ) {
 			/* Port is normal */
 			SwapUartPins(GetUart(p), NORMAL);
 		} else {

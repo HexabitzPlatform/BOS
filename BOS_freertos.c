@@ -104,7 +104,7 @@ void MX_FREERTOS_Init(void)
 	/* Note: CMSIS OS priority levels are -3 to +3 and FreeRTOS priority levels are 0 to 6. Use osPriorityIdle to shift CMSIS priority levels to positive */
 	
   /* Create a defaultTask */
-  xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &defaultTaskHandle);	
+	xTaskCreate(StartDefaultTask, (const char *) "DefaultTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &defaultTaskHandle);
 
 	/* Create the back-end task */
 	xTaskCreate(BackEndTask, (const char *) "BackEndTask", (2*configMINIMAL_STACK_SIZE), NULL, osPriorityNormal-osPriorityIdle, &BackEndTaskHandle);
@@ -195,6 +195,7 @@ void StartDefaultTask(void * argument)
 			
 			default:
 				break;
+
 		}
 		
 		/* Read button state */
@@ -203,6 +204,9 @@ void StartDefaultTask(void * argument)
 		/* Execute activated Command Snippets */
 		ExecuteSnippet();
 		
+		/* Execute activated STM32CubeMonitor */
+		ExecuteMonitor();
+
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)	delayButtonStateReset = false;
 				
