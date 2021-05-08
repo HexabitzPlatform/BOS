@@ -1301,7 +1301,7 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer, size_t xWriteBufferLen,co
 
 /*-----------------------------------------------------------*/
 
-static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,ize_t xWriteBufferLen, const int8_t *pcCommandString) {
+static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen, const int8_t *pcCommandString) {
 	BOS_Status result = BOS_OK;
 	static int8_t *pcParameterString1;
 	portBASE_TYPE xParameterStringLength1 = 0;
