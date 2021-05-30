@@ -175,7 +175,7 @@ void ResetUartORE(void)
 	__HAL_UART_CLEAR_OREFLAG(&huart3);
 #endif
 #ifdef _Usart4
-	__HAL_UART_CLEAR_OREFLAG(&huart4);
+	//__HAL_UART_CLEAR_OREFLAG(&huart4);
 #endif
 #ifdef _Usart5
 	__HAL_UART_CLEAR_OREFLAG(&huart5);

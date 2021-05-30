@@ -67,10 +67,10 @@ static char * pcWelcomeMessage = 	\
 "\n\r\n\r====================================================	\
      \n\r====================================================	\
      \n\r||            Welcome to BitzOS CLI!              ||	\
-		 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2021.        ||	\
+	 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2021.        ||	\
      \n\r||                                                ||	\
-		 \n\r||      Please check the project website at       ||	\
-		 \n\r||             http://hexabitz.com/               ||	\
+	 \n\r||      Please check the project website at       ||	\
+	 \n\r||             http://hexabitz.com/               ||	\
      \n\r||                                                ||	\
      \n\r||   Type help for a list of available commands.  ||	\
      \n\r====================================================	\
@@ -682,12 +682,12 @@ bool CheckSnippetCondition(uint8_t index)
 			// Compare them mathematically
 			switch (snippets[index].cond.mathOperator)
       {
-      	case MATH_EQUAL:					if (flt1 == flt2)	return true;	break;
+      	case MATH_EQUAL:				if (flt1 == flt2)	return true;	break;
       	case MATH_GREATER:				if (flt1 > flt2)	return true;	break;
-		    case MATH_SMALLER:				if (flt1 < flt2 && flt1 != 0.0f)	return true;	break;
-			  case MATH_GREATER_EQUAL:	if (flt1 >= flt2)	return true;	break;
-			  case MATH_SMALLER_EQUAL:	if (flt1 <= flt2 && flt1 != 0.0f)	return true;	break;
-				case MATH_NOT_EQUAL:			if (flt1 != flt2 && flt1 != 0.0f)	return true;	break;
+		case MATH_SMALLER:				if (flt1 < flt2 && flt1 != 0.0f)	return true;	break;
+	    case MATH_GREATER_EQUAL:	    if (flt1 >= flt2)	return true;	break;
+	    case MATH_SMALLER_EQUAL:	    if (flt1 <= flt2 && flt1 != 0.0f)	return true;	break;
+		case MATH_NOT_EQUAL:			if (flt1 != flt2 && flt1 != 0.0f)	return true;	break;
       	default:
       		break;
       }
