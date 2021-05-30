@@ -94,6 +94,15 @@
 #define CODE_H08R6_TIMEOUT                	411
 
 
+// H09R0
+#define CODE_H09R0_STREAM_PORT_C            450
+#define CODE_H09R0_STREAM_PORT_F            451
+#define CODE_H09R0_STREAM_PORT_K            452
+#define CODE_H09R0_SAMPLE_C                 453
+#define CODE_H09R0_SAMPLE_F                 454
+#define CODE_H09R0_SAMPLE_K                 455
+#define CODE_H09R0_STOP                     456
+
 // H0BR4x
 #define CODE_H0BR4_GET_GYRO           550
 #define CODE_H0BR4_GET_ACC            551
@@ -114,15 +123,6 @@
 #define	CODE_H0FR6_OFF						751
 #define	CODE_H0FR6_TOGGLE					752
 #define	CODE_H0FR6_PWM						753
-
-// H09R0
-#define CODE_H09R0_STREAM_PORT_C            900
-#define CODE_H09R0_STREAM_PORT_F            901
-#define CODE_H09R0_STREAM_PORT_K            902
-#define CODE_H09R0_SAMPLE_C                 903
-#define CODE_H09R0_SAMPLE_F                 904
-#define CODE_H09R0_SAMPLE_K                 905
-#define CODE_H09R0_STOP                     906
 
 
 // H1BR6x
