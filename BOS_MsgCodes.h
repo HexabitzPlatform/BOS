@@ -64,7 +64,7 @@
  */
 // Reserve 50 messages for each PN based on its decimal value
 // H01R0x
-#define	CODE_H01R0_ON						100
+#define	CODE_H01R0_ON						  100
 #define	CODE_H01R0_OFF						  101
 #define	CODE_H01R0_TOGGLE				  	  102
 #define	CODE_H01R0_COLOR					  103
@@ -91,6 +91,16 @@
 #define CODE_H08R6_MAX_RANGE                  409
 #define CODE_H08R6_MIN_RANGE                  410
 #define CODE_H08R6_TIMEOUT                	  411
+
+
+// H09R0
+#define CODE_H09R0_STREAM_PORT_C              450
+#define CODE_H09R0_STREAM_PORT_F              451
+#define CODE_H09R0_STREAM_PORT_K              452
+#define CODE_H09R0_SAMPLE_C                   453
+#define CODE_H09R0_SAMPLE_F                   454
+#define CODE_H09R0_SAMPLE_K                   455
+#define CODE_H09R0_STOP                       456
 
 // H0BR4x
 #define CODE_H0BR4_GET_GYRO           		  550
@@ -122,13 +132,13 @@
 #define CODE_H1BR6_SCAN_WAVE			   	  1351
 
 // H10R4x
-#define CODE_H10R4_STOP						1360
-#define CODE_H10R4_STREAM_PORT				1361
-#define CODE_H10R4_STREAM_CLI				1362
-#define CODE_H10R4_STREAM_RAW				1363
-#define CODE_H10R4_STREAM_VARIANT			1364
-#define CODE_H10R4_STREAM_BUFFER			1365
-#define CODE_H10R4_STREAM_TYPE				1366
+#define CODE_H10R4_STOP						  1360
+#define CODE_H10R4_STREAM_PORT				  1361
+#define CODE_H10R4_STREAM_CLI				  1362
+#define CODE_H10R4_STREAM_RAW				  1363
+#define CODE_H10R4_STREAM_VARIANT			  1364
+#define CODE_H10R4_STREAM_BUFFER			  1365
+#define CODE_H10R4_STREAM_TYPE				  1366
 
 // H23R0x
 #define CODE_H23Rx_GET_INFO                   1700
