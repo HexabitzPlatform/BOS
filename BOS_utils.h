@@ -1,11 +1,10 @@
 /*
-    BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
-    All rights reserved
-		
-    File Name     : BOS_utils.h
-    Description   : Header file for BOS macros, constants and utilities.
-*/
-	
+ BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ All rights reserved
+ 
+ File Name     : BOS_utils.h
+ Description   : Header file for BOS macros, constants and utilities.
+ */
 
 #ifndef BOS_UTILS_H
 #define BOS_UTILS_H
@@ -56,14 +55,12 @@
 
 /* Double Negation Normalize Boolean values i {0,1} */
 #define bit_at(a,i)											(!!((a)[(unsigned)(i) >> 3] & (1 << ((unsigned)(i) & 0x07))))
-	
+
 #define array_size(a)										(sizeof(a)/sizeof(a))
 
 //#define isblank(c) 											((c == ' ') || (c == '\t') || (c == '\v'))
 #define isbacksplash(c) 								(c == '/')
 #define ishex(c)           							(isxdigit(c))
-
-
 
 #endif /* BOS_H */
 

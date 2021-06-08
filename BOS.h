@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.4 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -26,10 +26,10 @@
 
 /* Enumerations */
 enum PortNames_e {
-	PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485
+	PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485,Port_Monitor
 };
 enum ButtonNames_e {
-	B1 = 1, B2, B3, B4, B5, B6, B7, B8, B9, B10
+	B1 =1, B2, B3, B4, B5, B6, B7, B8, B9, B10
 };
 enum PortStatus_e {
 	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM
@@ -38,10 +38,11 @@ enum UartDirection_e {
 	NORMAL, REVERSED
 };
 enum modulePartNumbers_e {
-	_H01R0 = 1,
+	_H01R0 =1,
 	_P01R0,
 	_H23R0,
 	_H23R1,
+	_H23R3,
 	_H07R3,
 	_H08R6,
 	_P08R6,
@@ -69,11 +70,11 @@ enum DMAStreamDirection_e {
 	FORWARD, BACKWARD, BIDIRECTIONAL
 };
 enum buttonType_e {
-	NONE = 0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
+	NONE =0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
 };
 /* NO: Naturally Open, NC: Naturally CLosed */
 enum buttonState_e {
-	OFF = 1,
+	OFF =1,
 	ON,
 	OPEN,
 	CLOSED,
@@ -94,12 +95,12 @@ enum bootStatus_e {
 
 /* Color Enumerations */
 enum BasicColors {
-	BLACK = 1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN
+	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN
 };
 
 /* RGB LED Mode Enumerations */
 enum RGBLedMode {
-	RGB_PULSE_RGB = 1,
+	RGB_PULSE_RGB =1,
 	RGB_PULSE_COLOR,
 	RGB_SWEEP_BASIC,
 	RGB_SWEEP_FINE,
@@ -115,13 +116,13 @@ enum RGBLedMode {
 
 /* RTC Enums */
 enum rtc_ampm_e {
-	RTC_AM = 1, RTC_PM
+	RTC_AM =1, RTC_PM
 };
 enum rtc_daylight_e {
-	DAYLIGHT_SUB1H = -1, DAYLIGHT_NONE = 0, DAYLIGHT_ADD1H = 1
+	DAYLIGHT_SUB1H =-1, DAYLIGHT_NONE =0, DAYLIGHT_ADD1H =1
 };
 enum rtc_months_e {
-	JANUARY = 1,
+	JANUARY =1,
 	FEBRUARY,
 	MARCH,
 	APRIL,
@@ -135,11 +136,11 @@ enum rtc_months_e {
 	DECEMBER
 };
 enum rtc_weekdays_e {
-	MONDAY = 1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
+	MONDAY =1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
 };
 /* Type definitions */
 typedef enum {
-	FMT_UINT8 = 1,
+	FMT_UINT8 =1,
 	FMT_INT8,
 	FMT_UINT16,
 	FMT_INT16,
@@ -149,44 +150,44 @@ typedef enum {
 	FMT_BOOL
 } varFormat_t;
 typedef enum {
-	TRACE_NONE = 0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
+	TRACE_NONE =0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
 } traceOptions_t;
 
 /* BOS_Status Type Definition */
 typedef enum {
-	BOS_OK = 0,
-	BOS_ERR_UnknownMessage = 1,
-	BOS_ERR_NoResponse = 2,
-	BOS_ERR_MSG_Reflection = 3,
-	BOS_ERR_UnIDedModule = 5,
-	BOS_ERR_Keyword = 6,
-	BOS_ERR_ExistingAlias = 7,
-	BOS_ERR_ExistingCmd = 8,
-	BOS_ERR_EEPROM = 10,
-	BOS_ERR_BUTTON_NOT_DEFINED = 11,
-	BOS_ERR_BUTTON_PRESS_EVENT_FULL = 12,
-	BOS_ERR_BUTTON_RELEASE_EVENT_FULL = 13,
-	BOS_ERR_SNIP_MEM_FULL = 14,
-	BOS_ERR_REMOTE_READ_TIMEOUT = 15,
-	BOS_ERR_REMOTE_READ_NO_VAR = 16,
-	BOS_ERR_REMOTE_WRITE_TIMEOUT = 17,
-	BOS_ERR_REMOTE_WRITE_MEM_FULL = 18,
-	BOS_ERR_REMOTE_WRITE_INDEX = 19,
-	BOS_ERR_LOCAL_FORMAT_UPDATED = 20,
-	BOS_ERR_REMOTE_WRITE_ADDRESS = 21,
-	BOS_ERR_REMOTE_WRITE_FLASH = 22,
-	BOS_ERR_PORT_BUSY = 23,
-	BOS_ERR_WrongName = 100,
-	BOS_ERR_WrongGroup = 101,
-	BOS_ERR_WrongID = 102,
-	BOS_ERR_WrongParam = 103,
-	BOS_ERR_WrongValue = 104,
-	BOS_ERR_MSG_DOES_NOT_FIT = 105,
-	BOS_MEM_ERASED = 250,
-	BOS_MEM_FULL = 251,
-	BOS_MULTICAST = 254,
-	BOS_BROADCAST = 255,
-	BOS_ERROR = 255
+	BOS_OK =0,
+	BOS_ERR_UnknownMessage =1,
+	BOS_ERR_NoResponse =2,
+	BOS_ERR_MSG_Reflection =3,
+	BOS_ERR_UnIDedModule =5,
+	BOS_ERR_Keyword =6,
+	BOS_ERR_ExistingAlias =7,
+	BOS_ERR_ExistingCmd =8,
+	BOS_ERR_EEPROM =10,
+	BOS_ERR_BUTTON_NOT_DEFINED =11,
+	BOS_ERR_BUTTON_PRESS_EVENT_FULL =12,
+	BOS_ERR_BUTTON_RELEASE_EVENT_FULL =13,
+	BOS_ERR_SNIP_MEM_FULL =14,
+	BOS_ERR_REMOTE_READ_TIMEOUT =15,
+	BOS_ERR_REMOTE_READ_NO_VAR =16,
+	BOS_ERR_REMOTE_WRITE_TIMEOUT =17,
+	BOS_ERR_REMOTE_WRITE_MEM_FULL =18,
+	BOS_ERR_REMOTE_WRITE_INDEX =19,
+	BOS_ERR_LOCAL_FORMAT_UPDATED =20,
+	BOS_ERR_REMOTE_WRITE_ADDRESS =21,
+	BOS_ERR_REMOTE_WRITE_FLASH =22,
+	BOS_ERR_PORT_BUSY =23,
+	BOS_ERR_WrongName =100,
+	BOS_ERR_WrongGroup =101,
+	BOS_ERR_WrongID =102,
+	BOS_ERR_WrongParam =103,
+	BOS_ERR_WrongValue =104,
+	BOS_ERR_MSG_DOES_NOT_FIT =105,
+	BOS_MEM_ERASED =250,
+	BOS_MEM_FULL =251,
+	BOS_MULTICAST =254,
+	BOS_BROADCAST =255,
+	BOS_ERROR =255
 } BOS_Status;
 
 /* Button Configuration Struct Type Definition */
@@ -220,8 +221,8 @@ typedef struct {
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
-	BOS_time_t time;						// Not saved with BOS parameters
-	BOS_date_t date;						// Not saved with BOS parameters
+	BOS_time_t time;// Not saved with BOS parameters
+	BOS_date_t date;// Not saved with BOS parameters
 	uint8_t overrun;
 	uint8_t disableCLI;
 } BOS_t;
@@ -304,7 +305,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define	NUM_OF_MODULE_PN							24
+#define	NUM_OF_MODULE_PN							25
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -381,10 +382,13 @@ typedef struct {
 
 /* Module includes and initialization */
 #if defined(H01R0) || defined(P01R0)
-	#include "H01R0.h"
+#include "H01R0.h"
 #endif
 #if defined(H23R1) || defined(H23R0)
 	#include "H23Rx.h"	
+#endif
+#if defined(H23R3)
+	#include "H23R3.h"
 #endif
 #ifdef H07R3
 	#include "H07R3.h"	
@@ -465,11 +469,11 @@ extern char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1]; /* moduleAli
 extern uint8_t broadcastResponse[MaxNumOfModules];
 extern uint16_t groupModules[MaxNumOfModules]; /* Group 0 (LSB) to Group 15 (MSB) */
 #else
-extern	uint8_t routeDist[__N];
-extern	uint8_t routePrev[__N];
-extern	char moduleAlias[__N+1][MaxLengthOfAlias+1];
-extern	uint8_t broadcastResponse[__N];
-extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
+extern uint8_t routeDist[__N ];
+extern uint8_t routePrev[__N ];
+extern char moduleAlias[__N + 1][MaxLengthOfAlias + 1];
+extern uint8_t broadcastResponse[__N ];
+extern uint16_t groupModules[__N ]; /* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 extern uint8_t routeDist[];
 extern uint8_t routePrev[];
@@ -488,7 +492,8 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 extern void StringToLowerCase(char *string);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
-extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code,uint16_t numberOfParams);
+extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code,
+    uint16_t numberOfParams);
 extern void SystemClock_Config(void);
 extern void MX_FREERTOS_Init(void);
 extern void SystemClock_Config(void);
@@ -511,9 +516,12 @@ extern void BOS_Init(void);
 extern UART_HandleTypeDef* GetUart(uint8_t port);
 extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern void vRegisterCLICommands(void);
-extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code,uint16_t numberOfParams);
-extern BOS_Status SendMessageToGroup(char *group, uint16_t code,uint16_t numberOfParams);
-extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst,uint16_t code, uint16_t numberOfParams);
+extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code,
+    uint16_t numberOfParams);
+extern BOS_Status SendMessageToGroup(char *group, uint16_t code,
+    uint16_t numberOfParams);
+extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst,
+    uint16_t code, uint16_t numberOfParams);
 extern void StartMicroDelay(uint16_t Delay);
 extern void StartMilliDelay(uint16_t Delay);
 extern BOS_Status Explore(void);
@@ -529,19 +537,32 @@ extern BOS_Status NameModule(uint8_t module, char *alias);
 extern BOS_Status AddModuleToGroup(uint8_t module, char *group);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
-extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP,uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout,bool stored);
+extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP,
+    uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout,
+    bool stored);
 extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
 extern BOS_Status RemovePortButton(uint8_t port);
-extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked,uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec,uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec,uint8_t released_y3sec, uint8_t mode);
-extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress,varFormat_t *remoteFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress,varFormat_t requestedFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString,varFormat_t *remoteFormat, uint32_t timeout);
-extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress,uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
-extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
+extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked,
+    uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec,
+    uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec,
+    uint8_t released_y3sec, uint8_t mode);
+extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress,
+    varFormat_t *remoteFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress,
+    varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString,
+    varFormat_t *remoteFormat, uint32_t timeout);
+extern BOS_Status WriteRemote(uint8_t module, uint32_t localAddress,
+    uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
+extern BOS_Status WriteRemoteForce(uint8_t module, uint32_t localAddress,
+    uint32_t remoteAddress, varFormat_t format, uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
-extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1,float var2, float var3);
+extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1,
+    float var2, float var3);
 extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
-extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,uint8_t AMPM, int8_t daylightsaving);
+extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year,
+    uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours,
+    uint8_t AMPM, int8_t daylightsaving);
 extern void GetTimeDate(void);
 extern char* GetDateString(void);
 extern char* GetTimeString(void);
