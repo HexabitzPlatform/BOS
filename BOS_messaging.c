@@ -19,6 +19,7 @@ extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 extern bool AddBcastPayload;
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
+uint32_t totalnumberoftransmiitedmesg=0;
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
@@ -293,21 +294,21 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 
  #		port			src				dst							case
  ====================================================================================
- 1		0					!0				!0							Broadcast or multi-cast message.
- 2		0					0					!0							Broadcast or multi-cast message forwarded from another port (which is passed to the API thru numberOfParams).
- 3		0					!0				0								Not allowed.
- 4		0					0					0								Not allowed.
- 5		!0				!0				!0							Single-cast message.
- 6   !0        0					!0							Either single-cast message with myID as source module OR (if code == 0)
- single-cast message forwarded from another port (which is passed to the API thru numberOfParams).
- 7   !0        !0				0								Not allowed.
- 8   !0        0					0								Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
+ 1		0				!0				!0							Broadcast or multi-cast message.
+ 2		0				 0				!0							Broadcast or multi-cast message forwarded from another port (which is passed to the API thru numberOfParams).
+ 3		0				!0				 0							Not allowed.
+ 4		0				 0				 0							Not allowed.
+ 5	   !0				!0				!0							Single-cast message.
+ 6     !0        		 0				!0							Either single-cast message with myID as source module OR (if code == 0)
+ 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	    single-cast message forwarded from another port (which is passed to the API thru numberOfParams).
+ 7     !0        	    !0				 0							Not allowed.
+ 8     !0                0				 0							Message sent to adjacent neighbor (e.g., if ID is unknown) with myID as source module.
  */
 BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
 	uint8_t length =0, shift =0;
 	static uint16_t totalNumberOfParams =0;
-	static uint16_t ptrShift =0;
+	static uint16_t ptrShift =0,pp=0;
 	bool extendOptions = false, extendCode = false;
 	UBaseType_t TaskPriority;
 	
@@ -353,10 +354,9 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		message[2] =length;
 		message[3] =dst;
 		message[4] =src;
-		
 		/* Options */
 		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] =(BOS.response) | (BOS.trace << 2) | (extendCode << 1) | (extendOptions);
+		message[5] =(BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4) | (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
 		if(extendOptions == true){
 			++shift;
 		}
@@ -453,16 +453,28 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	message[length + 3] =CalculateCRC8((uint32_t* )&crcBuffer,(length + 3));
 	/* end of crc calculation function addition */
 
-//	message[length+3] = HAL_CRC_Calculate(&hcrc, (uint32_t *)&crcBuffer, (length + 3)/4);
-//	if ((length + 3)%4 != 0) 							// Non-word-aligned packet
-//		message[length+3] = HAL_CRC_Accumulate(&hcrc, (uint32_t *)&crcBuffer[((length + 3)/4)*4], 1);
 	memset(crcBuffer,0,sizeof(crcBuffer));
-	//if(! message[length+3]){message[length+3]=1;}  /*Making sure CRC Value Is not Zero*/
 	
-	/* Transmit the message - single-cast */
 	if(dst != BOS_BROADCAST && dst != BOS_MULTICAST){
-		writePxDMAMutex(port,message,length + 4,cmd50ms);
+		/* Transmit the message - single-cast */
+
+		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
+			writePxDMAMutex(port,message,length + 4,cmd50ms);
+		}
+		else{
+
+			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
+				writePxDMAMutex(port,message,length + 4,cmd50ms);
+				osDelay(200);
+				if(ACK_FLAG == true)
+					break;
+				if(rejected_FLAG == true)
+					writePxDMAMutex(port,message,length + 4,cmd50ms);
+			}
+		}
+		ACK_FLAG =false; rejected_FLAG=false;
 	}
+
 	/* Transmit the message - multi-cast or broadcast */
 	else{
 		if(code == 0 && src == 0){					// Forwarded broadcast or multicast. Update with original source.
@@ -477,8 +489,12 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
 				writePxDMAMutex(p,message,length + 4,cmd50ms);
-				Delay_ms(1);
+				osDelay(200);
+				if(rejected_FLAG == true)
+					writePxDMAMutex(port,message,length + 4,cmd50ms);
 			}
+			rejected_FLAG=false;
+			Delay_us(10);
 		}
 	}
 	

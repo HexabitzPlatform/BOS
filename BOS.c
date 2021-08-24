@@ -11,11 +11,14 @@
 #include "BOS.h"
 
 /* Private and global variables ---------------------------------------------------------*/
-
+BOSMessaging_t BOSMessaging;
 BOS_t BOS;
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .response =
-BOS_RESPONSE_ALL, .trace =TRACE_BOTH, .buttons.debounce =
+BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
+BOSMessaging_t BOSMessging_default={ .response =
+	BOS_RESPONSE_ALL, .trace =TRACE_NONE,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+
+};
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
@@ -28,7 +31,7 @@ static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
 const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-
+bool ACK_FLAG=0,rejected_FLAG=0;
 //static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
 
 /* Define long messages -------------------------------------------------------*/
@@ -392,15 +395,27 @@ BOS_Status LoadEEparams(void){
 	status1 =EE_ReadVariable(_EE_PARAMS_BASE,&temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
-		BOS.response =(uint8_t )temp1;
-		BOS.trace =(traceOptions_t )(temp1 >> 8);
+		BOSMessaging.response =(uint8_t )temp1;
+		BOSMessaging.trace =(traceOptions_t )(temp1 >> 8);
 		/* Couldn't find the variable, load default config */
 	}
 	else{
-		BOS.response =BOS_default.response;
-		BOS.trace =BOS_default.trace;
+		BOSMessaging.response =BOSMessging_default.response;
+		BOSMessaging.trace =BOSMessging_default.trace;
+
 	}
-	
+	/* Read params base - BOS response and BOS trace */
+	status1 =EE_ReadVariable(_EE_PARAMS_Messaging,&temp1);
+
+	if(!status1){
+		BOSMessaging.Acknowledgment =(bool )(temp1 >>15);
+		BOSMessaging.trial =(uint16_t)(temp1 >> 1);
+		/* Couldn't find the variable, load default config */
+	}
+	else{
+		BOSMessaging.Acknowledgment=BOSMessging_default.Acknowledgment;
+		BOSMessaging.trial=BOSMessging_default.trial;
+	}
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
 	if(!status1)
@@ -655,8 +670,10 @@ BOS_Status SaveEEparams(void){
 	BOS_Status result =BOS_OK;
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 5) | (uint16_t )BOS.response);
+	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 5) | (uint16_t )BOSMessaging.response);
 	
+	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
+
 	/* Save Button debounce */
 	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.debounce);
 	
@@ -1255,9 +1272,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore){
 #endif
 /*-----------------------------------------------------------*/
 
-/* --- Find array broadcast routes starting from a given module 
- (Takes about 50 usec)
- */
+/* --- Find array broadcast routes starting from a given module (Takes about 50 usec) */
 BOS_Status FindBroadcastRoutes(uint8_t src){
 	BOS_Status result =BOS_OK;
 	uint8_t p =0, m =0, level =0, untaged =0;
@@ -1275,7 +1290,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 
 	++level;												// Move one level
 	
-	for(p =1; p <= NumOfPorts; p++){
+	for(p =1; p <= 6; p++){
 		if(array[src - 1][p]){
 			bcastRoutes[src - 1] |=(0x01 << (p - 1));
 			modules[(array[src - 1][p] >> 3) - 1] =level;												// Tag this module as already broadcasted-to
@@ -1292,7 +1307,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 		    {
 			if(modules[m] == (level - 1))					// This module is already broadcasted-to from the previous level
 			{
-				for(p =1; p <= NumOfPorts; p++)					// Check all neighbors if they're not already broadcasted-to
+				for(p =1; p <= 6; p++)					// Check all neighbors if they're not already broadcasted-to
 				    {
 					if(array[m][p] && (modules[(array[m][p] >> 3) - 1] == 0)) // Found an untaged module
 					{
@@ -1343,7 +1358,7 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 #ifdef ___N
 	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
-	uint8_t Q[50] ={0};		// All nodes initially in Q (unvisited nodes)
+	uint8_t Q[50] ={0};			// All nodes initially in Q (unvisited nodes)
 #endif
 	
 	uint8_t alt =0;
@@ -1407,7 +1422,7 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 	while(routePrev[u - 1])   // Construct the shortest path with a stack route
 	{
 		route[j++] =u;          			// Push the vertex onto the stack
-		u =routePrev[u - 1];           	// Traverse from target to source
+		u =routePrev[u - 1];           		// Traverse from target to source
 	}
 	
 	/* Check which port leads to the correct module */
@@ -1834,11 +1849,11 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 	uint16_t code;
 	
 	/* Check whether response is enabled or disabled */
-	response =BOS.response;
+	response =BOSMessaging.response;
 	if(timeout)
-		BOS.response = BOS_RESPONSE_MSG;
+		BOSMessaging.response = BOS_RESPONSE_MSG;
 	else
-		BOS.response = BOS_RESPONSE_NONE;
+		BOSMessaging.response = BOS_RESPONSE_NONE;
 	
 	/* Check if a force write is needed */
 	if(force)
@@ -1960,7 +1975,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 	}
 	
 	/* Restore response settings to default */
-	BOS.response =response;
+	BOSMessaging.response =response;
 	
 	/* If confirmation is requested, wait for it until timeout */
 	if(timeout){

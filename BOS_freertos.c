@@ -82,22 +82,22 @@ void MX_FREERTOS_Init(void){
 	
 	/* Create message parsing tasks for module ports */
 #ifdef _P1
-	xTaskCreate(PxMessagingTask,(const char* ) "P1MsgTask",configMINIMAL_STACK_SIZE,(void* ) P1,osPriorityAboveNormal - osPriorityIdle,&P1MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P1MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P1,osPriorityAboveNormal - osPriorityIdle,&P1MsgTaskHandle);
 #endif
 #ifdef _P2
-	xTaskCreate(PxMessagingTask,(const char* ) "P2MsgTask",configMINIMAL_STACK_SIZE,(void* ) P2,osPriorityAboveNormal - osPriorityIdle,&P2MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P2MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P2,osPriorityAboveNormal - osPriorityIdle,&P2MsgTaskHandle);
 #endif
 #ifdef _P3
-	xTaskCreate(PxMessagingTask,(const char* ) "P3MsgTask",configMINIMAL_STACK_SIZE,(void* ) P3,osPriorityAboveNormal - osPriorityIdle,&P3MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P3MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P3,osPriorityAboveNormal - osPriorityIdle,&P3MsgTaskHandle);
 #endif
 #ifdef _P4
-	xTaskCreate(PxMessagingTask,(const char* ) "P4MsgTask",configMINIMAL_STACK_SIZE,(void* ) P4,osPriorityAboveNormal - osPriorityIdle,&P4MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P4MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P4,osPriorityAboveNormal - osPriorityIdle,&P4MsgTaskHandle);
 #endif
 #ifdef _P5
-	xTaskCreate(PxMessagingTask,(const char* ) "P5MsgTask",configMINIMAL_STACK_SIZE,(void* ) P5,osPriorityAboveNormal - osPriorityIdle,&P5MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P5MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P5,osPriorityAboveNormal - osPriorityIdle,&P5MsgTaskHandle);
 #endif
 #ifdef _P6
-	xTaskCreate(PxMessagingTask,(const char* ) "P6MsgTask",configMINIMAL_STACK_SIZE,(void* ) P6,osPriorityAboveNormal - osPriorityIdle,&P6MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P6MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P6,osPriorityAboveNormal - osPriorityIdle,&P6MsgTaskHandle);
 #endif
 	
 	/* Create semaphores to protect module ports (FreeRTOS vSemaphoreCreateBinary didn't work) */
@@ -174,7 +174,7 @@ void StartDefaultTask(void *argument){
 		
 		/* Execute activated Command Snippets */
 		ExecuteSnippet();
-
+		
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)
 			delayButtonStateReset = false;

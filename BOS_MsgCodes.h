@@ -53,6 +53,11 @@
 #define CODE_READ_TEMPERATURE				  41
 #define CODE_READ_VREF						  42
 #define CODE_READ_ADC_PERCENTAGE			  43
+
+#define	MSG_Acknowledgment_Accepted 	  	  44
+#define	MSG_rejected 						  45
+
+
 /* -----------------------------------------------------------------------
  |											User Message Codes (70-99)|
  -----------------------------------------------------------------------

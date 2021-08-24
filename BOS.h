@@ -14,6 +14,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "BOS_MsgCodes.h" 
+#include <stdbool.h>
 
 /* STM HAL */
 #include "stm32f0xx_hal.h" 
@@ -93,6 +94,11 @@ typedef enum {
 	TRACE_NONE =0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
 } traceOptions_t;
 
+/* Number of attempts Type Definition */
+typedef enum {
+	once =1, twice=2, three_time=3, forever =0x8000
+} trial_t;
+
 /* BOS_Status Type Definition */
 typedef enum {
 	BOS_OK =0, BOS_ERR_UnknownMessage =1, BOS_ERR_NoResponse =2, BOS_ERR_MSG_Reflection =3, BOS_ERR_UnIDedModule =5, BOS_ERR_Keyword =6, BOS_ERR_ExistingAlias =7, BOS_ERR_ExistingCmd =8, BOS_ERR_EEPROM =10, BOS_ERR_BUTTON_NOT_DEFINED =11, BOS_ERR_BUTTON_PRESS_EVENT_FULL =12, BOS_ERR_BUTTON_RELEASE_EVENT_FULL =13, BOS_ERR_SNIP_MEM_FULL =14, BOS_ERR_REMOTE_READ_TIMEOUT =15, BOS_ERR_REMOTE_READ_NO_VAR =16, BOS_ERR_REMOTE_WRITE_TIMEOUT =17, BOS_ERR_REMOTE_WRITE_MEM_FULL =18, BOS_ERR_REMOTE_WRITE_INDEX =19, BOS_ERR_LOCAL_FORMAT_UPDATED =20, BOS_ERR_REMOTE_WRITE_ADDRESS =21, BOS_ERR_REMOTE_WRITE_FLASH =22, BOS_ERR_PORT_BUSY =23, BOS_ERR_WrongName =100, BOS_ERR_WrongGroup =101, BOS_ERR_WrongID =102, BOS_ERR_WrongParam =103, BOS_ERR_WrongValue =104, BOS_ERR_MSG_DOES_NOT_FIT =105, BOS_MEM_ERASED =250, BOS_MEM_FULL =251, BOS_MULTICAST =254, BOS_BROADCAST =255, BOS_ERROR =255
@@ -124,16 +130,24 @@ typedef struct {
 /* BOS Struct Type Definition */
 typedef struct {
 	buttonsConfig_t buttons;
-	uint8_t response;
-	traceOptions_t trace;
 	uint32_t clibaudrate;
 	uint8_t daylightsaving;
 	uint8_t hourformat;
 	BOS_time_t time;						// Not saved with BOS parameters
 	BOS_date_t date;						// Not saved with BOS parameters
-	uint8_t overrun;
 	uint8_t disableCLI;
 } BOS_t;
+
+/* BOS Struct Type Definition */
+typedef struct {
+
+	uint8_t response;
+	traceOptions_t trace;
+	uint8_t overrun;
+	bool received_Acknowledgment;
+	bool Acknowledgment;
+	trial_t trial;
+} BOSMessaging_t;
 
 /* Module Parameter Struct Type Definition */
 typedef struct {
@@ -233,7 +247,7 @@ typedef struct {
 #define DEF_CLI_BAUDRATE							921600						//default badurate for CLI
 #define CLI_BAUDRATE_1								115200
 //#define MSG_RX_BUF_SIZE							(250)						// 2 Mbps UART at 1 KHz parsing rate
-#define MSG_RX_BUF_SIZE								(64)						// 1 Mbps UART at 0.5 KHz parsing rate
+#define MSG_RX_BUF_SIZE								(192)						// 1 Mbps UART at 0.5 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)						// 2 Mbps UART at 1 KHz parsing rate
 
 /* Delay macros */
@@ -283,7 +297,6 @@ typedef struct {
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <stdbool.h>
 #include <ctype.h>
 #include <math.h>	 
 #include <limits.h>	
@@ -369,6 +382,9 @@ static char pcUserMessage[80];
 extern const char *pcParamsHelpString[];
 extern BOS_Status responseStatus;
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
+extern bool ACK_FLAG;
+extern bool rejected_FLAG;
+
 
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
@@ -391,6 +407,7 @@ extern uint8_t route[];
 extern button_t button[NumOfPorts + 1];
 extern bool delayButtonStateReset, needToDelayButtonStateReset;
 extern BOS_t BOS;
+extern BOSMessaging_t BOSMessaging;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];

@@ -67,6 +67,7 @@
 #define _EE_CLI_BAUD						280				// Parameter: CLI baudrate - LSB halfword, MSB halfword - 2 variables
 #define _EE_PARAMS_RTC						282				// Parameter: RTC hourformat | RTC daylightsaving - 1 variable
 #define _EE_PARAMS_DISABLE_CLI				283				// Parameter: Disable CLI - 1 variable
+#define _EE_PARAMS_Messaging			    284				// Parameter base: BOSMessaging Acknowledgment (MSB) | BOS trial - 1 variable
 
 // Module Addressing Space 500 - 599
 #define _EE_MODULE_BASE						500

@@ -506,7 +506,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 			/* I'm the source of the command and the target is > 1 hop away */
 			if(module != myID){
 				/* Deactivate responses */
-				BOS.response = BOS_RESPONSE_NONE;
+				BOSMessaging.response = BOS_RESPONSE_NONE;
 				
 				/* Forward the command */
 				messageParams[0] =port;
@@ -971,40 +971,40 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
 			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOS.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.response = BOS_RESPONSE_ALL;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOS.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.response = BOS_RESPONSE_MSG;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"cli",xParameterStringLength2)){
-				BOS.response = BOS_RESPONSE_CLI;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.response = BOS_RESPONSE_CLI;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOS.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.response = BOS_RESPONSE_NONE;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
 			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOS.trace =TRACE_BOTH;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.trace =TRACE_BOTH;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOS.trace =TRACE_MESSAGE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.trace =TRACE_MESSAGE;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"response",xParameterStringLength2)){
-				BOS.trace =TRACE_RESPONSE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.trace =TRACE_RESPONSE;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOS.trace =TRACE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOS.trace << 8) | (uint16_t )BOS.response);
+				BOSMessaging.trace =TRACE_NONE;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1193,21 +1193,21 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(!strncmp((const char* )pcParameterString1,"bos.",4)){
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
-			if(BOS.response == BOS_RESPONSE_ALL)
+			if(BOSMessaging.response == BOS_RESPONSE_ALL)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOS.response == BOS_RESPONSE_MSG)
+			else if(BOSMessaging.response == BOS_RESPONSE_MSG)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOS.response == BOS_RESPONSE_NONE)
+			else if(BOSMessaging.response == BOS_RESPONSE_NONE)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
 			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
-			if(BOS.trace == TRACE_BOTH)
+			if(BOSMessaging.trace == TRACE_BOTH)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOS.trace == TRACE_MESSAGE)
+			else if(BOSMessaging.trace == TRACE_MESSAGE)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOS.trace == TRACE_NONE)
+			else if(BOSMessaging.trace == TRACE_NONE)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
 			else
 				result =BOS_ERR_WrongValue;
