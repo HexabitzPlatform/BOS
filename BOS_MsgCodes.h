@@ -58,15 +58,18 @@
 #define	MSG_rejected 						  45
 
 
-/* -----------------------------------------------------------------------
- |											User Message Codes (70-99)|
- -----------------------------------------------------------------------
- */
+/*
+   -----------------------------------------------------------------------
+  |					User Message Codes (70-99)  						  |
+   -----------------------------------------------------------------------
+*/
 
-/* -----------------------------------------------------------------------
- |											Module Message Codes	  |
- -----------------------------------------------------------------------
- */
+/*
+   -----------------------------------------------------------------------
+  |				Module Message Codes	                                  |
+   -----------------------------------------------------------------------
+*/
+
 // Reserve 50 messages for each PN based on its decimal value
 // H01R0x
 #define	CODE_H01R0_ON						  100
@@ -85,7 +88,7 @@
 
 // H08R6x
 #define CODE_H08R6_GET_INFO                   400
-#define CODE_H08R6_SAMPLE                     401
+#define CODE_H08R6_SAMPLE_PORT                401
 #define CODE_H08R6_STREAM_PORT                402
 #define CODE_H08R6_STREAM_MEM                 403
 #define CODE_H08R6_RESULT_MEASUREMENT         404
@@ -101,16 +104,16 @@
 #define CODE_H09R0_STREAM_PORT_C              450
 #define CODE_H09R0_STREAM_PORT_F              451
 #define CODE_H09R0_STREAM_PORT_K              452
-#define CODE_H09R0_SAMPLE_C                   453
-#define CODE_H09R0_SAMPLE_F                   454
-#define CODE_H09R0_SAMPLE_K                   455
+#define CODE_H09R0_SAMPLE_PORT_C              453
+#define CODE_H09R0_SAMPLE_PORT_F              454
+#define CODE_H09R0_SAMPLE_PORT_K              455
 #define CODE_H09R0_STOP                       456
 
 // H0BR4x
-#define CODE_H0BR4_GET_GYRO           		  550
-#define CODE_H0BR4_GET_ACC                    551
-#define CODE_H0BR4_GET_MAG		              552
-#define CODE_H0BR4_GET_TEMP		              553
+#define CODE_H0BR4_SAMPLE_GYRO           	  550
+#define CODE_H0BR4_SAMPLE_ACC                 551
+#define CODE_H0BR4_SAMPLE_MAG		          552
+#define CODE_H0BR4_SAMPLE_TEMP		          553
 #define CODE_H0BR4_RESULT_GYRO                554
 #define CODE_H0BR4_RESULT_ACC                 555
 #define CODE_H0BR4_RESULT_MAG		 	      556
@@ -126,7 +129,7 @@
 #define	CODE_H0FRx_OFF						  751
 #define	CODE_H0FRx_TOGGLE					  752
 #define	CODE_H0FRx_PWM						  753
-#define	CODE_H0FR7_SAMPLE					  754
+#define	CODE_H0FR7_SAMPLE_PORT				  754
 #define	CODE_H0FR7_STREAM_PORT				  755
 #define	CODE_H0FR7_STREAM_BUFFER			  756
 #define	CODE_H0FR7_STOP_MEASUREMENT			  757
@@ -178,10 +181,10 @@
 #define CODE_H26R0_STREAM_PORT_OUNCE          1903
 #define CODE_H26R0_STREAM_PORT_POUND          1904
 #define CODE_H26R0_STOP                       1905
-#define CODE_H26R0_SAMPLE_GRAM                1906
-#define CODE_H26R0_SAMPLE_KGRAM               1907
-#define CODE_H26R0_SAMPLE_OUNCE               1908
-#define CODE_H26R0_SAMPLE_POUND               1909
+#define CODE_H26R0_SAMPLE_PORT_GRAM           1906
+#define CODE_H26R0_SAMPLE_PORT_KGRAM          1907
+#define CODE_H26R0_SAMPLE_PORT_OUNCE          1908
+#define CODE_H26R0_SAMPLE_PORT_POUND          1909
 #define CODE_H26R0_ZEROCAL                	  1910
 #define CODE_H26R0_STREAM_RAW                 1911
 #define CODE_H26R0_SAMPLE_RAW                 1912
