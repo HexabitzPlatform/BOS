@@ -647,7 +647,7 @@ void MX_ADC_Init(void){
 	ADC_flag =1;
 }
 
-void HAL_ADC_MspInit(ADC_HandleTypeDef *adcHandle){
+void ADC_Channels_Config(ADC_HandleTypeDef *adcHandle){
 	
 	GPIO_InitTypeDef GPIO_InitStruct ={0};
 	if(adcHandle->Instance == ADC1){
@@ -704,7 +704,7 @@ void ADCSelectChannel(uint8_t ADC_port,char *side){
 		
 		HAL_UART_DeInit(GetUart(ADC_port));
 		portStatus[ADC_port - 1] =CUSTOM;
-		
+		ADC_Channels_Config(&hadc);
 		Channel =Get_channel(GetUart(ADC_port),side);
 		Rank_t =Get_Rank(ADC_port,side);
 		if(ADC_flag == 0)
