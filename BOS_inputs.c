@@ -704,13 +704,12 @@ void ADCSelectChannel(uint8_t ADC_port,char *side){
 		
 		HAL_UART_DeInit(GetUart(ADC_port));
 		portStatus[ADC_port - 1] =CUSTOM;
-		ADC_Channels_Config(&hadc);
 		Channel =Get_channel(GetUart(ADC_port),side);
 		Rank_t =Get_Rank(ADC_port,side);
 		if(ADC_flag == 0)
 			MX_ADC_Init();
 	}
-	
+	ADC_Channels_Config(&hadc);
 }
 void ReadADCChannel(uint8_t Port,char *side,float *ADC_Value){
 	
