@@ -20,13 +20,12 @@
 #define SizeOfMatrix 20
 #define SizeOfMatrix2d 15
 #define NumberOfParameters 8
-#define COMMAND_SIZE 64
 #define ParameterLocationIn2dArray ProcessingParameter[0]
 #define FirstCharacterInParameter nonProcessingParameter[0]
-static uint32_t Monitor_time __attribute__((section(".mySection")));
+static uint32_t time __attribute__((section(".mySection")));
 static uint8_t currentCharacter __attribute__((section(".mySection")));
 static uint8_t flag __attribute__((section(".mySection")));
-uint8_t finalMatrix[COMMAND_SIZE]={0};
+uint8_t finalMatrix[MSG_RX_BUF_SIZE]={0};
 uint8_t nonProcessingParameter[SizeOfMatrix]={0};
 uint8_t ProcessingParameter[SizeOfMatrix]={0};
 uint8_t twoDMatrix[NumberOfParameters][SizeOfMatrix2d]={0};
@@ -39,7 +38,7 @@ uint8_t	counter;
 uint8_t desiredArray;
 uint8_t nonProcessingParameterIndex;
 uint8_t processingParameterIndex;
-uint8_t index;
+uint8_t Monitor_index;
 
 
 /* Used in the run time stats calculations. */
@@ -221,177 +220,200 @@ void StartDefaultTask(void *argument){
 
 /*-----------------------------------------------------------*/
 
-/*	We have three types of parameters to process:
-	1)first parameter:It's the parameter that has no specific location in the commands.
-	I'll send the beginning of the first parameter this character->'['
-	2)second parameter:It's the parameter that has specific location in the commands.
-	I'll send the beginning of the second parameter this character->'#'
-	3)third parameter:It's the first parameter in the command,and it's contain some information about the command,
-	Such as the order of the command and its number of parameter.
-	I'll send the beginning of the third parameter this character->'='
-	How the first parameter will be processed?
-	I will send a set of numbers beginning with this parameter.
-	These numbers include the commands numbers in which this parameter is located,
-	as well as the location of this parameter in this commands.
-	How the second parameter will be processed?
-	I will send before this parameter a number,
-	this number indicates the location of this parameter in the commands.
-	How the third parameter will be processed?
-	This parameter will contain information on command as I mentioned earlier,
-	so I will send with this parameter this informations.
-	Practical example of earlier:
-	We have the next commands:   on intensity
-	                             color colorname intensity
-	These two commands will be sent in the following way:
-	=120(on [1122]intensity
-	=230(color #3colorname [1222]intensity
-    =120(on:  =  the first parameter in the command
-	          1  order of command
-	          2  Number of command's parameters
-	          0  command Place in the 2dMatrix
-	          (  means \r
-	[1122]intensity: [  It's the parameter that has no specific location in the commands
-	                 11 means if the number of command 1 means that the location of the parameter is the first place in the 2dmatrix.
-                     22 means if the number of command 2 means that the location of the parameter is the second place in the 2dmatrix.
+void ExecuteMonitor(void)
+{
 
-*/
-void ExecuteMonitor(void){
 
-	if(Monitor_time == INTIAL_VALUE){
+	//We have three types of parameters to process:
+	//1)first parameter:It's the parameter that has no specific location in the commands.
+	//I'll send the beginning of the first parameter this character->'['
+	//2)second parameter:It's the parameter that has specific location in the commands.
+	//I'll send the beginning of the second parameter this character->'#'
+	//3)third parameter:It's the first parameter in the command,and it's contain some information about the command,
+	//Such as the order of the command and its number of parameter.
+	//I'll send the beginning of the third parameter this character->'='
+	//How the first parameter will be processed?
+	//I will send a set of numbers beginning with this parameter.
+	//These numbers include the commands numbers in which this parameter is located,
+	//as well as the location of this parameter in this commands.
+	//How the second parameter will be processed?
+	//I will send before this parameter a number,
+	//this number indicates the location of this parameter in the commands.
+	//How the third parameter will be processed?
+	//This parameter will contain information on command as I mentioned earlier,
+	//so I will send with this parameter this informations.
+	//Practical example of earlier:
+	//We have the next commands:   on intensity
+	//                             color colorname intensity
+	//These two commands will be sent in the following way:
+	//=120(on [1122]intensity
+	//=230(color #3colorname [1222]intensity
+    //=120(on:  =  the first parameter in the command
+	//          1  order of command
+	//          2  Number of command's parameters
+	//          0  command Place in the 2dMatrix
+	//          (  means \r
+	//[1122]intensity: [  It's the parameter that has no specific location in the commands
+	//                 11 means if the number of command 1 means that the location of the parameter is the first place in the 2dmatrix.
+    //                 22 means if the number of command 2 means that the location of the parameter is the second place in the 2dmatrix.
 
-#if !defined (H01R0) && !defined (P01R0) && !defined (H07R3)
-	initialValue();
+
+
+    if(time == INTIAL_VALUE)
+    {
+
+#if defined(H0FR7) || defined(H08R6) || defined(H09R0)  || defined(H15R0) || defined(H26R0)
+initialValue();
 #endif
 
-		Monitor_time =0;
-		flag =0;
-		currentCharacter =SPACE;
-		for(;;){
-			//giving initial value to currentCharacter and perviousCharacter to avoid writing in the nonProcessingParameter matrix  in case of non-transmission from STM32CubeMonitorIDE
-			nonProcessingParameterIndex =0;
-			do{
-				perviousCharacter = INTIAL_VALUE;
-				Delay_us(100);
-				if(currentCharacter != perviousCharacter){
-					//writing characters coming from STM32CubeMonitorIDE in nonProcessingParameter matrix
-					nonProcessingParameter[nonProcessingParameterIndex++] =currentCharacter;
-					perviousCharacter =currentCharacter;
-					currentCharacter = INTIAL_VALUE;
-				}
-			} while(perviousCharacter != SPACE && perviousCharacter != null && flag != RUN_FOR_ONCE && flag != CONTINUOUS_RUN);
+	time=0;
+	flag=0;
+	currentCharacter=SPACE;
+	for (;;)
+	{
+		//giving initial value to currentCharacter and perviousCharacter to avoid writing in the nonProcessingParameter matrix  in case of non-transmission from STM32CubeMonitorIDE
+		                    nonProcessingParameterIndex=0;
+		              do
+							{
+		            	    perviousCharacter= INTIAL_VALUE;
+		            	    Delay_us(100);
+							if(currentCharacter != perviousCharacter)
+							{
+								//writing characters coming from STM32CubeMonitorIDE in nonProcessingParameter matrix
+								nonProcessingParameter[nonProcessingParameterIndex++]=currentCharacter;
+								perviousCharacter=currentCharacter;
+								currentCharacter= INTIAL_VALUE;
+							}
+				            }
+				while(perviousCharacter != SPACE && perviousCharacter != null && flag != RUN_FOR_ONCE && flag != CONTINUOUS_RUN);
 
-			if(flag == NonActive){
-				nonProcessingParameterIndex =0;
-				//first parameter:It's the parameter that has no specific location in the commands.
-				if(FirstCharacterInParameter== '[')
-				{
-					nonProcessingParameterIndex++;
 
-					for(;;)
-					{
+                   if(flag == NonActive)
+                   {
+                	   nonProcessingParameterIndex=0;
+ 		              //first parameter:It's the parameter that has no specific location in the commands.
+ 		            if(FirstCharacterInParameter == '[')
+ 		            {
+ 		            	nonProcessingParameterIndex++;
 
-						if(nonProcessingParameter[nonProcessingParameterIndex]%10 == digitTheCommand)
-						{
-							nonProcessingParameterIndex++;
-							ParameterLocationIn2dArray=nonProcessingParameter[nonProcessingParameterIndex]%10;
-							break;
-						}
-						else
-						{
-							nonProcessingParameterIndex+=2;
-						}
-					}
-					while(nonProcessingParameter[nonProcessingParameterIndex] != ']')
-					{
-						nonProcessingParameterIndex++;
-					}
-					nonProcessingParameterIndex++;
-					processingParameterIndex=1;
-					memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
-				}
+ 		            	for(;;)
+ 		            	{
 
-				//second parameter:It's the parameter that has specific location in the commands.
-				else if(FirstCharacterInParameter == '#')
-				{
-					ParameterLocationIn2dArray=nonProcessingParameter[1]%10;
-					nonProcessingParameterIndex=2;
-					processingParameterIndex=1;
-					memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
-				}
+ 		            		if(nonProcessingParameter[nonProcessingParameterIndex]%10 == digitTheCommand)
+ 		            		{
+ 		            			nonProcessingParameterIndex++;
+ 		            			ParameterLocationIn2dArray=nonProcessingParameter[nonProcessingParameterIndex]%10;
+ 		            			break;
+ 		            		}
+ 		            		else
+ 		            		{
+ 		            			nonProcessingParameterIndex+=2;
+ 		            		}
+ 		            	}
+ 		            	while(nonProcessingParameter[nonProcessingParameterIndex] != ']')
+ 		            	{
+ 		            		nonProcessingParameterIndex++;
+ 		            	}
+ 		            	nonProcessingParameterIndex++;
+ 		            	processingParameterIndex=1;
+ 		            	memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
+ 		            }
 
-				//third parameter:It's the first parameter in the command
-				else if(FirstCharacterInParameter == '=')
-				{
-					digitTheCommand=nonProcessingParameter[1]%10;
-					numCommandParameters=nonProcessingParameter[2]%10;
-					ParameterLocationIn2dArray=nonProcessingParameter[3]%10;
-					nonProcessingParameterIndex=4;
-					processingParameterIndex=1;
-					memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
-				}
+ 		           //second parameter:It's the parameter that has specific location in the commands.
+ 		            else if(FirstCharacterInParameter == '#')
+ 		            {
+ 		            	ParameterLocationIn2dArray=nonProcessingParameter[1]%10;
+ 		            	nonProcessingParameterIndex=2;
+ 		            	processingParameterIndex=1;
+ 		            	memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
+ 		            }
 
-				desiredArray =ParameterLocationIn2dArray;
-				memset(&twoDMatrix[desiredArray][0],0,SizeOfMatrix2d);
-				memcpy(&twoDMatrix[desiredArray][0],&ProcessingParameter[0],SizeOfMatrix2d);
-				memset(&nonProcessingParameter[0],0,SizeOfMatrix);
-				memset(&ProcessingParameter[0],0,SizeOfMatrix);
-			}
+ 		           //third parameter:It's the first parameter in the command
+ 		            else if(FirstCharacterInParameter == '=')
+                	   {
+                	    digitTheCommand=nonProcessingParameter[1]%10;
+                	    numCommandParameters=nonProcessingParameter[2]%10;
+                	    ParameterLocationIn2dArray=nonProcessingParameter[3]%10;
+                	    nonProcessingParameterIndex=4;
+                	    processingParameterIndex=1;
+                	    memcpy(&ProcessingParameter[processingParameterIndex],&nonProcessingParameter[nonProcessingParameterIndex],SizeOfMatrix-nonProcessingParameterIndex);
+                	   }
 
-			//mode RUN_FOR_ONCE
-			if(flag == RUN_FOR_ONCE){
-				finalMatrixIndex =0;
-				twoDMatrixIndex =1;
-				counter =0;
-				while(counter != numCommandParameters){
-					do{
-						finalMatrix[finalMatrixIndex++] =twoDMatrix[counter][twoDMatrixIndex++];
-						Delay_ms(1);
-					}
 
-					while(finalMatrix[finalMatrixIndex - 1] != null && finalMatrix[finalMatrixIndex - 1] != SPACE);
+               	   desiredArray=ParameterLocationIn2dArray;
+               	   memset (&twoDMatrix[desiredArray][0],0, SizeOfMatrix2d);
+               	   memcpy(&twoDMatrix[desiredArray][0],&ProcessingParameter[0],SizeOfMatrix2d);
+		           memset (&nonProcessingParameter[0],0, SizeOfMatrix);
+		           memset (&ProcessingParameter[0],0, SizeOfMatrix);
+                   }
 
-					counter++;
-					twoDMatrixIndex =1;
-				}
-				flag =0;
-				counter =0;
 
-				for(index =0; index < COMMAND_SIZE; index++){
-					UARTRxBuf[2][index] =finalMatrix[index];
-					Delay_ms(1);
-				}
-				memset(&finalMatrix[0],0,COMMAND_SIZE);
-			}
+                  //mode RUN_FOR_ONCE
+                   if(flag == RUN_FOR_ONCE)
+		           {
+                	finalMatrixIndex=0;
+                	twoDMatrixIndex=1;
+		          	counter=0;
+		           while(counter != numCommandParameters)
+		          {
+		            do
+		          {
+		            	finalMatrix[finalMatrixIndex++]=twoDMatrix[counter][twoDMatrixIndex++];
+		            	Delay_ms(1);
+		          }
 
-			//mode CONTINUOUS_RUN
-			if(flag == CONTINUOUS_RUN){
-				finalMatrixIndex =0;
-				twoDMatrixIndex =1;
-				counter =0;
-				while(counter != numCommandParameters){
-					do{
-						finalMatrix[finalMatrixIndex++] =twoDMatrix[counter][twoDMatrixIndex++];
-						Delay_ms(1);
-					}
+	            while(finalMatrix[finalMatrixIndex-1] != null && finalMatrix[finalMatrixIndex-1] != SPACE);
 
-					while(finalMatrix[finalMatrixIndex - 1] != null && finalMatrix[finalMatrixIndex - 1] != SPACE);
+		                   counter++;
+		                   twoDMatrixIndex=1;
+		          }
+		          		   flag=0;
+		          		   counter=0;
 
-					counter++;
-					twoDMatrixIndex =1;
-				}
-				counter =0;
-				while(flag != NonActive){
-					for(index =0; index < COMMAND_SIZE; index++){
-						UARTRxBuf[2][index] =finalMatrix[index];
-						Delay_us(200);
-					}
-					Delay_ms(Monitor_time);
-				}
-				memset(&finalMatrix[0],0,COMMAND_SIZE);
-				memset(&UARTRxBuf[2][0],0,COMMAND_SIZE);
-			}
-		}
+  	          		 for( Monitor_index=0;Monitor_index<MSG_RX_BUF_SIZE;Monitor_index++)
+		          		 					  {
+		          			UARTRxBuf[2][Monitor_index]=finalMatrix[Monitor_index];
+		          			Delay_ms(1);
+		          		 					  }
+  	          		memset (&finalMatrix[0],0, MSG_RX_BUF_SIZE);
+		           }
+
+
+
+                   //mode CONTINUOUS_RUN
+                   if(flag == CONTINUOUS_RUN)
+		           {
+                	finalMatrixIndex=0;
+                	twoDMatrixIndex=1;
+   		          	counter=0;
+   		           while(counter != numCommandParameters)
+   		          {
+   		            do
+   		          {
+   		            	finalMatrix[finalMatrixIndex++]=twoDMatrix[counter][twoDMatrixIndex++];
+   		            	Delay_ms(1);
+   		          }
+
+   	            while(finalMatrix[finalMatrixIndex-1] != null && finalMatrix[finalMatrixIndex-1] != SPACE);
+
+   		             counter++;
+   		             twoDMatrixIndex=1;
+   		          }
+		            counter=0;
+                  while(flag != NonActive)
+                  {
+  	          		 for( Monitor_index=0;Monitor_index<MSG_RX_BUF_SIZE;Monitor_index++)
+		          		 					  {
+		          			UARTRxBuf[2][Monitor_index]=finalMatrix[Monitor_index];
+		          			Delay_us(200);
+		          		 					  }
+  	          		 Delay_ms(time);
+                  }
+  	          		memset (&finalMatrix[0],0, MSG_RX_BUF_SIZE);
+  	          	    memset (&UARTRxBuf[2][0],0, MSG_RX_BUF_SIZE);
+		           }
 	}
+  }
 }
 
 
