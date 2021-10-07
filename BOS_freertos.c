@@ -371,12 +371,12 @@ initialValue();
 		          		   flag=0;
 		          		   counter=0;
 
-  	          		 for( Monitor_index=0;Monitor_index<MSG_RX_BUF_SIZE;Monitor_index++)
+  	          		 for( Monitor_index=0;Monitor_index<COMMAND_SIZE;Monitor_index++)
 		          		 					  {
 		          			UARTRxBuf[2][Monitor_index]=finalMatrix[Monitor_index];
 		          			Delay_ms(1);
 		          		 					  }
-  	          		memset (&finalMatrix[0],0, MSG_RX_BUF_SIZE);
+  	          		memset (&finalMatrix[0],0, COMMAND_SIZE);
 		           }
 
 
@@ -403,14 +403,14 @@ initialValue();
 		            counter=0;
                   while(flag != NonActive)
                   {
-  	          		 for( Monitor_index=0;Monitor_index<MSG_RX_BUF_SIZE;Monitor_index++)
+  	          		 for( Monitor_index=0;Monitor_index<COMMAND_SIZE;Monitor_index++)
 		          		 					  {
 		          			UARTRxBuf[2][Monitor_index]=finalMatrix[Monitor_index];
 		          			Delay_us(200);
 		          		 					  }
   	          		 Delay_ms(Monitor_time);
                   }
-  	          		memset (&finalMatrix[0],0, MSG_RX_BUF_SIZE);
+  	          		memset (&finalMatrix[0],0, COMMAND_SIZE);
   	          	    memset (&UARTRxBuf[2][0],0, MSG_RX_BUF_SIZE);
 		           }
 	}
