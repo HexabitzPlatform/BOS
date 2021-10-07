@@ -20,12 +20,13 @@
 #define SizeOfMatrix 20
 #define SizeOfMatrix2d 15
 #define NumberOfParameters 8
+#define COMMAND_SIZE 64
 #define ParameterLocationIn2dArray ProcessingParameter[0]
 #define FirstCharacterInParameter nonProcessingParameter[0]
-static uint32_t time __attribute__((section(".mySection")));
+static uint32_t Monitor_time  __attribute__((section(".mySection")));
 static uint8_t currentCharacter __attribute__((section(".mySection")));
 static uint8_t flag __attribute__((section(".mySection")));
-uint8_t finalMatrix[MSG_RX_BUF_SIZE]={0};
+uint8_t finalMatrix[COMMAND_SIZE]={0};
 uint8_t nonProcessingParameter[SizeOfMatrix]={0};
 uint8_t ProcessingParameter[SizeOfMatrix]={0};
 uint8_t twoDMatrix[NumberOfParameters][SizeOfMatrix2d]={0};
@@ -259,14 +260,14 @@ void ExecuteMonitor(void)
 
 
 
-    if(time == INTIAL_VALUE)
+    if(Monitor_time == INTIAL_VALUE)
     {
 
 #if defined(H0FR7) || defined(H08R6) || defined(H09R0)  || defined(H15R0) || defined(H26R0)
 initialValue();
 #endif
 
-	time=0;
+	Monitor_time =0;
 	flag=0;
 	currentCharacter=SPACE;
 	for (;;)
@@ -407,7 +408,7 @@ initialValue();
 		          			UARTRxBuf[2][Monitor_index]=finalMatrix[Monitor_index];
 		          			Delay_us(200);
 		          		 					  }
-  	          		 Delay_ms(time);
+  	          		 Delay_ms(Monitor_time);
                   }
   	          		memset (&finalMatrix[0],0, MSG_RX_BUF_SIZE);
   	          	    memset (&UARTRxBuf[2][0],0, MSG_RX_BUF_SIZE);
