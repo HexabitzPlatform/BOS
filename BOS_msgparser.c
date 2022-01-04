@@ -190,7 +190,7 @@ void BackEndTask(void *argument){
 					}
 
 					/* crc8 calculation */
-					crc8 =CalculateCRC8((uint32_t* )&crcBuffer,(packetLength + 3));
+					crc8 =CalculateCRC8(crcBuffer,(packetLength + 3));
 					memset(crcBuffer,0,sizeof(crcBuffer));
 
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */

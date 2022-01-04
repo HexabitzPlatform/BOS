@@ -450,7 +450,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	memcpy(crcBuffer,&message[0],length + 3);
 	
 	/* crc calculation function added for test */
-	message[length + 3] =CalculateCRC8((uint32_t* )&crcBuffer,(length + 3));
+	message[length + 3] =CalculateCRC8(crcBuffer,(length + 3));
 	/* end of crc calculation function addition */
 
 	memset(crcBuffer,0,sizeof(crcBuffer));

@@ -495,7 +495,7 @@ extern BOS_Status Unbridge(uint8_t port1,uint8_t port2);
 extern BOS_Status printfp(uint8_t port,char *str);
 
 /* Calculate CRC API */
-uint8_t CalculateCRC8(uint32_t pData[],uint16_t size);
+uint8_t CalculateCRC8(uint8_t pData[],uint16_t size);
 
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);
