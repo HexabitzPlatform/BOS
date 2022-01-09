@@ -227,7 +227,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define	NUM_OF_MODULE_PN							25							//Number of Modules
+#define	NUM_OF_MODULE_PN							26							//Number of Modules
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -358,6 +358,10 @@ typedef struct {
 #endif
 #ifdef H10R4
 #include "H10R4.h"
+#endif
+
+#ifdef H2AR3
+#include "H2AR3.h"
 #endif
 
 /* More BOS header files - must be defined after module headers */

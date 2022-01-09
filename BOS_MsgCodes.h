@@ -100,6 +100,7 @@
 #define CODE_H08R6_MIN_RANGE                  410
 #define CODE_H08R6_TIMEOUT                	  411
 
+
 // H09R0
 #define CODE_H09R0_STREAM_PORT_C              450
 #define CODE_H09R0_STREAM_PORT_F              451
@@ -115,7 +116,7 @@
 #define CODE_H0AR9_SAMPLE_TEMP                502
 #define CODE_H0AR9_SAMPLE_HUMIDITY            503
 #define CODE_H0AR9_SAMPLE_PIR                 504
-#define CODE_H0AR9_STREAM_COLOR                505
+#define CODE_H0AR9_STREAM_COLOR               505
 #define CODE_H0AR9_STREAM_DISTANCE            506
 #define CODE_H0AR9_STREAM_TEMP                507
 #define CODE_H0AR9_STREAM_HUMIDITY            508
@@ -206,7 +207,12 @@
 // H15R0x
 #define CODE_H15R0_AnalogPercentage           1950
 #define CODE_H15R0_AnalogOutValue             1951
-
+//H2AR3
+#define CODE_H2AR3_SAMPLE_V                   2100
+#define CODE_H2AR3_SAMPLE_A				      2101
+#define CODE_H2AR3_STREAM_PORT_V		      2102
+#define CODE_H2AR3_STREAM_PORT_A		      2103
+#define CODE_H2AR3_STOP                       2104
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
 #define CODE_H1DR1_READ                       2901
