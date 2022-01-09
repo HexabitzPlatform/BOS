@@ -109,6 +109,19 @@
 #define CODE_H09R0_SAMPLE_PORT_K              455
 #define CODE_H09R0_STOP                       456
 
+// H0AR9
+#define CODE_H0AR9_SAMPLE_COLOR               500
+#define CODE_H0AR9_SAMPLE_DISTANCE            501
+#define CODE_H0AR9_SAMPLE_TEMP                502
+#define CODE_H0AR9_SAMPLE_HUMIDITY            503
+#define CODE_H0AR9_SAMPLE_PIR                 504
+#define CODE_H0AR9_STREAM_COLOR                505
+#define CODE_H0AR9_STREAM_DISTANCE            506
+#define CODE_H0AR9_STREAM_TEMP                507
+#define CODE_H0AR9_STREAM_HUMIDITY            508
+#define CODE_H0AR9_STREAM_PIR                 509
+#define CODE_H0AR9_STREAM_STOP                510
+
 // H0BR4x
 #define CODE_H0BR4_SAMPLE_PORT_GYRO           550
 #define CODE_H0BR4_SAMPLE_PORT_ACC            551
