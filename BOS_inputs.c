@@ -56,7 +56,7 @@ uint16_t ADC_value_temp = 0;
 uint16_t ADC_value_Vref = 0;
 uint8_t ADC_flag = 0, Rank_t = 0;
 float percentage = 0, current = 0;
-
+uint8_t flag_ADC_Select=0;
 /* -----------------------------------------------------------------------
  |												 Private Functions	 														|
  -----------------------------------------------------------------------
@@ -662,13 +662,8 @@ void MX_ADC_Init(void) {
 void HAL_ADC_MspInit(ADC_HandleTypeDef *adcHandle) {
 
 	GPIO_InitTypeDef GPIO_InitStruct = { 0 };
-	if (adcHandle->Instance == ADC1) {
-		/* USER CODE BEGIN ADC1_MspInit 0 */
-
-		/* USER CODE END ADC1_MspInit 0 */
 		/* ADC1 clock enable */
 		__HAL_RCC_ADC1_CLK_ENABLE();
-
 		__HAL_RCC_GPIOA_CLK_ENABLE();
 		/**ADC GPIO Configuration
 		 PA2     ------> ADC_IN2
@@ -676,53 +671,14 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *adcHandle) {
 		 PA4     ------> ADC_IN4
 		 PA5     ------> ADC_IN5
 		 */
-#ifndef H0FR7
+		if(flag_ADC_Select==1){
 		GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 | GPIO_PIN_5;
 		GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
 		GPIO_InitStruct.Pull = GPIO_NOPULL;
-		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-#endif
-#ifdef H0FR7
-		 GPIO_InitTypeDef GPIO_InitStruct = {0};
-			      GPIO_InitStruct.Pin = GPIO_PIN_7;
-			      GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-			      GPIO_InitStruct.Pull = GPIO_NOPULL;
-			      HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-#endif
+		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);}
 
-		/* USER CODE BEGIN ADC1_MspInit 1 */
-
-		/* USER CODE END ADC1_MspInit 1 */
-	}
 }
 
-//void ADC_Channels_Config(ADC_HandleTypeDef *adcHandle){
-//
-//	GPIO_InitTypeDef GPIO_InitStruct ={0};
-//	if(adcHandle->Instance == ADC1){
-//		/* USER CODE BEGIN ADC1_MspInit 0 */
-//
-//		/* USER CODE END ADC1_MspInit 0 */
-//		/* ADC1 clock enable */
-//		__HAL_RCC_ADC1_CLK_ENABLE();
-//
-//		__HAL_RCC_GPIOA_CLK_ENABLE();
-//		/**ADC GPIO Configuration
-//		 PA2     ------> ADC_IN2
-//		 PA3     ------> ADC_IN3
-//		 PA4     ------> ADC_IN4
-//		 PA5     ------> ADC_IN5
-//
-//		GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_3| GPIO_PIN_4 | GPIO_PIN_5;
-//		GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-//		GPIO_InitStruct.Pull = GPIO_NOPULL;
-//		HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-//
-//		/* USER CODE BEGIN ADC1_MspInit 1 */
-//
-//		/* USER CODE END ADC1_MspInit 1 */
-//	}
-//}
 
 void HAL_ADC_MspDeInit(ADC_HandleTypeDef *adcHandle) {
 
@@ -749,8 +705,9 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef *adcHandle) {
 
 void ADCSelectChannel(uint8_t ADC_port, char *side) {
 
-	if (ADC_port == 2 || ADC_port == 3) {
 
+	if (ADC_port == 2 || ADC_port == 3) {
+		flag_ADC_Select=1;
 		HAL_UART_DeInit(GetUart(ADC_port));
 		portStatus[ADC_port - 1] = CUSTOM;
 		Channel = Get_channel(GetUart(ADC_port), side);
@@ -758,7 +715,6 @@ void ADCSelectChannel(uint8_t ADC_port, char *side) {
 		if (ADC_flag == 0)
 			MX_ADC_Init();
 	}
-//	ADC_Channel_config();
 }
 void ReadADCChannel(uint8_t Port, char *side, float *ADC_Value) {
 
@@ -799,6 +755,7 @@ void ReadTempAndVref(float *temp, float *Vref) {
 	if (0 == ADC_flag)
 		MX_ADC_Init();
 
+
 	/* --- Enable internal temperature channel.*/
 
 	sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
@@ -835,7 +792,6 @@ void ReadTempAndVref(float *temp, float *Vref) {
 	}
 
 	HAL_ADC_Start(&hadc);
-
 	HAL_ADC_PollForConversion(&hadc, 100);
 	ADC_value_Vref = HAL_ADC_GetValue(&hadc);
 	*Vref = 3.3 * (*Vref_Cal) / ADC_value_Vref;
@@ -867,18 +823,25 @@ float GetReadPrecentage(uint8_t port, float *precentageValue) {
 		if (0 == ADC_flag) {
 			MX_ADC_Init();
 			HAL_UART_DeInit(GetUart(port));
-			HAL_GPIO_DeInit(GPIOA, GPIO_PIN_4);
-			HAL_ADCEx_Calibration_Start(&hadc);
+			if (port == 3) {
+				HAL_GPIO_DeInit(GPIOA, GPIO_PIN_4);
+				GPIO_InitStruct.Pin = GPIO_PIN_4;
+				GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+				GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+				HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+				portStatus[port - 1] = CUSTOM;
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+			} else {
+				HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
+				GPIO_InitStruct.Pin = GPIO_PIN_2;
+				GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+				GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+				HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+				portStatus[port - 1] = CUSTOM;
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
 
-			GPIO_InitStruct.Pin = GPIO_PIN_4;
-			GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-			GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-			HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-			portStatus[port - 1] = CUSTOM;
+			}
 		}
-
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
 		Channel = Get_channel(GetUart(port), "bottom");
 		sConfig.Channel = Channel;
 		sConfig.Rank = ADC_RANK_CHANNEL_NUMBER;
