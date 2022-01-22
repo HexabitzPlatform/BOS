@@ -1221,30 +1221,30 @@ void PxMessagingTask(void *argument){
 									
 								case 2:
 									MBmessageParams[6] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-								case CODE_READ_ADC_VALUE:
-									ADCPort =cMessage[port - 1][shift];
-									ADCSide =cMessage[port - 1][shift + 1];
-									if(0 == ADCSide){
-										ADCSelectChannel(ADCPort,"top");
-										ReadADCChannel(ADCPort,"top",&ADCValue);
-									}
-									else if(1 == ADCSide){
-										ADCSelectChannel(ADCPort,"bottom");
-										ReadADCChannel(ADCPort,"bottom",&ADCValue);
-									}
-									
-								case CODE_READ_TEMPERATURE:
-								case CODE_READ_VREF:
-									ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
-									
-								case CODE_READ_ADC_PERCENTAGE:
-									ADCPort =cMessage[port - 1][shift];
-									GetReadPrecentage(ADCPort,&ADCPercentage);
-									MBmessageParams[7] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-									MBmessageParams[8] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-									break;
+
+							}
+						case CODE_READ_ADC_VALUE:
+							ADCPort =cMessage[port - 1][shift];
+							ADCSide =cMessage[port - 1][shift + 1];
+							if(0 == ADCSide){
+								ADCSelectChannel(ADCPort,"top");
+								ReadADCChannel(ADCPort,"top",&ADCValue);
+							}
+							else if(1 == ADCSide){
+								ADCSelectChannel(ADCPort,"bottom");
+								ReadADCChannel(ADCPort,"bottom",&ADCValue);
 							}
 							
+						case CODE_READ_TEMPERATURE:
+						case CODE_READ_VREF:
+							ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
+
+						case CODE_READ_ADC_PERCENTAGE:
+							ADCPort =cMessage[port - 1][shift];
+							GetReadPrecentage(ADCPort,&ADCPercentage);
+							MBmessageParams[7] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
+							MBmessageParams[8] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
+							break;
 						case MSG_Acknowledgment_Accepted:
 							ACK_FLAG =1;
 							break;
