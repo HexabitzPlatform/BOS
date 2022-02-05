@@ -300,10 +300,9 @@ typedef struct {
 #include "FreeRTOS_CLI.h"	 
 
 /* BOS */
-#include "BOS_eeprom.h"
 #include "BOS_utils.h"
 #include "BOS_messaging.h"
-#include "BOS_inputs.h"
+
 
 /* C STD Library */
 #include <stdio.h>
