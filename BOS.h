@@ -17,14 +17,28 @@
 #include <stdbool.h>
 
 /* STM HAL */
+#ifdef H41R6
+#include "stm32f4xx_hal.h"
+#else
 #include "stm32f0xx_hal.h" 
 
+#endif
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
 #define	_firmPatch			6
 #define _firmDate			__DATE__
 #define _firmTime			__TIME__
+
+
+
+char *pcBootloaderUpdateMessage;
+
+char *pcRemoteBootloaderUpdateMessage;
+char *pcRemoteBootloaderUpdateViaPortMessage;
+
+char *pcRemoteBootloaderUpdateWarningMessage;
+
 
 /* Enumerations */
 enum PortNames_e {
@@ -44,7 +58,7 @@ enum UartDirection_e {
 };
 
 enum modulePartNumbers_e {
-	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3
+	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6
 };
 enum IndMode_e {
 	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
@@ -227,7 +241,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							28							//Number of Modules
+#define NUM_OF_MODULE_PN							29							//Number of Modules
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -246,7 +260,6 @@ typedef struct {
 #define DEF_ARRAY_BAUDRATE						    921600						//default baudrate in all module
 #define DEF_CLI_BAUDRATE							921600						//default badurate for CLI
 #define CLI_BAUDRATE_1								115200
-//#define MSG_RX_BUF_SIZE							(250)						// 2 Mbps UART at 1 KHz parsing rate
 #define MSG_RX_BUF_SIZE								(192)						// 1 Mbps UART at 0.5 KHz parsing rate
 #define MSG_TX_BUF_SIZE								(250)						// 2 Mbps UART at 1 KHz parsing rate
 
@@ -365,7 +378,9 @@ typedef struct {
 #ifdef H2AR3
 #include "H2AR3.h"
 #endif
-
+#ifdef H41R6
+#include "H41R6.h"
+#endif
 
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
@@ -500,9 +515,6 @@ extern BOS_Status Unbridge(uint8_t port1,uint8_t port2);
 
 /*Print onto Port API */
 extern BOS_Status printfp(uint8_t port,char *str);
-
-/* Calculate CRC API */
-uint8_t CalculateCRC8(uint8_t pData[],uint16_t size);
 
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);

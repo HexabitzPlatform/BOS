@@ -19,15 +19,6 @@ extern uint8_t numOfRecordedSnippets;
 const char mathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
 
 /* Define long messages -------------------------------------------------------*/
-char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
-								  utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
-
-char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
-char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
-
-char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
-											   \n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
-											   - You must power cycle the entire array after the update is finished.\n\r";
 
 /* Exported functions */
 extern uint8_t SaveToRO(void);
@@ -1852,7 +1843,11 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 			if(PcPort != ports){
 				WriteVaule[0] =rand();
 				writePxMutex(ports,WriteVaule,1,10,100);
+#ifndef H41R6
 				ReadValue[0] =(GetUart(ports)->Instance->RDR);
+#else
+				ReadValue[0] =(GetUart(ports)->Instance->DR);
+#endif
 				if(WriteVaule[0] == ReadValue[0])
 					result =BOS_OK;
 				else
@@ -1881,7 +1876,11 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 			if(result == BOS_OK){
 				WriteVaule[0] =rand();
 				writePxMutex(portt,WriteVaule,1,cmd50ms,100);
-				ReadValue[0] =(GetUart(portt)->Instance->RDR);
+#ifndef H41R6
+				ReadValue[0] =(GetUart(ports)->Instance->RDR);
+#else
+				ReadValue[0] =(GetUart(ports)->Instance->DR);
+#endif
 			}
 			if(WriteVaule[0] == ReadValue[0])
 				result =BOS_OK;

@@ -516,17 +516,9 @@ void PxMessagingTask(void *argument){
 							break;
 							
 						case CODE_READ_PORT_DIR:
-							temp =0;
-							/* Check my own ports */
-							for(p =1; p <= NumOfPorts; p++){
-								if(GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE){
-									messageParams[temp++] =p;
-								}
-							}
-							/* Send response */
-							SendMessageToModule(src,CODE_READ_PORT_DIR_RESPONSE,temp);
-							break;
-							
+							ReadPortsDirMSG(src);
+								break;
+
 						case CODE_READ_PORT_DIR_RESPONSE:
 							/* Read module ports directions */
 							for(p =0; p < numOfParams; p++){
@@ -1117,14 +1109,7 @@ void PxMessagingTask(void *argument){
 									HAL_FLASH_Unlock();
 									/* Erase page if force write is requested */
 									if(code == CODE_WRITE_REMOTE_FORCE){
-										FLASH_EraseInitTypeDef erase;
-										uint32_t eraseError;
-										erase.TypeErase = FLASH_TYPEERASE_PAGES;
-										erase.PageAddress =temp32;
-										erase.NbPages =1;
-										status =HAL_FLASHEx_Erase(&erase,&eraseError);
-										if(status != HAL_OK || eraseError != 0xFFFFFFFF)
-											responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+										EraseSector(temp32);
 									}
 									/* Write new value */
 									if(responseStatus == BOS_OK){
