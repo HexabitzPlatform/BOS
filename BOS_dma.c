@@ -32,19 +32,6 @@ bool MsgDMAStopped[NumOfPorts] ={0};
 /* External functions --------------------------------------------------------*/
 extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 
-/* --- Stop a messaging DMA --- 
- */
-void StopMsgDMA(uint8_t port){
-	DMA_HandleTypeDef *hDMA;
-	
-	/* Select DMA struct */
-	hDMA =&msgRxDMA[port - 1];
-	
-	HAL_DMA_Abort(hDMA);
-	hDMA->Instance->NDTR =0;
-}
-
-
 
 /*-----------------------------------------------------------*/
 
@@ -104,22 +91,22 @@ void DMA_IRQHandler(uint8_t port){
 /* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup
  */
 void ResetUartORE(void){
-#ifdef _Usart1
+#if defined(_Usart1)
 	__HAL_UART_CLEAR_OREFLAG(&huart1);
 #endif
-#ifdef _Usart2
+#if defined(_Usart2)
 	__HAL_UART_CLEAR_OREFLAG(&huart2);
 #endif
-#ifdef _Usart3
+#if defined(_Usart3)
 	__HAL_UART_CLEAR_OREFLAG(&huart3);
 #endif
-#ifdef _Uart4
+#if defined(_Usart4) || defined(_Uart4)
 	__HAL_UART_CLEAR_OREFLAG(&huart4);
 #endif
-#ifdef _Uart5
+#if defined(_Usart5) || defined(_Uart5)
 	__HAL_UART_CLEAR_OREFLAG(&huart5);
 #endif
-#ifdef _Usart6
+#if defined(_Usart6)
 	__HAL_UART_CLEAR_OREFLAG(&huart6);
 #endif
 }
