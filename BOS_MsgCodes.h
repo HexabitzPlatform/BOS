@@ -166,32 +166,15 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
-// H23R0x
-#define CODE_H23Rx_GET_INFO                   1700
-#define CODE_H23Rx_DOWNLOAD_SCRIPT_OTA        1701
-#define CODE_H23Rx_DOWNLOAD_SCRIPT_UART       1702
-#define CODE_H23Rx_RUN_AUTORUN_SCRIPT         1703
-#define CODE_H23Rx_VSP_COMMAND_MODE           1704
-#define CODE_H23Rx_VSP_BRIDGE_MODE            1705
-#define CODE_H23Rx_SPP_MODE                   1706
-#define CODE_H23Rx_LED_STATUS_ON              1707
-#define CODE_H23Rx_LED_STATUS_OFF             1708
-#define CODE_H23Rx_BTC_DEL_ALL_DATA_SEG       1709
-#define CODE_H23Rx_EVBTC_SPPCONN              1710
-#define CODE_H23Rx_EVBTC_SPPDISCON            1711
-#define CODE_H23Rx_EVBTC_PAIR_REQUEST         1712
-#define CODE_H23Rx_EVBTC_PIN_REQUEST          1713
-#define CODE_H23Rx_EVBTC_PAIR_RESULT          1714
-#define CODE_H23Rx_EVBTC_AUTHREQ              1715
-#define CODE_H23Rx_EVBTC_PASSKEY              1716
-#define CODE_H23Rx_SHOW_DEBUG_INFO            1717
-#define CODE_H23Rx_SCAN_INQUIRE               1718
-#define CODE_H23Rx_SCAN_RESPOND               1719
-#define CODE_H23Rx_SCAN_RESPOND_ERR           1720
-#define CODE_H23Rx_CONNECT_INQUIRE            1721
-#define CODE_H23Rx_CONNECT_RESPOND            1722
-#define CODE_H23Rx_FINISHED_SCAN              1723
-#define CODE_H23Rx_UNKNOWN_CMD                1799
+// H23R0x and H23R3x
+#define CODE_H23Rx_SCAN_INQUIRE               1700
+#define CODE_H23Rx_CONNECT_INQUIRE            1701
+#define CODE_H23Rx_DISCONNECT_INQUIRE         1702
+#define CODE_H23Rx_CLEAR_USER_BUFFER		  1703
+#define CODE_H23Rx_SEND_DATA		 		  1704
+#define CODE_H23Rx_SET_NAME					  1705
+#define CODE_H23Rx_SET_DISCOVERABLE			  1706
+#define CODE_H23Rx_STREAM_TO_PORT			  1707
 
 // H26R0x
 #define CODE_H26R0_SET_RATE                   1900
