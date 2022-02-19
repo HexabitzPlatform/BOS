@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_msgparser.c
@@ -190,7 +190,7 @@ void BackEndTask(void *argument){
 					}
 
 					/* crc8 calculation */
-					crc8 =CalculateCRC8((uint32_t* )&crcBuffer,(packetLength + 3));
+					crc8 =CalculateCRC8(crcBuffer,(packetLength + 3));
 					memset(crcBuffer,0,sizeof(crcBuffer));
 
 					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
@@ -516,17 +516,9 @@ void PxMessagingTask(void *argument){
 							break;
 							
 						case CODE_READ_PORT_DIR:
-							temp =0;
-							/* Check my own ports */
-							for(p =1; p <= NumOfPorts; p++){
-								if(GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE){
-									messageParams[temp++] =p;
-								}
-							}
-							/* Send response */
-							SendMessageToModule(src,CODE_READ_PORT_DIR_RESPONSE,temp);
-							break;
-							
+							ReadPortsDirMSG(src);
+								break;
+
 						case CODE_READ_PORT_DIR_RESPONSE:
 							/* Read module ports directions */
 							for(p =0; p < numOfParams; p++){
@@ -1117,14 +1109,7 @@ void PxMessagingTask(void *argument){
 									HAL_FLASH_Unlock();
 									/* Erase page if force write is requested */
 									if(code == CODE_WRITE_REMOTE_FORCE){
-										FLASH_EraseInitTypeDef erase;
-										uint32_t eraseError;
-										erase.TypeErase = FLASH_TYPEERASE_PAGES;
-										erase.PageAddress =temp32;
-										erase.NbPages =1;
-										status =HAL_FLASHEx_Erase(&erase,&eraseError);
-										if(status != HAL_OK || eraseError != 0xFFFFFFFF)
-											responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+										EraseSector(temp32);
 									}
 									/* Write new value */
 									if(responseStatus == BOS_OK){
@@ -1221,30 +1206,30 @@ void PxMessagingTask(void *argument){
 									
 								case 2:
 									MBmessageParams[6] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-								case CODE_READ_ADC_VALUE:
-									ADCPort =cMessage[port - 1][shift];
-									ADCSide =cMessage[port - 1][shift + 1];
-									if(0 == ADCSide){
-										ADCSelectChannel(ADCPort,"top");
-										ReadADCChannel(ADCPort,"top",&ADCValue);
-									}
-									else if(1 == ADCSide){
-										ADCSelectChannel(ADCPort,"bottom");
-										ReadADCChannel(ADCPort,"bottom",&ADCValue);
-									}
-									
-								case CODE_READ_TEMPERATURE:
-								case CODE_READ_VREF:
-									ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
-									
-								case CODE_READ_ADC_PERCENTAGE:
-									ADCPort =cMessage[port - 1][shift];
-									GetReadPrecentage(ADCPort,&ADCPercentage);
-									MBmessageParams[7] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-									MBmessageParams[8] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-									break;
+
+							}
+						case CODE_READ_ADC_VALUE:
+							ADCPort =cMessage[port - 1][shift];
+							ADCSide =cMessage[port - 1][shift + 1];
+							if(0 == ADCSide){
+								ADCSelectChannel(ADCPort,"top");
+								ReadADCChannel(ADCPort,"top",&ADCValue);
+							}
+							else if(1 == ADCSide){
+								ADCSelectChannel(ADCPort,"bottom");
+								ReadADCChannel(ADCPort,"bottom",&ADCValue);
 							}
 							
+						case CODE_READ_TEMPERATURE:
+						case CODE_READ_VREF:
+							ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
+
+						case CODE_READ_ADC_PERCENTAGE:
+							ADCPort =cMessage[port - 1][shift];
+							GetReadPrecentage(ADCPort,&ADCPercentage);
+							MBmessageParams[7] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
+							MBmessageParams[8] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
+							break;
 						case MSG_Acknowledgment_Accepted:
 							ACK_FLAG =1;
 							break;

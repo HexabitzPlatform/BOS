@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_dma.h
@@ -27,10 +27,7 @@ extern uint32_t dmaStreamTotal[NumOfPorts];
 extern bool MsgDMAStopped[NumOfPorts];
 
 /* External functions ---------------------------------------------------------*/
-extern void StopMsgDMA(uint8_t port);
-extern void StopStreamDMA(uint8_t port);
-extern void SwitchMsgDMAToStream(uint8_t port);
-extern void SwitchStreamDMAToMsg(uint8_t port);
+
 extern BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 extern void DMA_IRQHandler(uint8_t port);
 extern void ResetUartORE(void);

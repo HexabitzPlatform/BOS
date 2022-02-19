@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS.c
@@ -17,13 +17,12 @@ BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
 BOSMessaging_t BOSMessging_default={ .response =
 	BOS_RESPONSE_ALL, .trace =TRACE_NONE,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
-
 };
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7", "H1AR2", "H0AR9", "H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4"};
+const char modulePNstring[NUM_OF_MODULE_PN][6] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H09R9","H0AR9","H2AR3", "H1AR2", "H0AR9", "H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4","H41R6"};
 
 /* Define BOS keywords */
 static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
@@ -35,10 +34,15 @@ bool ACK_FLAG=0,rejected_FLAG=0;
 //static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
 
 /* Define long messages -------------------------------------------------------*/
-extern char *pcBootloaderUpdateMessageport;
-extern char *pcRemoteBootloaderUpdateMessage;
-extern char *pcRemoteBootloaderUpdateViaPortMessage;
-extern char *pcRemoteBootloaderUpdateWarningMessage;
+char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
+								  utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
+
+char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
+char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
+
+char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
+											   \n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
+											   - You must power cycle the entire array after the update is finished.\n\r";
 
 /* Define CLI command list*/
 typedef struct xCOMMAND_INPUT_LIST {
@@ -717,7 +721,7 @@ BOS_Status ClearEEportsDir(void){
 }
 
 /*-----------------------------------------------------------*/
-
+//TODO change loction of the API
 // --- Format emulated EEPROM for a factory reset
 void EE_FormatForFactoryReset(void){
 	/* Check if EEPROM was just formated? */
@@ -780,75 +784,6 @@ uint8_t IsLowerCLIbaud(void){
 /*-----------------------------------------------------------*/
 /*-----------------------------------------------------------*/
 
-/* --- Trigger ST factory bootloader update for a remote module.
- */
-void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport){
-	
-	uint8_t myOutport =0, lastModule =0;
-	int8_t *pcOutputString;
-	
-	/* 1. Get route to destination module */
-	myOutport =FindRoute(myID,dst);
-	if(outport && dst == myID){ /* This is a 'via port' update and I'm the last module */
-		myOutport =outport;
-		lastModule =myID;
-	}
-	else if(outport == 0){ /* This is a remote update */
-		if(NumberOfHops(dst)== 1)
-		lastModule = myID;
-		else
-		lastModule = route[NumberOfHops(dst)-1]; /* previous module = route[Number of hops - 1] */
-	}
-
-	/* 2. If this is the source of the message, show status on the CLI */
-	if(src == myID){
-		/* Obtain the address of the output buffer.  Note there is no mutual
-		 exclusion on this buffer as it is assumed only one command console
-		 interface will be used at any one time. */
-		pcOutputString =FreeRTOS_CLIGetOutputBuffer();
-		
-		if(outport == 0)		// This is a remote module update
-			sprintf((char* )pcOutputString,pcRemoteBootloaderUpdateMessage,dst);
-		else
-			// This is a 'via port' remote update
-			sprintf((char* )pcOutputString,pcRemoteBootloaderUpdateViaPortMessage,dst,outport);
-		
-		strcat((char* )pcOutputString,pcRemoteBootloaderUpdateWarningMessage);
-		writePxITMutex(inport,(char* )pcOutputString,strlen((char* )pcOutputString),cmd50ms);
-		Delay_ms(100);
-	}
-	
-	/* 3. Setup my inport and outport for bootloader update */
-	SetupPortForRemoteBootloaderUpdate(inport);
-	SetupPortForRemoteBootloaderUpdate(myOutport);
-	
-	/* 4. If this is last module before destination, swap my outport */
-	if(lastModule == myID){
-		SwapUartPins(GetUart(myOutport),REVERSED);
-	}
-	
-	/* 5. Build a DMA stream between my inport and outport */
-	StartScastDMAStream(inport,myID,myOutport,myID,BIDIRECTIONAL,0xFFFFFFFF,0xFFFFFFFF,false);
-}
-
-/*-----------------------------------------------------------*/
-
-/* --- Setup a port for remote ST factory bootloader update:
- - Set baudrate to 57600
- - Enable even parity
- - Set datasize to 9 bits
- */
-void SetupPortForRemoteBootloaderUpdate(uint8_t port){
-	UART_HandleTypeDef *huart =GetUart(port);
-	
-	huart->Init.BaudRate =57600;
-	huart->Init.Parity = UART_PARITY_EVEN;
-	huart->Init.WordLength = UART_WORDLENGTH_9B;
-	HAL_UART_Init(huart);
-	
-	/* The CLI port RXNE interrupt might be disabled so enable here again to be sure */
-	__HAL_UART_ENABLE_IT(huart,UART_IT_RXNE);
-}
 
 /*-----------------------------------------------------------*/
 
@@ -979,6 +914,7 @@ void Module_Init(void){
 
 	/* Initialize BitzOS */
 	BOS_Init();
+
 	/* Call init function for freertos objects (in freertos.c) */
 	MX_FREERTOS_Init();
 
@@ -1781,57 +1717,7 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
 
-/* --- Read Ports directions when a pre-defined topology file is used --- 
- */
-BOS_Status ReadPortsDir(void){
-	BOS_Status result =BOS_OK;
-	
-	/* Ask all other modules for their ports directions */
-	for(uint8_t i =1; i <= N; i++){
-		if(i != myID){
-			SendMessageToModule(i,CODE_READ_PORT_DIR,0);
-			Delay_ms_no_rtos(50);
-			if(responseStatus != BOS_OK){
-				result =BOS_ERR_NoResponse;
-			}
-		}
-		else{
-			/* Check my own ports */
-			for(uint8_t p =1; p <= NumOfPorts; p++){
-				if(GetUart(p)->AdvancedInit.Swap == UART_ADVFEATURE_SWAP_ENABLE){
-					arrayPortsDir[myID - 1] |=(0x8000 >> (p - 1)); /* Set bit to 1 */
-				}
-			}
-		}
-	}
-	
-	return result;
-}
-
-/*-----------------------------------------------------------*/
-#ifndef __N
-/* --- Update module port directions based on what is stored in eeprom --- 
- */
-BOS_Status UpdateMyPortsDir(void){
-	BOS_Status result =BOS_OK;
-	
-	/* Check port direction */
-	for(uint8_t p =1; p <= NumOfPorts; p++){
-		if(!(arrayPortsDir[myID - 1] & (0x8000 >> (p - 1)))){
-			/* Port is normal */
-			SwapUartPins(GetUart(p),NORMAL);
-		}
-		else{
-			/* Port is reversed */
-			SwapUartPins(GetUart(p),REVERSED);
-		}
-	}
-	
-	return result;
-}
-#endif
 
 /*-----------------------------------------------------------*/
 

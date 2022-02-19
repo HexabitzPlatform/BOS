@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : FreeRtosConfig.h
@@ -100,7 +100,7 @@ extern uint32_t SystemCoreClock;
 
 /* Normal assert() semantics without relying on the provision of an assert.h
  header file. */
-#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 
+//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );}
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS
  standard names. */

@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.5 - Copyright (C) 2017-2021 Hexabitz
+ BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -100,6 +100,7 @@
 #define CODE_H08R6_MIN_RANGE                  410
 #define CODE_H08R6_TIMEOUT                	  411
 
+
 // H09R0
 #define CODE_H09R0_STREAM_PORT_C              450
 #define CODE_H09R0_STREAM_PORT_F              451
@@ -108,6 +109,24 @@
 #define CODE_H09R0_SAMPLE_PORT_F              454
 #define CODE_H09R0_SAMPLE_PORT_K              455
 #define CODE_H09R0_STOP                       456
+
+//H09R9
+#define CODE_H09R9_SAMPLE_TEMP                475
+#define CODE_H09R9_STREAM_TEMP                476
+#define CODE_H09R9_STREAM_STOP                477
+
+// H0AR9
+#define CODE_H0AR9_SAMPLE_COLOR               500
+#define CODE_H0AR9_SAMPLE_DISTANCE            501
+#define CODE_H0AR9_SAMPLE_TEMP                502
+#define CODE_H0AR9_SAMPLE_HUMIDITY            503
+#define CODE_H0AR9_SAMPLE_PIR                 504
+#define CODE_H0AR9_STREAM_COLOR               505
+#define CODE_H0AR9_STREAM_DISTANCE            506
+#define CODE_H0AR9_STREAM_TEMP                507
+#define CODE_H0AR9_STREAM_HUMIDITY            508
+#define CODE_H0AR9_STREAM_PIR                 509
+#define CODE_H0AR9_STREAM_STOP                510
 
 // H0BR4x
 #define CODE_H0BR4_SAMPLE_PORT_GYRO           550
@@ -147,32 +166,15 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
-// H23R0x
-#define CODE_H23Rx_GET_INFO                   1700
-#define CODE_H23Rx_DOWNLOAD_SCRIPT_OTA        1701
-#define CODE_H23Rx_DOWNLOAD_SCRIPT_UART       1702
-#define CODE_H23Rx_RUN_AUTORUN_SCRIPT         1703
-#define CODE_H23Rx_VSP_COMMAND_MODE           1704
-#define CODE_H23Rx_VSP_BRIDGE_MODE            1705
-#define CODE_H23Rx_SPP_MODE                   1706
-#define CODE_H23Rx_LED_STATUS_ON              1707
-#define CODE_H23Rx_LED_STATUS_OFF             1708
-#define CODE_H23Rx_BTC_DEL_ALL_DATA_SEG       1709
-#define CODE_H23Rx_EVBTC_SPPCONN              1710
-#define CODE_H23Rx_EVBTC_SPPDISCON            1711
-#define CODE_H23Rx_EVBTC_PAIR_REQUEST         1712
-#define CODE_H23Rx_EVBTC_PIN_REQUEST          1713
-#define CODE_H23Rx_EVBTC_PAIR_RESULT          1714
-#define CODE_H23Rx_EVBTC_AUTHREQ              1715
-#define CODE_H23Rx_EVBTC_PASSKEY              1716
-#define CODE_H23Rx_SHOW_DEBUG_INFO            1717
-#define CODE_H23Rx_SCAN_INQUIRE               1718
-#define CODE_H23Rx_SCAN_RESPOND               1719
-#define CODE_H23Rx_SCAN_RESPOND_ERR           1720
-#define CODE_H23Rx_CONNECT_INQUIRE            1721
-#define CODE_H23Rx_CONNECT_RESPOND            1722
-#define CODE_H23Rx_FINISHED_SCAN              1723
-#define CODE_H23Rx_UNKNOWN_CMD                1799
+// H23R0x and H23R3x
+#define CODE_H23Rx_SCAN_INQUIRE               1700
+#define CODE_H23Rx_CONNECT_INQUIRE            1701
+#define CODE_H23Rx_DISCONNECT_INQUIRE         1702
+#define CODE_H23Rx_CLEAR_USER_BUFFER		  1703
+#define CODE_H23Rx_SEND_DATA		 		  1704
+#define CODE_H23Rx_SET_NAME					  1705
+#define CODE_H23Rx_SET_DISCOVERABLE			  1706
+#define CODE_H23Rx_STREAM_TO_PORT			  1707
 
 // H26R0x
 #define CODE_H26R0_SET_RATE                   1900
@@ -193,7 +195,12 @@
 // H15R0x
 #define CODE_H15R0_AnalogPercentage           1950
 #define CODE_H15R0_AnalogOutValue             1951
-
+//H2AR3
+#define CODE_H2AR3_SAMPLE_V                   2100
+#define CODE_H2AR3_SAMPLE_A				      2101
+#define CODE_H2AR3_STREAM_PORT_V		      2102
+#define CODE_H2AR3_STREAM_PORT_A		      2103
+#define CODE_H2AR3_STOP                       2104
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
 #define CODE_H1DR1_READ                       2901
