@@ -838,6 +838,18 @@ uint8_t IsMathOperator(char *string){
 /* --- BitzOS initialization. 
  */
 void BOS_Init(void){
+
+/*
+ *Storing Values inside Output_Port_Array[] using FindRoute() Function
+*/
+#ifdef __N
+	for(uint8_t i = 1;i <= __N;i++)
+	{
+		if(myID == i) Output_Port_Array[i-1] = 0;
+		else Output_Port_Array[i-1] = FindRoute(myID, i);
+	}
+#endif
+
 	/* Initialize and configure RTC */
 	RTC_Init();
 	GetTimeDate();

@@ -137,7 +137,14 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	dst =cMessage[incomingPort - 1][0];
 	
 	/* Find best output port for destination module */
-	port =FindRoute(myID,dst);
+	//port =FindRoute(myID,dst);
+
+	//Replace FindRoute() with Output_Port_Array
+	#ifdef __N
+		port = Output_Port_Array[dst - 1];
+	#else
+		port =FindRoute(myID,dst);
+	#endif
 	
 	/* Forward the message. Set src and code to 0 to inform the API to copy the exact message received on incomingPort 
 	 which is passed thru numberOfParams and to use port as output port */
@@ -270,7 +277,14 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	/* Singlecast message */
 	if(dst != BOS_BROADCAST){
 		/* Find best output port for destination module */
-		port =FindRoute(myID,dst);
+		//port =FindRoute(myID,dst);
+
+		//Replace FindRoute() with Output_Port_Array
+		#ifdef __N
+				port = Output_Port_Array[dst - 1];
+		#else
+				port =FindRoute(myID,dst);
+		#endif
 		
 		/* Transmit the message from this port */
 		SendMessageFromPort(port,myID,dst,code,numberOfParams);
