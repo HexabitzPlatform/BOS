@@ -436,6 +436,22 @@ extern snippet_t snippets[MAX_SNIPPETS];
 extern uint8_t numOfBosCommands;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
+
+
+
+/*Output_Port_Array[__N]:
+This array stores all solutions (output ports) to send messages
+between modules based on the topology file using FindRoute() function,
+so we can read these output ports when needed instead of figuring out the correct port every time.
+*/
+#ifdef __N
+extern uint8_t Output_Port_Array[__N];
+#endif
+
+
+
+
+
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------

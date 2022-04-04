@@ -10,6 +10,15 @@
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
+/*Output_Port_Array[__N]:
+This array stores all solutions (output ports) to send messages
+between modules based on the topology file using FindRoute() function,
+so we can read these output ports when needed instead of figuring out the correct port every time.
+*/
+#ifdef __N
+uint8_t Output_Port_Array[__N] = {0};
+#endif
+
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
 BOS_t BOS;
