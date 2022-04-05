@@ -34,7 +34,10 @@ uint8_t Output_Port_Array[__N] = {0};
 uint8_t Activate_CLI_For_First_Time_Flag = 0;
 uint8_t Read_In_CLI_Task_Flag = 0;
 
-
+//The new messages circular buffer:
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
 
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;

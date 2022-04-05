@@ -464,6 +464,16 @@ extern uint8_t Read_In_CLI_Task_Flag;
 
 
 
+#define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
+#define MSG_MAX_SIZE 	56
+
+//The new messages circular buffer:
+extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
+extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
+extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
+
+
+
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------
