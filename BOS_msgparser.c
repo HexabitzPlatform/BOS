@@ -106,172 +106,60 @@ extern void NotifyMessagingTask(uint8_t port);
  */
 /* BackEndTask function */
 void BackEndTask(void *argument){
-	uint8_t port;
-	bool emptyBuffer = false;
-	static uint8_t crc8;
 
-	/* Infinite loop */
-	for(;;){
-		/* Search the circular receive buffers for any complete packets */
-		for(port =1; port <= NumOfPorts; port++){
-			/* A. Check for BOS messages */
-			if(portStatus[port] == MSG || portStatus[port] == FREE){
-				/* A.1. Look for HZ delimiter and determine packet start */
-				/* Note this parses only a single packet on each pass TODO update to parse all */
 
-				for(int i =UARTRxBufIndex[port - 1]; i < MSG_RX_BUF_SIZE; i++){
-					if(i < (MSG_RX_BUF_SIZE - 1) && UARTRxBuf[port - 1][i] == 'H' && UARTRxBuf[port - 1][i + 1] == 'Z'){
-						packetStart =i;
-						break;
-					}
-					else if(i == (MSG_RX_BUF_SIZE - 1) && UARTRxBuf[port - 1][MSG_RX_BUF_SIZE - 1] == 'H' && UARTRxBuf[port - 1][0] == 'Z') // HZ wrap around
-					{
-						packetStart = MSG_RX_BUF_SIZE - 1;
-						break;
-					}
-					else{
-						/* B. Did not find any messaging packets. Check for CLI enter key (0xD) */
-						if(i == MSG_RX_BUF_SIZE - 1){
-							if(BOS.disableCLI == false){
-								for(int j =UARTRxBufIndex[port - 1]; j < MSG_RX_BUF_SIZE; j++){
-									if(UARTRxBuf[port - 1][j] == 0xD && ((j < MSG_RX_BUF_SIZE - 1 && UARTRxBuf[port - 1][j + 1] == 0) || (j == MSG_RX_BUF_SIZE - 1 && UARTRxBuf[port - 1][0] == 0))){
-										UARTRxBuf[port - 1][j] =0;
-										UARTRxBufIndex[port - 1] =j + 1; // Advance buffer index
-										portStatus[PcPort] =FREE; // Free the previous CLI port
-										portStatus[port] =CLI; // Continue the CLI session on this port
-										PcPort =port;
-										/* Activate the CLI task */
-										xTaskNotifyGive(xCommandConsoleTaskHandle);
-										break;
-									}
-								}
-							}
-							/* Circular buffer is empty. */
-							emptyBuffer = true;
-						}
-					}
-				}
-				/* Check parse status */
-				if(emptyBuffer){
-					emptyBuffer = false;
-					continue;
-				}
-				totalnumberofrecevedmesg++;
+	uint8_t calculated_crc,port_number,length,port_index;
+	for(;;)
+	{
+		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
+		{
+			port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
+			port_index = port_number - 1;
+			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
+			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
-				/* A.2. Parse the length byte */
-				if(packetStart == MSG_RX_BUF_SIZE - 3){
-					packetLength =UARTRxBuf[port - 1][MSG_RX_BUF_SIZE - 1];
-					parseStart =0;
-				}
-				else if(packetStart == MSG_RX_BUF_SIZE - 2){
-					packetLength =UARTRxBuf[port - 1][0];
-					parseStart =1;
-				}
-				else if(packetStart == MSG_RX_BUF_SIZE - 1){
-					packetLength =UARTRxBuf[port - 1][1];
-					parseStart =2;
-				}
-				else{
-					packetLength =UARTRxBuf[port - 1][packetStart + 2];
-					parseStart =packetStart + 3;
-				}
+			length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
 
-				/* A.3. Set packet end from packet start and length */
-				packetEnd =packetStart + (packetLength + 3); // Packet length is counted from Dst to before CRC
-				if(packetEnd > MSG_RX_BUF_SIZE - 1) // wrap-around
-					packetEnd -= MSG_RX_BUF_SIZE;
-
-				if(packetStart != packetEnd) // Non-empty packet
-				{
-					/* A.4. Calculate packet CRC */
-					if(packetStart < packetEnd){
-						memcpy(crcBuffer,&UARTRxBuf[port - 1][packetStart],packetLength + 3);
-					}
-					else{ // wrap around
-						memcpy(crcBuffer,&UARTRxBuf[port - 1][packetStart],
-						MSG_RX_BUF_SIZE - packetStart);
-						memcpy(&crcBuffer[MSG_RX_BUF_SIZE - packetStart],&UARTRxBuf[port - 1][0],(packetLength + 3) - (MSG_RX_BUF_SIZE - packetStart));
-					}
-
-					/* crc8 calculation */
-					crc8 =CalculateCRC8(crcBuffer,(packetLength + 3));
-					memset(crcBuffer,0,sizeof(crcBuffer));
-
-					/* A.5. Compare CRC. If matched, accept the packet as a BOS message and notify the appropriate message parser task */
-					if(crc8 == UARTRxBuf[port - 1][packetEnd]){
-						portStatus[port] =MSG;
-						messageLength[port - 1] =packetLength;
-
-						/* A.5.1. Copy the packet to message buffer */
-						if((packetLength) <= (MSG_RX_BUF_SIZE - parseStart - 1)){
-							memcpy(&cMessage[port - 1][0],&UARTRxBuf[port - 1][parseStart],packetLength);
-						}
-						else{ // Message wraps around
-							memcpy(&cMessage[port - 1][0],&UARTRxBuf[port - 1][parseStart],
-							MSG_RX_BUF_SIZE - parseStart);
-							memcpy(&cMessage[port - 1][MSG_RX_BUF_SIZE - parseStart],&UARTRxBuf[port - 1][0],(packetLength) - (MSG_RX_BUF_SIZE - parseStart)); // wrap-around
-						}
-
-						/* A.5.2 Clear packet location in the circular buffer */
-						if(packetStart < packetEnd){
-							memset(&UARTRxBuf[port - 1][packetStart],0,(packetLength) + 4);
-						}
-						else{ // wrap around
-							memset(&UARTRxBuf[port - 1][packetStart],0,
-							MSG_RX_BUF_SIZE - packetStart);
-							memset(&UARTRxBuf[port - 1][0],0,((packetLength) + 4) - (MSG_RX_BUF_SIZE - packetStart));
-						}
-
-						/* A.5.3 Advance buffer index */
-						if(packetEnd == MSG_RX_BUF_SIZE - 1)
-							UARTRxBufIndex[port - 1] =0;
-						else{
-							UARTRxBufIndex[port - 1] =(packetEnd + 1); // Set buffer pointer after the CRC byte
-						}
-						++acceptedMsg;
-
-						if(cMessage[port - 1][0] == myID || cMessage[port - 1][0] == BOS_BROADCAST || cMessage[port - 1][0] == BOS_MULTICAST)
-							/* A.5.4. Notify messaging tasks */
-							NotifyMessagingTask(port);
-
-						else{
-							/* A.5.4. Notify messaging tasks */
-							ForwardReceivedMessage(port);
-						}
-						continue; // Inspect the next port circular buffer
-
-					}
-				}
-
-				/* A.6. If you are still here, then this packet is rejected TODO do something */
-
-				/* A.6.1 Clear packet location in the circular buffer */
-				if(packetStart < packetEnd){
-					memset(&UARTRxBuf[port - 1][packetStart],0,(packetLength) + 4);
-				}
-				else{ // wrap around
-					memset(&UARTRxBuf[port - 1][packetStart],0,
-					MSG_RX_BUF_SIZE - packetStart);
-					memset(&UARTRxBuf[port - 1][0],0,((packetLength) + 4) - (MSG_RX_BUF_SIZE - packetStart));
-				}
-
-				/* A.6.2 Advance buffer index */
-				if(packetEnd == MSG_RX_BUF_SIZE - 1)
-					UARTRxBufIndex[port - 1] =0;
-				else{
-					UARTRxBufIndex[port - 1] =(packetEnd + 1); // Set buffer pointer after the CRC byte
-				}
-				SendMessageToModule(cMessage[port - 1][1], MSG_rejected, 0);
-				++rejectedMsg;
+			Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
+			Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
+			Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+			for(int i=0;i<length;i++)
+			{
+				Calculate_CRC_Buffer[i+3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
 			}
 
-			/* C. If DMA stopped due to communication errors, restart again */
-			if(MsgDMAStopped[port - 1] == true){
-				MsgDMAStopped[port - 1] = false;
-				if(portStatus[port] == OVERRUN)
-					portStatus[port] =FREE;
-				HAL_UART_Receive_DMA(GetUart(port),(uint8_t* )&UARTRxBuf[port - 1],MSG_RX_BUF_SIZE);
+			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,
+				length + 3);
+
+
+			Message_counter++;
+			if(calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3])
+			{
+				Accepted_Messages++;
+				messageLength[port_index] =length;
+				memcpy(&cMessage[port_index][0],&MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+				if(cMessage[port_index][0] == myID || cMessage[port_index][0] == BOS_BROADCAST || cMessage[port_index][0] == BOS_MULTICAST)
+					/* Notify messaging tasks */
+					NotifyMessagingTask(port_number);
+
+				else{
+					/* Forward message */
+					ForwardReceivedMessage(port_number);
+				}
+
+
 			}
+			else
+			{
+				Rejected_Messages++;
+				//TODO: Implement something here when the message is rejected.
+			}
+
+			MSG_Buffer_Index_Start[port_index]++;
+			if(MSG_Buffer_Index_Start[port_index] == MSG_COUNT) MSG_Buffer_Index_Start[port_index] = 0;
+
+			Process_Message_Buffer_Index_Start++;
+			if(Process_Message_Buffer_Index_Start == MSG_COUNT) Process_Message_Buffer_Index_Start = 0;
 		}
 
 		taskYIELD();
