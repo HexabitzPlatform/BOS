@@ -473,6 +473,11 @@ extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
 extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
 
 
+//Processing message circular buffer:
+extern uint8_t Process_Message_Buffer[MSG_COUNT];
+extern uint8_t Process_Message_Buffer_Index_Start;
+extern uint8_t Process_Message_Buffer_Index_End;
+
 
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|

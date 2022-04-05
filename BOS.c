@@ -39,6 +39,13 @@ uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
 uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
 uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
 
+
+//Processing message circular buffer:
+uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
+uint8_t Process_Message_Buffer_Index_Start = 0;
+uint8_t Process_Message_Buffer_Index_End = 0;
+
+
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
 BOS_t BOS;
