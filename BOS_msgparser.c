@@ -10,6 +10,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
+//New BackEndTask Variables:
+uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
+uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
+
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 uint16_t stackWaterMark;
