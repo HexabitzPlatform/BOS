@@ -449,6 +449,18 @@ extern uint8_t Output_Port_Array[__N];
 #endif
 
 
+/*Flag for CLI Task:
+ *
+ * Activate_CLI_For_First_Time_Flag:
+ * Default value: 0
+ * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
+ *
+ * Read_In_CLI_Task_Flag:
+ * Default value: 0
+ * Its value each time a byte is received: 1
+ */
+extern uint8_t Activate_CLI_For_First_Time_Flag;
+extern uint8_t Read_In_CLI_Task_Flag;
 
 
 
