@@ -50,7 +50,7 @@ enum ButtonNames_e {
 };
 
 enum PortStatus_e {
-	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM
+	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM, H_Status, Z_Status
 };
 
 enum UartDirection_e {
