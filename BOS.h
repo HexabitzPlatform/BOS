@@ -478,6 +478,13 @@ extern uint8_t Process_Message_Buffer[MSG_COUNT];
 extern uint8_t Process_Message_Buffer_Index_Start;
 extern uint8_t Process_Message_Buffer_Index_End;
 
+ /*
+  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
+  *instead of writePxDMAMutex (the previous function)
+  */
+
+ extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
+
 
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|

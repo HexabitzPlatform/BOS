@@ -46,6 +46,32 @@ uint8_t Process_Message_Buffer_Index_Start = 0;
 uint8_t Process_Message_Buffer_Index_End = 0;
 
 
+/*
+ *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
+ *instead of writePxDMAMutex (the previous function)
+ */
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout)
+{
+	HAL_StatusTypeDef result =HAL_ERROR;
+
+	if(GetUart(port) != NULL){
+		/* Wait for the mutex to be available. */
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
+			for(uint8_t i=0;i<n;i++)
+			{
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
+				buffer++;
+				//Delay_us(500);
+				Delay_ms(2);
+			}
+		}
+	}
+	Delay_ms(10);// Delay Between Sending Two Messages.
+	return result;
+}
+
+
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
 BOS_t BOS;
