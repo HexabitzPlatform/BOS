@@ -1365,7 +1365,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 
  */
 uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
-#ifdef ___N
+#ifdef __N
 	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
 	uint8_t Q[50] ={0};			// All nodes initially in Q (unvisited nodes)
