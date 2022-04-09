@@ -473,17 +473,17 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		/* Transmit the message - single-cast */
 
 		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
-			writePxDMAMutex(port,message,length + 4,cmd50ms);
+			Send_BOS_Message(port,message,length + 4,cmd50ms);
 		}
 		else{
 
 			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
-				writePxDMAMutex(port,message,length + 4,cmd50ms);
+				Send_BOS_Message(port,message,length + 4,cmd50ms);
 				osDelay(200);
 				if(ACK_FLAG == true)
 					break;
 				if(rejected_FLAG == true)
-					writePxDMAMutex(port,message,length + 4,cmd50ms);
+					Send_BOS_Message(port,message,length + 4,cmd50ms);
 			}
 		}
 		ACK_FLAG =false; rejected_FLAG=false;
@@ -502,10 +502,10 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		for(uint8_t p =1; p <= NumOfPorts; p++){
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
-				writePxDMAMutex(p,message,length + 4,cmd50ms);
+				Send_BOS_Message(p,message,length + 4,cmd50ms);
 				osDelay(200);
 				if(rejected_FLAG == true)
-					writePxDMAMutex(port,message,length + 4,cmd50ms);
+					Send_BOS_Message(port,message,length + 4,cmd50ms);
 			}
 			rejected_FLAG=false;
 			Delay_us(10);
