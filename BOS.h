@@ -32,12 +32,12 @@
 
 
 
-char *pcBootloaderUpdateMessage;
+extern char *pcBootloaderUpdateMessage;
 
-char *pcRemoteBootloaderUpdateMessage;
-char *pcRemoteBootloaderUpdateViaPortMessage;
+extern char *pcRemoteBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateViaPortMessage;
 
-char *pcRemoteBootloaderUpdateWarningMessage;
+extern char *pcRemoteBootloaderUpdateWarningMessage;
 
 
 /* Enumerations */
