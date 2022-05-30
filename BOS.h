@@ -519,6 +519,9 @@ extern BOS_Status printfp(uint8_t port,char *str);
 extern void vRegisterCLICommands(void);
 extern void StringToLowerCase(char *string);
 
+/*Bootloader Related APIs */
+void SetupPortForRemoteBootloaderUpdate(uint8_t port);
+
 #endif /* BOS_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

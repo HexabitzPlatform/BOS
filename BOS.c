@@ -173,7 +173,6 @@ BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t
 
 BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force);
 void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
-void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 
 /* Module exported internal functions */
