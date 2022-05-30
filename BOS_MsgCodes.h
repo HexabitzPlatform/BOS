@@ -208,6 +208,11 @@
 #define CODE_H1DR1_MULTIWRITE                 2903
 #define CODE_H1DR1_STIMEOUT                   2904
 
+//H12R0x
+#define CODE_H12R0_STREAM_PORT                2905
+#define CODE_H12R0_STOP          		      2906
+#define CODE_H12R0_SAMPLE          		      2907
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
