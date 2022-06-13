@@ -17,6 +17,13 @@
 #include "BOS.h"
 #include "BOS_DMA.h"
 
+/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports
+ *
+ * Access each port Byte:
+ * Rx_Data[GetPort(huart) - 1];
+ */
+uint8_t Rx_Data[NumOfPorts] = {0};
+
 /* Exported variables ---------------------------------------------------------*/
 
 uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] ={0};

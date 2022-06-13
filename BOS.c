@@ -10,6 +10,68 @@
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
+/*Output_Port_Array[__N]:
+This array stores all solutions (output ports) to send messages
+between modules based on the topology file using FindRoute() function,
+so we can read these output ports when needed instead of figuring out the correct port every time.
+*/
+#ifdef __N
+uint8_t Output_Port_Array[__N] = {0};
+#endif
+
+
+
+/*Flag for CLI Task:
+ *
+ * Activate_CLI_For_First_Time_Flag:
+ * Default value: 0
+ * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
+ *
+ * Read_In_CLI_Task_Flag:
+ * Default value: 0
+ * Its value each time a byte is received: 1
+ */
+uint8_t Activate_CLI_For_First_Time_Flag = 0;
+uint8_t Read_In_CLI_Task_Flag = 0;
+
+//The new messages circular buffer:
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
+
+
+//Processing message circular buffer:
+uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
+uint8_t Process_Message_Buffer_Index_Start = 0;
+uint8_t Process_Message_Buffer_Index_End = 0;
+
+
+/*
+ *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
+ *instead of writePxDMAMutex (the previous function)
+ */
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout)
+{
+	HAL_StatusTypeDef result =HAL_ERROR;
+
+	if(GetUart(port) != NULL){
+		/* Wait for the mutex to be available. */
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
+			for(uint8_t i=0;i<n;i++)
+			{
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
+				buffer++;
+				//Delay_us(500);
+				Delay_ms(2);
+			}
+		}
+	}
+	Delay_ms(10);// Delay Between Sending Two Messages.
+	return result;
+}
+
+
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
 BOS_t BOS;
@@ -828,6 +890,18 @@ uint8_t IsMathOperator(char *string){
 /* --- BitzOS initialization. 
  */
 void BOS_Init(void){
+
+/*
+ *Storing Values inside Output_Port_Array[] using FindRoute() Function
+*/
+#ifdef __N
+	for(uint8_t i = 1;i <= __N;i++)
+	{
+		if(myID == i) Output_Port_Array[i-1] = 0;
+		else Output_Port_Array[i-1] = FindRoute(myID, i);
+	}
+#endif
+
 	/* Initialize and configure RTC */
 	RTC_Init();
 	GetTimeDate();
@@ -1290,7 +1364,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 
  */
 uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
-#ifdef ___N
+#ifdef __N
 	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
 	uint8_t Q[50] ={0};			// All nodes initially in Q (unvisited nodes)
