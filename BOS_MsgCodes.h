@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -207,6 +207,11 @@
 #define CODE_H1DR1_WRITE                      2902
 #define CODE_H1DR1_MULTIWRITE                 2903
 #define CODE_H1DR1_STIMEOUT                   2904
+
+//H12R0x
+#define CODE_H12R0_STREAM_PORT                2905
+#define CODE_H12R0_STOP          		      2906
+#define CODE_H12R0_SAMPLE          		      2907
 
 #endif /* BOS_MSGCODES_H */
 

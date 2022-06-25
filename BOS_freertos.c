@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_freertos.c
@@ -100,37 +100,37 @@ void MX_FREERTOS_Init(void){
 	/* Note: CMSIS OS priority levels are -3 to +3 and FreeRTOS priority levels are 0 to 6. Use osPriorityIdle to shift CMSIS priority levels to positive */
 
 	/* Create a defaultTask */
-	xTaskCreate(StartDefaultTask,(const char* ) "DefaultTask",(2*configMINIMAL_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
+	xTaskCreate(StartDefaultTask,(const char* ) "DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
 	
 	/* Create the back-end task */
-	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(2*configMINIMAL_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&BackEndTaskHandle);
+	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&BackEndTaskHandle);
 	
 	/* Create the User task */
-	xTaskCreate(UserTask,(const char* ) "UserTask",(2*configMINIMAL_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&UserTaskHandle);
+	xTaskCreate(UserTask,(const char* ) "UserTask",(USER_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&UserTaskHandle);
 	
 	/* Register command line commands */
 	vRegisterCLICommands();
 	/* Create the CLI task */
-	xTaskCreate(prvCLITask,"CliTask",(2*configMINIMAL_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&xCommandConsoleTaskHandle);
+	xTaskCreate(prvCLITask,"CliTask",(CLI_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&xCommandConsoleTaskHandle);
 	
 	/* Create message parsing tasks for module ports */
 #ifdef _P1
-	xTaskCreate(PxMessagingTask,(const char* ) "P1MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P1,osPriorityAboveNormal - osPriorityIdle,&P1MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P1MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P1,osPriorityAboveNormal - osPriorityIdle,&P1MsgTaskHandle);
 #endif
 #ifdef _P2
-	xTaskCreate(PxMessagingTask,(const char* ) "P2MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P2,osPriorityAboveNormal - osPriorityIdle,&P2MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P2MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P2,osPriorityAboveNormal - osPriorityIdle,&P2MsgTaskHandle);
 #endif
 #ifdef _P3
-	xTaskCreate(PxMessagingTask,(const char* ) "P3MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P3,osPriorityAboveNormal - osPriorityIdle,&P3MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P3MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P3,osPriorityAboveNormal - osPriorityIdle,&P3MsgTaskHandle);
 #endif
 #ifdef _P4
-	xTaskCreate(PxMessagingTask,(const char* ) "P4MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P4,osPriorityAboveNormal - osPriorityIdle,&P4MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P4MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P4,osPriorityAboveNormal - osPriorityIdle,&P4MsgTaskHandle);
 #endif
 #ifdef _P5
-	xTaskCreate(PxMessagingTask,(const char* ) "P5MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P5,osPriorityAboveNormal - osPriorityIdle,&P5MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P5MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P5,osPriorityAboveNormal - osPriorityIdle,&P5MsgTaskHandle);
 #endif
 #ifdef _P6
-	xTaskCreate(PxMessagingTask,(const char* ) "P6MsgTask",(2*configMINIMAL_STACK_SIZE),(void* ) P6,osPriorityAboveNormal - osPriorityIdle,&P6MsgTaskHandle);
+	xTaskCreate(PxMessagingTask,(const char* ) "P6MsgTask",(PORT_TASK_STACK_SIZE),(void* ) P6,osPriorityAboveNormal - osPriorityIdle,&P6MsgTaskHandle);
 #endif
 	
 	/* Create semaphores to protect module ports (FreeRTOS vSemaphoreCreateBinary didn't work) */

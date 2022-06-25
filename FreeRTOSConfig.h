@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : FreeRtosConfig.h
@@ -36,8 +36,10 @@ extern uint32_t SystemCoreClock;
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
-#define configMINIMAL_STACK_SIZE                 ((uint16_t)160)		
-#define configTOTAL_HEAP_SIZE                    ((size_t)19000)
+//#define configMINIMAL_STACK_SIZE                 ((uint16_t)160)
+//#define configTOTAL_HEAP_SIZE                    ((size_t)19000)
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)150)
+#define configTOTAL_HEAP_SIZE                    ((size_t)16200)
 #define configMAX_TASK_NAME_LEN                  ( 13 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -45,6 +47,13 @@ extern uint32_t SystemCoreClock;
 #define configQUEUE_REGISTRY_SIZE                8
 #define configUSE_RECURSIVE_MUTEXES              1
 #define configUSE_COUNTING_SEMAPHORES            1
+
+/*BOS Tasks stack size: */
+#define CLI_TASK_STACK_SIZE						((uint16_t)140*2)
+#define BACKEND_TASK_STACK_SIZE					((uint16_t)120*2)
+#define USER_TASK_STACK_SIZE					((uint16_t)120*2)
+#define DEFAULT_TASK_STACK_SIZE					((uint16_t)120*2)
+#define PORT_TASK_STACK_SIZE					((uint16_t)120*2)
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
@@ -142,3 +151,4 @@ uint32_t ulMainGetRunTimeCounterValue(void);
 #define cmd500ms					( 500UL / portTICK_RATE_MS ) 
 
 #endif /* FREERTOS_CONFIG_H */
+

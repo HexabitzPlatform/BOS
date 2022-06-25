@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS.c
@@ -9,6 +9,68 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
+
+/*Output_Port_Array[__N]:
+This array stores all solutions (output ports) to send messages
+between modules based on the topology file using FindRoute() function,
+so we can read these output ports when needed instead of figuring out the correct port every time.
+*/
+#ifdef __N
+uint8_t Output_Port_Array[__N] = {0};
+#endif
+
+
+
+/*Flag for CLI Task:
+ *
+ * Activate_CLI_For_First_Time_Flag:
+ * Default value: 0
+ * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
+ *
+ * Read_In_CLI_Task_Flag:
+ * Default value: 0
+ * Its value each time a byte is received: 1
+ */
+uint8_t Activate_CLI_For_First_Time_Flag = 0;
+uint8_t Read_In_CLI_Task_Flag = 0;
+
+//The new messages circular buffer:
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
+
+
+//Processing message circular buffer:
+uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
+uint8_t Process_Message_Buffer_Index_Start = 0;
+uint8_t Process_Message_Buffer_Index_End = 0;
+
+
+/*
+ *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
+ *instead of writePxDMAMutex (the previous function)
+ */
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout)
+{
+	HAL_StatusTypeDef result =HAL_ERROR;
+
+	if(GetUart(port) != NULL){
+		/* Wait for the mutex to be available. */
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
+			for(uint8_t i=0;i<n;i++)
+			{
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
+				buffer++;
+				//Delay_us(500);
+				Delay_ms(2);
+			}
+		}
+	}
+	Delay_ms(10);// Delay Between Sending Two Messages.
+	return result;
+}
+
 
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
@@ -22,7 +84,7 @@ uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H09R9","H0AR9","H2AR3", "H1AR2", "H0AR9", "H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4","H41R6"};
+const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6"};
 
 /* Define BOS keywords */
 static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
@@ -173,7 +235,6 @@ BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t
 
 BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force);
 void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
-void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 
 /* Module exported internal functions */
@@ -829,6 +890,18 @@ uint8_t IsMathOperator(char *string){
 /* --- BitzOS initialization. 
  */
 void BOS_Init(void){
+
+/*
+ *Storing Values inside Output_Port_Array[] using FindRoute() Function
+*/
+#ifdef __N
+	for(uint8_t i = 1;i <= __N;i++)
+	{
+		if(myID == i) Output_Port_Array[i-1] = 0;
+		else Output_Port_Array[i-1] = FindRoute(myID, i);
+	}
+#endif
+
 	/* Initialize and configure RTC */
 	RTC_Init();
 	GetTimeDate();
@@ -1291,7 +1364,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 
  */
 uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
-#ifdef ___N
+#ifdef __N
 	uint8_t Q[__N] = {0};		// All nodes initially in Q (unvisited nodes)
 #else
 	uint8_t Q[50] ={0};			// All nodes initially in Q (unvisited nodes)

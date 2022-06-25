@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -32,12 +32,12 @@
 
 
 
-char *pcBootloaderUpdateMessage;
+extern char *pcBootloaderUpdateMessage;
 
-char *pcRemoteBootloaderUpdateMessage;
-char *pcRemoteBootloaderUpdateViaPortMessage;
+extern char *pcRemoteBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateViaPortMessage;
 
-char *pcRemoteBootloaderUpdateWarningMessage;
+extern char *pcRemoteBootloaderUpdateWarningMessage;
 
 
 /* Enumerations */
@@ -50,7 +50,7 @@ enum ButtonNames_e {
 };
 
 enum PortStatus_e {
-	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM
+	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM, H_Status, Z_Status
 };
 
 enum UartDirection_e {
@@ -436,6 +436,56 @@ extern snippet_t snippets[MAX_SNIPPETS];
 extern uint8_t numOfBosCommands;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
+
+
+
+/*Output_Port_Array[__N]:
+This array stores all solutions (output ports) to send messages
+between modules based on the topology file using FindRoute() function,
+so we can read these output ports when needed instead of figuring out the correct port every time.
+*/
+#ifdef __N
+extern uint8_t Output_Port_Array[__N];
+#endif
+
+
+/*Flag for CLI Task:
+ *
+ * Activate_CLI_For_First_Time_Flag:
+ * Default value: 0
+ * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
+ *
+ * Read_In_CLI_Task_Flag:
+ * Default value: 0
+ * Its value each time a byte is received: 1
+ */
+extern uint8_t Activate_CLI_For_First_Time_Flag;
+extern uint8_t Read_In_CLI_Task_Flag;
+
+
+
+#define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
+#define MSG_MAX_SIZE 	56
+
+//The new messages circular buffer:
+extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
+extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
+extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
+
+
+//Processing message circular buffer:
+extern uint8_t Process_Message_Buffer[MSG_COUNT];
+extern uint8_t Process_Message_Buffer_Index_Start;
+extern uint8_t Process_Message_Buffer_Index_End;
+
+ /*
+  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
+  *instead of writePxDMAMutex (the previous function)
+  */
+
+ extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
+
+
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------
@@ -518,6 +568,9 @@ extern BOS_Status printfp(uint8_t port,char *str);
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);
 extern void StringToLowerCase(char *string);
+
+/*Bootloader Related APIs */
+void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
 #endif /* BOS_H */
 

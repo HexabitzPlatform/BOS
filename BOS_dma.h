@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.6 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
  All rights reserved
 
  File Name     : BOS_dma.h
@@ -13,6 +13,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
+
+/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports
+ *
+ * Access each port Byte:
+ * Rx_Data[GetPort(huart) - 1];
+ */
+extern uint8_t Rx_Data[NumOfPorts];
 
 /* External definitions -------------------------------------------------------*/
 #define MSG_DMA_PRIORITY 					DMA_PRIORITY_HIGH					// Messaging backend priority
