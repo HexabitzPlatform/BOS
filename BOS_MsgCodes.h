@@ -213,6 +213,14 @@
 #define CODE_H12R0_STOP          		      2906
 #define CODE_H12R0_SAMPLE          		      2907
 
+//H3BR6
+#define CODE_H3BR6_SevenDisplayNumber          2950
+#define CODE_H3BR6_SevenDisplayNumberF         2951
+#define CODE_H3BR6_SevenDisplayQuantities      2952
+#define CODE_H3BR6_SevenDisplayLetter          2953
+#define CODE_H3BR6_SevenDisplaySentence        2954
+#define CODE_H3BR6_SevenDisplayMovingSentence  2955
+#define CODE_H3BR6_SevenDisplayOff             2956
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
