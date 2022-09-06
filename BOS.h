@@ -17,12 +17,14 @@
 #include <stdbool.h>
 
 /* STM HAL */
-#ifdef H41R6
+#if defined(STM32G0B1xx)
+#include "stm32g0xx_hal.h"
+#elif defined(H41R6)
 #include "stm32f4xx_hal.h"
 #else
-#include "stm32f0xx_hal.h" 
-
+#include "stm32f0xx_hal.h"
 #endif
+
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
