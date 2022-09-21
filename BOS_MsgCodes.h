@@ -143,15 +143,26 @@
 #define CODE_H0BR4_STREAM_PORT_TEMP			  561
 #define CODE_H0BR4_STREAM_STOP				  562
 
+// H0FR1x
+#define	CODE_H0FR1_ON						  750
+#define	CODE_H0FR1_OFF						  751
+#define	CODE_H0FR1_TOGGLE					  752
+
 // H0FR6x
-#define	CODE_H0FRx_ON						  750
-#define	CODE_H0FRx_OFF						  751
-#define	CODE_H0FRx_TOGGLE					  752
-#define	CODE_H0FRx_PWM						  753
-#define	CODE_H0FR7_SAMPLE_PORT				  754
-#define	CODE_H0FR7_STREAM_PORT				  755
-#define	CODE_H0FR7_STREAM_BUFFER			  756
-#define	CODE_H0FR7_STOP_MEASUREMENT			  757
+#define	CODE_H0FR6_ON						  760
+#define	CODE_H0FR6_OFF						  761
+#define	CODE_H0FR6_TOGGLE					  762
+#define	CODE_H0FR6_PWM						  763
+
+// H0FR7x
+#define	CODE_H0FR7_ON						  770
+#define	CODE_H0FR7_OFF						  771
+#define	CODE_H0FR7_TOGGLE					  772
+#define	CODE_H0FR7_PWM						  773
+#define	CODE_H0FR7_SAMPLE_PORT				  774
+#define	CODE_H0FR7_STREAM_PORT				  775
+#define	CODE_H0FR7_STREAM_BUFFER			  776
+#define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
 // H1BR6x
 #define CODE_H1BR6_READ_WAVE            	  1350

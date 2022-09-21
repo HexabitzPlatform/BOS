@@ -343,8 +343,14 @@ typedef struct {
 #ifdef H13R7
 	#include "H13R7.h"
 #endif
-#if defined(H0FR1) || defined(H0FR6) || defined(H0FR7)
-#include "H0FR6.h"
+#ifdef H0FR1
+	#include "H0FR1.h"
+#endif
+#ifdef H0FR6
+	#include "H0FR6.h"
+#endif
+#ifdef H0FR7
+	#include "H0FR7.h"
 #endif
 #ifdef H1AR2
 	#include "H1AR0.h"	
