@@ -532,38 +532,38 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 /*-----------------------------------------------------------*/
 #ifndef __N
 static portBASE_TYPE exploreCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-//	BOS_Status result = BOS_OK;
-//	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
-//	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
-//	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
-//	
-//	/* Remove compile time warnings about unused parameters, and check the
-//	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-//	write buffer length is adequate, so does not check for buffer overflows. */
-//	( void ) pcCommandString;
-//	( void ) xWriteBufferLen;
-//	configASSERT( pcWriteBuffer );
+	BOS_Status result = BOS_OK;
+	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
+	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
+	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Respond to the update command */
+	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
+	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+
+	/* Call array exploration routine */
+	result = Explore();
+	if (result == BOS_OK) {
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		DisplayTopology(PcPort);
+		DisplayPortsDir(PcPort);
+	} else {
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
+		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	}
+	sprintf( ( char * ) pcWriteBuffer, " ");
 	
-//	/* Respond to the update command */
-//	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
-//	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//	
-//	/* Call array exploration routine */
-//	result = Explore();
-//	if (result == BOS_OK) {
-//		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
-//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//		DisplayTopology(PcPort);
-//		DisplayPortsDir(PcPort);
-//	} else {
-//		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
-//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//	}
-//	sprintf( ( char * ) pcWriteBuffer, " ");
-//	
-//	/* There is no more data to return after this single string, so return
-//	pdFALSE. */
-//	return pdFALSE;
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
 	return 0;
 }
 #endif
