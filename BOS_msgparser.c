@@ -1058,7 +1058,7 @@ void PxMessagingTask(void *argument){
 													//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
 													#ifndef STM32G0B1xx
 													status =HAL_FLASH_Program(
-												    FLASH_TYPEPROGRAM_FAST,temp32,remoteBuffer);
+												    FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
 													#endif
 													break;
 												}
