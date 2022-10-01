@@ -1009,9 +1009,12 @@ BOS_Status Explore(void)
 	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
 
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
-		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
+		if (port != PcPort)
+			SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+	ExploreNeighbors(PcPort);
+
+	indMode = IND_TOPOLOGY;
 
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 
@@ -1522,7 +1525,7 @@ void DisplayTopology(uint8_t port){
 /* --- Display ports directions in human-readable format through module port --- 
  */
 void DisplayPortsDir(uint8_t port){
-	sprintf(pcUserMessage,"\n\rThese ports are reversed:");
+	sprintf(pcUserMessage,"\n\rThese ports are reversed:\n\r");
 	writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,
 	HAL_MAX_DELAY);
 	
