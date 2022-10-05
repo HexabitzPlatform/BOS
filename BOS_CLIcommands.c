@@ -443,6 +443,7 @@ static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 
 /*-----------------------------------------------------------*/
 
+
 static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessage =(int8_t* )"Update firmware for module %d\n\r";
 	static const int8_t *pcMessageWrongValue =(int8_t* )"Wrong value!\n\r";
@@ -467,9 +468,13 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage,myID);
 		strcat((char* )pcWriteBuffer,(char* )pcBootloaderUpdateMessage);
 		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
-		
+		#ifndef STM32G0B1xx
 		/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 		*((unsigned long* )0x20007FF0) =0xDEADBEEF;
+		#else
+		/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
+		*((unsigned long* )0x20023FF0) =0xDEADBEEF; //Boundary address[0x20000000 - 0x20023FFF]
+		#endif
 		indMode =IND_PING;
 		osDelay(10);
 		NVIC_SystemReset();

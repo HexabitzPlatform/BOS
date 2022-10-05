@@ -506,8 +506,13 @@ void PxMessagingTask(void *argument){
 							
 						case CODE_UPDATE:
 							/* Trigger ST factory bootloader update */
+							#ifndef STM32G0B1xx
 							/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 							*((unsigned long* )0x20007FF0) =0xDEADBEEF;
+							#else
+							/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
+							*((unsigned long* )0x20023FF0) =0xDEADBEEF;
+							#endif							
 							indMode =IND_PING;
 							osDelay(10);
 							NVIC_SystemReset();
