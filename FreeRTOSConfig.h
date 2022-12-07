@@ -38,8 +38,16 @@ extern uint32_t SystemCoreClock;
 #define configMAX_PRIORITIES                     ( 7 )
 //#define configMINIMAL_STACK_SIZE                 ((uint16_t)160)
 //#define configTOTAL_HEAP_SIZE                    ((size_t)19000)
+#ifdef STM32G0B1xx
+#define configMINIMAL_STACK_SIZE                 ((uint16_t)2500)
+#else
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)150)
+#endif
+#ifdef STM32G0B1xx
+#define configTOTAL_HEAP_SIZE                    ((size_t)65000)
+#else
 #define configTOTAL_HEAP_SIZE                    ((size_t)16200)
+#endif
 #define configMAX_TASK_NAME_LEN                  ( 13 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0
@@ -49,11 +57,19 @@ extern uint32_t SystemCoreClock;
 #define configUSE_COUNTING_SEMAPHORES            1
 
 /*BOS Tasks stack size: */
+#ifdef STM32G0B1xx
+#define CLI_TASK_STACK_SIZE						((uint16_t)500*2)
+#define BACKEND_TASK_STACK_SIZE					((uint16_t)500*2)
+#define USER_TASK_STACK_SIZE					((uint16_t)500*2)
+#define DEFAULT_TASK_STACK_SIZE					((uint16_t)500*2)
+#define PORT_TASK_STACK_SIZE					((uint16_t)500*2)
+#else
 #define CLI_TASK_STACK_SIZE						((uint16_t)140*2)
 #define BACKEND_TASK_STACK_SIZE					((uint16_t)120*2)
 #define USER_TASK_STACK_SIZE					((uint16_t)120*2)
 #define DEFAULT_TASK_STACK_SIZE					((uint16_t)120*2)
 #define PORT_TASK_STACK_SIZE					((uint16_t)120*2)
+#endif
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
