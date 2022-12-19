@@ -164,6 +164,11 @@
 #define	CODE_H0FR7_STREAM_BUFFER			  776
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
+//H18R1
+#define CODE_H18R1_Turn_ON					  1200
+#define CODE_H18R1_Turn_OFF					  1201
+#define CODE_H18R1_Turn_PWM					  1202
+
 // H1BR6x
 #define CODE_H1BR6_READ_WAVE            	  1350
 #define CODE_H1BR6_SCAN_WAVE			   	  1351
