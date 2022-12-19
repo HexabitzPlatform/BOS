@@ -237,6 +237,9 @@
 #define CODE_H3BR6_SevenDisplaySentence        2954
 #define CODE_H3BR6_SevenDisplayMovingSentence  2955
 #define CODE_H3BR6_SevenDisplayOff             2956
+#define CODE_H3BR6_SetIndicator                2957
+#define CODE_H3BR6_ClearIndicator              2958
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
