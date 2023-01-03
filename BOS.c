@@ -953,7 +953,7 @@ void BOS_Init(void){
 #endif	
 	
 	/* Start backend messaging DMAs */
-	SetupMessagingRxDMAs();
+//	SetupMessagingRxDMAs();
 	
 	/* Startup indicator sequence */
 	if(myID == 0) /* Native module */
@@ -973,7 +973,7 @@ void BOS_Init(void){
 	}
 	
 	/* Reset UART overrun errors in case other modules were already transmitting on startup */
-	ResetUartORE();
+//	ResetUartORE();
 	
 	BOS_initialized =1;
 }
