@@ -169,6 +169,9 @@
 #define CODE_H18R1_Turn_OFF					  1201
 #define CODE_H18R1_Turn_PWM					  1202
 
+//H1AR0
+#define CODE_H1AR0_Transmit_Data			  1300
+
 // H1BR6x
 #define CODE_H1BR6_READ_WAVE            	  1350
 #define CODE_H1BR6_SCAN_WAVE			   	  1351
