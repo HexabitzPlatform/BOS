@@ -953,7 +953,7 @@ void BOS_Init(void){
 #endif	
 	
 	/* Start backend messaging DMAs */
-//	SetupMessagingRxDMAs();
+	SetupMessagingRxDMAs();
 	
 	/* Startup indicator sequence */
 	if(myID == 0) /* Native module */
