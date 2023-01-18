@@ -89,8 +89,10 @@ void prvCLITask(void *pvParameters){
 		//Reading only one byte at a time using CLI Flags:
 		if(Read_In_CLI_Task_Flag == 1)
 			{
-			cRxedChar = Rx_Data[PcPort - 1];
-			Rx_Data[PcPort - 1] = 0;
+//			cRxedChar = Rx_Data[PcPort - 1];
+			cRxedChar = CLI_Data;
+//			Rx_Data[PcPort - 1] = 0;
+			CLI_Data = 0;
 			Read_In_CLI_Task_Flag = 0;
 			
 			

@@ -33,7 +33,6 @@
 #define _firmTime			__TIME__
 
 
-
 extern char *pcBootloaderUpdateMessage;
 
 extern char *pcRemoteBootloaderUpdateMessage;
@@ -491,6 +490,12 @@ extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
 extern uint8_t Process_Message_Buffer[MSG_COUNT];
 extern uint8_t Process_Message_Buffer_Index_Start;
 extern uint8_t Process_Message_Buffer_Index_End;
+
+//New Messaging issue:
+extern uint8_t index_input;
+extern uint8_t index_process;
+
+extern uint8_t CLI_Data;
 
  /*
   *New private function [inside SendMessageFromPort() ] for sending BOS Messages.

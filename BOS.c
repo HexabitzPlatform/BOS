@@ -46,6 +46,12 @@ uint8_t Process_Message_Buffer_Index_Start = 0;
 uint8_t Process_Message_Buffer_Index_End = 0;
 
 
+//New Messaging issue:
+uint8_t index_input=0;
+uint8_t index_process=0;
+
+uint8_t CLI_Data = 0;
+
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
@@ -94,6 +100,8 @@ const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", 
 static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 bool ACK_FLAG=0,rejected_FLAG=0;
 //static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
+
+
 
 /* Define long messages -------------------------------------------------------*/
 char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
