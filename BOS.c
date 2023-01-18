@@ -264,7 +264,7 @@ void LoadEEvars(void){
 	/* Load array topology */
 #ifndef __N
 	LoadROtopology();
-#endif	
+#endif
 	/* Load port directions */
 	LoadEEportsDir();
 	
@@ -601,6 +601,7 @@ BOS_Status LoadROsnippets(void){
 		memset(snipBuffer,0,sizeof(snippet_t));
 		i =0;
 		// Load commands until you get next 0xFE
+		currentAdd=currentAdd+20;
 		while(*(uint8_t* )currentAdd != 0xFE && *(uint8_t* )currentAdd != 0xFF && i < cmdMAX_INPUT_SIZE){
 			snipBuffer[i] =*(uint8_t* )currentAdd;
 			++currentAdd;
