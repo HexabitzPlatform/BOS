@@ -9,7 +9,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
-
 //New BackEndTask Variables:
 uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
 uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
@@ -102,6 +101,7 @@ extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
+
 /* -----------------------------------------------------------------------
  |												 Private Functions	 		|
  -----------------------------------------------------------------------
@@ -114,15 +114,62 @@ void BackEndTask(void *argument){
 //	static uint8_t index_process=0;
 	volatile uint32_t* index_dma ;
 	uint8_t calculated_crc,port_number,length,port_index;
-	port_number =P5;
+
+
 	uint8_t temp_length[NumOfPorts] = {0};
 	uint8_t temp_index[NumOfPorts] = {0};
 
-
+	uint8_t x=0;
 	for(;;)
 	{
-		index_dma=&(DMA1_Channel4->CNDTR);
-		index_input=MSG_RX_BUF_SIZE-(*index_dma);
+//		if(port_number=P1){
+//
+//			index_dma=&(DMA1_Channel3->CNDTR);
+//		}
+//		else if (port_number=P2){index_dma=&(DMA1_Channel2->CNDTR);}
+//		else if (port_number=P3){index_dma=&(DMA1_Channel1->CNDTR);}
+//		else if (port_number=P4){index_dma=&(DMA1_Channel6->CNDTR);}
+//		else if (port_number=P5){index_dma=&(DMA1_Channel4->CNDTR);}
+//		else if (port_number=P6){index_dma=&(DMA1_Channel5->CNDTR);}
+		for(x=0;x<=6;x++){
+		switch(x){
+			case 1:
+				port_number=P1;
+				index_dma=&(DMA1_Channel3->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+			case 2:
+				port_number=P2;
+				index_dma=&(DMA1_Channel2->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+			case 3:
+				port_number=P3;
+				index_dma=&(DMA1_Channel1->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+			case 4:
+				port_number=P4;
+				index_dma=&(DMA1_Channel6->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+			case 5:
+				port_number=P5;
+				index_dma=&(DMA1_Channel4->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+			case 6:
+				port_number=P6;
+				index_dma=&(DMA1_Channel5->CNDTR);
+			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+			break;
+
+
+		}
+
+		}
+
+
 		if(index_input !=index_process){
 			if(UARTRxBuf[port_number-1][index_process] == 0x0D && portStatus[port_number] == FREE)
 			{
