@@ -47,8 +47,8 @@ uint8_t Process_Message_Buffer_Index_End = 0;
 
 
 //New Messaging issue:
-uint8_t index_input=0;
-uint8_t index_process=0;
+uint8_t index_input[6];
+uint8_t index_process_DMA[6]={0};
 
 uint8_t CLI_Data = 0;
 

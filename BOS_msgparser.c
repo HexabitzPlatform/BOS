@@ -15,6 +15,7 @@ uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
+uint8_t port_DMA=0,port_number_DMA[6];
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
@@ -112,14 +113,16 @@ void BackEndTask(void *argument){
 
 //	static uint8_t index_input=0;
 //	static uint8_t index_process=0;
-	volatile uint32_t* index_dma ;
+	 uint8_t index_dma[6];
+	volatile uint32_t DMA_Valu[6];
+	//DMA_Valu=index_dma;
 	uint8_t calculated_crc,port_number,length,port_index;
 
 
 	uint8_t temp_length[NumOfPorts] = {0};
 	uint8_t temp_index[NumOfPorts] = {0};
 
-	uint8_t x=0;
+
 	for(;;)
 	{
 //		if(port_number=P1){
@@ -131,47 +134,44 @@ void BackEndTask(void *argument){
 //		else if (port_number=P4){index_dma=&(DMA1_Channel6->CNDTR);}
 //		else if (port_number=P5){index_dma=&(DMA1_Channel4->CNDTR);}
 //		else if (port_number=P6){index_dma=&(DMA1_Channel5->CNDTR);}
-		for(x=0;x<=6;x++){
-		switch(x){
+		for(port_DMA=0;port_DMA<=6;port_DMA++){
+		switch(port_DMA){
 			case 1:
-				port_number=P1;
-				index_dma=&(DMA1_Channel3->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P1;
+				//DMA_Valu[1]=&(DMA1_Channel3->CNDTR);
+				index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel3->CNDTR);
 			break;
 			case 2:
-				port_number=P2;
-				index_dma=&(DMA1_Channel2->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P2;
+				//index_dma[port_DMA]=&(DMA1_Channel2->CNDTR);
+				index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel2->CNDTR);
 			break;
 			case 3:
-				port_number=P3;
-				index_dma=&(DMA1_Channel1->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P3;
+				//index_dma[port_DMA]=&(DMA1_Channel1->CNDTR);
+				index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel1->CNDTR);
 			break;
 			case 4:
-				port_number=P4;
-				index_dma=&(DMA1_Channel6->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P4;
+				//index_dma[port_DMA]=&(DMA1_Channel6->CNDTR);
+				index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel6->CNDTR);
 			break;
 			case 5:
-				port_number=P5;
-				index_dma=&(DMA1_Channel4->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P5;
+				//index_dma[port_DMA]=&(DMA1_Channel4->CNDTR);
+				index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel4->CNDTR);
 			break;
 			case 6:
-				port_number=P6;
-				index_dma=&(DMA1_Channel5->CNDTR);
-			index_input=MSG_RX_BUF_SIZE-(*index_dma);
+				port_number_DMA[port_DMA]=P6;
+				//index_dma[port_DMA]=&(DMA1_Channel5->CNDTR);
+			index_input[port_DMA]=MSG_RX_BUF_SIZE-(DMA1_Channel5->CNDTR);
 			break;
 
 
 		}
 
-		}
-
-
-		if(index_input !=index_process){
-			if(UARTRxBuf[port_number-1][index_process] == 0x0D && portStatus[port_number] == FREE)
+		if(index_input[port_DMA] !=index_process_DMA[port_DMA]){
+			if(UARTRxBuf[port_number_DMA[port_DMA]-1][index_process_DMA[port_DMA]] == 0x0D && portStatus[port_number] == FREE)
 			{
 				for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
 				{
@@ -180,10 +180,10 @@ void BackEndTask(void *argument){
 						portStatus[i] = FREE;
 					}
 				}
-				portStatus[port_number] =CLI; // Continue the CLI session on this port
-				PcPort = port_number;
+				portStatus[port_number_DMA[port_DMA]] =CLI; // Continue the CLI session on this port
+				PcPort = port_number_DMA[port_DMA];
 
-				CLI_Data = UARTRxBuf[port_number-1][index_process];
+				CLI_Data = UARTRxBuf[port_number_DMA[port_DMA]-1][index_process_DMA[port_DMA]];
 
 				xTaskNotifyGive(xCommandConsoleTaskHandle);
 
@@ -193,65 +193,65 @@ void BackEndTask(void *argument){
 			}
 			else if(portStatus[port_number] == CLI)
 			{
-				CLI_Data = UARTRxBuf[port_number-1][index_process];
+				CLI_Data = UARTRxBuf[port_number_DMA[port_DMA]-1][index_process_DMA[port_DMA]];
 				Read_In_CLI_Task_Flag = 1;
 			}
 
-			else if(UARTRxBuf[port_number][index_process]  == 'H' && portStatus[port_number] == FREE)
+			else if(UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]]  == 'H' && portStatus[port_number_DMA[port_DMA]] == FREE)
 			{
-				portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
+				portStatus[port_number_DMA[port_DMA]] =H_Status; // H  Character was received, waiting for Z character.
 			}
 
-			else if(UARTRxBuf[port_number][index_process]  == 'Z' && portStatus[port_number] == H_Status)
+			else if(UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]]  == 'Z' && portStatus[port_number_DMA[port_DMA]] == H_Status)
 			{
-				portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
+				portStatus[port_number_DMA[port_DMA]] =Z_Status; // Z  Character was received, waiting for length byte.
 			}
 
-			else if(UARTRxBuf[port_number][index_process]  != 'Z' && portStatus[port_number] == H_Status)
+			else if(UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]]  != 'Z' && portStatus[port_number_DMA[port_DMA]] == H_Status)
 			{
-				portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
+				portStatus[port_number_DMA[port_DMA]] =FREE; // Z  Character was not received, so there is no message to receive.
 			}
 
-			else if(portStatus[port_number] == Z_Status)
+			else if(portStatus[port_number_DMA[port_DMA]] == Z_Status)
 			{
-				portStatus[port_number] =MSG; // Receive length byte.
-				MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number][index_process] ;
+				portStatus[port_number_DMA[port_DMA]] =MSG; // Receive length byte.
+				MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]] ;
 				temp_index[port_index] = 3;
-				temp_length[port_index] =UARTRxBuf[port_number][index_process]  + 1;
+				temp_length[port_index] =UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]]  + 1;
 			}
 
-			else if(portStatus[port_number] == MSG)
+			else if(portStatus[port_number_DMA[port_DMA]] == MSG)
 			{
 				if(temp_length[port_index] > 1)
 				{
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]] ;
 					temp_index[port_index]++;
 					temp_length[port_index]--;
 				}
 				else
 				{
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number_DMA[port_DMA]][index_process_DMA[port_DMA]] ;
 					temp_index[port_index]++;
 					temp_length[port_index]--;
 					MSG_Buffer_Index_End[port_index]++;
 					if(MSG_Buffer_Index_End[port_index] == MSG_COUNT) MSG_Buffer_Index_End[port_index] = 0;
 
 
-					Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
+					Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number_DMA[port_DMA];
 					Process_Message_Buffer_Index_End++;
 					if(Process_Message_Buffer_Index_End == MSG_COUNT) Process_Message_Buffer_Index_End = 0;
-					portStatus[port_number] =FREE; // End of receiving message.
+					portStatus[port_number_DMA[port_DMA]] =FREE; // End of receiving message.
 				}
 			}
-			index_process++;
-			if(index_process==MSG_RX_BUF_SIZE)index_process=0;
+			index_process_DMA[port_DMA]++;
+			if(index_process_DMA[port_DMA]==MSG_RX_BUF_SIZE)index_process_DMA[port_DMA]=0;
 		}
 
 
 		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
 		{
 			port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
-			port_index = port_number - 1;
+			port_index = port_number_DMA[port_DMA] - 1;
 			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
 			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
@@ -300,6 +300,7 @@ void BackEndTask(void *argument){
 		}
 
 		taskYIELD();
+	}
 	}
 }
 
