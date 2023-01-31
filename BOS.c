@@ -52,7 +52,7 @@ uint8_t UserData[8]={0};
 uint8_t indexInput=0;
 uint8_t indexProcess=0;
 uint8_t i=0;
-volatile uint32_t* index_dma ;
+volatile uint32_t* indexDma ;
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
@@ -78,38 +78,59 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 	return result;
 }
 /*-----------------------------Receive data from the user------------------------------------*/
-HAL_StatusTypeDef GetSize(){
+HAL_StatusTypeDef GetUserDataCount(){
 
 	HAL_StatusTypeDef result=HAL_OK;
 
+	indexDma=&(DMA2_Channel3->CNDTR);
 
+while(1){
+	indexInput=USER_RX_BUF_SIZE-(*indexDma);
 
-	uint8_t Size=sizeof(UserBufferData);
-	HAL_UART_Receive_DMA(&huart1, UserBufferData, Size);
+}
+//	indexInput=USER_RX_BUF_SIZE-(*indexDma);
 
-	index_dma=&(DMA2_Channel3->CNDTR);
+//	if(indexInput== indexProcess){
+//		return 0;
+//	}
+
+//	else {
+		return indexInput;
+//		}
 
 	return result;
 
 }
-HAL_StatusTypeDef GetByte(){
+
+HAL_StatusTypeDef GetUserDataByte(){
 	HAL_StatusTypeDef result=HAL_OK;
 
+
 	for(;;){
-		indexInput=USER_RX_BUF_SIZE-(*index_dma);
+	GetUserDataCount();
+	Delay_ms(1000);
 
-		if(indexInput!= indexProcess){
-			UserData[i]=UserBufferData[indexProcess];
-			i++;
-			indexProcess++;
-			if(i==8){
-				i=0;
+		if(indexInput!=indexProcess){
+				if(indexProcess>indexInput){
+					UserData[i]=UserBufferData[USER_RX_BUF_SIZE-indexProcess];
+
+
+				}
+				else if(indexProcess<indexInput){
+					UserData[i-1]=UserBufferData[indexInput-indexProcess];
+
+				}
+				if(indexDma!=0){
+						i++;
+						indexProcess++;
+					}
+
+				if(i==9){ i=0;}
 			}
-
-		}
 		if(indexProcess==USER_RX_BUF_SIZE){
-			indexProcess=0;
-		}
+					indexProcess=0;
+				}
+
 	}
 
 	return result;
