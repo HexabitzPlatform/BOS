@@ -485,11 +485,11 @@ extern uint8_t Read_In_CLI_Task_Flag;
 
 /* Receive data from the user */
 extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
-extern uint8_t UserData[8];
+extern uint8_t UserData;
 extern uint8_t indexInput;
 extern uint8_t indexProcess;
 extern volatile uint32_t* indexDma ;
-extern uint8_t i;
+
 
 //The new messages circular buffer:
 extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
