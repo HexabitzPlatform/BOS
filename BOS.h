@@ -481,7 +481,7 @@ extern uint8_t Read_In_CLI_Task_Flag;
 #define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
 #define MSG_MAX_SIZE 	56
 
-#define USER_RX_BUF_SIZE  10
+#define USER_RX_BUF_SIZE  128
 
 /* Receive data from the user */
 extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
