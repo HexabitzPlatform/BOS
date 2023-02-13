@@ -508,8 +508,8 @@ extern uint8_t Process_Message_Buffer_Index_End;
   */
 
  extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
- extern HAL_StatusTypeDef GetUserDataCount();
- extern HAL_StatusTypeDef GetUserDataByte();
+ extern uint8_t GetUserDataCount();
+ extern BOS_Status GetUserDataByte(uint8_t* pData);
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------

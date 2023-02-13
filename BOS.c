@@ -77,10 +77,11 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 	Delay_ms(10);// Delay Between Sending Two Messages.
 	return result;
 }
-/*-----------------------------Receive data from the user------------------------------------*/
+/*...........................Receive data from the user..............................*/
+#ifdef _User_Data_Buffer
 uint8_t GetUserDataCount(){
 
-	indexDma=&(DMA2_Channel3->CNDTR);
+//	indexDma=&(DMA2_Channel3->CNDTR);
 
 	indexInput=(uint8_t)(USER_RX_BUF_SIZE-DMA2_Channel3->CNDTR);
 
@@ -89,52 +90,41 @@ uint8_t GetUserDataCount(){
 	}
 
 	else {
-		return indexInput;
+//		return indexInput;
+		if(indexInput > indexProcess)
+		{
+			return (indexInput - indexProcess);
 		}
-
+		else
+		{
+			return (indexInput - indexProcess + USER_RX_BUF_SIZE);
+		}
+		}
 }
 
-uint8_t GetUserDataByte(){
 
-	if(DMA2_Channel3->CNDTR!=USER_RX_BUF_SIZE){
-		GetUserDataCount();
+BOS_Status GetUserDataByte(uint8_t* pData){
+
+
+	if(GetUserDataCount() != 0)
+	{
+		*pData =  UserBufferData[indexProcess];
 		indexProcess++;
-
-
-		if(indexProcess==USER_RX_BUF_SIZE){
-			indexProcess= 0;
-			return 0;
+		if(indexProcess == USER_RX_BUF_SIZE)
+		{
+			indexProcess = 0;
 		}
-
-		else if(indexInput!=indexProcess){
-			if(indexInput>indexProcess){
-
-
-				UserData=UserBufferData[indexInput-indexProcess];
-				return UserData;
-
-			}
-			else if(indexInput<indexProcess){
-
-					UserData=UserBufferData[USER_RX_BUF_SIZE-indexProcess];
-					return UserData;
-
-			}
-
-
-		}
-		else if(indexProcess==indexInput){
-			return 0;
-		}
-
+		return BOS_OK;
 	}
-
-	else {
-		return 0;
+	else
+	{
+		return BOS_ERROR;
 	}
-
 
 }
+#endif
+/*...................................................................................*/
+
 
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
