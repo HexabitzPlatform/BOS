@@ -108,6 +108,9 @@ BOS_Status GetUserDataByte(uint8_t* pData){
 
 	if(GetUserDataCount() != 0)
 	{
+		if(pData==NULL){
+			return BOS_ERROR;
+		}
 		*pData =  UserBufferData[indexProcess];
 		indexProcess++;
 		if(indexProcess == USER_RX_BUF_SIZE)
