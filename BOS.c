@@ -71,6 +71,67 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 	return result;
 }
 
+/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+#ifdef __USER_DATA_BUFFER
+uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
+uint8_t UserData=0;
+uint8_t indexInputUserDataBuffer = 0;
+uint8_t indexProcessUserDataBuffer = 0;
+volatile uint32_t* DMACountUserDataBuffer = NULL;
+
+
+uint8_t GetUserDataCount(void)
+{
+	indexInputUserDataBuffer = (uint8_t)(*DMACountUserDataBuffer);
+
+	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
+	{
+		return 0;
+	}
+
+	else
+	{
+		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
+		}
+		else
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
+		}
+	}
+}
+
+
+BOS_Status GetUserDataByte(uint8_t* pData)
+{
+
+	if(GetUserDataCount() != 0)
+	{
+		if(pData == NULL)
+		{
+			return BOS_ERROR;
+		}
+
+		*pData =  UserBufferData[indexProcessUserDataBuffer];
+		indexProcessUserDataBuffer++;
+		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
+		{
+			indexProcessUserDataBuffer = 0;
+		}
+		return BOS_OK;
+	}
+
+	else
+	{
+		return BOS_ERROR;
+	}
+
+}
+#endif
+
+/*...................................................................................*/
+
 
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
