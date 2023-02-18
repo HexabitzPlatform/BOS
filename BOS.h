@@ -481,14 +481,17 @@ extern uint8_t Read_In_CLI_Task_Flag;
 #define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
 #define MSG_MAX_SIZE 	56
 
-#define USER_RX_BUF_SIZE  128
-
-/* Receive data from the user */
+/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+#ifdef __USER_DATA_BUFFER
+#define USER_RX_BUF_SIZE  256
 extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
 extern uint8_t UserData;
-extern uint8_t indexInput;
-extern uint8_t indexProcess;
-extern volatile uint32_t* indexDma ;
+extern uint8_t indexInputUserDataBuffer;
+extern uint8_t indexProcessUserDataBuffer;
+extern volatile uint32_t* DMACountUserDataBuffer;
+extern uint8_t GetUserDataCount(void);
+extern BOS_Status GetUserDataByte(uint8_t* pData);
+#endif
 
 
 //The new messages circular buffer:
@@ -508,8 +511,6 @@ extern uint8_t Process_Message_Buffer_Index_End;
   */
 
  extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
- extern uint8_t GetUserDataCount();
- extern BOS_Status GetUserDataByte(uint8_t* pData);
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------

@@ -46,13 +46,6 @@ uint8_t Process_Message_Buffer_Index_Start = 0;
 uint8_t Process_Message_Buffer_Index_End = 0;
 
 
-/* Receive data from the user */
-uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
-uint8_t UserData=0;
-uint8_t indexInput=0;
-uint8_t indexProcess=0;
-
-volatile uint32_t* indexDma ;
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
@@ -77,48 +70,58 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 	Delay_ms(10);// Delay Between Sending Two Messages.
 	return result;
 }
-/*...........................Receive data from the user..............................*/
-#ifdef _User_Data_Buffer
-uint8_t GetUserDataCount(){
 
-//	indexDma=&(DMA2_Channel3->CNDTR);
+/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+#ifdef __USER_DATA_BUFFER
+uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
+uint8_t UserData=0;
+uint8_t indexInputUserDataBuffer = 0;
+uint8_t indexProcessUserDataBuffer = 0;
+volatile uint32_t* DMACountUserDataBuffer = NULL;
 
-	indexInput=(uint8_t)(USER_RX_BUF_SIZE-DMA2_Channel3->CNDTR);
 
-	if(indexInput== indexProcess){
+uint8_t GetUserDataCount(void)
+{
+	indexInputUserDataBuffer = (uint8_t)(*DMACountUserDataBuffer);
+
+	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
+	{
 		return 0;
 	}
 
-	else {
-//		return indexInput;
-		if(indexInput > indexProcess)
+	else
+	{
+		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
 		{
-			return (indexInput - indexProcess);
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
 		}
 		else
 		{
-			return (indexInput - indexProcess + USER_RX_BUF_SIZE);
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
 		}
-		}
+	}
 }
 
 
-BOS_Status GetUserDataByte(uint8_t* pData){
-
+BOS_Status GetUserDataByte(uint8_t* pData)
+{
 
 	if(GetUserDataCount() != 0)
 	{
-		if(pData==NULL){
+		if(pData == NULL)
+		{
 			return BOS_ERROR;
 		}
-		*pData =  UserBufferData[indexProcess];
-		indexProcess++;
-		if(indexProcess == USER_RX_BUF_SIZE)
+
+		*pData =  UserBufferData[indexProcessUserDataBuffer];
+		indexProcessUserDataBuffer++;
+		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
 		{
-			indexProcess = 0;
+			indexProcessUserDataBuffer = 0;
 		}
 		return BOS_OK;
 	}
+
 	else
 	{
 		return BOS_ERROR;
@@ -126,6 +129,7 @@ BOS_Status GetUserDataByte(uint8_t* pData){
 
 }
 #endif
+
 /*...................................................................................*/
 
 
