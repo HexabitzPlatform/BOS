@@ -82,7 +82,7 @@ volatile uint32_t* DMACountUserDataBuffer = NULL;
 
 uint8_t GetUserDataCount(void)
 {
-	indexInputUserDataBuffer = (uint8_t)(*DMACountUserDataBuffer);
+	indexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*DMACountUserDataBuffer);
 
 	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
 	{
