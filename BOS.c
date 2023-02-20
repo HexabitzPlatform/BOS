@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
  All rights reserved
 
  File Name     : BOS.c
@@ -71,6 +71,67 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 	return result;
 }
 
+/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+#ifdef __USER_DATA_BUFFER
+uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
+uint8_t UserData=0;
+uint8_t indexInputUserDataBuffer = 0;
+uint8_t indexProcessUserDataBuffer = 0;
+volatile uint32_t* DMACountUserDataBuffer = NULL;
+
+
+uint8_t GetUserDataCount(void)
+{
+	indexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*DMACountUserDataBuffer);
+
+	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
+	{
+		return 0;
+	}
+
+	else
+	{
+		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
+		}
+		else
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
+		}
+	}
+}
+
+
+BOS_Status GetUserDataByte(uint8_t* pData)
+{
+
+	if(GetUserDataCount() != 0)
+	{
+		if(pData == NULL)
+		{
+			return BOS_ERROR;
+		}
+
+		*pData =  UserBufferData[indexProcessUserDataBuffer];
+		indexProcessUserDataBuffer++;
+		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
+		{
+			indexProcessUserDataBuffer = 0;
+		}
+		return BOS_OK;
+	}
+
+	else
+	{
+		return BOS_ERROR;
+	}
+
+}
+#endif
+
+/*...................................................................................*/
+
 
 /* Private and global variables ---------------------------------------------------------*/
 BOSMessaging_t BOSMessaging;
@@ -84,7 +145,7 @@ uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6"};
+const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6","H3BR6","H18R1"};
 
 /* Define BOS keywords */
 static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
@@ -264,7 +325,7 @@ void LoadEEvars(void){
 	/* Load array topology */
 #ifndef __N
 	LoadROtopology();
-#endif	
+#endif
 	/* Load port directions */
 	LoadEEportsDir();
 	
@@ -601,6 +662,7 @@ BOS_Status LoadROsnippets(void){
 		memset(snipBuffer,0,sizeof(snippet_t));
 		i =0;
 		// Load commands until you get next 0xFE
+		currentAdd=currentAdd+20;
 		while(*(uint8_t* )currentAdd != 0xFE && *(uint8_t* )currentAdd != 0xFF && i < cmdMAX_INPUT_SIZE){
 			snipBuffer[i] =*(uint8_t* )currentAdd;
 			++currentAdd;

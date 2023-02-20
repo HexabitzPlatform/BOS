@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -143,15 +143,34 @@
 #define CODE_H0BR4_STREAM_PORT_TEMP			  561
 #define CODE_H0BR4_STREAM_STOP				  562
 
+// H0FR1x
+#define	CODE_H0FR1_ON						  750
+#define	CODE_H0FR1_OFF						  751
+#define	CODE_H0FR1_TOGGLE					  752
+
 // H0FR6x
-#define	CODE_H0FRx_ON						  750
-#define	CODE_H0FRx_OFF						  751
-#define	CODE_H0FRx_TOGGLE					  752
-#define	CODE_H0FRx_PWM						  753
-#define	CODE_H0FR7_SAMPLE_PORT				  754
-#define	CODE_H0FR7_STREAM_PORT				  755
-#define	CODE_H0FR7_STREAM_BUFFER			  756
-#define	CODE_H0FR7_STOP_MEASUREMENT			  757
+#define	CODE_H0FR6_ON						  760
+#define	CODE_H0FR6_OFF						  761
+#define	CODE_H0FR6_TOGGLE					  762
+#define	CODE_H0FR6_PWM						  763
+
+// H0FR7x
+#define	CODE_H0FR7_ON						  770
+#define	CODE_H0FR7_OFF						  771
+#define	CODE_H0FR7_TOGGLE					  772
+#define	CODE_H0FR7_PWM						  773
+#define	CODE_H0FR7_SAMPLE_PORT				  774
+#define	CODE_H0FR7_STREAM_PORT				  775
+#define	CODE_H0FR7_STREAM_BUFFER			  776
+#define	CODE_H0FR7_STOP_MEASUREMENT			  777
+
+//H18R1
+#define CODE_H18R1_Turn_ON					  1200
+#define CODE_H18R1_Turn_OFF					  1201
+#define CODE_H18R1_Turn_PWM					  1202
+
+//H1AR0
+#define CODE_H1AR0_Transmit_Data			  1300
 
 // H1BR6x
 #define CODE_H1BR6_READ_WAVE            	  1350
@@ -212,6 +231,17 @@
 #define CODE_H12R0_STREAM_PORT                2905
 #define CODE_H12R0_STOP          		      2906
 #define CODE_H12R0_SAMPLE          		      2907
+
+//H3BR6
+#define CODE_H3BR6_SevenDisplayNumber          2950
+#define CODE_H3BR6_SevenDisplayNumberF         2951
+#define CODE_H3BR6_SevenDisplayQuantities      2952
+#define CODE_H3BR6_SevenDisplayLetter          2953
+#define CODE_H3BR6_SevenDisplaySentence        2954
+#define CODE_H3BR6_SevenDisplayMovingSentence  2955
+#define CODE_H3BR6_SevenDisplayOff             2956
+#define CODE_H3BR6_SetIndicator                2957
+#define CODE_H3BR6_ClearIndicator              2958
 
 #endif /* BOS_MSGCODES_H */
 

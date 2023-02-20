@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
  All rights reserved
 
  File Name     : BOS_msgparser.c
@@ -506,8 +506,13 @@ void PxMessagingTask(void *argument){
 							
 						case CODE_UPDATE:
 							/* Trigger ST factory bootloader update */
+							#ifndef STM32G0B1xx
 							/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 							*((unsigned long* )0x20007FF0) =0xDEADBEEF;
+							#else
+							/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
+							*((unsigned long* )0x20023FF0) =0xDEADBEEF;
+							#endif							
 							indMode =IND_PING;
 							osDelay(10);
 							NVIC_SystemReset();
@@ -1016,8 +1021,14 @@ void PxMessagingTask(void *argument){
 												}
 												else{
 													remoteBuffer =cMessage[port - 1][6 + shift];
+													// TOCHECKLATER
+													// available values in G0 MCU:
+													//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+													//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+													#ifndef STM32G0B1xx
 													status =HAL_FLASH_Program(
 													FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+													#endif										
 													break;
 												}
 											case FMT_UINT16:
@@ -1028,8 +1039,14 @@ void PxMessagingTask(void *argument){
 												}
 												else{
 													remoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
+													// TOCHECKLATER
+													// available values in G0 MCU:
+													//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+													//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+													#ifndef STM32G0B1xx
 													status =HAL_FLASH_Program(
-													FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+													FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);		
+													#endif
 													break;
 												}
 											case FMT_UINT32:
@@ -1039,9 +1056,15 @@ void PxMessagingTask(void *argument){
 													break;
 												}
 												else{
-													remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+													remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
+													// TOCHECKLATER
+													// available values in G0 MCU:
+													//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+													//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+													#ifndef STM32G0B1xx
 													status =HAL_FLASH_Program(
-													FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
+												    FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
+													#endif
 													break;
 												}
 											case FMT_FLOAT:

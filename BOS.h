@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.7 - Copyright (C) 2017-2022 Hexabitz
+ BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -17,12 +17,14 @@
 #include <stdbool.h>
 
 /* STM HAL */
-#ifdef H41R6
+#if defined(STM32G0B1xx)
+#include "stm32g0xx_hal.h"
+#elif defined(H41R6)
 #include "stm32f4xx_hal.h"
 #else
-#include "stm32f0xx_hal.h" 
-
+#include "stm32f0xx_hal.h"
 #endif
+
 /* Firmware */
 #define	_firmMajor			0
 #define	_firmMinor			2
@@ -58,7 +60,7 @@ enum UartDirection_e {
 };
 
 enum modulePartNumbers_e {
-	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6
+	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1
 };
 enum IndMode_e {
 	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
@@ -241,7 +243,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							30							//Number of Modules
+#define NUM_OF_MODULE_PN							32							//Number of Modules
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -341,8 +343,14 @@ typedef struct {
 #ifdef H13R7
 	#include "H13R7.h"
 #endif
-#if defined(H0FR1) || defined(H0FR6) || defined(H0FR7)
-#include "H0FR6.h"
+#ifdef H0FR1
+	#include "H0FR1.h"
+#endif
+#ifdef H0FR6
+	#include "H0FR6.h"
+#endif
+#ifdef H0FR7
+	#include "H0FR7.h"
 #endif
 #ifdef H1AR2
 	#include "H1AR0.h"	
@@ -379,6 +387,12 @@ typedef struct {
 #endif
 #ifdef H41R6
 #include "H41R6.h"
+#endif
+#ifdef H3BR6
+#include "H3BR6.h"
+#endif
+#ifdef H18R1
+#include "H18R1.h"
 #endif
 
 /* More BOS header files - must be defined after module headers */
@@ -467,6 +481,19 @@ extern uint8_t Read_In_CLI_Task_Flag;
 #define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
 #define MSG_MAX_SIZE 	56
 
+/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+#ifdef __USER_DATA_BUFFER
+#define USER_RX_BUF_SIZE  256
+extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
+extern uint8_t UserData;
+extern uint8_t indexInputUserDataBuffer;
+extern uint8_t indexProcessUserDataBuffer;
+extern volatile uint32_t* DMACountUserDataBuffer;
+extern uint8_t GetUserDataCount(void);
+extern BOS_Status GetUserDataByte(uint8_t* pData);
+#endif
+
+
 //The new messages circular buffer:
 extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
 extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
@@ -484,8 +511,6 @@ extern uint8_t Process_Message_Buffer_Index_End;
   */
 
  extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
-
-
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------
