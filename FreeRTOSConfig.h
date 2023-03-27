@@ -44,7 +44,7 @@ extern uint32_t SystemCoreClock;
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)150)
 #endif
 #ifdef STM32G0B1xx
-#define configTOTAL_HEAP_SIZE                    ((size_t)65000)
+#define configTOTAL_HEAP_SIZE                    ((size_t)80000)
 #else
 #define configTOTAL_HEAP_SIZE                    ((size_t)16200)
 #endif
