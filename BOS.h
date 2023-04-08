@@ -420,6 +420,10 @@ extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
+extern uint8_t index_input ;
+extern uint8_t index_process ;
+
+extern uint8_t CLI_Data ;
 
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */

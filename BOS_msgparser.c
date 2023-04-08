@@ -13,7 +13,7 @@
 //New BackEndTask Variables:
 uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
 uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
-
+uint8_t port_number=0;
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 uint16_t stackWaterMark;
@@ -108,9 +108,97 @@ extern void NotifyMessagingTask(uint8_t port);
 void BackEndTask(void *argument){
 
 
-	uint8_t calculated_crc,port_number,length,port_index;
+	uint8_t calculated_crc,length,port_index;
+
+	volatile uint32_t* index_dma ;
+			port_number =P3;
+			uint8_t temp_length[NumOfPorts] = {0};
+			uint8_t temp_index[NumOfPorts] = {0};
+
 	for(;;)
 	{
+		index_dma=&(DMA1_Channel6->CNDTR);
+						index_input=MSG_RX_BUF_SIZE-(*index_dma);
+						if(index_input !=index_process)
+						{
+							if(UARTRxBuf[port_number-1][index_process] == 0x0D && portStatus[port_number] == FREE)
+							{
+								for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
+								{
+									if(portStatus[i] == CLI)
+									{
+										portStatus[i] = FREE;
+									}
+								}
+								portStatus[port_number] =CLI; // Continue the CLI session on this port
+								PcPort = port_number;
+
+								CLI_Data = UARTRxBuf[port_number-1][index_process];
+
+								xTaskNotifyGive(xCommandConsoleTaskHandle);
+
+								if(Activate_CLI_For_First_Time_Flag == 1) Read_In_CLI_Task_Flag = 1;
+								Activate_CLI_For_First_Time_Flag = 1;
+
+							}
+							else if(portStatus[port_number] == CLI)
+							{
+								CLI_Data = UARTRxBuf[port_number-1][index_process];
+								Read_In_CLI_Task_Flag = 1;
+							}
+							//////////////////////////////////////////////
+							else if(UARTRxBuf[port_number][index_process]  == 'H' && portStatus[port_number] == FREE)
+							{
+								portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
+							}
+
+							else if(UARTRxBuf[port_number][index_process]  == 'Z' && portStatus[port_number] == H_Status)
+							{
+								portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
+							}
+
+							else if(UARTRxBuf[port_number][index_process]  != 'Z' && portStatus[port_number] == H_Status)
+							{
+								portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
+							}
+
+							else if(portStatus[port_number] == Z_Status)
+							{
+								portStatus[port_number] =MSG; // Receive length byte.
+								MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number][index_process] ;
+								temp_index[port_index] = 3;
+								temp_length[port_index] =UARTRxBuf[port_number][index_process]  + 1;
+							}
+
+							else if(portStatus[port_number] == MSG)
+							{
+								if(temp_length[port_index] > 1)
+								{
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+									temp_index[port_index]++;
+									temp_length[port_index]--;
+								}
+								else
+								{
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+									temp_index[port_index]++;
+									temp_length[port_index]--;
+									MSG_Buffer_Index_End[port_index]++;
+									if(MSG_Buffer_Index_End[port_index] == MSG_COUNT) MSG_Buffer_Index_End[port_index] = 0;
+
+
+									Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
+									Process_Message_Buffer_Index_End++;
+									if(Process_Message_Buffer_Index_End == MSG_COUNT) Process_Message_Buffer_Index_End = 0;
+									portStatus[port_number] =FREE; // End of receiving message.
+								}
+							}
+							index_process++;
+							if(index_process==MSG_RX_BUF_SIZE)
+								{index_process=0;}
+						}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
 		{
 			port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];

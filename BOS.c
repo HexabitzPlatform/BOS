@@ -45,7 +45,10 @@ uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
 uint8_t Process_Message_Buffer_Index_Start = 0;
 uint8_t Process_Message_Buffer_Index_End = 0;
 
+uint8_t index_input=0;
+uint8_t index_process=0;
 
+uint8_t CLI_Data = 0;
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
