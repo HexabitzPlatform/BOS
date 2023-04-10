@@ -246,6 +246,9 @@
 // H1FR5x
 
 
+// H3BR2x
+
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
