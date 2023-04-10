@@ -243,6 +243,9 @@
 #define CODE_H3BR6_SetIndicator                2957
 #define CODE_H3BR6_ClearIndicator              2958
 
+// H1FR5x
+
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
