@@ -249,6 +249,10 @@
 // H3BR2x
 
 
+// H21R2x
+
+
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
