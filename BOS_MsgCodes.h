@@ -255,6 +255,8 @@
 // H17R1x
 
 
+// H15R8x
+
 
 #endif /* BOS_MSGCODES_H */
 
