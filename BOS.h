@@ -420,11 +420,11 @@ extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
-extern uint8_t index_input ;
-extern uint8_t index_process ;
-
+extern uint8_t index_input[6] ;
+extern uint8_t index_process[6] ;
+extern volatile uint32_t* index_dma[6] ;
 extern uint8_t CLI_Data ;
-
+extern uint8_t port_DMA;
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
 extern uint8_t routeDist[MaxNumOfModules];

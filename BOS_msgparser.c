@@ -110,18 +110,19 @@ void BackEndTask(void *argument){
 
 	uint8_t calculated_crc,length,port_index;
 
-	volatile uint32_t* index_dma ;
-			port_number =P3;
+
 			uint8_t temp_length[NumOfPorts] = {0};
 			uint8_t temp_index[NumOfPorts] = {0};
 
 	for(;;)
 	{
-		index_dma=&(DMA1_Channel6->CNDTR);
-						index_input=MSG_RX_BUF_SIZE-(*index_dma);
-						if(index_input !=index_process)
-						{
-							if(UARTRxBuf[port_number-1][index_process] == 0x0D && portStatus[port_number] == FREE)
+       for(port_DMA=0;port_DMA<6;)
+       {
+		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
+
+						if(index_input[port_DMA] !=index_process[port_DMA])
+						{ port_number =port_DMA+1;
+							if(UARTRxBuf[port_number-1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE)
 							{
 								for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
 								{
@@ -133,7 +134,7 @@ void BackEndTask(void *argument){
 								portStatus[port_number] =CLI; // Continue the CLI session on this port
 								PcPort = port_number;
 
-								CLI_Data = UARTRxBuf[port_number-1][index_process];
+								CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
 
 								xTaskNotifyGive(xCommandConsoleTaskHandle);
 
@@ -143,21 +144,21 @@ void BackEndTask(void *argument){
 							}
 							else if(portStatus[port_number] == CLI)
 							{
-								CLI_Data = UARTRxBuf[port_number-1][index_process];
+								CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
 								Read_In_CLI_Task_Flag = 1;
 							}
 							//////////////////////////////////////////////
-							else if(UARTRxBuf[port_number][index_process]  == 'H' && portStatus[port_number] == FREE)
+							else if(UARTRxBuf[port_number][index_process[port_DMA]]  == 'H' && portStatus[port_number] == FREE)
 							{
 								portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
 							}
 
-							else if(UARTRxBuf[port_number][index_process]  == 'Z' && portStatus[port_number] == H_Status)
+							else if(UARTRxBuf[port_number][index_process[port_DMA]]  == 'Z' && portStatus[port_number] == H_Status)
 							{
 								portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
 							}
 
-							else if(UARTRxBuf[port_number][index_process]  != 'Z' && portStatus[port_number] == H_Status)
+							else if(UARTRxBuf[port_number][index_process[port_DMA]]  != 'Z' && portStatus[port_number] == H_Status)
 							{
 								portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
 							}
@@ -165,22 +166,22 @@ void BackEndTask(void *argument){
 							else if(portStatus[port_number] == Z_Status)
 							{
 								portStatus[port_number] =MSG; // Receive length byte.
-								MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number][index_process] ;
+								MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number][index_process[port_DMA]] ;
 								temp_index[port_index] = 3;
-								temp_length[port_index] =UARTRxBuf[port_number][index_process]  + 1;
+								temp_length[port_index] =UARTRxBuf[port_number][index_process[port_DMA]]  + 1;
 							}
 
 							else if(portStatus[port_number] == MSG)
 							{
 								if(temp_length[port_index] > 1)
 								{
-									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process[port_DMA]] ;
 									temp_index[port_index]++;
 									temp_length[port_index]--;
 								}
 								else
 								{
-									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process] ;
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process[port_DMA]] ;
 									temp_index[port_index]++;
 									temp_length[port_index]--;
 									MSG_Buffer_Index_End[port_index]++;
@@ -193,10 +194,14 @@ void BackEndTask(void *argument){
 									portStatus[port_number] =FREE; // End of receiving message.
 								}
 							}
-							index_process++;
-							if(index_process==MSG_RX_BUF_SIZE)
-								{index_process=0;}
+							index_process[port_DMA]++;
+							if(index_process[port_DMA]==MSG_RX_BUF_SIZE)
+								{index_process[port_DMA]=0;}
 						}
+						else if(index_input[port_DMA] ==index_process[port_DMA])
+			               {
+							port_DMA++;
+							}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
@@ -252,6 +257,7 @@ void BackEndTask(void *argument){
 
 		taskYIELD();
 	}
+}
 }
 
 /*-----------------------------------------------------------*/
