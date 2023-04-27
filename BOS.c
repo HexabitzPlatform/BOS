@@ -50,18 +50,40 @@ uint8_t index_process[6]={0};
 volatile uint32_t* index_dma[6] ;
 uint8_t CLI_Data = 0;
 uint8_t port_DMA =0;
+uint16_t modx,module_name;
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
  */
 
-HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout)
+uint8_t Get_Destenation_Module_Name(uint8_t port,uint8_t dst)
+{
+	 modx=array[dst-1][port];
+	 modx=modx>>3;
+	 module_name=array[modx-1][0];
+	 if(module_name==_H01R0||module_name==_H0BR4){
+	return 0;
+	 }
+	 else {
+		 return 1;
+	}
+
+}
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
 {
 	HAL_StatusTypeDef result =HAL_ERROR;
 
 	if(GetUart(port) != NULL){
 		/* Wait for the mutex to be available. */
-		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
+		{
+			if(Get_Destenation_Module_Name(port,dst)==0)
+						{
+							result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
+						}
+			else
+			{
 			for(uint8_t i=0;i<n;i++)
 			{
 				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
@@ -69,8 +91,10 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 				//Delay_us(500);
 				Delay_ms(2);
 			}
-		}
+			}
+			}
 	}
+
 	Delay_ms(10);// Delay Between Sending Two Messages.
 	return result;
 }

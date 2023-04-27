@@ -148,17 +148,17 @@ void BackEndTask(void *argument){
 								Read_In_CLI_Task_Flag = 1;
 							}
 							//////////////////////////////////////////////
-							else if(UARTRxBuf[port_number][index_process[port_DMA]]  == 'H' && portStatus[port_number] == FREE)
+							else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'H' && portStatus[port_number] == FREE)
 							{
 								portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
 							}
 
-							else if(UARTRxBuf[port_number][index_process[port_DMA]]  == 'Z' && portStatus[port_number] == H_Status)
+							else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'Z' && portStatus[port_number] == H_Status)
 							{
 								portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
 							}
 
-							else if(UARTRxBuf[port_number][index_process[port_DMA]]  != 'Z' && portStatus[port_number] == H_Status)
+							else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  != 'Z' && portStatus[port_number] == H_Status)
 							{
 								portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
 							}
@@ -166,22 +166,22 @@ void BackEndTask(void *argument){
 							else if(portStatus[port_number] == Z_Status)
 							{
 								portStatus[port_number] =MSG; // Receive length byte.
-								MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number][index_process[port_DMA]] ;
+								MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
 								temp_index[port_index] = 3;
-								temp_length[port_index] =UARTRxBuf[port_number][index_process[port_DMA]]  + 1;
+								temp_length[port_index] =UARTRxBuf[port_number-1][index_process[port_DMA]]  + 1;
 							}
 
 							else if(portStatus[port_number] == MSG)
 							{
 								if(temp_length[port_index] > 1)
 								{
-									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process[port_DMA]] ;
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
 									temp_index[port_index]++;
 									temp_length[port_index]--;
 								}
 								else
 								{
-									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number][index_process[port_DMA]] ;
+									MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
 									temp_index[port_index]++;
 									temp_length[port_index]--;
 									MSG_Buffer_Index_End[port_index]++;
