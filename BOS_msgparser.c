@@ -113,7 +113,7 @@ void BackEndTask(void *argument){
 
 	for(;;)
 	{
-       for(port_DMA=0;port_DMA<6;)
+       for(port_DMA=0;port_DMA<NumOfPorts;)
        {
 		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
 
@@ -217,9 +217,7 @@ void BackEndTask(void *argument){
 				Calculate_CRC_Buffer[i+3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
 			}
 
-			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,
-				length + 3);
-
+			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,length + 3);
 
 			Message_counter++;
 			if(calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3])

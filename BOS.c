@@ -50,38 +50,38 @@ uint8_t index_process[6]={0};
 volatile uint32_t* index_dma[6] ;
 uint8_t CLI_Data = 0;
 uint8_t port_DMA =0;
-uint8_t module_name;
-char Processor;
+
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
  */
 
 
- // Function To find  type of processor
-char Processor_type(uint16_t module_name)
+ // Function To find  type of MCU
+char Processor_type(uint8_t module_name)
 {
-	if(module_name==_H01R0|| module_name==_H0AR9||module_name==_H3BR6 ||module_name==_H0BR4  ||
-		module_name==_H18R1||module_name==_H0FR7)
-	  {
-		Processor='G';
-	  return Processor;
+	if( module_name==_H1AR1 || module_name==_H1AR2||module_name==_H1AR3 ||module_name==_H23R3 || module_name==_H10R4||
+		module_name==_H08R6 || module_name==_P08R6||module_name==_H26R0 ||module_name==_H0FR6 || module_name==_H0FR1||
+		module_name==_H2AR3 ||module_name==_H41R6 || module_name==_H1DR1|| module_name==_H09R9 ||
+		module_name==_H09R0 || module_name==_H1DR1||module_name==_H07R3 )
+	{
+	  return 'F' ;
       }
     else
       {
-    	Processor='F';
-	  return Processor;
+	  return 'G';
 	  }
 }
-  //Function To find Name of Module
+
+//Function To find Name of Module
 uint8_t Get_Module_Name(uint8_t dst)
 {
-	 module_name=array[dst-1][0];
-	 return module_name;
+	 return array[dst-1][0];
 }
 
 HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
 {
+	uint8_t module_name=Get_Module_Name(dst);
 	HAL_StatusTypeDef result =HAL_ERROR;
 
 	if(GetUart(port) != NULL)
@@ -89,8 +89,6 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 		/* Wait for the mutex to be available. */
 		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
 		{
-			Get_Module_Name(dst);
-
 			if(Processor_type(module_name)=='G')
 			{
 				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
