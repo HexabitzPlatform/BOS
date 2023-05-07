@@ -185,6 +185,7 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
+
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
@@ -242,21 +243,6 @@
 #define CODE_H3BR6_SevenDisplayOff             2956
 #define CODE_H3BR6_SetIndicator                2957
 #define CODE_H3BR6_ClearIndicator              2958
-
-// H1FR5x
-
-
-// H3BR2x
-
-
-// H21R2x
-
-
-// H17R1x
-
-
-// H15R8x
-
 
 #endif /* BOS_MSGCODES_H */
 
