@@ -250,6 +250,14 @@
 #define CODE_H3BR6_SetIndicator                2957
 #define CODE_H3BR6_ClearIndicator              2958
 
+// H3BR2x
+#define CODE_H3BR2_SevenDisplayNumber          2975
+#define CODE_H3BR2_SevenDisplayNumberh         2976
+#define CODE_H3BR2_SevenDisplayOneNumber       2977
+#define CODE_H3BR2_SevenDisplayOneNumberh      2978
+#define CODE_H3BR2_SevenDisplayOff             2979
+
+
 #endif /* BOS_MSGCODES_H */
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
