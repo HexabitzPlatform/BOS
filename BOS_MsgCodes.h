@@ -185,6 +185,12 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
+//H1DRx
+#define CODE_H1DR5_Ethernet_Send_Data		  1450
+#define CODE_H1DR5_Set_IP_Address             1451
+#define CODE_H1DR5_Set_Subnet_Mask            1452
+#define CODE_H1DR5_Set_Default_Gateway        1453
+
 
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
