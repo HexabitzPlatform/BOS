@@ -185,6 +185,13 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
+//H1DRx
+#define CODE_H1DR5_Ethernet_Send_Data		  1450
+#define CODE_H1DR5_Set_IP_Address             1451
+#define CODE_H1DR5_Set_Subnet_Mask            1452
+#define CODE_H1DR5_Set_Default_Gateway        1453
+
+
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
@@ -242,6 +249,14 @@
 #define CODE_H3BR6_SevenDisplayOff             2956
 #define CODE_H3BR6_SetIndicator                2957
 #define CODE_H3BR6_ClearIndicator              2958
+
+// H3BR2x
+#define CODE_H3BR2_SevenDisplayNumber          2975
+#define CODE_H3BR2_SevenDisplayNumberh         2976
+#define CODE_H3BR2_SevenDisplayOneNumber       2977
+#define CODE_H3BR2_SevenDisplayOneNumberh      2978
+#define CODE_H3BR2_SevenDisplayOff             2979
+
 
 #endif /* BOS_MSGCODES_H */
 
