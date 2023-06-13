@@ -114,7 +114,7 @@ void BackEndTask(void *argument){
 	for(;;)
 	{
        for(port_DMA=0;port_DMA<NumOfPorts;)
-       {
+       {port_index=port_DMA;
 		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
 
 		if(index_input[port_DMA] !=index_process[port_DMA])
