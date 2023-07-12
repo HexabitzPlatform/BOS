@@ -435,7 +435,11 @@ extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
-
+extern uint8_t index_input[6] ;
+extern uint8_t index_process[6] ;
+extern volatile uint32_t* index_dma[6] ;
+extern uint8_t CLI_Data ;
+extern uint8_t port_DMA;
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
 extern uint8_t routeDist[MaxNumOfModules];
@@ -525,7 +529,7 @@ extern uint8_t Process_Message_Buffer_Index_End;
   *instead of writePxDMAMutex (the previous function)
   */
 
- extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
+ extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst);
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------
