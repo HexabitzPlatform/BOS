@@ -256,6 +256,7 @@
 #define CODE_H3BR2_SevenDisplayOnDigit         2977
 #define CODE_H3BR2_SevenDisplayOnDigitHexa     2978
 #define CODE_H3BR2_SevenDisplayOff             2979
+#define CODE_H3BR2_SevenDisplayNumberF         2980
 
 #endif /* BOS_MSGCODES_H */
 
