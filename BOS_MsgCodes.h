@@ -187,9 +187,13 @@
 
 //H1DRx
 #define CODE_H1DR5_Ethernet_Send_Data		  1450
-#define CODE_H1DR5_Set_IP_Address             1451
-#define CODE_H1DR5_Set_Subnet_Mask            1452
-#define CODE_H1DR5_Set_Default_Gateway        1453
+#define CODE_H1DR5_Ethernet_Receive_Data      1451
+#define CODE_H1DR5_Set_Local_IP               1452
+#define CODE_H1DR5_Set_Remote_IP              1453
+#define CODE_H1DR5_Set_Subnet_Mask    		  1454
+#define CODE_H1DR5_Set_Local_PORT             1455
+#define CODE_H1DR5_Set_Remote_PORT            1456
+#define CODE_H1DR5_reseve_mac_and_ip_Remote   1457
 
 
 // H23R0x and H23R3x
