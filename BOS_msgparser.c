@@ -21,6 +21,9 @@ float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADC
 uint32_t totalnumberofrecevedmesg =0;
 int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
 
+/* Receiving the Defalt_Value for the H1DR5 module */
+receive_defalt_value defalt_data;
+
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
 extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
@@ -429,6 +432,47 @@ void PxMessagingTask(void *argument){
 							neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
 							responseStatus =BOS_OK;
 							break;
+							/* Receiving the Defalt_Value for the H1DR5 module */
+						case CODE_H1DR5_receive_Defalt_Value:
+							defalt_data.Local_mac_addr[0]= cMessage[port - 1][0 + shift];
+							defalt_data.Local_mac_addr[1]= cMessage[port - 1][1 + shift];
+							defalt_data.Local_mac_addr[2]= cMessage[port - 1][2 + shift];
+							defalt_data.Local_mac_addr[3]= cMessage[port - 1][3 + shift];
+							defalt_data.Local_mac_addr[4]= cMessage[port - 1][4 + shift];
+							defalt_data.Local_mac_addr[5]= cMessage[port - 1][5 + shift];
+
+							defalt_data.Remote_mac_addr[0]= cMessage[port - 1][6 + shift];
+							defalt_data.Remote_mac_addr[1]= cMessage[port - 1][7 + shift];
+							defalt_data.Remote_mac_addr[2]= cMessage[port - 1][8 + shift];
+							defalt_data.Remote_mac_addr[3]= cMessage[port - 1][9 + shift];
+							defalt_data.Remote_mac_addr[4]= cMessage[port - 1][10 + shift];
+							defalt_data.Remote_mac_addr[5]= cMessage[port - 1][11 + shift];
+
+							defalt_data.Local_IP[0]= cMessage[port - 1][12 + shift];
+							defalt_data.Local_IP[1]= cMessage[port - 1][13 + shift];
+							defalt_data.Local_IP[2]= cMessage[port - 1][14 + shift];
+							defalt_data.Local_IP[3]= cMessage[port - 1][15 + shift];
+
+							defalt_data.Remote_IP[0]= cMessage[port - 1][16 + shift];
+							defalt_data.Remote_IP[1]= cMessage[port - 1][17 + shift];
+							defalt_data.Remote_IP[2]= cMessage[port - 1][18 + shift];
+							defalt_data.Remote_IP[3]= cMessage[port - 1][19 + shift];
+
+							defalt_data.ip_mask[0]= cMessage[port - 1][20 + shift];
+							defalt_data.ip_mask[1]= cMessage[port - 1][21 + shift];
+							defalt_data.ip_mask[2]= cMessage[port - 1][22 + shift];
+							defalt_data.ip_mask[3]= cMessage[port - 1][23 + shift];
+
+							defalt_data.ip_dest[0]= cMessage[port - 1][24 + shift];
+							defalt_data.ip_dest[1]= cMessage[port - 1][25 + shift];
+							defalt_data.ip_dest[2]= cMessage[port - 1][26 + shift];
+							defalt_data.ip_dest[3]= cMessage[port - 1][27 + shift];
+
+							defalt_data.Local_PORT= cMessage[port - 1][28 + shift];
+							defalt_data.Remote_PORT= cMessage[port - 1][29 + shift];
+
+							break;
+
 #ifndef __N
 						case CODE_EXPLORE_ADJ:
 							ExploreNeighbors(port);

@@ -194,6 +194,9 @@
 #define CODE_H1DR5_Set_Local_PORT             1455
 #define CODE_H1DR5_Set_Remote_PORT            1456
 #define CODE_H1DR5_reseve_mac_and_ip_Remote   1457
+#define CODE_H1DR5_Defalt_Value               1458
+/* Receiving the Defalt_Value for the H1DR5 module */
+#define CODE_H1DR5_receive_Defalt_Value       1459
 
 
 // H23R0x and H23R3x

@@ -201,6 +201,20 @@ typedef struct {
 	uint8_t state;
 } snippet_t;
 
+/* Receiving the Defalt_Value for the H1DR5 module */
+typedef struct receiveDefaltValue {
+		uint8_t Local_mac_addr[6];
+		uint8_t Remote_mac_addr[6];
+		uint8_t Local_IP[4];
+		uint8_t Remote_IP[4];
+		uint8_t ip_mask[4];
+		uint8_t ip_dest[4];
+		uint8_t Local_PORT;
+		uint8_t Remote_PORT;
+
+} receive_defalt_value;
+
+
 /* Button Events Definition */
 #define	BUTTON_EVENT_CLICKED						0x01
 #define	BUTTON_EVENT_DBL_CLICKED					0x02
