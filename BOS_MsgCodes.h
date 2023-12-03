@@ -164,6 +164,12 @@
 #define	CODE_H0FR7_STREAM_BUFFER			  776
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
+// H17R1x
+#define CODE_H17R1_StepperIcInit              1150
+#define CODE_H17R1_STEPPER_MOVE               1151
+#define CODE_H17R1_StepperRun                 1152
+#define CODE_H17R1_StepperStop                1153
+
 //H18R1
 #define CODE_H18R1_Turn_ON					  1200
 #define CODE_H18R1_Turn_OFF					  1201
@@ -185,7 +191,7 @@
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
 
-//H1DRx
+//H1DR5x
 #define CODE_H1DR5_Ethernet_Send_Data		  1450
 #define CODE_H1DR5_Ethernet_Receive_Data      1451
 #define CODE_H1DR5_Set_Local_IP               1452
@@ -198,6 +204,11 @@
 /* Receiving the Defalt_Value for the H1DR5 module */
 #define CODE_H1DR5_receive_Defalt_Value       1459
 
+// H1FR5x
+#define CODE_H1FR5_GET_POSITION               1550
+#define CODE_H1FR5_GET_UTC                    1551
+#define CODE_H1FR5_GET_SPEED                  1552
+#define CODE_H1FR5_GET_HIEGHT                 1553
 
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
