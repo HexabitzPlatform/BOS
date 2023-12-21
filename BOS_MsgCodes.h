@@ -245,6 +245,10 @@
 #define CODE_H2AR3_STREAM_PORT_V		      2102
 #define CODE_H2AR3_STREAM_PORT_A		      2103
 #define CODE_H2AR3_STOP                       2104
+
+// H2BR0x
+#define CODE_H2BR0                            2150
+
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
 #define CODE_H1DR1_READ                       2901
