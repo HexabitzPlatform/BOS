@@ -275,8 +275,8 @@
 // H3BR2x
 #define CODE_H3BR2_SevenDisplayNumber          2975
 #define CODE_H3BR2_SevenDisplayNumberHexa      2976
-#define CODE_H3BR2_SevenDisplayOnDigit         2977
-#define CODE_H3BR2_SevenDisplayOnDigitHexa     2978
+#define CODE_H3BR2_SevenDisplayOneDigit        2977
+#define CODE_H3BR2_SevenDisplayOneDigitHexa    2978
 #define CODE_H3BR2_SevenDisplayOff             2979
 #define CODE_H3BR2_SevenDisplayNumberF         2980
 
