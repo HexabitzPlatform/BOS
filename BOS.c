@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
+ BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.c
@@ -45,28 +45,67 @@ uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
 uint8_t Process_Message_Buffer_Index_Start = 0;
 uint8_t Process_Message_Buffer_Index_End = 0;
 
+uint8_t index_input[6]={0};
+uint8_t index_process[6]={0};
+volatile uint32_t* index_dma[6] ;
+uint8_t CLI_Data = 0;
+uint8_t port_DMA =0;
 
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
  */
 
-HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout)
+
+ // Function To find  type of MCU
+char Processor_type(uint8_t module_name)
 {
+	if( module_name==_H1AR2 || module_name==_H23R3 || module_name==_H10R4||
+		module_name==_H08R6 || module_name==_P08R6||module_name==_H26R0 ||module_name==_H0FR6 || module_name==_H0FR1||
+		module_name==_H2AR3 || module_name==_H41R6||module_name==_H15R0|| module_name==_H09R9 ||
+		module_name==_H09R0 || module_name==_H1DR1||module_name==_H07R3 )
+	{
+	  return 'F' ;
+      }
+    else
+      {
+	  return 'G';
+	  }
+}
+
+//Function To find Name of Module
+uint8_t Get_Module_Name(uint8_t dst)
+{
+	 return array[dst-1][0];
+}
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
+{
+	uint8_t module_name=Get_Module_Name(dst);
 	HAL_StatusTypeDef result =HAL_ERROR;
 
-	if(GetUart(port) != NULL){
+	if(GetUart(port) != NULL)
+	{
 		/* Wait for the mutex to be available. */
-		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
-			for(uint8_t i=0;i<n;i++)
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
+		{
+			if(Processor_type(module_name)=='G')
 			{
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
+			}
+			else
+			{
+			for(uint8_t i=0;i<n;i++)
+			  {
 				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
 				buffer++;
 				//Delay_us(500);
-				Delay_ms(2);
+			 	Delay_ms(2);
+			  }
 			}
 		}
 	}
+
 	Delay_ms(10);// Delay Between Sending Two Messages.
 	return result;
 }
@@ -145,7 +184,7 @@ uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6","H3BR6","H18R1"};
+const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6","H3BR6","H18R1","H1FR5","H3BR2","H21R2","H17R1","H15R8","H2BR0"};
 
 /* Define BOS keywords */
 static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};

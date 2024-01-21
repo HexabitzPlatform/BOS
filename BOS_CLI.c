@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
+ BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_CLI.c
@@ -47,6 +47,7 @@ extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
 extern uint8_t SaveToRO(void);
+extern char Processor_type(uint8_t module_name);
 
 /*-----------------------------------------------------------*/
 
@@ -89,11 +90,25 @@ void prvCLITask(void *pvParameters){
 		//Reading only one byte at a time using CLI Flags:
 		if(Read_In_CLI_Task_Flag == 1)
 			{
-			cRxedChar = Rx_Data[PcPort - 1];
-			Rx_Data[PcPort - 1] = 0;
+//			cRxedChar = CLI_Data;
+//			cRxedChar = Rx_Data[PcPort - 1];
+//			Rx_Data[PcPort - 1] = 0;
+//			CLI_Data = 0;
+//			Read_In_CLI_Task_Flag = 0;
+
+			/*  */
+			if(Processor_type(myPN)=='G')
+			{
+				cRxedChar = CLI_Data;
+				CLI_Data = 0;
+			}
+			else
+			{
+				cRxedChar = Rx_Data[PcPort - 1];
+				Rx_Data[PcPort - 1] = 0;
+			}
+
 			Read_In_CLI_Task_Flag = 0;
-			
-			
 
 			/* Echo the character back. */
 			writePxITMutex(PcPort,&cRxedChar,1,10);

@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
+ BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -164,6 +164,12 @@
 #define	CODE_H0FR7_STREAM_BUFFER			  776
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
+// H17R1x
+#define CODE_H17R1_StepperIcInit              1150
+#define CODE_H17R1_STEPPER_MOVE               1151
+#define CODE_H17R1_StepperRun                 1152
+#define CODE_H17R1_StepperStop                1153
+
 //H18R1
 #define CODE_H18R1_Turn_ON					  1200
 #define CODE_H18R1_Turn_OFF					  1201
@@ -184,6 +190,25 @@
 #define CODE_H10R4_STREAM_VARIANT			  1364
 #define CODE_H10R4_STREAM_BUFFER			  1365
 #define CODE_H10R4_STREAM_TYPE				  1366
+
+//H1DR5x
+#define CODE_H1DR5_Ethernet_Send_Data		  1450
+#define CODE_H1DR5_Ethernet_Receive_Data      1451
+#define CODE_H1DR5_Set_Local_IP               1452
+#define CODE_H1DR5_Set_Remote_IP              1453
+#define CODE_H1DR5_Set_Subnet_Mask    		  1454
+#define CODE_H1DR5_Set_Local_PORT             1455
+#define CODE_H1DR5_Set_Remote_PORT            1456
+#define CODE_H1DR5_reseve_mac_and_ip_Remote   1457
+#define CODE_H1DR5_Defalt_Value               1458
+/* Receiving the Defalt_Value for the H1DR5 module */
+#define CODE_H1DR5_receive_Defalt_Value       1459
+
+// H1FR5x
+#define CODE_H1FR5_GET_POSITION               1550
+#define CODE_H1FR5_GET_UTC                    1551
+#define CODE_H1FR5_GET_SPEED                  1552
+#define CODE_H1FR5_GET_HIEGHT                 1553
 
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
@@ -220,6 +245,10 @@
 #define CODE_H2AR3_STREAM_PORT_V		      2102
 #define CODE_H2AR3_STREAM_PORT_A		      2103
 #define CODE_H2AR3_STOP                       2104
+
+// H2BR0x
+#define CODE_H2BR0                            2150
+
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
 #define CODE_H1DR1_READ                       2901
@@ -242,6 +271,14 @@
 #define CODE_H3BR6_SevenDisplayOff             2956
 #define CODE_H3BR6_SetIndicator                2957
 #define CODE_H3BR6_ClearIndicator              2958
+
+// H3BR2x
+#define CODE_H3BR2_SevenDisplayNumber          2975
+#define CODE_H3BR2_SevenDisplayNumberHexa      2976
+#define CODE_H3BR2_SevenDisplayOneDigit        2977
+#define CODE_H3BR2_SevenDisplayOneDigitHexa    2978
+#define CODE_H3BR2_SevenDisplayOff             2979
+#define CODE_H3BR2_SevenDisplayNumberF         2980
 
 #endif /* BOS_MSGCODES_H */
 

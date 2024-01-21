@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
+ BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_msgparser.c
@@ -13,7 +13,6 @@
 //New BackEndTask Variables:
 uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
 uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
-
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 uint16_t stackWaterMark;
@@ -21,6 +20,9 @@ uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
 uint32_t totalnumberofrecevedmesg =0;
 int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
+
+/* Receiving the Defalt_Value for the H1DR5 module */
+receive_defalt_value defalt_data;
 
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
@@ -107,10 +109,100 @@ extern void NotifyMessagingTask(uint8_t port);
 /* BackEndTask function */
 void BackEndTask(void *argument){
 
-
 	uint8_t calculated_crc,port_number,length,port_index;
+
+			uint8_t temp_length[NumOfPorts] = {0};
+			uint8_t temp_index[NumOfPorts] = {0};
+
 	for(;;)
 	{
+       for(port_DMA=0;port_DMA<NumOfPorts;)
+       {port_index=port_DMA;
+		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
+
+		if(index_input[port_DMA] !=index_process[port_DMA])
+		{ port_number =port_DMA+1;
+			if(UARTRxBuf[port_number-1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE)
+			{
+				for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
+				{
+					if(portStatus[i] == CLI)
+					{
+						portStatus[i] = FREE;
+					}
+				}
+				portStatus[port_number] =CLI; // Continue the CLI session on this port
+				PcPort = port_number;
+
+				CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
+
+				xTaskNotifyGive(xCommandConsoleTaskHandle);
+
+				if(Activate_CLI_For_First_Time_Flag == 1) Read_In_CLI_Task_Flag = 1;
+				Activate_CLI_For_First_Time_Flag = 1;
+
+			}
+			else if(portStatus[port_number] == CLI)
+			{
+				CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
+				Read_In_CLI_Task_Flag = 1;
+			}
+
+			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'H' && portStatus[port_number] == FREE)
+			{
+				portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
+			}
+
+			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'Z' && portStatus[port_number] == H_Status)
+			{
+				portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
+			}
+
+			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  != 'Z' && portStatus[port_number] == H_Status)
+			{
+				portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
+			}
+
+			else if(portStatus[port_number] == Z_Status)
+			{
+				portStatus[port_number] =MSG; // Receive length byte.
+				MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
+				temp_index[port_index] = 3;
+				temp_length[port_index] =UARTRxBuf[port_number-1][index_process[port_DMA]]  + 1;
+			}
+
+			else if(portStatus[port_number] == MSG)
+			{
+				if(temp_length[port_index] > 1)
+				{
+					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
+					temp_index[port_index]++;
+					temp_length[port_index]--;
+				}
+				else
+				{
+					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
+					temp_index[port_index]++;
+					temp_length[port_index]--;
+					MSG_Buffer_Index_End[port_index]++;
+					if(MSG_Buffer_Index_End[port_index] == MSG_COUNT) MSG_Buffer_Index_End[port_index] = 0;
+
+
+					Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
+					Process_Message_Buffer_Index_End++;
+					if(Process_Message_Buffer_Index_End == MSG_COUNT) Process_Message_Buffer_Index_End = 0;
+					portStatus[port_number] =FREE; // End of receiving message.
+				}
+			}
+			index_process[port_DMA]++;
+			if(index_process[port_DMA]==MSG_RX_BUF_SIZE)
+				{index_process[port_DMA]=0;}
+		}
+		else if(index_input[port_DMA] ==index_process[port_DMA])
+		   {
+			port_DMA++;
+			}
+
 		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
 		{
 			port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
@@ -128,9 +220,7 @@ void BackEndTask(void *argument){
 				Calculate_CRC_Buffer[i+3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
 			}
 
-			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,
-				length + 3);
-
+			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,length + 3);
 
 			Message_counter++;
 			if(calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3])
@@ -145,9 +235,7 @@ void BackEndTask(void *argument){
 				else{
 					/* Forward message */
 					ForwardReceivedMessage(port_number);
-				}
-
-
+				    }
 			}
 			else
 			{
@@ -164,6 +252,7 @@ void BackEndTask(void *argument){
 
 		taskYIELD();
 	}
+}
 }
 
 /*-----------------------------------------------------------*/
@@ -343,6 +432,47 @@ void PxMessagingTask(void *argument){
 							neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
 							responseStatus =BOS_OK;
 							break;
+							/* Receiving the Defalt_Value for the H1DR5 module */
+						case CODE_H1DR5_receive_Defalt_Value:
+							defalt_data.Local_mac_addr[0]= cMessage[port - 1][0 + shift];
+							defalt_data.Local_mac_addr[1]= cMessage[port - 1][1 + shift];
+							defalt_data.Local_mac_addr[2]= cMessage[port - 1][2 + shift];
+							defalt_data.Local_mac_addr[3]= cMessage[port - 1][3 + shift];
+							defalt_data.Local_mac_addr[4]= cMessage[port - 1][4 + shift];
+							defalt_data.Local_mac_addr[5]= cMessage[port - 1][5 + shift];
+
+							defalt_data.Remote_mac_addr[0]= cMessage[port - 1][6 + shift];
+							defalt_data.Remote_mac_addr[1]= cMessage[port - 1][7 + shift];
+							defalt_data.Remote_mac_addr[2]= cMessage[port - 1][8 + shift];
+							defalt_data.Remote_mac_addr[3]= cMessage[port - 1][9 + shift];
+							defalt_data.Remote_mac_addr[4]= cMessage[port - 1][10 + shift];
+							defalt_data.Remote_mac_addr[5]= cMessage[port - 1][11 + shift];
+
+							defalt_data.Local_IP[0]= cMessage[port - 1][12 + shift];
+							defalt_data.Local_IP[1]= cMessage[port - 1][13 + shift];
+							defalt_data.Local_IP[2]= cMessage[port - 1][14 + shift];
+							defalt_data.Local_IP[3]= cMessage[port - 1][15 + shift];
+
+							defalt_data.Remote_IP[0]= cMessage[port - 1][16 + shift];
+							defalt_data.Remote_IP[1]= cMessage[port - 1][17 + shift];
+							defalt_data.Remote_IP[2]= cMessage[port - 1][18 + shift];
+							defalt_data.Remote_IP[3]= cMessage[port - 1][19 + shift];
+
+							defalt_data.ip_mask[0]= cMessage[port - 1][20 + shift];
+							defalt_data.ip_mask[1]= cMessage[port - 1][21 + shift];
+							defalt_data.ip_mask[2]= cMessage[port - 1][22 + shift];
+							defalt_data.ip_mask[3]= cMessage[port - 1][23 + shift];
+
+							defalt_data.ip_dest[0]= cMessage[port - 1][24 + shift];
+							defalt_data.ip_dest[1]= cMessage[port - 1][25 + shift];
+							defalt_data.ip_dest[2]= cMessage[port - 1][26 + shift];
+							defalt_data.ip_dest[3]= cMessage[port - 1][27 + shift];
+
+							defalt_data.Local_PORT= cMessage[port - 1][28 + shift];
+							defalt_data.Remote_PORT= cMessage[port - 1][29 + shift];
+
+							break;
+
 #ifndef __N
 						case CODE_EXPLORE_ADJ:
 							ExploreNeighbors(port);
@@ -846,7 +976,7 @@ void PxMessagingTask(void *argument){
 							{
 // Check variable index is within the limit of MAX_BOS_VARS
 								if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
-									temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE; // Get var memory addres
+									temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE+0x10000; // Get var memory addres
 // Modify the variable or create a new one if it does not exist
 									switch(cMessage[port - 1][1 + shift]) // requested format
 									{

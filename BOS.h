@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.2.9 - Copyright (C) 2017-2023 Hexabitz
+ BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -60,7 +60,7 @@ enum UartDirection_e {
 };
 
 enum modulePartNumbers_e {
-	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1
+	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0
 };
 enum IndMode_e {
 	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
@@ -201,6 +201,20 @@ typedef struct {
 	uint8_t state;
 } snippet_t;
 
+/* Receiving the Defalt_Value for the H1DR5 module */
+typedef struct receiveDefaltValue {
+		uint8_t Local_mac_addr[6];
+		uint8_t Remote_mac_addr[6];
+		uint8_t Local_IP[4];
+		uint8_t Remote_IP[4];
+		uint8_t ip_mask[4];
+		uint8_t ip_dest[4];
+		uint8_t Local_PORT;
+		uint8_t Remote_PORT;
+
+} receive_defalt_value;
+
+
 /* Button Events Definition */
 #define	BUTTON_EVENT_CLICKED						0x01
 #define	BUTTON_EVENT_DBL_CLICKED					0x02
@@ -243,7 +257,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							32							//Number of Modules
+#define NUM_OF_MODULE_PN							38							//Number of Modules
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -394,7 +408,24 @@ typedef struct {
 #ifdef H18R1
 #include "H18R1.h"
 #endif
-
+#ifdef H1FR5
+#include "H1FR5.h"
+#endif
+#ifdef H3BR2
+#include "H3BR2.h"
+#endif
+#ifdef H21R2
+#include "H21R2.h"
+#endif
+#ifdef H17R1
+#include "H17R1.h"
+#endif
+#ifdef H15R8
+#include "H15R8.h"
+#endif
+#ifdef H2BR0
+#include "H2BR0.h"
+#endif
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
 
@@ -420,7 +451,11 @@ extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
-
+extern uint8_t index_input[6] ;
+extern uint8_t index_process[6] ;
+extern volatile uint32_t* index_dma[6] ;
+extern uint8_t CLI_Data ;
+extern uint8_t port_DMA;
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
 extern uint8_t routeDist[MaxNumOfModules];
@@ -510,7 +545,7 @@ extern uint8_t Process_Message_Buffer_Index_End;
   *instead of writePxDMAMutex (the previous function)
   */
 
- extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout);
+ extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst);
 /* -----------------------------------------------------------------------
  |								APIs	    						 	|
  -----------------------------------------------------------------------
