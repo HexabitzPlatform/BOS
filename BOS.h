@@ -518,7 +518,7 @@ extern uint8_t Read_In_CLI_Task_Flag;
 
 /*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
 #ifdef __USER_DATA_BUFFER
-#define USER_RX_BUF_SIZE  256
+#define USER_RX_BUF_SIZE  512
 extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
 extern uint8_t UserData;
 extern uint8_t indexInputUserDataBuffer;
