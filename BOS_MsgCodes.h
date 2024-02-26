@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.0 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.1 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -79,6 +79,22 @@
 #define	CODE_H01R0_PULSE					  104
 #define	CODE_H01R0_SWEEP					  105
 #define	CODE_H01R0_DIM						  106
+
+// H05R0x
+#define CODE_H05R0_CELLVOLTAGE				  250
+#define CODE_H05R0_CELLCURRENT			      251
+#define CODE_H05R0_CELLPOWER				  252
+#define CODE_H05R0_CELLTEMPERATURE			  253
+#define CODE_H05R0_CELLCAPACITY				  254
+#define CODE_H05R0_CELLSTATEOFCHARGE		  255
+#define CODE_H05R0_CELLESTIMATEDTTE			  256
+#define CODE_H05R0_CELLESTIMATEDTTF			  257
+#define CODE_H05R0_CELLAGE					  258
+#define CODE_H05R0_CELLCYCLES    			  259
+#define CODE_H05R0_CELLCALINTERRES    		  260
+#define CODE_H05R0_SETCHARGVOLTAGE    		  261
+#define CODE_H05R0_SETCHARGCURRENT  		  262
+
 
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				  350
