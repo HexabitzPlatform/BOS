@@ -226,6 +226,18 @@
 #define CODE_H1FR5_GET_SPEED                  1552
 #define CODE_H1FR5_GET_HIEGHT                 1553
 
+// H21R2x
+#define CODE_H21R2_ESP_RESET                  1650
+#define CODE_H21R2_ESP_BOOT                   1651
+#define CODE_H21R2_ESP_SERVER                 1652
+#define CODE_H21R2_ESP_CLIENT                 1653
+#define CODE_H21R2_ESP_ACCESS_POINT           1654
+#define CODE_H21R2_ESP_STATION                1655
+#define CODE_H21R2_ESP_REDA_FROM_SERVER       1656
+#define CODE_H21R2_ESP_WRITE_TO_SERVER        1657
+#define CODE_H21R2_ESP_REDA_FROM_CLIENT       1658
+#define CODE_H21R2_ESP_WRITE_TO_CLIENT        1659
+
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
