@@ -274,8 +274,23 @@
 #define CODE_H2AR3_STREAM_PORT_A		      2103
 #define CODE_H2AR3_STOP                       2104
 
-// H2BR0x
-#define CODE_H2BR0                            2150
+// H2BR0x  and H2BR1x
+#define CODE_H2BR0_ECG_Sample                 2150
+#define CODE_H2BR0_EOG_Sample                 2151
+#define CODE_H2BR0_EEG_Sample                 2152
+#define CODE_H2BR0_EMG_Sample                 2153
+#define CODE_H2BR0_EMG_SetThreshold           2154
+#define CODE_H2BR0_EMG_CheckPulse             2155
+#define CODE_H2BR0_ECG_HeartRate              2156
+#define CODE_H2BR0_EOG_CheckEyeBlink          2157
+#define CODE_H2BR0_LeadsStatus                2158
+
+
+
+#define CODE_H2BR1_HR_Sample                  2175
+#define CODE_H2BR1_SPO2_Sample                2176
+#define CODE_H2BR1_FingerState                2177
+
 
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
