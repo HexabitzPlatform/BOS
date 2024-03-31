@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.1 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.2 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -226,6 +226,18 @@
 #define CODE_H1FR5_GET_SPEED                  1552
 #define CODE_H1FR5_GET_HIEGHT                 1553
 
+// H21R2x
+#define CODE_H21R2_ESP_RESET                  1650
+#define CODE_H21R2_ESP_BOOT                   1651
+#define CODE_H21R2_ESP_SERVER                 1652
+#define CODE_H21R2_ESP_CLIENT                 1653
+#define CODE_H21R2_ESP_ACCESS_POINT           1654
+#define CODE_H21R2_ESP_STATION                1655
+#define CODE_H21R2_ESP_READ_FROM_SERVER       1656
+#define CODE_H21R2_ESP_WRITE_TO_SERVER        1657
+#define CODE_H21R2_ESP_READ_FROM_CLIENT       1658
+#define CODE_H21R2_ESP_WRITE_TO_CLIENT        1659
+
 // H23R0x and H23R3x
 #define CODE_H23Rx_SCAN_INQUIRE               1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
@@ -262,8 +274,23 @@
 #define CODE_H2AR3_STREAM_PORT_A		      2103
 #define CODE_H2AR3_STOP                       2104
 
-// H2BR0x
-#define CODE_H2BR0                            2150
+// H2BR0x  and H2BR1x
+#define CODE_H2BR0_ECG_Sample                 2150
+#define CODE_H2BR0_EOG_Sample                 2151
+#define CODE_H2BR0_EEG_Sample                 2152
+#define CODE_H2BR0_EMG_Sample                 2153
+#define CODE_H2BR0_EMG_SetThreshold           2154
+#define CODE_H2BR0_EMG_CheckPulse             2155
+#define CODE_H2BR0_ECG_HeartRate              2156
+#define CODE_H2BR0_EOG_CheckEyeBlink          2157
+#define CODE_H2BR0_LeadsStatus                2158
+
+
+
+#define CODE_H2BR1_HR_Sample                  2175
+#define CODE_H2BR1_SPO2_Sample                2176
+#define CODE_H2BR1_FingerState                2177
+
 
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
@@ -277,16 +304,16 @@
 #define CODE_H12R0_STOP          		      2906
 #define CODE_H12R0_SAMPLE          		      2907
 
-//H3BR6
-#define CODE_H3BR6_SevenDisplayNumber          2950
-#define CODE_H3BR6_SevenDisplayNumberF         2951
-#define CODE_H3BR6_SevenDisplayQuantities      2952
-#define CODE_H3BR6_SevenDisplayLetter          2953
-#define CODE_H3BR6_SevenDisplaySentence        2954
-#define CODE_H3BR6_SevenDisplayMovingSentence  2955
-#define CODE_H3BR6_SevenDisplayOff             2956
-#define CODE_H3BR6_SetIndicator                2957
-#define CODE_H3BR6_ClearIndicator              2958
+//H3BR6 and H3BR7
+#define CODE_H3BRx_SevenDisplayNumber          2950
+#define CODE_H3BRx_SevenDisplayNumberF         2951
+#define CODE_H3BRx_SevenDisplayQuantities      2952
+#define CODE_H3BRx_SevenDisplayLetter          2953
+#define CODE_H3BRx_SevenDisplaySentence        2954
+#define CODE_H3BRx_SevenDisplayMovingSentence  2955
+#define CODE_H3BRx_SevenDisplayOff             2956
+#define CODE_H3BRx_SetIndicator                2957
+#define CODE_H3BRx_ClearIndicator              2958
 
 // H3BR2x
 #define CODE_H3BR2_SevenDisplayNumber          2975
