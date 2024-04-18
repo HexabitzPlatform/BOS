@@ -116,6 +116,18 @@
 #define CODE_H08R7_MIN_RANGE                  410
 #define CODE_H08R7_TIMEOUT                	  411
 
+// H07R8x
+#define CODE_H07R8_CODEC_INIT                 375
+#define CODE_H07R8_CODEC_STREAM_AUDIO		  376
+#define CODE_H07R8_CODEC_SOUND_LEVEL_CTRL     377
+#define CODE_H07R8_CODEC_SOUND_MUTE           378
+#define CODE_H07R8_CODEC_SOUND_UNMUTE         379
+#define CODE_H07R8_CODEC_SHOUTDOWN			  380
+#define CODE_H07R8_AMP_INIT					  381
+#define CODE_H07R8_AMP_MUTE                   382
+#define CODE_H07R8_AMP_UNMUTE                 383
+#define CODE_H07R8_AMP_SHOUTDOWN              384
+
 // H08R6x
 
 
