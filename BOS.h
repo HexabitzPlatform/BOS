@@ -81,7 +81,7 @@ enum bootStatus_e {
 
 /* Color Enumerations */
 enum BasicColors {
-	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN
+	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN,AQUA,PURPLE,LIGHTBLUE,ORANGE,INDIGO,
 };
 
 /* RGB LED Mode Enumerations */
