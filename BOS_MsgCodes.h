@@ -194,6 +194,16 @@
 #define	CODE_H0FR7_STREAM_BUFFER			  776
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
+// H16R6x
+#define CODE_H16R6_SETCOLOR                   1100
+#define CODE_H16R6_SETALLCOLOR                1101
+#define CODE_H16R6_SETRGB                     1102
+#define CODE_H16R6_SETALLRGB                  1103
+#define CODE_H16R6_SETLEDOFF                  1104
+#define CODE_H16R6_SETALLLEDOFF               1105
+#define CODE_H16R6_SETLEDON                   1106
+#define CODE_H16R6_SETALLLEDON                1107
+
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
