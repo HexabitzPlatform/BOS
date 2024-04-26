@@ -123,10 +123,11 @@
 #define CODE_H07R8_CODEC_SOUND_MUTE           378
 #define CODE_H07R8_CODEC_SOUND_UNMUTE         379
 #define CODE_H07R8_CODEC_SHOUTDOWN			  380
-#define CODE_H07R8_AMP_INIT					  381
+#define CODE_H07R8_AMP_GAIN					  381
 #define CODE_H07R8_AMP_MUTE                   382
 #define CODE_H07R8_AMP_UNMUTE                 383
-#define CODE_H07R8_AMP_SHOUTDOWN              384
+#define CODE_H07R8_AMP_ENABLE_SHOUTDOWN       384
+#define CODE_H07R8_AMP_DISABLE_SHOUTDOWN      385
 
 // H08R6x
 
