@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.2 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -102,19 +102,34 @@
 #define CODE_H07R3_PLAY_TUNE				  352
 #define CODE_H07R3_SCAN_WAVE_RESPONSE		  353
 
+// H08R7x
+#define CODE_H08R7_GET_INFO                   400
+#define CODE_H08R7_SAMPLE_PORT                401
+#define CODE_H08R7_STREAM_PORT                402
+#define CODE_H08R7_STREAM_MEM                 403
+#define CODE_H08R7_RESULT_MEASUREMENT         404
+#define CODE_H08R7_STOP_RANGING               405
+#define CODE_H08R7_SET_UNIT                   406
+#define CODE_H08R7_GET_UNIT                   407
+#define CODE_H08R7_RESPOND_GET_UNIT           408
+#define CODE_H08R7_MAX_RANGE                  409
+#define CODE_H08R7_MIN_RANGE                  410
+#define CODE_H08R7_TIMEOUT                	  411
+
+// H07R8x
+#define CODE_H07R8_CODEC_INIT                 375
+#define CODE_H07R8_CODEC_STREAM_AUDIO		  376
+#define CODE_H07R8_CODEC_SOUND_LEVEL_CTRL     377
+#define CODE_H07R8_CODEC_SOUND_MUTE           378
+#define CODE_H07R8_CODEC_SOUND_UNMUTE         379
+#define CODE_H07R8_CODEC_SHOUTDOWN			  380
+#define CODE_H07R8_AMP_GAIN					  381
+#define CODE_H07R8_AMP_MUTE                   382
+#define CODE_H07R8_AMP_UNMUTE                 383
+#define CODE_H07R8_AMP_ENABLE_SHOUTDOWN       384
+#define CODE_H07R8_AMP_DISABLE_SHOUTDOWN      385
+
 // H08R6x
-#define CODE_H08R6_GET_INFO                   400
-#define CODE_H08R6_SAMPLE_PORT                401
-#define CODE_H08R6_STREAM_PORT                402
-#define CODE_H08R6_STREAM_MEM                 403
-#define CODE_H08R6_RESULT_MEASUREMENT         404
-#define CODE_H08R6_STOP_RANGING               405
-#define CODE_H08R6_SET_UNIT                   406
-#define CODE_H08R6_GET_UNIT                   407
-#define CODE_H08R6_RESPOND_GET_UNIT           408
-#define CODE_H08R6_MAX_RANGE                  409
-#define CODE_H08R6_MIN_RANGE                  410
-#define CODE_H08R6_TIMEOUT                	  411
 
 
 // H09R0
@@ -179,6 +194,16 @@
 #define	CODE_H0FR7_STREAM_PORT				  775
 #define	CODE_H0FR7_STREAM_BUFFER			  776
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
+
+// H16R6x
+#define CODE_H16R6_SETCOLOR                   1100
+#define CODE_H16R6_SETALLCOLOR                1101
+#define CODE_H16R6_SETRGB                     1102
+#define CODE_H16R6_SETALLRGB                  1103
+#define CODE_H16R6_SETLEDOFF                  1104
+#define CODE_H16R6_SETALLLEDOFF               1105
+#define CODE_H16R6_SETLEDON                   1106
+#define CODE_H16R6_SETALLLEDON                1107
 
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150

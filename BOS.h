@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.2 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -60,7 +60,7 @@ enum UartDirection_e {
 };
 
 enum modulePartNumbers_e {
-	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0,_H05R0,_H3BR7,_H2BR1,_H07R8
+	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0,_H05R0,_H3BR7,_H2BR1,_H07R8,_H08R7,_H16R6
 };
 enum IndMode_e {
 	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
@@ -81,7 +81,7 @@ enum bootStatus_e {
 
 /* Color Enumerations */
 enum BasicColors {
-	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN
+	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN,AQUA,PURPLE,LIGHTBLUE,ORANGE,INDIGO,
 };
 
 /* RGB LED Mode Enumerations */
@@ -257,7 +257,7 @@ typedef struct receiveDefaltValue {
 #define SNIP_COND_MODULE_PARAM_PARAM	            4
 
 /* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							42							//Number of Modules
+#define NUM_OF_MODULE_PN							44							//Number of Modules
 #define P_LAST 										NumOfPorts
 #define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
 #define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
@@ -437,6 +437,12 @@ typedef struct receiveDefaltValue {
 #endif
 #ifdef H07R8
 #include "H07R8.h"
+#endif
+#ifdef H08R7
+#include "H08R7.h"
+#endif
+#ifdef H16R6
+#include "H16R6.h"
 #endif
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
