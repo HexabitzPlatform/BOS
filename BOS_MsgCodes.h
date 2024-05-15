@@ -57,7 +57,7 @@
 #define	MSG_Acknowledgment_Accepted 	  	  44
 #define	MSG_rejected 						  45
 
-
+#define CODE_READ_RESPONSE			          46
 /*
    -----------------------------------------------------------------------
   |					User Message Codes (70-99)  						  |

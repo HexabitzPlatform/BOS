@@ -1282,6 +1282,38 @@ void PxMessagingTask(void *argument){
 						case MSG_rejected:
 							rejected_FLAG =1;
 							break;
+						case CODE_READ_RESPONSE:
+												switch (cMessage[port - 1][shift]) {
+										     	case 0:
+													responseStatus = BOS_ERR_REMOTE_READ_NO_VAR;
+													break;
+												case FMT_BOOL:
+												case FMT_UINT8:
+													remoteBuffer = cMessage[port - 1][1 + shift];
+													break;
+												case FMT_INT8:
+													remoteBuffer = (int8_t) cMessage[port - 1][1 + shift];
+													break;
+												case FMT_UINT16:
+													remoteBuffer = ((uint16_t) cMessage[port - 1][1+ shift] << 0)+ ((uint16_t) cMessage[port - 1][2 + shift]<< 8);
+													break;
+												case FMT_INT16:
+													remoteBuffer = ((int16_t) cMessage[port - 1][1+ shift] << 0)+ ((int16_t) cMessage[port - 1][2 + shift]<< 8);
+													break;
+												case FMT_UINT32:
+											    	remoteBuffer = ((uint32_t) cMessage[port - 1][1	+ shift] << 0)	+ ((uint32_t) cMessage[port - 1][2 + shift]	<< 8)+ ((uint32_t) cMessage[port - 1][3 + shift]<< 16)+ ((uint32_t) cMessage[port - 1][4 + shift]<< 24);
+													break;
+												case FMT_INT32:
+													remoteBuffer = ((int32_t) cMessage[port - 1][1+ shift] << 0)+ ((int32_t) cMessage[port - 1][2 + shift]<< 8)+ ((int32_t) cMessage[port - 1][3 + shift]<< 16)+ ((int32_t) cMessage[port - 1][4 + shift]<< 24);
+
+													break;
+												case FMT_FLOAT:
+													remoteBuffer = ((uint32_t) cMessage[port - 1][1+ shift] << 0)| ((uint32_t) cMessage[port - 1][2 + shift]<< 8)| ((uint32_t) cMessage[port - 1][3 + shift]<< 16)| ((uint32_t) cMessage[port - 1][4 + shift]<< 24);
+											    	break;
+												default:
+													break;
+												}
+													break;
 
 						default:
 							/* First check user-defined messages */
