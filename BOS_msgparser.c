@@ -22,7 +22,7 @@ uint32_t DataU32;
 int32_t Data32;
 uint16_t DataU16;
 int16_t Data16;
-uint8_t DataU8;
+uint8_t DataU8[3];
 int8_t Data8;
 }Data;
 Data  Remote_Data ;
@@ -1301,7 +1301,9 @@ void PxMessagingTask(void *argument){
 													break;
 												case FMT_BOOL:
 												case FMT_UINT8:
-													Remote_Data.DataU8= cMessage[port - 1][1 + shift];
+													Remote_Data.DataU8[0]= cMessage[port - 1][1 + shift];
+													Remote_Data.DataU8[1]= cMessage[port - 1][2 + shift];
+													Remote_Data.DataU8[2]= cMessage[port - 1][3 + shift];
 													break;
 												case FMT_INT8:
 													Remote_Data.Data8 = (int8_t) cMessage[port - 1][1 + shift];
