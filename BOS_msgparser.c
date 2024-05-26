@@ -15,17 +15,7 @@ uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
 uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
-typedef struct
-{
-float DataFloat[4];
-uint32_t DataU32;
-int32_t Data32;
-uint16_t DataU16;
-int16_t Data16;
-uint8_t DataU8[3];
-int8_t Data8;
-}Data;
-Data  Remote_Data ;
+
 
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
@@ -35,6 +25,9 @@ int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
 
 /* Receiving the Defalt_Value for the H1DR5 module */
 receive_defalt_value defalt_data;
+
+/* Remote Buffer of Messages */
+RemoteDataBuffer_t RemoteDataBuffer;
 
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
@@ -1301,38 +1294,37 @@ void PxMessagingTask(void *argument){
 													break;
 												case FMT_BOOL:
 												case FMT_UINT8:
-													Remote_Data.DataU8[0]= cMessage[port - 1][1 + shift];
-													Remote_Data.DataU8[1]= cMessage[port - 1][2 + shift];
-													Remote_Data.DataU8[2]= cMessage[port - 1][3 + shift];
+													RemoteDataBuffer.DataU8[0]= cMessage[port - 1][1 + shift];
+													RemoteDataBuffer.DataU8[1]= cMessage[port - 1][2 + shift];
+													RemoteDataBuffer.DataU8[2]= cMessage[port - 1][3 + shift];
 													break;
 												case FMT_INT8:
-													Remote_Data.Data8 = (int8_t) cMessage[port - 1][1 + shift];
+													RemoteDataBuffer.Data8 = (int8_t) cMessage[port - 1][1 + shift];
 													break;
 												case FMT_UINT16:
-													Remote_Data.DataU16 = ((uint16_t) cMessage[port - 1][1+ shift] << 0)+ ((uint16_t) cMessage[port - 1][2 + shift]<< 8);
+													RemoteDataBuffer.DataU16 = ((uint16_t) cMessage[port - 1][1+ shift] << 0)+ ((uint16_t) cMessage[port - 1][2 + shift]<< 8);
 													break;
 												case FMT_INT16:
-													Remote_Data.Data16 = ((int16_t) cMessage[port - 1][1+ shift] << 0)+ ((int16_t) cMessage[port - 1][2 + shift]<< 8);
+													RemoteDataBuffer.Data16 = ((int16_t) cMessage[port - 1][1+ shift] << 0)+ ((int16_t) cMessage[port - 1][2 + shift]<< 8);
 													break;
 												case FMT_UINT32:
-													Remote_Data.DataU32 = ((uint32_t) cMessage[port - 1][1	+ shift] << 0)	+ ((uint32_t) cMessage[port - 1][2 + shift]	<< 8)+ ((uint32_t) cMessage[port - 1][3 + shift]<< 16)+ ((uint32_t) cMessage[port - 1][4 + shift]<< 24);
+													RemoteDataBuffer.DataU32 = ((uint32_t) cMessage[port - 1][1	+ shift] << 0)	+ ((uint32_t) cMessage[port - 1][2 + shift]	<< 8)+ ((uint32_t) cMessage[port - 1][3 + shift]<< 16)+ ((uint32_t) cMessage[port - 1][4 + shift]<< 24);
 													break;
 												case FMT_INT32:
-													Remote_Data.Data32 = ((int32_t) cMessage[port - 1][1+ shift] << 0)+ ((int32_t) cMessage[port - 1][2 + shift]<< 8)+ ((int32_t) cMessage[port - 1][3 + shift]<< 16)+ ((int32_t) cMessage[port - 1][4 + shift]<< 24);
-
+													RemoteDataBuffer.Data32 = ((int32_t) cMessage[port - 1][1+ shift] << 0)+ ((int32_t) cMessage[port - 1][2 + shift]<< 8)+ ((int32_t) cMessage[port - 1][3 + shift]<< 16)+ ((int32_t) cMessage[port - 1][4 + shift]<< 24);
 													break;
 												case FMT_FLOAT:
 													uint32_t temp = ((uint32_t) cMessage[port - 1][1+ shift] << 0)| ((uint32_t) cMessage[port - 1][2 + shift]<< 8)| ((uint32_t) cMessage[port - 1][3 + shift]<< 16)| ((uint32_t) cMessage[port - 1][4 + shift]<< 24);
-													Remote_Data.DataFloat[0] = *((float*)&temp);
+													RemoteDataBuffer.DataFloat[0] = *((float*)&temp);
 													temp=0;
 													temp = ((uint32_t) cMessage[port - 1][5+ shift] << 0)| ((uint32_t) cMessage[port - 1][6 + shift]<< 8)| ((uint32_t) cMessage[port - 1][7 + shift]<< 16)| ((uint32_t) cMessage[port - 1][8 + shift]<< 24);
-													Remote_Data.DataFloat[1] = *((float*)&temp);
+													RemoteDataBuffer.DataFloat[1] = *((float*)&temp);
 													temp=0;
 												    temp = ((uint32_t) cMessage[port - 1][9+ shift] << 0)| ((uint32_t) cMessage[port - 1][10 + shift]<< 8)| ((uint32_t) cMessage[port - 1][11 + shift]<< 16)| ((uint32_t) cMessage[port - 1][12 + shift]<< 24);
-													Remote_Data.DataFloat[2] = *((float*)&temp);
+												    RemoteDataBuffer.DataFloat[2] = *((float*)&temp);
 													temp=0;
 													temp = ((uint32_t) cMessage[port - 1][13+ shift] << 0)| ((uint32_t) cMessage[port - 1][14 + shift]<< 8)| ((uint32_t) cMessage[port - 1][15 + shift]<< 16)| ((uint32_t) cMessage[port - 1][16 + shift]<< 24);
-													Remote_Data.DataFloat[3] = *((float*)&temp);
+													RemoteDataBuffer.DataFloat[3] = *((float*)&temp);
 													temp=0;
 													break;
 												default:
