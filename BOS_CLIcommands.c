@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_CLIcommands.c
