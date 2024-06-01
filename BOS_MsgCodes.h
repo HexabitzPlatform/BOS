@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -57,7 +57,7 @@
 #define	MSG_Acknowledgment_Accepted 	  	  44
 #define	MSG_rejected 						  45
 
-
+#define CODE_READ_RESPONSE			          46
 /*
    -----------------------------------------------------------------------
   |					User Message Codes (70-99)  						  |

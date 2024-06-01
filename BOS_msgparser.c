@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_msgparser.c
@@ -15,6 +15,8 @@ uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
 uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
+
+
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
@@ -23,6 +25,9 @@ int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
 
 /* Receiving the Defalt_Value for the H1DR5 module */
 receive_defalt_value defalt_data;
+
+/* Remote Buffer of Messages */
+RemoteDataBuffer_t RemoteDataBuffer;
 
 /* Exported Variables */
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
@@ -1282,6 +1287,74 @@ void PxMessagingTask(void *argument){
 						case MSG_rejected:
 							rejected_FLAG =1;
 							break;
+						case CODE_READ_RESPONSE:
+												switch (cMessage[port - 1][shift]) {
+										     	case 0:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													responseStatus = BOS_ERR_REMOTE_READ_NO_VAR;
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_BOOL:
+												case FMT_UINT8:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.DataU8[0]= cMessage[port - 1][2 + shift];
+													RemoteDataBuffer.DataU8[1]= cMessage[port - 1][3 + shift];
+													RemoteDataBuffer.DataU8[2]= cMessage[port - 1][4 + shift];
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_INT8:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.Data8 = (int8_t) cMessage[port - 1][2 + shift];
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_UINT16:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.DataU16 = ((uint16_t) cMessage[port - 1][2+ shift] << 0)+ ((uint16_t) cMessage[port - 1][3 + shift]<< 8);
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_INT16:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.Data16 = ((int16_t) cMessage[port - 1][2+ shift] << 0)+ ((int16_t) cMessage[port - 1][3 + shift]<< 8);
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_UINT32:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.DataU32 = ((uint32_t) cMessage[port - 1][2	+ shift] << 0)	+ ((uint32_t) cMessage[port - 1][3 + shift]	<< 8)+ ((uint32_t) cMessage[port - 1][4 + shift]<< 16)+ ((uint32_t) cMessage[port - 1][5 + shift]<< 24);
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_INT32:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.Data32 = ((int32_t) cMessage[port - 1][2+ shift] << 0)+ ((int32_t) cMessage[port - 1][3 + shift]<< 8)+ ((int32_t) cMessage[port - 1][4 + shift]<< 16)+ ((int32_t) cMessage[port - 1][5 + shift]<< 24);
+											        }  else result =BOS_ERROR ;
+													break;
+												case FMT_FLOAT:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+									   		        {	result =BOS_OK ;
+													uint32_t temp = ((uint32_t) cMessage[port - 1][2+ shift] << 0)| ((uint32_t) cMessage[port - 1][3 + shift]<< 8)| ((uint32_t) cMessage[port - 1][4 + shift]<< 16)| ((uint32_t) cMessage[port - 1][5 + shift]<< 24);
+													RemoteDataBuffer.DataFloat[0] = *((float*)&temp);
+													temp=0;
+													temp = ((uint32_t) cMessage[port - 1][6+ shift] << 0)| ((uint32_t) cMessage[port - 1][7 + shift]<< 8)| ((uint32_t) cMessage[port - 1][8 + shift]<< 16)| ((uint32_t) cMessage[port - 1][9 + shift]<< 24);
+													RemoteDataBuffer.DataFloat[1] = *((float*)&temp);
+													temp=0;
+												    temp = ((uint32_t) cMessage[port - 1][10+ shift] << 0)| ((uint32_t) cMessage[port - 1][11 + shift]<< 8)| ((uint32_t) cMessage[port - 1][12 + shift]<< 16)| ((uint32_t) cMessage[port - 1][13 + shift]<< 24);
+												    RemoteDataBuffer.DataFloat[2] = *((float*)&temp);
+													temp=0;
+													temp = ((uint32_t) cMessage[port - 1][14+ shift] << 0)| ((uint32_t) cMessage[port - 1][15 + shift]<< 8)| ((uint32_t) cMessage[port - 1][16 + shift]<< 16)| ((uint32_t) cMessage[port - 1][17 + shift]<< 24);
+													RemoteDataBuffer.DataFloat[3] = *((float*)&temp);
+													temp=0;
+											        }  else result =BOS_ERROR ;
+													break;
+												default:
+													break;
+												}
+													break;
 
 						default:
 							/* First check user-defined messages */

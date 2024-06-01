@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -213,6 +213,19 @@ typedef struct receiveDefaltValue {
 		uint8_t Remote_PORT;
 
 } receive_defalt_value;
+
+
+/*  */
+typedef struct
+{
+	int8_t   Data8;
+	uint8_t  DataU8[3];
+	int16_t  Data16;
+	uint16_t DataU16;
+	int32_t  Data32;
+	uint32_t DataU32;
+	float    DataFloat[4];
+}RemoteDataBuffer_t;
 
 
 /* Button Events Definition */
@@ -502,7 +515,7 @@ extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 extern snippet_t snippets[MAX_SNIPPETS];
 extern uint8_t numOfBosCommands;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-
+extern RemoteDataBuffer_t RemoteDataBuffer;
 
 
 
