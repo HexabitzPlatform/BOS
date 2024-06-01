@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.3 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_msgparser.c
@@ -1296,6 +1296,11 @@ void PxMessagingTask(void *argument){
 											        }  else result =BOS_ERROR ;
 													break;
 												case FMT_BOOL:
+											        if( BOS_OK == cMessage[port - 1][1+ shift])
+											        {	result =BOS_OK ;
+													RemoteDataBuffer.Databool= cMessage[port - 1][2 + shift];
+											        }  else result =BOS_ERROR ;
+													break;
 												case FMT_UINT8:
 											        if( BOS_OK == cMessage[port - 1][1+ shift])
 											        {	result =BOS_OK ;
@@ -1313,7 +1318,10 @@ void PxMessagingTask(void *argument){
 												case FMT_UINT16:
 											        if( BOS_OK == cMessage[port - 1][1+ shift])
 											        {	result =BOS_OK ;
-													RemoteDataBuffer.DataU16 = ((uint16_t) cMessage[port - 1][2+ shift] << 0)+ ((uint16_t) cMessage[port - 1][3 + shift]<< 8);
+													RemoteDataBuffer.DataU16[0] = ((uint16_t) cMessage[port - 1][2+ shift] << 0)+ ((uint16_t) cMessage[port - 1][3 + shift]<< 8);
+													RemoteDataBuffer.DataU16[1] = ((uint16_t) cMessage[port - 1][4+ shift] << 0)+ ((uint16_t) cMessage[port - 1][5 + shift]<< 8);
+													RemoteDataBuffer.DataU16[2] = ((uint16_t) cMessage[port - 1][6+ shift] << 0)+ ((uint16_t) cMessage[port - 1][7 + shift]<< 8);
+
 											        }  else result =BOS_ERROR ;
 													break;
 												case FMT_INT16:
