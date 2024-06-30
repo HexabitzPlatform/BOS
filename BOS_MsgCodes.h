@@ -207,7 +207,8 @@
 #define CODE_H16R6_SETALLLEDOFF               1105
 #define CODE_H16R6_SETLEDON                   1106
 #define CODE_H16R6_SETALLLEDON                1107
-
+#define CODE_H16R6_ScrollMode                 1108
+#define CODE_H16R6_FlashMode                  1109
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
