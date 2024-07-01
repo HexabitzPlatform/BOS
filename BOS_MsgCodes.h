@@ -237,15 +237,15 @@
 #define CODE_H10R4_STREAM_TYPE				  1366
 
 //H1DR5x
-#define CODE_H1DR5_Ethernet_Send_Data		  1450
-#define CODE_H1DR5_Ethernet_Receive_Data      1451
-#define CODE_H1DR5_Set_Local_IP               1452
-#define CODE_H1DR5_Set_Remote_IP              1453
-#define CODE_H1DR5_Set_Subnet_Mask    		  1454
-#define CODE_H1DR5_Set_Local_PORT             1455
-#define CODE_H1DR5_Set_Remote_PORT            1456
-#define CODE_H1DR5_reseve_mac_and_ip_Remote   1457
-#define CODE_H1DR5_Defalt_Value               1458
+#define CODE_H1DR5_EthernetSendData			  1450
+//#define CODE_H1DR5_Ethernet_Receive_Data    1451
+#define CODE_H1DR5_SetLocalIP	              1452
+#define CODE_H1DR5_SetRemoteIP             	  1453
+#define CODE_H1DR5_SetSubnetMask    		  1454
+#define CODE_H1DR5_SetLocalPORT           	  1455
+#define CODE_H1DR5_SetRemotePORT	          1456
+#define CODE_H1DR5_SetRemoteIPRemoteMAC       1457
+#define CODE_H1DR5_DefaultValues              1458
 /* Receiving the Defalt_Value for the H1DR5 module */
 #define CODE_H1DR5_receive_Defalt_Value       1459
 
