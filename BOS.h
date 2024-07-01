@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.h
@@ -218,10 +218,11 @@ typedef struct receiveDefaltValue {
 /*  */
 typedef struct
 {
+	bool     Databool;
 	int8_t   Data8;
 	uint8_t  DataU8[3];
 	int16_t  Data16;
-	uint16_t DataU16;
+	uint16_t DataU16[3];
 	int32_t  Data32;
 	uint32_t DataU32;
 	float    DataFloat[4];

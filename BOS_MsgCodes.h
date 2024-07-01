@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.4 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -102,6 +102,22 @@
 #define CODE_H07R3_PLAY_TUNE				  352
 #define CODE_H07R3_SCAN_WAVE_RESPONSE		  353
 
+// H07R8x
+#define CODE_H07R8_CODEC_INIT                 375
+#define CODE_H07R8_CODEC_STREAM_START         376
+#define CODE_H07R8_CODEC_STREAM_STOP          377
+#define CODE_H07R8_CODEC_DAC_GAIN		      378
+#define CODE_H07R8_CODEC_AUDIO_LEVEL_CTRL     379
+#define CODE_H07R8_CODEC_AUDIO_MUTE           380
+#define CODE_H07R8_CODEC_AUDIO_UNMUTE         381
+#define CODE_H07R8_CODEC_ENABLE_SHOUTDOWN	  382
+#define CODE_H07R8_CODEC_DISABLE_SHOUTDOWN	  383
+#define CODE_H07R8_AMP_GAIN					  384
+#define CODE_H07R8_AMP_MUTE                   385
+#define CODE_H07R8_AMP_UNMUTE                 386
+#define CODE_H07R8_AMP_ENABLE_SHOUTDOWN       387
+#define CODE_H07R8_AMP_DISABLE_SHOUTDOWN      388
+
 // H08R7x
 #define CODE_H08R7_GET_INFO                   400
 #define CODE_H08R7_SAMPLE_PORT                401
@@ -115,19 +131,6 @@
 #define CODE_H08R7_MAX_RANGE                  409
 #define CODE_H08R7_MIN_RANGE                  410
 #define CODE_H08R7_TIMEOUT                	  411
-
-// H07R8x
-#define CODE_H07R8_CODEC_INIT                 375
-#define CODE_H07R8_CODEC_STREAM_AUDIO		  376
-#define CODE_H07R8_CODEC_SOUND_LEVEL_CTRL     377
-#define CODE_H07R8_CODEC_SOUND_MUTE           378
-#define CODE_H07R8_CODEC_SOUND_UNMUTE         379
-#define CODE_H07R8_CODEC_SHOUTDOWN			  380
-#define CODE_H07R8_AMP_GAIN					  381
-#define CODE_H07R8_AMP_MUTE                   382
-#define CODE_H07R8_AMP_UNMUTE                 383
-#define CODE_H07R8_AMP_ENABLE_SHOUTDOWN       384
-#define CODE_H07R8_AMP_DISABLE_SHOUTDOWN      385
 
 // H08R6x
 
@@ -204,7 +207,8 @@
 #define CODE_H16R6_SETALLLEDOFF               1105
 #define CODE_H16R6_SETLEDON                   1106
 #define CODE_H16R6_SETALLLEDON                1107
-
+#define CODE_H16R6_ScrollMode                 1108
+#define CODE_H16R6_FlashMode                  1109
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
@@ -233,15 +237,15 @@
 #define CODE_H10R4_STREAM_TYPE				  1366
 
 //H1DR5x
-#define CODE_H1DR5_Ethernet_Send_Data		  1450
-#define CODE_H1DR5_Ethernet_Receive_Data      1451
-#define CODE_H1DR5_Set_Local_IP               1452
-#define CODE_H1DR5_Set_Remote_IP              1453
-#define CODE_H1DR5_Set_Subnet_Mask    		  1454
-#define CODE_H1DR5_Set_Local_PORT             1455
-#define CODE_H1DR5_Set_Remote_PORT            1456
-#define CODE_H1DR5_reseve_mac_and_ip_Remote   1457
-#define CODE_H1DR5_Defalt_Value               1458
+#define CODE_H1DR5_EthernetSendData			  1450
+//#define CODE_H1DR5_Ethernet_Receive_Data    1451
+#define CODE_H1DR5_SetLocalIP	              1452
+#define CODE_H1DR5_SetRemoteIP             	  1453
+#define CODE_H1DR5_SetSubnetMask    		  1454
+#define CODE_H1DR5_SetLocalPORT           	  1455
+#define CODE_H1DR5_SetRemotePORT	          1456
+#define CODE_H1DR5_SetRemoteIPRemoteMAC       1457
+#define CODE_H1DR5_DefaultValues              1458
 /* Receiving the Defalt_Value for the H1DR5 module */
 #define CODE_H1DR5_receive_Defalt_Value       1459
 
