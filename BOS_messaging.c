@@ -21,7 +21,7 @@ BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 uint32_t totalnumberoftransmiitedmesg=0;
 volatile uint8_t RemoteResponseFlag;
-uint32_t RemoteResponseBuffer[4];
+volatile uint32_t RemoteResponseBuffer[4];
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
@@ -243,6 +243,34 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 	memset(messageParams,0,numberOfParams);
 	
 	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
+
+/* --- Read message codes data from a remote sensor "input" module
+ */
+BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint8_t numOfElement,uint32_t *pDataReceived)
+{
+  BOS_Status result =BOS_OK;
+  uint32_t Count = 0;
+  uint8_t dataIndex = 0;
+  uint32_t tickstart = HAL_GetTick();
+  uint8_t timeout = 200;
+
+  messageParams[0] = myID;        // source module ID
+  SendMessageToModule(disModuleID, Code, 1);
+
+  while (RemoteResponseFlag == 0) {
+    if ((HAL_GetTick() - tickstart) > timeout)
+      return BOS_ERROR;
+  }
+
+  if (RemoteResponseFlag) {
+	  RemoteResponseFlag = 0;
+    for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
+      pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
+  } else
+    return result = BOS_ERROR;
 }
 
 /*-----------------------------------------------------------*/

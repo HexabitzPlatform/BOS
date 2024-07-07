@@ -56,7 +56,7 @@ extern uint16_t groupModules[MaxNumOfModules];
 extern uint16_t arrayPortsDir[__N ];
 #endif
 extern volatile uint8_t RemoteResponseFlag;
-extern uint32_t RemoteResponseBuffer[4];
+extern volatile uint32_t RemoteResponseBuffer[4];
 
 /* Routing and Topology */
 extern uint16_t neighbors2[NumOfPorts][2];
@@ -1296,7 +1296,7 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_READ_RESPONSE:
-						 RemoteResponseFlag = 0;
+						 RemoteResponseFlag = 1;
 
 						switch (cMessage[port - 1][shift]) {
 						case 0:
