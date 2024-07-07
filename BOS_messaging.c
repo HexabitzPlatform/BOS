@@ -20,6 +20,9 @@ extern bool AddBcastPayload;
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 uint32_t totalnumberoftransmiitedmesg=0;
+volatile uint8_t RemoteResponseFlag;
+uint32_t RemoteResponseBuffer[4];
+
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
