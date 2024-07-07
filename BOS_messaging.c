@@ -252,17 +252,25 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint8_t numOfElement,uint32_t *pDataReceived)
 {
   BOS_Status result =BOS_OK;
-  uint32_t Count = 0;
   uint8_t dataIndex = 0;
   uint32_t tickstart = HAL_GetTick();
-  uint8_t timeout = 200;
+  uint8_t timeout = 50;
+  uint8_t NumberOfModules;
+  uint16_t wait = 0;
 
+  /* Calculating timeout depending on number of modules in the array  */
+  FindRoute(myID, disModuleID);
+  NumberOfModules = NumberOfHops (disModuleID);
+  wait = NumberOfModules * timeout;
+
+  /* Sending a message to the module */
   messageParams[0] = myID;        // source module ID
   SendMessageToModule(disModuleID, Code, 1);
 
+  /* timeout loop */
   while (RemoteResponseFlag == 0) {
-    if ((HAL_GetTick() - tickstart) > timeout)
-      return BOS_ERROR;
+    if ((HAL_GetTick() - tickstart) > wait)
+      return result = BOS_ERROR;
   }
 
   if (RemoteResponseFlag) {
@@ -308,7 +316,7 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	/* Singlecast message */
 	if(dst != BOS_BROADCAST){
 		/* Find best output port for destination module */
-		//port =FindRoute(myID,dst);
+//		port =FindRoute(myID,dst);
 
 		//Replace FindRoute() with Output_Port_Array
 		#ifdef __N
