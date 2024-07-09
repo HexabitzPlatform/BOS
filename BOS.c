@@ -2107,14 +2107,14 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFo
 /*-----------------------------------------------------------*/
 
 /* --- Write a value to a remote module. 
- module: Remote module ID.
- localAddress: Local memory address (RAM or Flash).
- remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+ dstModuleID: Remote module ID.
+ localVarAddress: Local memory address (RAM or Flash).
+ BOSVarAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
  format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
  timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
  */
-BOS_Status WriteRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout){
-	return WriteToRemote(module,localAddress,remoteAddress,format,timeout,0);
+BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t BOSVarAddress,varFormat_t format,uint32_t timeout){
+	return WriteToRemote(dstModuleID,localVarAddress,BOSVarAddress,format,timeout,0);
 }
 
 /*-----------------------------------------------------------*/
