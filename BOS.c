@@ -1897,34 +1897,35 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 
 /* --- Write a value to a remote module.
  module: Remote module ID.
- localAddress: Local memory address (RAM or Flash).
- remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+ localAddress: Local memory address of a local variable.
+ remoteAddress: Use the 1 to MAX_BOS_VARS to write BOS variables.
  format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
  timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
- force: Put 1 to force full-page erase before writing to Flash.
  */
 BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force){
-	
+
+	BOS_Status result =BOS_OK;
 	uint8_t response;
 	uint16_t code;
-	
+
 	/* Check whether response is enabled or disabled */
-	response =BOSMessaging.response;
-	if(timeout)
-		BOSMessaging.response = BOS_RESPONSE_MSG;
-	else
-		BOSMessaging.response = BOS_RESPONSE_NONE;
-	
+//	response = BOSMessaging.response;
+//	if (timeout)
+//		BOSMessaging.response = BOS_RESPONSE_MSG;
+//	else
+//		BOSMessaging.response = BOS_RESPONSE_NONE;
+
 	/* Check if a force write is needed */
-	if(force)
-		code = CODE_WRITE_REMOTE_FORCE;
-	else
-		code = CODE_WRITE_REMOTE;
-	
+//	if (force)
+//		code = CODE_WRITE_REMOTE_FORCE;
+//	else
+//		code = CODE_WRITE_REMOTE;
+
 	/* Writing to a BOS var */
-	if(remoteAddress < FLASH_BASE){
-		messageParams[0] =remoteAddress;			// Send BOS variable index
-		messageParams[1] =format;						// Send local format
+	if (remoteAddress < MAX_BOS_VARS) {
+		messageParams[0] = remoteAddress;			// Send BOS variable index
+		messageParams[1] =format;					// Send local format
+
 		/* Send variable value based on local format */
 		switch(format){
 			case FMT_BOOL:
@@ -1932,20 +1933,24 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 				messageParams[2] =*(__IO uint8_t* )localAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
+
 			case FMT_INT8:
 				messageParams[2] =*(__IO int8_t* )localAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
+
 			case FMT_UINT16:
 				messageParams[2] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 0);
 				messageParams[3] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
+
 			case FMT_INT16:
 				messageParams[2] =(uint8_t )((*(__IO int16_t* )localAddress) >> 0);
 				messageParams[3] =(uint8_t )((*(__IO int16_t* )localAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
+
 			case FMT_UINT32:
 				messageParams[2] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 0);
 				messageParams[3] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 8);
@@ -1953,6 +1958,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 				messageParams[5] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
+
 			case FMT_INT32:
 				messageParams[2] =(uint8_t )((*(__IO int32_t* )localAddress) >> 0);
 				messageParams[3] =(uint8_t )((*(__IO int32_t* )localAddress) >> 8);
@@ -1960,6 +1966,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 				messageParams[5] =(uint8_t )((*(__IO int32_t* )localAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
+
 			case FMT_FLOAT:
 				messageParams[2] =*(__IO uint8_t* )(localAddress + 0);
 				messageParams[3] =*(__IO uint8_t* )(localAddress + 1);
@@ -1971,81 +1978,29 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 				messageParams[9] =*(__IO uint8_t* )(localAddress + 7); // You cannot bitwise floats
 				SendMessageToModule(module,CODE_WRITE_REMOTE,10);
 				break;
+
 			default:
+				result =BOS_ERR_WrongParam;
 				break;
 		}
 	}
-	/* Writing to a memory address */
+
 	else{
-		messageParams[0] =0;
-		messageParams[1] =format;							// Local format
-		messageParams[2] =(uint8_t )(remoteAddress >> 24);
-		messageParams[3] =(uint8_t )(remoteAddress >> 16); // Remote address
-		messageParams[4] =(uint8_t )(remoteAddress >> 8);
-		messageParams[5] =(uint8_t )remoteAddress;
-		/* Send variable value based on local format */
-		switch(format){
-			case FMT_BOOL:
-			case FMT_UINT8:
-				messageParams[6] =*(__IO uint8_t* )localAddress;
-				SendMessageToModule(module,code,7);
-				break;
-			case FMT_INT8:
-				messageParams[6] =*(__IO int8_t* )localAddress;
-				SendMessageToModule(module,code,7);
-				break;
-			case FMT_UINT16:
-				messageParams[6] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 8);
-				SendMessageToModule(module,code,8);
-				break;
-			case FMT_INT16:
-				messageParams[6] =(uint8_t )((*(__IO int16_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int16_t* )localAddress) >> 8);
-				SendMessageToModule(module,code,8);
-				break;
-			case FMT_UINT32:
-				messageParams[6] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 24);
-				SendMessageToModule(module,code,10);
-				break;
-			case FMT_INT32:
-				messageParams[6] =(uint8_t )((*(__IO int32_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int32_t* )localAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO int32_t* )localAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO int32_t* )localAddress) >> 24);
-				SendMessageToModule(module,code,10);
-				break;
-			case FMT_FLOAT:
-				messageParams[6] =*(__IO uint8_t* )(localAddress + 0);
-				messageParams[7] =*(__IO uint8_t* )(localAddress + 1);
-				messageParams[8] =*(__IO uint8_t* )(localAddress + 2);
-				messageParams[9] =*(__IO uint8_t* )(localAddress + 3);
-				messageParams[10] =*(__IO uint8_t* )(localAddress + 4);
-				messageParams[11] =*(__IO uint8_t* )(localAddress + 5);
-				messageParams[12] =*(__IO uint8_t* )(localAddress + 6);
-				messageParams[13] =*(__IO uint8_t* )(localAddress + 7); // You cannot bitwise floats
-				SendMessageToModule(module,code,14);
-				break;
-			default:
-				break;
-		}
+		result =BOS_ERR_REMOTE_WRITE_INDEX;
 	}
-	
-	/* Restore response settings to default */
-	BOSMessaging.response =response;
 	
 	/* If confirmation is requested, wait for it until timeout */
-	if(timeout){
-		uint32_t t0 =HAL_GetTick();
-		while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){};
-		return responseStatus;
-	}
+//	if(timeout){
+//		uint32_t t0 =HAL_GetTick();
+//		while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){};
+//		return responseStatus;
+//	}
 	
 	return BOS_OK;
 }
+
+/*-----------------------------------------------------------*/
+
 /* --- Read a variable from a remote module. 
  This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
  If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
