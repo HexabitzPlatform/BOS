@@ -639,7 +639,6 @@ extern uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteAddress,varFormat_t
 extern uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteAddress,varFormat_t requestedFormat,uint32_t timeout);
 extern uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFormat,uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t BOSVarAddress,varFormat_t format,uint32_t timeout);
-extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format,uint32_t address);
 extern BOS_Status WriteToMBModule(uint8_t dst,uint8_t rank,float var1,float var2,float var3);
 extern BOS_Status ReadFromMBModule(uint8_t dst,uint8_t rank,uint32_t timeout);

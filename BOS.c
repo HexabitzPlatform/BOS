@@ -2119,19 +2119,6 @@ BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t BOS
 
 /*-----------------------------------------------------------*/
 
-/* --- Write a value to a remote module and force full-page erase when writing to Flash. 
- module: Remote module ID.
- localAddress: Local memory address (RAM or Flash).
- remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
- format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
- timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
- */
-BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout){
-	return WriteToRemote(module,localAddress,remoteAddress,format,timeout,1);
-}
-
-/*-----------------------------------------------------------*/
-
 /* --- Assign an index to a new BOS variable. BOS variables must be global or static to ensure we don't refernce a stack address.
  */
 uint8_t AddBOSvar(varFormat_t format,uint32_t address){
