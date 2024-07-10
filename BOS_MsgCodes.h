@@ -210,7 +210,8 @@
 #define CODE_H16R6_FLASHMODE                  1109
 #define CODE_H16R6_COLORPICKERMODE            1110
 #define CODE_H16R6_SETCOLORSOMELED            1111
-
+#define CODE_H16R6_MOTIONMODE                 1112
+#define CODE_H16R6_CROSSFADEMODE              1113
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
