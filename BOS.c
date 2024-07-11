@@ -2023,14 +2023,14 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteAddress,varFormat_t *remot
 	};
 	
 	/* Return the read value address */
-	if(responseStatus == BOS_OK){
+//	if(responseStatus == BOS_OK){
 		/* Return the remote var format */
 		*remoteFormat =remoteVarFormat;
 		
 		return ((uint32_t* )&remoteBuffer);
-	}
-	else
-		return NULL;
+//	}
+//	else
+//		return NULL;
 }
 
 /*-----------------------------------------------------------*/
