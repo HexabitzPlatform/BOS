@@ -21,6 +21,7 @@ BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 uint32_t totalnumberoftransmiitedmesg=0;
 volatile uint8_t RemoteResponseFlag;
+volatile uint8_t numOfElement;
 volatile uint32_t RemoteResponseBuffer[4];
 
 /* Messaging tasks */
@@ -249,36 +250,30 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 
 /* --- Read message codes data from a remote sensor "input" module
  */
-BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint8_t numOfElement,uint32_t *pDataReceived)
+BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
 {
-  BOS_Status result =BOS_OK;
-  uint8_t dataIndex = 0;
-  uint32_t tickstart = HAL_GetTick();
-  uint8_t timeout = 50;
-  uint8_t NumberOfModules;
-  uint16_t wait = 0;
+	  BOS_Status result =BOS_OK;
+	  uint8_t dataIndex = 0;
+	  uint32_t tickstart = HAL_GetTick();
 
-  /* Calculating timeout depending on number of modules in the array  */
-  FindRoute(myID, disModuleID);
-  NumberOfModules = NumberOfHops (disModuleID);
-  wait = NumberOfModules * timeout;
 
-  /* Sending a message to the module */
-  messageParams[0] = myID;        // source module ID
-  SendMessageToModule(disModuleID, Code, 1);
+	  /* Sending a message to the module */
+	  messageParams[0] = myID;        // source module ID
+	  SendMessageToModule(disModuleID, Code, 1);
 
-  /* timeout loop */
-  while (RemoteResponseFlag == 0) {
-    if ((HAL_GetTick() - tickstart) > wait)
-      return result = BOS_ERROR;
-  }
+	  /* timeout loop */
+	  while (RemoteResponseFlag == 0) {
+	    if ((HAL_GetTick() - tickstart) > timeout)
+	      return result = BOS_ERROR;
+	  }
 
-  if (RemoteResponseFlag) {
-	  RemoteResponseFlag = 0;
-    for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
-      pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
-  } else
-    return result = BOS_ERROR;
+	  if (RemoteResponseFlag) {
+		  RemoteResponseFlag = 0;
+	    for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
+	      pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
+	  } else
+	    return result = BOS_ERROR;
+
 }
 
 /*-----------------------------------------------------------*/
