@@ -162,18 +162,18 @@
 #define CODE_H0AR9_STREAM_STOP                510
 
 // H0BR4x
-#define CODE_H0BR4_SAMPLE_PORT_GYRO           550
-#define CODE_H0BR4_SAMPLE_PORT_ACC            551
-#define CODE_H0BR4_SAMPLE_PORT_MAG		      552
-#define CODE_H0BR4_SAMPLE_PORT_TEMP		      553
+#define CODE_H0BR4_SAMPLE_GYRO                550
+#define CODE_H0BR4_SAMPLE_ACC                 551
+#define CODE_H0BR4_SAMPLE_MAG		          552
+#define CODE_H0BR4_SAMPLE_TEMP		          553
 #define CODE_H0BR4_RESULT_GYRO                554
 #define CODE_H0BR4_RESULT_ACC                 555
 #define CODE_H0BR4_RESULT_MAG		 	      556
 #define CODE_H0BR4_RESULT_TEMP		          557
-#define CODE_H0BR4_STREAM_PORT_GYRO			  558
-#define CODE_H0BR4_STREAM_PORT_ACC			  559
-#define CODE_H0BR4_STREAM_PORT_MAG			  560
-#define CODE_H0BR4_STREAM_PORT_TEMP			  561
+#define CODE_H0BR4_STREAM_GYRO	     		  558
+#define CODE_H0BR4_STREAM_ACC		    	  559
+#define CODE_H0BR4_STREAM_MAG		    	  560
+#define CODE_H0BR4_STREAM_TEMP		     	  561
 #define CODE_H0BR4_STREAM_STOP				  562
 
 // H0FR1x
