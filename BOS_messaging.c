@@ -251,28 +251,30 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 /* --- Read message codes data from a remote sensor "input" module
  */
 BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
-{
-	  BOS_Status result =BOS_OK;
-	  uint8_t dataIndex = 0;
-	  uint32_t tickstart = HAL_GetTick();
+ {
+	BOS_Status result = BOS_OK;
+	uint8_t dataIndex = 0;
+	uint32_t tickstart = HAL_GetTick();
 
+	/* Sending a message to the module */
+	messageParams[0] = myID;        // source module ID
+	SendMessageToModule(disModuleID, Code, 1);
 
-	  /* Sending a message to the module */
-	  messageParams[0] = myID;        // source module ID
-	  SendMessageToModule(disModuleID, Code, 1);
+	/* timeout loop */
+	while (0 == RemoteResponseFlag) {
+		if ((HAL_GetTick() - tickstart) > timeout)
+			return result = BOS_ERR_TIMEOUT;
+	}
 
-	  /* timeout loop */
-	  while (RemoteResponseFlag == 0) {
-	    if ((HAL_GetTick() - tickstart) > timeout)
-	      return result = BOS_ERROR;
-	  }
+	if (RemoteResponseFlag) {
+		RemoteResponseFlag = 0;
+		tickstart = HAL_GetTick();
+		for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
+			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
 
-	  if (RemoteResponseFlag) {
-		  RemoteResponseFlag = 0;
-	    for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
-	      pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
-	  } else
-	    return result = BOS_ERROR;
+		return result = BOS_OK;
+	} else
+		return result = BOS_ERROR;
 
 }
 
