@@ -1386,6 +1386,21 @@ void PxMessagingTask(void *argument){
 										+ ((uint32_t) cMessage[port - 1][5 + shift] << 16)
 										+ ((uint32_t) cMessage[port - 1][6 + shift] << 24);
 
+								RemoteResponseBuffer[1] = ((uint32_t) cMessage[port - 1][7 + shift] << 0)
+										| ((uint32_t) cMessage[port - 1][8 + shift] << 8)
+										| ((uint32_t) cMessage[port - 1][9 + shift] << 16)
+										| ((uint32_t) cMessage[port - 1][10 + shift] << 24);
+
+								RemoteResponseBuffer[2] = ((uint32_t) cMessage[port - 1][11 + shift] << 0)
+										| ((uint32_t) cMessage[port - 1][12 + shift] << 8)
+										| ((uint32_t) cMessage[port - 1][13 + shift] << 16)
+										| ((uint32_t) cMessage[port - 1][14 + shift] << 24);
+
+								RemoteResponseBuffer[3] = ((uint32_t) cMessage[port - 1][15 + shift] << 0)
+										| ((uint32_t) cMessage[port - 1][16 + shift] << 8)
+										| ((uint32_t) cMessage[port - 1][17 + shift] << 16)
+										| ((uint32_t) cMessage[port - 1][18 + shift] << 24);
+
 							} else
 								result = BOS_ERROR;
 							break;
