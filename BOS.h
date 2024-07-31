@@ -657,6 +657,9 @@ extern BOS_Status Unbridge(uint8_t port1,uint8_t port2);
 /*Print onto Port API */
 extern BOS_Status printfp(uint8_t port,char *str);
 
+/* Power Modes*/
+extern BOS_Status EnableStopModebyUARTx(uint8_t port);
+
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);
 extern void StringToLowerCase(char *string);

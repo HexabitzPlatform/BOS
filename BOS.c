@@ -2345,5 +2345,41 @@ BOS_Status printfp(uint8_t port,char *str){
 }
 
 /*-----------------------------------------------------------*/
+/* enable stop mode regarding only UART1 , UART2 , and UART3 */
+BOS_Status EnableStopModebyUARTx(uint8_t port) {
+
+	UART_WakeUpTypeDef WakeUpSelection;
+
+	UART_HandleTypeDef *huart = GetUart(port);
+
+	if ((huart->Instance = USART1) || (huart->Instance = USART2) || (huart->Instance = USART3)) {
+
+		/* make sure that no LPUART transfer is on-going */
+		while (__HAL_UART_GET_FLAG(huart, USART_ISR_BUSY) == SET);
+
+		/* make sure that LPUART is ready to receive
+		 * (test carried out again later in HAL_UARTEx_StopModeWakeUpSourceConfig) */
+		while (__HAL_UART_GET_FLAG(huart, USART_ISR_REACK) == RESET);
+
+		  /* set the wake-up event:
+		   * specify wake-up on start-bit detection */
+		WakeUpSelection.WakeUpEvent = UART_WAKEUP_ON_STARTBIT;
+		HAL_UARTEx_StopModeWakeUpSourceConfig(huart, WakeUpSelection);
+
+		/* Enable the LPUART Wake UP from stop mode Interrupt */
+		__HAL_UART_ENABLE_IT(huart, UART_IT_WUF);
+
+		/* enable MCU wake-up by LPUART */
+		HAL_UARTEx_EnableStopMode(huart);
+
+		/* enter STOP mode */
+		  HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+	}
+	else
+		return BOS_ERROR;
+
+}
+
+/*-----------------------------------------------------------*/
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
