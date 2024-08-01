@@ -2379,5 +2379,49 @@ BOS_Status EnableStopModebyUARTx(uint8_t port) {
 }
 
 /*-----------------------------------------------------------*/
+/* Enable standby mode regarding wake-up pins:
+ * WKUP1: PA0  pin
+ * WKUP4: PA2  pin
+ * WKUP6: PB5  pin
+ * WKUP2: PC13 pin
+ * NRST pin
+ *  */
+BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins) {
+
+	/* Clear the WUF FLAG */
+	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
+
+	/* Enable the WAKEUP PIN */
+	switch (WakeupPins) {
+
+	case PA0_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
+		break;
+
+	case PA2_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
+		break;
+
+	case PB6_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
+		break;
+
+	case PC13_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
+		break;
+
+	case NRST_PIN:
+		/* do no thing*/
+		break;
+	}
+
+	/* Enable SRAM content retention in Standby mode */
+	HAL_PWREx_EnableSRAMRetention();
+
+	/* Finally enter the standby mode */
+	HAL_PWR_EnterSTANDBYMode();
+
+	return BOS_OK;
+}
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

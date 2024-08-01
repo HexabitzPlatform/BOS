@@ -120,6 +120,11 @@ typedef enum {
 	BOS_OK =0, BOS_ERR_UnknownMessage =1, BOS_ERR_NoResponse =2, BOS_ERR_MSG_Reflection =3, BOS_ERR_UnIDedModule =5, BOS_ERR_Keyword =6, BOS_ERR_ExistingAlias =7, BOS_ERR_ExistingCmd =8, BOS_ERR_EEPROM =10, BOS_ERR_BUTTON_NOT_DEFINED =11, BOS_ERR_BUTTON_PRESS_EVENT_FULL =12, BOS_ERR_BUTTON_RELEASE_EVENT_FULL =13, BOS_ERR_SNIP_MEM_FULL =14, BOS_ERR_REMOTE_READ_TIMEOUT =15, BOS_ERR_REMOTE_READ_NO_VAR =16, BOS_ERR_REMOTE_WRITE_TIMEOUT =17, BOS_ERR_REMOTE_WRITE_MEM_FULL =18, BOS_ERR_REMOTE_WRITE_INDEX =19, BOS_ERR_LOCAL_FORMAT_UPDATED =20, BOS_ERR_REMOTE_WRITE_ADDRESS =21, BOS_ERR_REMOTE_WRITE_FLASH =22, BOS_ERR_PORT_BUSY =23,BOS_ERR_TIMEOUT=24 , BOS_ERR_WrongName =100, BOS_ERR_WrongGroup =101, BOS_ERR_WrongID =102, BOS_ERR_WrongParam =103, BOS_ERR_WrongValue =104, BOS_ERR_MSG_DOES_NOT_FIT =105, BOS_MEM_ERASED =250, BOS_MEM_FULL =251, BOS_MULTICAST =254, BOS_BROADCAST =255, BOS_ERROR =255
 } BOS_Status;
 
+/* Wake-up from standby pins*/
+typedef enum {
+	PA0_PIN = 0, PA2_PIN, PB6_PIN, PC13_PIN, NRST_PIN
+} WakeupPins_t;
+
 /* Button Configuration Struct Type Definition */
 typedef struct {
 	uint16_t debounce;
@@ -659,6 +664,7 @@ extern BOS_Status printfp(uint8_t port,char *str);
 
 /* Power Modes*/
 extern BOS_Status EnableStopModebyUARTx(uint8_t port);
+extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins);
 
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);
