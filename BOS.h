@@ -665,6 +665,7 @@ extern BOS_Status printfp(uint8_t port,char *str);
 /* Power Modes*/
 extern BOS_Status EnableStopModebyUARTx(uint8_t port);
 extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins);
+extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins);
 
 /* CLI Commands  APIs */
 extern void vRegisterCLICommands(void);

@@ -2424,4 +2424,52 @@ BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins) {
 	return BOS_OK;
 }
 
+/*-----------------------------------------------------------*/
+/* Disable standby mode regarding wake-up pins:
+ * WKUP1: PA0  pin
+ * WKUP4: PA2  pin
+ * WKUP6: PB5  pin
+ * WKUP2: PC13 pin
+ * NRST pin
+ *  */
+BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins) {
+
+	/* The standby wake-up is same as a system RESET:
+	 * The entire code runs from the beginning just as if it was a RESET.
+	 * The only difference between a reset and a STANDBY wake-up is that, when the MCU wakes-up,
+	 * The SBF status flag in the PWR power control/status register (PWR_CSR) is set */
+	if (__HAL_PWR_GET_FLAG(PWR_FLAG_SB) != RESET) {
+		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB);  // clear the flag
+
+		/* Disable  Wake-up Pinx */
+		switch (WakeupPins) {
+
+		case PA0_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
+			break;
+
+		case PA2_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
+			break;
+
+		case PB6_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
+			break;
+
+		case PC13_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
+			break;
+
+		case NRST_PIN:
+			/* do no thing*/
+			break;
+		}
+
+		IND_blink(500);
+
+	} else
+		return BOS_OK;
+
+}
+
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
