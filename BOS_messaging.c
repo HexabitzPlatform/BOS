@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.6 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_messaging.c
@@ -20,6 +20,10 @@ extern bool AddBcastPayload;
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 uint32_t totalnumberoftransmiitedmesg=0;
+volatile uint8_t RemoteResponseFlag;
+volatile uint8_t numOfElement;
+volatile uint32_t RemoteResponseBuffer[4];
+
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
@@ -244,6 +248,43 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 
 /*-----------------------------------------------------------*/
 
+/* --- Read message codes data from a remote sensor "input" module
+ */
+BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
+ {
+	BOS_Status result = BOS_OK;
+	uint8_t dataIndex = 0;
+	uint32_t tickstart = HAL_GetTick();
+
+	/* Sending a message to the module */
+	messageParams[0] = myID;        // source module ID
+	SendMessageToModule(disModuleID, Code, 1);
+
+	/* timeout loop */
+	while (0 == RemoteResponseFlag) {
+		if ((HAL_GetTick() - tickstart) > timeout)
+			return result = BOS_ERR_TIMEOUT;
+	}
+
+	if (RemoteResponseFlag) {
+		RemoteResponseFlag = 0;
+		tickstart = HAL_GetTick();
+		for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
+			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
+
+		/* NULL DATA */
+		if (0 == RemoteResponseBuffer && RemoteResponseBuffer[1]
+				&& RemoteResponseBuffer[2] && RemoteResponseBuffer[3])
+			return result = BOS_ERROR;
+
+		return result = BOS_OK;
+	} else
+		return result = BOS_ERROR;
+
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
  */
 BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams){
@@ -277,7 +318,7 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	/* Singlecast message */
 	if(dst != BOS_BROADCAST){
 		/* Find best output port for destination module */
-		//port =FindRoute(myID,dst);
+//		port =FindRoute(myID,dst);
 
 		//Replace FindRoute() with Output_Port_Array
 		#ifdef __N

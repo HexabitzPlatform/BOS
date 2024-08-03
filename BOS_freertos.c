@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.6 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_freertos.c
@@ -40,7 +40,7 @@ uint8_t desiredArray;
 uint8_t nonProcessingParameterIndex;
 uint8_t processingParameterIndex;
 uint8_t Monitor_index;
-
+uint8_t WakeupFromStopFlag;
 
 /* Used in the run time stats calculations. */
 static uint32_t ulClocksPer10thOfAMilliSecond =0UL;
@@ -209,6 +209,13 @@ void StartDefaultTask(void *argument){
 		ExecuteSnippet();
 		/* Execute Monitor depending on CLI Commands  */
 		ExecuteMonitor();
+
+		/* System Clock Configuration restored after wake-up from STOP1 mode */
+		if (WakeupFromStopFlag) {
+			SystemClock_Config();
+			WakeupFromStopFlag = 0;
+			IND_blink(200);
+		}
 
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)

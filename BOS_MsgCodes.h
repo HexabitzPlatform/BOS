@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.6 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS_MsgCodes.h
@@ -58,6 +58,10 @@
 #define	MSG_rejected 						  45
 
 #define CODE_READ_RESPONSE			          46
+
+#define ENABLE_STOP_MODE_UARTX                47
+#define ENABLE_STANDBY_MODE_WAKE_UP_PINX      48
+
 /*
    -----------------------------------------------------------------------
   |					User Message Codes (70-99)  						  |
@@ -103,20 +107,19 @@
 #define CODE_H07R3_SCAN_WAVE_RESPONSE		  353
 
 // H07R8x
-#define CODE_H07R8_CODEC_INIT                 375
-#define CODE_H07R8_CODEC_STREAM_START         376
-#define CODE_H07R8_CODEC_STREAM_STOP          377
-#define CODE_H07R8_CODEC_DAC_GAIN		      378
-#define CODE_H07R8_CODEC_AUDIO_LEVEL_CTRL     379
-#define CODE_H07R8_CODEC_AUDIO_MUTE           380
-#define CODE_H07R8_CODEC_AUDIO_UNMUTE         381
-#define CODE_H07R8_CODEC_ENABLE_SHOUTDOWN	  382
-#define CODE_H07R8_CODEC_DISABLE_SHOUTDOWN	  383
-#define CODE_H07R8_AMP_GAIN					  384
-#define CODE_H07R8_AMP_MUTE                   385
-#define CODE_H07R8_AMP_UNMUTE                 386
-#define CODE_H07R8_AMP_ENABLE_SHOUTDOWN       387
-#define CODE_H07R8_AMP_DISABLE_SHOUTDOWN      388
+#define CODE_H07R8_CODEC_STREAM_START         375
+#define CODE_H07R8_CODEC_STREAM_STOP          376
+#define CODE_H07R8_CODEC_DAC_GAIN		      377
+#define CODE_H07R8_CODEC_AUDIO_LEVEL_CTRL     378
+#define CODE_H07R8_CODEC_AUDIO_MUTE           379
+#define CODE_H07R8_CODEC_AUDIO_UNMUTE         380
+#define CODE_H07R8_CODEC_EN_SHUTDOWN	      381
+#define CODE_H07R8_CODEC_DIS_SHUTDOWN	      382
+#define CODE_H07R8_AMP_GAIN					  383
+#define CODE_H07R8_AMP_MUTE                   384
+#define CODE_H07R8_AMP_UNMUTE                 385
+#define CODE_H07R8_AMP_EN_SHUTDOWN            386
+#define CODE_H07R8_AMP_DIS_SHUTDOWN           387
 
 // H08R7x
 #define CODE_H08R7_GET_INFO                   400
@@ -163,18 +166,18 @@
 #define CODE_H0AR9_STREAM_STOP                510
 
 // H0BR4x
-#define CODE_H0BR4_SAMPLE_PORT_GYRO           550
-#define CODE_H0BR4_SAMPLE_PORT_ACC            551
-#define CODE_H0BR4_SAMPLE_PORT_MAG		      552
-#define CODE_H0BR4_SAMPLE_PORT_TEMP		      553
+#define CODE_H0BR4_SAMPLE_GYRO                550
+#define CODE_H0BR4_SAMPLE_ACC                 551
+#define CODE_H0BR4_SAMPLE_MAG		          552
+#define CODE_H0BR4_SAMPLE_TEMP		          553
 #define CODE_H0BR4_RESULT_GYRO                554
 #define CODE_H0BR4_RESULT_ACC                 555
 #define CODE_H0BR4_RESULT_MAG		 	      556
 #define CODE_H0BR4_RESULT_TEMP		          557
-#define CODE_H0BR4_STREAM_PORT_GYRO			  558
-#define CODE_H0BR4_STREAM_PORT_ACC			  559
-#define CODE_H0BR4_STREAM_PORT_MAG			  560
-#define CODE_H0BR4_STREAM_PORT_TEMP			  561
+#define CODE_H0BR4_STREAM_GYRO	     		  558
+#define CODE_H0BR4_STREAM_ACC		    	  559
+#define CODE_H0BR4_STREAM_MAG		    	  560
+#define CODE_H0BR4_STREAM_TEMP		     	  561
 #define CODE_H0BR4_STREAM_STOP				  562
 
 // H0FR1x
@@ -207,8 +210,15 @@
 #define CODE_H16R6_SETALLLEDOFF               1105
 #define CODE_H16R6_SETLEDON                   1106
 #define CODE_H16R6_SETALLLEDON                1107
-#define CODE_H16R6_ScrollMode                 1108
-#define CODE_H16R6_FlashMode                  1109
+#define CODE_H16R6_SCROLLMODE                 1108
+#define CODE_H16R6_FLASHMODE                  1109
+#define CODE_H16R6_COLORPICKERMODE            1110
+#define CODE_H16R6_SETCOLORSOMELED            1111
+#define CODE_H16R6_MOTIONMODE                 1112
+#define CODE_H16R6_CROSSFADEMODE              1113
+#define CODE_H16R6_CROSSFADEMODELEDRGB        1114
+#define CODE_H16R6_CROSSFADEMODEALLLEDRGB     1115
+#define CODE_H16R6_SPRINKLEMODE               1116
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
@@ -299,8 +309,8 @@
 //H2AR3
 #define CODE_H2AR3_SAMPLE_V                   2100
 #define CODE_H2AR3_SAMPLE_A				      2101
-#define CODE_H2AR3_STREAM_PORT_V		      2102
-#define CODE_H2AR3_STREAM_PORT_A		      2103
+#define CODE_H2AR3_STREAM_V		              2102
+#define CODE_H2AR3_STREAM_A		              2103
 #define CODE_H2AR3_STOP                       2104
 
 // H2BR0x  and H2BR1x

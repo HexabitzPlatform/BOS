@@ -1,5 +1,5 @@
 /*
- BitzOS (BOS) V0.3.5 - Copyright (C) 2017-2024 Hexabitz
+ BitzOS (BOS) V0.3.6 - Copyright (C) 2017-2024 Hexabitz
  All rights reserved
 
  File Name     : BOS.c
@@ -2345,5 +2345,131 @@ BOS_Status printfp(uint8_t port,char *str){
 }
 
 /*-----------------------------------------------------------*/
+/* enable stop mode regarding only UART1 , UART2 , and UART3 */
+BOS_Status EnableStopModebyUARTx(uint8_t port) {
+
+	UART_WakeUpTypeDef WakeUpSelection;
+
+	UART_HandleTypeDef *huart = GetUart(port);
+
+	if ((huart->Instance == USART1) || (huart->Instance == USART2) || (huart->Instance == USART3)) {
+
+		/* make sure that no UART transfer is on-going */
+		while (__HAL_UART_GET_FLAG(huart, USART_ISR_BUSY) == SET);
+
+		/* make sure that UART is ready to receive */
+		 while (__HAL_UART_GET_FLAG(huart, USART_ISR_REACK) == RESET);
+
+		 /* set the wake-up event:
+		 * specify wake-up on start-bit detection */
+		WakeUpSelection.WakeUpEvent = UART_WAKEUP_ON_STARTBIT;
+		HAL_UARTEx_StopModeWakeUpSourceConfig(huart, WakeUpSelection);
+
+		/* Enable the UART Wake UP from stop mode Interrupt */
+		__HAL_UART_ENABLE_IT(huart, UART_IT_WUF);
+
+		/* enable MCU wake-up by LPUART */
+		HAL_UARTEx_EnableStopMode(huart);
+
+		/* enter STOP mode */
+		HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+	} else
+		return BOS_ERROR;
+
+}
+
+/*-----------------------------------------------------------*/
+/* Enable standby mode regarding wake-up pins:
+ * WKUP1: PA0  pin
+ * WKUP4: PA2  pin
+ * WKUP6: PB5  pin
+ * WKUP2: PC13 pin
+ * NRST pin
+ *  */
+BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins) {
+
+	/* Clear the WUF FLAG */
+	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
+
+	/* Enable the WAKEUP PIN */
+	switch (WakeupPins) {
+
+	case PA0_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
+		break;
+
+	case PA2_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
+		break;
+
+	case PB5_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
+		break;
+
+	case PC13_PIN:
+		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
+		break;
+
+	case NRST_PIN:
+		/* do no thing*/
+		break;
+	}
+
+	/* Enable SRAM content retention in Standby mode */
+	HAL_PWREx_EnableSRAMRetention();
+
+	/* Finally enter the standby mode */
+	HAL_PWR_EnterSTANDBYMode();
+
+	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
+/* Disable standby mode regarding wake-up pins:
+ * WKUP1: PA0  pin
+ * WKUP4: PA2  pin
+ * WKUP6: PB5  pin
+ * WKUP2: PC13 pin
+ * NRST pin
+ *  */
+BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins) {
+
+	/* The standby wake-up is same as a system RESET:
+	 * The entire code runs from the beginning just as if it was a RESET.
+	 * The only difference between a reset and a STANDBY wake-up is that, when the MCU wakes-up,
+	 * The SBF status flag in the PWR power control/status register (PWR_CSR) is set */
+	if (__HAL_PWR_GET_FLAG(PWR_FLAG_SB) != RESET) {
+		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB);  // clear the flag
+
+		/* Disable  Wake-up Pinx */
+		switch (WakeupPins) {
+
+		case PA0_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
+			break;
+
+		case PA2_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
+			break;
+
+		case PB5_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
+			break;
+
+		case PC13_PIN:
+			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
+			break;
+
+		case NRST_PIN:
+			/* do no thing*/
+			break;
+		}
+
+		IND_blink(1000);
+
+	} else
+		return BOS_OK;
+
+}
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
