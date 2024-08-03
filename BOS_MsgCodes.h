@@ -216,6 +216,9 @@
 #define CODE_H16R6_SETCOLORSOMELED            1111
 #define CODE_H16R6_MOTIONMODE                 1112
 #define CODE_H16R6_CROSSFADEMODE              1113
+#define CODE_H16R6_CROSSFADEMODELEDRGB        1114
+#define CODE_H16R6_CROSSFADEMODEALLLEDRGB     1115
+#define CODE_H16R6_SPRINKLEMODE               1116
 // H17R1x
 #define CODE_H17R1_StepperIcInit              1150
 #define CODE_H17R1_STEPPER_MOVE               1151
