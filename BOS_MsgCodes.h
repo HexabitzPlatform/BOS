@@ -58,6 +58,10 @@
 #define	MSG_rejected 						  45
 
 #define CODE_READ_RESPONSE			          46
+
+#define ENABLE_STOP_MODE_UARTX                47
+#define ENABLE_STANDBY_MODE_WAKE_UP_PINX      48
+
 /*
    -----------------------------------------------------------------------
   |					User Message Codes (70-99)  						  |

@@ -22,7 +22,7 @@ uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
 uint32_t totalnumberofrecevedmesg =0;
 int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
-
+uint8_t PortSelect , PinSelect;
 /* Receiving the Defalt_Value for the H1DR5 module */
 receive_defalt_value defalt_data;
 
@@ -1437,6 +1437,25 @@ void PxMessagingTask(void *argument){
 							break;
 						}
 						break;
+
+						/* Power Mode: Stop mode enable */
+					case ENABLE_STOP_MODE_UARTX:
+
+						PortSelect = (cMessage[port - 1][shift]);
+
+						if (result != EnableStopModebyUARTx(PortSelect))
+							result = BOS_ERROR;
+						break;
+
+						/* Power Mode: Standby mode enable */
+					case ENABLE_STANDBY_MODE_WAKE_UP_PINX:
+
+						PinSelect = (cMessage[port - 1][shift]);
+
+						if (result != EnableStandbyModebyWakeupPinx(PinSelect))
+							result = BOS_ERROR;
+						break;
+
 
 					default:
 						/* First check user-defined messages */
