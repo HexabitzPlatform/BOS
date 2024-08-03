@@ -122,7 +122,7 @@ typedef enum {
 
 /* Wake-up from standby pins*/
 typedef enum {
-	PA0_PIN = 0, PA2_PIN, PB6_PIN, PC13_PIN, NRST_PIN
+	PA0_PIN = 0, PA2_PIN, PB5_PIN, PC13_PIN, NRST_PIN
 } WakeupPins_t;
 
 /* Button Configuration Struct Type Definition */

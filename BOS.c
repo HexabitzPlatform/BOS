@@ -2402,7 +2402,7 @@ BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins) {
 		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
 		break;
 
-	case PB6_PIN:
+	case PB5_PIN:
 		HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
 		break;
 
@@ -2452,7 +2452,7 @@ BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins) {
 			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
 			break;
 
-		case PB6_PIN:
+		case PB5_PIN:
 			HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
 			break;
 
@@ -2465,7 +2465,7 @@ BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins) {
 			break;
 		}
 
-		IND_blink(500);
+		IND_blink(1000);
 
 	} else
 		return BOS_OK;
