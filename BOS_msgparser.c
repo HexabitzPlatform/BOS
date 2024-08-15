@@ -283,6 +283,7 @@ void PxMessagingTask(void *argument){
 	
 	/* Infinite loop */
 	for(;;){
+		result =BOS_OK;
 		
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
