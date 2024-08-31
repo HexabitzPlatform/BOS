@@ -93,6 +93,8 @@ extern BOS_Status ExecuteSnippet(void);
 
 extern void NotifyMessagingTask(uint8_t port);
 
+extern IWDG_HandleTypeDef hiwdg;
+
 /*-----------------------------------------------------------*/
 
 /* Init FreeRTOS */
@@ -216,6 +218,9 @@ void StartDefaultTask(void *argument){
 			WakeupFromStopFlag = 0;
 			IND_blink(200);
 		}
+
+		/* 50 mS timeout IWDG timer */
+		HAL_IWDG_Refresh(&hiwdg);
 
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)

@@ -342,6 +342,7 @@ extern uint8_t IsModuleParameter(char *name);
 extern void Module_Peripheral_Init(void);
 extern void TIM_USEC_Init(void);
 extern void TIM_MSEC_Init(void);
+extern void MX_IWDG_Init(void);
 extern BOS_Status RTC_Init(void);
 extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 
@@ -1076,6 +1077,9 @@ void BOS_Init(void){
 	/* Reset UART overrun errors in case other modules were already transmitting on startup */
 	ResetUartORE();
 	
+	/* initialize IWDG timer lastly in order to avoid reset */
+	MX_IWDG_Init();
+
 	BOS_initialized =1;
 }
 void Module_Init(void){
