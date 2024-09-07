@@ -275,7 +275,7 @@ void ExecuteMonitor(void)
     if(Monitor_time == INTIAL_VALUE)
     {
 
-#if defined(H0FR7) || defined(H08R6) || defined(H09R0)  || defined(H15R0) || defined(H26R0)
+#if defined(H0FR7) ||  defined(H09R0)  || defined(H15R0) || defined(H26R0)
 initialValue();
 #endif
 
