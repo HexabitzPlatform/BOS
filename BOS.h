@@ -349,7 +349,7 @@ typedef struct
 #include <limits.h>	
 
 /* Module includes and initialization */
-#if defined(H01R0) || defined(P01R0)
+#if defined(H01R0)
 #include "H01R0.h"
 #endif
 #if defined(H23R1) || defined(H23R0)
@@ -361,7 +361,7 @@ typedef struct
 #ifdef H07R3
 	#include "H07R3.h"	
 #endif
-#if defined(H08R6) || defined(P08R6)
+#if defined(H08R6)
 	#include "H08R6.h"	
 #endif
 #ifdef H09R9
@@ -465,6 +465,9 @@ typedef struct
 #endif
 #ifdef P08R7
 #include "P08R7.h"
+#endif
+#ifdef P01R0
+#include "P01R0.h"
 #endif
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
