@@ -135,6 +135,11 @@
 #define CODE_H08R7_MIN_RANGE                  410
 #define CODE_H08R7_TIMEOUT                	  411
 
+// P08R7
+#define CODE_P08R7_GET_INFO                   420
+#define CODE_P08R7_SAMPLE_PORT                421
+#define CODE_P08R7_STREAM_PORT                422
+
 // H08R6x
 
 
