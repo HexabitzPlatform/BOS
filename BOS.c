@@ -62,7 +62,7 @@ char Processor_type(uint8_t module_name)
 {
 	if( module_name==_H1AR2 || module_name==_H23R3 ||
 		module_name==_H10R4 || module_name==_H0FR6 ||
-		module_name==_H41R6 || module_name==_H15R0 || module_name==_H0FR1||
+		module_name==_H41R6 || module_name==_H15R0 ||
 		module_name==_H1DR1 || module_name==_H07R3 )
 	{
 	  return 'F' ;
