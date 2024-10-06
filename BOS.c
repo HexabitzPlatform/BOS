@@ -1093,6 +1093,15 @@ void Module_Init(void){
 	/* Initialize BitzOS */
 	BOS_Init();
 
+
+#ifdef SEGGER_SYSTEM_VIEW_ENABLE
+	/* SEGGER System view Start-up Functions */
+	/* Configure and initialize SystemView */
+	SEGGER_SYSVIEW_Conf();
+	/* Start SystemView */
+	SEGGER_SYSVIEW_Start();
+#endif
+
 	/* Call init function for freertos objects (in freertos.c) */
 	MX_FREERTOS_Init();
 
