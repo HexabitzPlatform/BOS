@@ -106,7 +106,7 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, ui
 		}
 	}
 
-	Delay_ms(10);// Delay Between Sending Two Messages.
+	Delay_ms(5);// Delay Between Sending Two Messages.
 	return result;
 }
 
@@ -1078,7 +1078,7 @@ void BOS_Init(void){
 	ResetUartORE();
 	
 	/* initialize IWDG timer lastly in order to avoid reset */
-	MX_IWDG_Init();
+//	MX_IWDG_Init();
 
 	BOS_initialized =1;
 }

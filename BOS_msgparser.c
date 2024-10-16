@@ -117,10 +117,9 @@ extern void NotifyMessagingTask(uint8_t port);
 /* BackEndTask function */
 void BackEndTask(void *argument){
 
-	uint8_t calculated_crc,port_number,length,port_index;
-
-			uint8_t temp_length[NumOfPorts] = {0};
-			uint8_t temp_index[NumOfPorts] = {0};
+	uint8_t calculated_crc, port_number, length, port_index;
+	uint8_t temp_length[NumOfPorts] = { 0 };
+	uint8_t temp_index[NumOfPorts] = { 0 };
 
 	for(;;)
 	{
@@ -129,7 +128,8 @@ void BackEndTask(void *argument){
 		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
 
 		if(index_input[port_DMA] !=index_process[port_DMA])
-		{ port_number =port_DMA+1;
+		{port_number =port_DMA+1;
+
 			if(UARTRxBuf[port_number-1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE)
 			{
 				for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
@@ -260,6 +260,8 @@ void BackEndTask(void *argument){
 
 		taskYIELD();
 	}
+       osDelay(10);
+//       taskYIELD();
 }
 }
 
@@ -396,7 +398,7 @@ void PxMessagingTask(void *argument){
 							
 						case CODE_PING:
 							indMode =IND_PING;
-							osDelay(10);
+////							osDelay(10);
 							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
 								SendMessageToModule(src,CODE_PING_RESPONSE,0);
 							break;

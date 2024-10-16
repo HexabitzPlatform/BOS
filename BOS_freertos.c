@@ -105,7 +105,7 @@ void MX_FREERTOS_Init(void){
 	xTaskCreate(StartDefaultTask,(const char* ) "DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
 	
 	/* Create the back-end task */
-	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&BackEndTaskHandle);
+	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityRealtime - osPriorityIdle,&BackEndTaskHandle);
 	
 	/* Create the User task */
 	xTaskCreate(UserTask,(const char* ) "UserTask",(USER_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&UserTaskHandle);
