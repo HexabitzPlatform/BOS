@@ -115,154 +115,177 @@ extern void NotifyMessagingTask(uint8_t port);
  -----------------------------------------------------------------------
  */
 /* BackEndTask function */
-void BackEndTask(void *argument){
+void BackEndTask(void *argument) {
 
 	uint8_t calculated_crc, port_number, length, port_index;
 	uint8_t temp_length[NumOfPorts] = { 0 };
 	uint8_t temp_index[NumOfPorts] = { 0 };
 
-	for(;;)
-	{
-       for(port_DMA=0;port_DMA<NumOfPorts;)
-       {port_index=port_DMA;
-		index_input[port_DMA]=MSG_RX_BUF_SIZE-(*index_dma[port_DMA]);
+	for (;;) {
 
-		if(index_input[port_DMA] !=index_process[port_DMA])
-		{port_number =port_DMA+1;
+		/* Parsing all module ports */
+		for (port_DMA = 0; port_DMA < NumOfPorts;) {
+			/* Computes how many new bytes have been received on each port: */
+			port_index = port_DMA;
+			index_input[port_DMA] = MSG_RX_BUF_SIZE - (*index_dma[port_DMA]);
 
-			if(UARTRxBuf[port_number-1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE)
-			{
-				for(int i=0;i<=NumOfPorts;i++) // Free previous CLI port
-				{
-					if(portStatus[i] == CLI)
-					{
-						portStatus[i] = FREE;
+			/* 1- Check if there's new data to process */
+			if (index_input[port_DMA] != index_process[port_DMA]) {
+				port_number = port_DMA + 1;
+
+				/* CLI Handling: If the received byte is 0x0D and the port is free,
+				 * it assigns the port to the CLI.*/
+				if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE) {
+					for (int i = 0; i <= NumOfPorts; i++) { // Free previous CLI port
+						if (portStatus[i] == CLI)
+							portStatus[i] = FREE;
+
+					}
+					/* Continue the CLI session on this port */
+					portStatus[port_number] = CLI;
+					PcPort = port_number;
+
+					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+
+					xTaskNotifyGive(xCommandConsoleTaskHandle);
+
+					if (Activate_CLI_For_First_Time_Flag == 1)
+						Read_In_CLI_Task_Flag = 1;
+
+					Activate_CLI_For_First_Time_Flag = 1;
+
+				}
+				/* Continue processing CLI data if the port is already in CLI mode */
+				else if (portStatus[port_number] == CLI) {
+					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+					Read_In_CLI_Task_Flag = 1;
+				}
+
+				/* Hexabitz Protocol Handling (H and Z Characters): */
+				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 'H' && portStatus[port_number] == FREE) {
+					portStatus[port_number] = H_Status; // H  Character was received, waiting for Z character.
+				}
+
+				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 'Z' && portStatus[port_number] == H_Status) {
+					portStatus[port_number] = Z_Status; // Z  Character was received, waiting for length byte.
+				}
+
+				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] != 'Z' && portStatus[port_number] == H_Status) {
+					portStatus[port_number] = FREE; // Z  Character was not received, so there is no message to receive.
+				}
+
+				/* If a length byte is received after 'Z',
+				 * it prepares to receive the message content. */
+				else if (portStatus[port_number] == Z_Status) {
+					portStatus[port_number] = MSG; // Receive length byte.
+					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+					temp_index[port_index] = 3;
+					temp_length[port_index] = UARTRxBuf[port_number - 1][index_process[port_DMA]] + 1;
+				}
+
+				/* Message Reception Handling: */
+				else if (portStatus[port_number] == MSG) {
+					/* The message is received and stored in the MSG_Buffer.*/
+					if (temp_length[port_index] > 1) {
+						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+						temp_index[port_index]++;
+						temp_length[port_index]--;
+					} else {
+						/* If there is only one byte left to receive (when the message is fully received)
+						 * it updates indices and processes the message. */
+						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+						temp_index[port_index]++;
+						temp_length[port_index]--;
+						MSG_Buffer_Index_End[port_index]++;
+						if (MSG_Buffer_Index_End[port_index] == MSG_COUNT)
+							MSG_Buffer_Index_End[port_index] = 0;
+
+						Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
+						Process_Message_Buffer_Index_End++;
+						if (Process_Message_Buffer_Index_End == MSG_COUNT)
+							Process_Message_Buffer_Index_End = 0;
+
+						/* The portStatus is set to FREE(End of receiving message)
+						 * indicating that the port is ready to receive a new message. */
+						portStatus[port_number] = FREE;
 					}
 				}
-				portStatus[port_number] =CLI; // Continue the CLI session on this port
-				PcPort = port_number;
 
-				CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
-
-				xTaskNotifyGive(xCommandConsoleTaskHandle);
-
-				if(Activate_CLI_For_First_Time_Flag == 1) Read_In_CLI_Task_Flag = 1;
-				Activate_CLI_For_First_Time_Flag = 1;
+				/* After processing each byte, update the processing index */
+				index_process[port_DMA]++;
+				if (index_process[port_DMA] == MSG_RX_BUF_SIZE)
+					index_process[port_DMA] = 0;
 
 			}
-			else if(portStatus[port_number] == CLI)
-			{
-				CLI_Data = UARTRxBuf[port_number-1][index_process[port_DMA]];
-				Read_In_CLI_Task_Flag = 1;
+
+			/* 2- In case there is no bytes to process
+			 * increase the DMA port index to parse all Module ports
+			 *  */
+			else if (index_input[port_DMA] == index_process[port_DMA]) {
+				port_DMA++;
 			}
 
-			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'H' && portStatus[port_number] == FREE)
-			{
-				portStatus[port_number] =H_Status; // H  Character was received, waiting for Z character.
-			}
+			/* 3- Message Processing: */
+			if (Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start) {
+				port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
+				port_index = port_number - 1;
+				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
+				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
-			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  == 'Z' && portStatus[port_number] == H_Status)
-			{
-				portStatus[port_number] =Z_Status; // Z  Character was received, waiting for length byte.
-			}
+				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
 
-			else if(UARTRxBuf[port_number-1][index_process[port_DMA]]  != 'Z' && portStatus[port_number] == H_Status)
-			{
-				portStatus[port_number] =FREE; // Z  Character was not received, so there is no message to receive.
-			}
-
-			else if(portStatus[port_number] == Z_Status)
-			{
-				portStatus[port_number] =MSG; // Receive length byte.
-				MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
-				temp_index[port_index] = 3;
-				temp_length[port_index] =UARTRxBuf[port_number-1][index_process[port_DMA]]  + 1;
-			}
-
-			else if(portStatus[port_number] == MSG)
-			{
-				if(temp_length[port_index] > 1)
-				{
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
-					temp_index[port_index]++;
-					temp_length[port_index]--;
-				}
-				else
-				{
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] =UARTRxBuf[port_number-1][index_process[port_DMA]] ;
-					temp_index[port_index]++;
-					temp_length[port_index]--;
-					MSG_Buffer_Index_End[port_index]++;
-					if(MSG_Buffer_Index_End[port_index] == MSG_COUNT) MSG_Buffer_Index_End[port_index] = 0;
-
-
-					Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
-					Process_Message_Buffer_Index_End++;
-					if(Process_Message_Buffer_Index_End == MSG_COUNT) Process_Message_Buffer_Index_End = 0;
-					portStatus[port_number] =FREE; // End of receiving message.
-				}
-			}
-			index_process[port_DMA]++;
-			if(index_process[port_DMA]==MSG_RX_BUF_SIZE)
-				{index_process[port_DMA]=0;}
-		}
-		else if(index_input[port_DMA] ==index_process[port_DMA])
-		   {
-			port_DMA++;
-			}
-
-		if(Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start)
-		{
-			port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
-			port_index = port_number - 1;
-			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
-			MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
-
-			length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
-
-			Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
-			Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
-			Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
-			for(int i=0;i<length;i++)
-			{
-				Calculate_CRC_Buffer[i+3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
-			}
-
-			calculated_crc = CalculateCRC8(Calculate_CRC_Buffer,length + 3);
-
-			Message_counter++;
-			if(calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3])
-			{
-				Accepted_Messages++;
-				messageLength[port_index] =length;
-				memcpy(&cMessage[port_index][0],&MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
-				if(cMessage[port_index][0] == myID || cMessage[port_index][0] == BOS_BROADCAST || cMessage[port_index][0] == BOS_MULTICAST)
-					/* Notify messaging tasks */
-					NotifyMessagingTask(port_number);
-
-				else{
-					/* Forward message */
+				/* Forward message */
+				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID) {
+					messageLength[port_index] = length;
+					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 					ForwardReceivedMessage(port_number);
-				    }
-			}
-			else
-			{
-				Rejected_Messages++;
-				//TODO: Implement something here when the message is rejected.
+
+				} else {
+					/* Prepare CRC Buffer and Calculate CRC: */
+					Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
+					Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
+					Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+					for (int i = 0; i < length; i++) {
+						Calculate_CRC_Buffer[i + 3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
+					}
+
+					calculated_crc = CalculateCRC8(Calculate_CRC_Buffer, length + 3);
+
+					Message_counter++;
+					if (calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3]) {
+						Accepted_Messages++;
+						messageLength[port_index] = length;
+						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+//					if (cMessage[port_index][0] == myID || cMessage[port_index][0] == BOS_BROADCAST || cMessage[port_index][0] == BOS_MULTICAST)
+
+						/* Notify messaging tasks */
+						NotifyMessagingTask(port_number);
+
+//					else {
+
+//						ForwardReceivedMessage(port_number);
+//					}
+					} else {
+						Rejected_Messages++;
+						//TODO: Implement something here when the message is rejected.
+					}
+
+				}
+
+				MSG_Buffer_Index_Start[port_index]++;
+				if (MSG_Buffer_Index_Start[port_index] == MSG_COUNT)
+					MSG_Buffer_Index_Start[port_index] = 0;
+
+				Process_Message_Buffer_Index_Start++;
+				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
+					Process_Message_Buffer_Index_Start = 0;
 			}
 
-			MSG_Buffer_Index_Start[port_index]++;
-			if(MSG_Buffer_Index_Start[port_index] == MSG_COUNT) MSG_Buffer_Index_Start[port_index] = 0;
-
-			Process_Message_Buffer_Index_Start++;
-			if(Process_Message_Buffer_Index_Start == MSG_COUNT) Process_Message_Buffer_Index_Start = 0;
+			taskYIELD();
 		}
-
-		taskYIELD();
-	}
-       osDelay(10);
+		osDelay(10);
 //       taskYIELD();
-}
+	}
 }
 
 /*-----------------------------------------------------------*/
