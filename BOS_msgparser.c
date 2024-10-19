@@ -234,14 +234,15 @@ void BackEndTask(void *argument) {
 
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
 
-				/* Forward message */
+				/* Forward Message if Not for Current Module */
 				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 					ForwardReceivedMessage(port_number);
 
 				} else {
-					/* Prepare CRC Buffer and Calculate CRC: */
+					/* Notify Messaging Tasks if Message is for Current Module:
+					 * Prepare CRC Buffer and Calculate CRC. */
 					Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
 					Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
 					Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
@@ -256,15 +257,10 @@ void BackEndTask(void *argument) {
 						Accepted_Messages++;
 						messageLength[port_index] = length;
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
-//					if (cMessage[port_index][0] == myID || cMessage[port_index][0] == BOS_BROADCAST || cMessage[port_index][0] == BOS_MULTICAST)
 
 						/* Notify messaging tasks */
 						NotifyMessagingTask(port_number);
 
-//					else {
-
-//						ForwardReceivedMessage(port_number);
-//					}
 					} else {
 						Rejected_Messages++;
 						//TODO: Implement something here when the message is rejected.
@@ -287,8 +283,6 @@ void BackEndTask(void *argument) {
 //       taskYIELD();
 	}
 }
-
-/*-----------------------------------------------------------*/
 
 /* ---------------------------- PxMessagingTask function ---------------------------------  */
 
