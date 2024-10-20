@@ -277,9 +277,9 @@ void BackEndTask(void *argument) {
 					Process_Message_Buffer_Index_Start = 0;
 			}
 
-			taskYIELD();
+//			taskYIELD();
 		}
-		osDelay(10);
+		osDelay(5);
 //       taskYIELD();
 	}
 }
@@ -416,8 +416,8 @@ void PxMessagingTask(void *argument){
 						case CODE_PING:
 							indMode =IND_PING;
 ////							osDelay(10);
-							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
-								SendMessageToModule(src,CODE_PING_RESPONSE,0);
+//							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
+//								SendMessageToModule(src,CODE_PING_RESPONSE,0);
 							break;
 							
 						case CODE_PING_RESPONSE:
