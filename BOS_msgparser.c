@@ -279,7 +279,7 @@ void BackEndTask(void *argument) {
 
 //			taskYIELD();
 		}
-		osDelay(5);
+		osDelay(25);
 //       taskYIELD();
 	}
 }
