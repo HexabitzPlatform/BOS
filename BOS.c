@@ -1078,7 +1078,7 @@ void BOS_Init(void){
 	ResetUartORE();
 	
 	/* initialize IWDG timer lastly in order to avoid reset */
-	MX_IWDG_Init();
+//	MX_IWDG_Init();
 
 	BOS_initialized =1;
 }
