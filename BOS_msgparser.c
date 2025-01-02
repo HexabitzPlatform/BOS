@@ -123,6 +123,9 @@ void BackEndTask(void *argument) {
 
 	for (;;) {
 
+        // Wait for notification from USART interrupt handler
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
 		/* Parsing all module ports */
 		for (port_DMA = 0; port_DMA < NumOfPorts;) {
 			/* Computes how many new bytes have been received on each port: */
@@ -279,7 +282,7 @@ void BackEndTask(void *argument) {
 
 //			taskYIELD();
 		}
-		osDelay(25);
+//		osDelay(25);
 //       taskYIELD();
 	}
 }
