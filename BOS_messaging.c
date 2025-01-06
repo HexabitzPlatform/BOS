@@ -273,9 +273,13 @@ BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *
 			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
 
 		/* NULL DATA */
-		if (0 == RemoteResponseBuffer && RemoteResponseBuffer[1]
-				&& RemoteResponseBuffer[2] && RemoteResponseBuffer[3])
+		if ((0 == RemoteResponseBuffer[0]) && (0 ==RemoteResponseBuffer[1])
+				&& (0 == RemoteResponseBuffer[2]) && (0 == RemoteResponseBuffer[3]))
 			return result = BOS_ERROR;
+
+		for (size_t i = 0; i < sizeof(RemoteResponseBuffer) / sizeof(RemoteResponseBuffer[0]); i++) {
+		    RemoteResponseBuffer[i] = 0x00;
+		}
 
 		return result = BOS_OK;
 	} else

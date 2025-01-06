@@ -185,7 +185,7 @@ void StartDefaultTask(void *argument){
 		/* Switch indicator LED according to mode */
 		switch(indMode){
 			case IND_PING:
-				RTOS_IND_blink(200);
+				RTOS_IND_blink(80);
 				indMode =IND_OFF;
 				break;
 				
