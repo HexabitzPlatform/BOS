@@ -220,7 +220,7 @@ void StartDefaultTask(void *argument){
 		}
 
 		/* 50 mS timeout IWDG timer */
-		HAL_IWDG_Refresh(&hiwdg);
+//		HAL_IWDG_Refresh(&hiwdg);
 
 		/* Reset button state if no delay is needed by this module */
 		if(needToDelayButtonStateReset != true)
