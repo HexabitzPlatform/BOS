@@ -338,6 +338,10 @@ typedef struct
 #include "BOS_utils.h"
 #include "BOS_messaging.h"
 
+/* Emulated EEPROM from ST */
+#include "eeprom_emul.h"
+#include "flash_interface.h"
+
 
 /* C STD Library */
 #include <stdio.h>
