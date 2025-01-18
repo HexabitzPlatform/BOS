@@ -238,7 +238,8 @@ void BackEndTask(void *argument) {
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
 
 				/* Forward Message if Not for Current Module */
-				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID) {
+				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID
+						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 					ForwardReceivedMessage(port_number);
