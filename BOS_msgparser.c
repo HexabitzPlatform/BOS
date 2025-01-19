@@ -449,9 +449,12 @@ void PxMessagingTask(void *argument){
 							/* Record your neighbor info */
 							neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
 							neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
+
+							indMode = IND_TOPOLOGY;
+
 							/* Send your own info */
-							messageParams[1] =(uint8_t )myPN;
 							messageParams[0] =(uint8_t )(myPN >> 8);
+							messageParams[1] =(uint8_t )myPN;
 							messageParams[2] =port;
 							osDelay(2);
 							/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
