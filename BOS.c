@@ -225,7 +225,7 @@ uint8_t myID =0;
 
 /* Routing and topology ....................................................................... */
 uint8_t portStatus[NumOfPorts + 1] ={0};
-uint16_t neighbors[NumOfPorts][2] ={0};
+volatile uint16_t neighbors[NumOfPorts][2] ={0};
 uint16_t neighbors2[NumOfPorts][2] ={0};
 uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
 bool AddBcastPayload = false;
@@ -1126,6 +1126,8 @@ BOS_Status Explore(void)
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+	osDelay(100);
+//	HAL_Delay(200);
 
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 
@@ -1143,7 +1145,8 @@ BOS_Status Explore(void)
 			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);
 			/* Modify neighbors table */
 			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
-			osDelay(10);
+			osDelay(100);
+//			HAL_Delay(200);
 		}
 	}
 
@@ -1169,7 +1172,8 @@ BOS_Status Explore(void)
 	{
 		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-		osDelay(60);
+		osDelay(100);
+//		HAL_Delay(200);
 	}
 
 
@@ -1189,11 +1193,13 @@ BOS_Status Explore(void)
 			}
 			messageParams[MaxNumOfPorts] = NORMAL;		/* Make sure the inport is not reversed */
 			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
-			osDelay(10);
+			osDelay(100);
+//			HAL_Delay(200);
 
 			/* Step 3b - Ask the module to explore adjacent neighbors */
 			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-			osDelay(100);
+			osDelay(200);
+//			HAL_Delay(200);
 
 			/* Step 3c - Assign IDs to new modules */
 			for (j=1 ; j<=MaxNumOfPorts ; j++)
@@ -1211,7 +1217,8 @@ BOS_Status Explore(void)
 					messageParams[0] = 1;			/* change neighbor ID */
 					messageParams[2] = j;		/* neighbor port */
 					SendMessageToModule(i, CODE_MODULE_ID, 3);
-					osDelay(10);
+					osDelay(100);
+//					HAL_Delay(200);
 				}
 			}
 
@@ -1246,14 +1253,17 @@ BOS_Status Explore(void)
 			{
 				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-				osDelay(60);
+				osDelay(100);
+//				HAL_Delay(200);
 			}
 		}
 	}
 
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
-
 	ExploreNeighbors(PcPort);
+	osDelay(100);
+//	HAL_Delay(200);
+
 	/* Check for any unIDed neighbors */
 	for (i=1 ; i<=NumOfPorts ; i++)
 	{
@@ -1268,6 +1278,7 @@ BOS_Status Explore(void)
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
 		osDelay(100);
+//		HAL_Delay(200);
 		/* Check for any unIDed neighbors */
 		for (j=1 ; j<=MaxNumOfPorts ; j++)
 		{
@@ -1327,7 +1338,8 @@ BOS_Status Explore(void)
 
 			/* Step 5d - Update module ports directions */
 			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
-			osDelay(10);
+			osDelay(100);
+//			HAL_Delay(200);
 		}
 
 		/* Step 5e - Update master ports > all normal */
@@ -1338,25 +1350,24 @@ BOS_Status Explore(void)
 
 
 	/* >>> Step 6 - Test new port directions by pinging all modules */
-
 	if (result == BOS_OK)
 	{
 		osDelay(100);
-		BOSMessaging.response = BOS_RESPONSE_MSG;		// Enable response for pings
+//		HAL_Delay(200);
+//		BOSMessaging.response = BOS_RESPONSE_MSG;		// Enable response for pings
 		for (i=2 ; i<=N ; i++)
 		{
 			SendMessageToModule(i, CODE_PING, 0);
 			osDelay(300*NumberOfHops(i));
 			//osDelay(100);
-			if (responseStatus == BOS_OK)
-				result = BOS_OK;
-			else if (responseStatus == BOS_ERR_NoResponse)
-				result = BOS_ERR_NoResponse;
+//			if (responseStatus == BOS_OK)
+//				result = BOS_OK;
+//			else if (responseStatus == BOS_ERR_NoResponse)
+//				result = BOS_ERR_NoResponse;
 		}
 	}
 
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
-
 	if (result == BOS_OK)
 	{
 		/* Save data in the master */
@@ -1366,6 +1377,10 @@ BOS_Status Explore(void)
 		/* Ask other modules to save their data too */
 		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
 	}
+
+	DisplayTopology(PcPort);
+	DisplayPortsDir(PcPort);
+
 	return result;
 }
 #endif

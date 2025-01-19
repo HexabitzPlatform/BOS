@@ -487,7 +487,7 @@ extern uint8_t indMode;
 extern uint8_t N;
 extern const char modulePNstring[NUM_OF_MODULE_PN][6];
 extern uint8_t portStatus[NumOfPorts + 1];
-extern uint16_t neighbors[NumOfPorts][2];
+extern volatile uint16_t neighbors[NumOfPorts][2];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 extern volatile uint32_t MBmessageParams[9];
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
