@@ -226,7 +226,7 @@ uint8_t myID =0;
 /* Routing and topology ....................................................................... */
 uint8_t portStatus[NumOfPorts + 1] ={0};
 volatile uint16_t neighbors[NumOfPorts][2] ={0};
-uint16_t neighbors2[NumOfPorts][2] ={0};
+volatile uint16_t neighbors2[NumOfPorts][2] ={0};
 uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
 bool AddBcastPayload = false;
 uint8_t dstGroupID =BOS_BROADCAST;
@@ -1121,13 +1121,12 @@ BOS_Status Explore(void)
 	myID = 1; 		/* Master ID */
 
 	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
-
+//	PcPort = 4;
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
 	osDelay(100);
-//	HAL_Delay(200);
 
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 
@@ -1141,12 +1140,11 @@ BOS_Status Explore(void)
 			messageParams[1] = ++currentID;
 			N = currentID;			/* Update number of modules in the array */
 			/* Inform module to change ID */
-			messageParams[0] = 0;		/* change own ID */
+			messageParams[0] = 0;	/* change own ID */
 			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);
 			/* Modify neighbors table */
 			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
 			osDelay(100);
-//			HAL_Delay(200);
 		}
 	}
 
@@ -1157,13 +1155,13 @@ BOS_Status Explore(void)
 		if (neighbors[port-1][0])
 		{
 			temp16 = neighbors[port-1][0];
-			temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
-			temp2 = (uint8_t)(neighbors[port-1][0]);				/* Neighbor port */
+			temp1 = (uint8_t)(temp16>>8);					/* Neighbor ID */
+			temp2 = (uint8_t)(neighbors[port-1][0]);		/* Neighbor port */
 			/* Module 1 (master) */
-			array[0][port] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
+			array[0][port] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
 			/* Rest of the neighbors */
-			array[temp1-1][0]	= neighbors[port-1][1];				/* Neighbor PN */
-			array[temp1-1][temp2] = ( myID << 3 ) | port;		/* Module 1 ID | Module 1 port */
+			array[temp1-1][0]	= neighbors[port-1][1];		/* Neighbor PN */
+			array[temp1-1][temp2] = ( myID << 3 ) | port;	/* Module 1 ID | Module 1 port */
 		}
 	}
 
@@ -1173,7 +1171,6 @@ BOS_Status Explore(void)
 		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
 		osDelay(100);
-//		HAL_Delay(200);
 	}
 
 
@@ -1194,19 +1191,17 @@ BOS_Status Explore(void)
 			messageParams[MaxNumOfPorts] = NORMAL;		/* Make sure the inport is not reversed */
 			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
 			osDelay(100);
-//			HAL_Delay(200);
 
 			/* Step 3b - Ask the module to explore adjacent neighbors */
 			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-			osDelay(200);
-//			HAL_Delay(200);
+			osDelay(300);
 
 			/* Step 3c - Assign IDs to new modules */
 			for (j=1 ; j<=MaxNumOfPorts ; j++)
 			{
 				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 				temp1 = (uint8_t)(temp16>>8);
-				if (temp16 != 0 && temp1 == 0)			/* UnIDed module */
+				if (temp16 != 0 && temp1 == 0)		/* UnIDed module */
 				{
 					/* New ID */
 					messageParams[1] = ++currentID;
@@ -1214,11 +1209,10 @@ BOS_Status Explore(void)
 					/* Modify neighbors table */
 					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
 					/* Ask the module to ID its yet unIDed neighbors */
-					messageParams[0] = 1;			/* change neighbor ID */
+					messageParams[0] = 1;		/* change neighbor ID */
 					messageParams[2] = j;		/* neighbor port */
 					SendMessageToModule(i, CODE_MODULE_ID, 3);
-					osDelay(100);
-//					HAL_Delay(200);
+					osDelay(200);
 				}
 			}
 
@@ -1228,18 +1222,18 @@ BOS_Status Explore(void)
 				if (neighbors2[j-1][0])
 				{
 					temp16 = neighbors2[j-1][0];
-					temp1 = (uint8_t)(temp16>>8);										/* Neighbor ID */
-					temp2 = (uint8_t)(neighbors2[j-1][0]);					/* Neighbor port */
+					temp1 = (uint8_t)(temp16>>8);						/* Neighbor ID */
+					temp2 = (uint8_t)(neighbors2[j-1][0]);				/* Neighbor port */
 					if (temp1 != 1)			/* Execlude the master */
 					{
 						/* Update module i section */
 						if (array[i-1][j] == 0) {
-							array[i-1][j] = ( temp1 << 3 ) | temp2;				/* Neighbor ID | Neighbor port */
+							array[i-1][j] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
 						}
 						/* Update module i neighbors */
 						if (array[temp1-1][temp2] == 0) {
-							array[temp1-1][0]	= neighbors2[j-1][1];				/* Neighbor PN */
-							array[temp1-1][temp2] = ( i << 3 ) | j;				/* Module i ID | Module i port */
+							array[temp1-1][0]	= neighbors2[j-1][1];	/* Neighbor PN */
+							array[temp1-1][temp2] = ( i << 3 ) | j;		/* Module i ID | Module i port */
 						}
 					}
 				}
@@ -1254,22 +1248,20 @@ BOS_Status Explore(void)
 				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
 				osDelay(100);
-//				HAL_Delay(200);
 			}
 		}
 	}
-
+//	PcPort = 4;
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	ExploreNeighbors(PcPort);
 	osDelay(100);
-//	HAL_Delay(200);
 
 	/* Check for any unIDed neighbors */
 	for (i=1 ; i<=NumOfPorts ; i++)
 	{
-		temp16 = neighbors[i-1][0];		/* Neighbor ID */
+		temp16 = neighbors[i-1][0];		    /* Neighbor ID */
 		temp1 = (uint8_t)(temp16>>8);
-		if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+		if (temp16 != 0 && temp1 == 0) {	/* UnIDed module */
 			result = BOS_ERR_UnIDedModule;
 		}
 	}
@@ -1278,13 +1270,12 @@ BOS_Status Explore(void)
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
 		osDelay(100);
-//		HAL_Delay(200);
 		/* Check for any unIDed neighbors */
 		for (j=1 ; j<=MaxNumOfPorts ; j++)
 		{
 			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
 			temp1 = (uint8_t)(temp16>>8);
-			if (temp16 != 0 && temp1 == 0) {		/* UnIDed module */
+			if (temp16 != 0 && temp1 == 0) {	/* UnIDed module */
 				result = BOS_ERR_UnIDedModule;
 			}
 		}
@@ -1312,8 +1303,8 @@ BOS_Status Explore(void)
 				} else {
 					/* If not empty, check neighbor */
 					temp16 = array[i-1][p];
-					temp1 = (uint8_t)(temp16>>3);										/* Neighbor ID */
-					temp2 = (uint8_t)(temp16 & 0x0007);							/* Neighbor port */
+					temp1 = (uint8_t)(temp16>>3);					/* Neighbor ID */
+					temp2 = (uint8_t)(temp16 & 0x0007);				/* Neighbor port */
 					/* Check neighbor port direction */
 					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
 						/* Neighbor port is normal */
@@ -1322,7 +1313,7 @@ BOS_Status Explore(void)
 					} else {
 						/* Neighbor port is reversed */
 						messageParams[p-1] = NORMAL;
-						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));		/* Set bit to zero */
+						arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));	/* Set bit to zero */
 					}
 				}
 			}
@@ -1334,12 +1325,11 @@ BOS_Status Explore(void)
 			temp2 = FindRoute(i, temp1);
 			/* Is the inport reversed? */
 			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
-				messageParams[MaxNumOfPorts] = REVERSED;		/* Make sure the inport is reversed */
+				messageParams[MaxNumOfPorts] = REVERSED;	/* Make sure the inport is reversed */
 
 			/* Step 5d - Update module ports directions */
 			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
 			osDelay(100);
-//			HAL_Delay(200);
 		}
 
 		/* Step 5e - Update master ports > all normal */
@@ -1352,14 +1342,12 @@ BOS_Status Explore(void)
 	/* >>> Step 6 - Test new port directions by pinging all modules */
 	if (result == BOS_OK)
 	{
-		osDelay(100);
-//		HAL_Delay(200);
+//		osDelay(100);
 //		BOSMessaging.response = BOS_RESPONSE_MSG;		// Enable response for pings
 		for (i=2 ; i<=N ; i++)
 		{
 			SendMessageToModule(i, CODE_PING, 0);
-			osDelay(300*NumberOfHops(i));
-			//osDelay(100);
+			osDelay(10*NumberOfHops(i));
 //			if (responseStatus == BOS_OK)
 //				result = BOS_OK;
 //			else if (responseStatus == BOS_ERR_NoResponse)
@@ -1368,18 +1356,15 @@ BOS_Status Explore(void)
 	}
 
 	/* >>> Step 7 - Save all (topology and port directions) in RO/EEPROM */
-	if (result == BOS_OK)
-	{
-		/* Save data in the master */
-		SaveToRO();
-		SaveEEportsDir();
-		osDelay(100);
-		/* Ask other modules to save their data too */
-		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
-	}
-
-	DisplayTopology(PcPort);
-	DisplayPortsDir(PcPort);
+//	if (result == BOS_OK)
+//	{
+//		/* Save data in the master */
+//		SaveToRO();
+//		SaveEEportsDir();
+//		osDelay(100);
+//		/* Ask other modules to save their data too */
+//		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
+//	}
 
 	return result;
 }
@@ -1401,7 +1386,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore){
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
 			SendMessageFromPort(port,0,0,CODE_HI,3);
 			/* Minimum delay between two consequetive SendMessage commands (with response) */
-			osDelay(10);
+			osDelay(5);
 		}
 	}
 	

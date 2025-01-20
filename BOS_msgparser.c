@@ -60,7 +60,7 @@ extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
 
 /* Routing and Topology */
-extern uint16_t neighbors2[NumOfPorts][2];
+extern volatile uint16_t neighbors2[NumOfPorts][2];
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
