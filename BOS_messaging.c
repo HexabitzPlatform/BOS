@@ -273,9 +273,13 @@ BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *
 			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
 
 		/* NULL DATA */
-		if (0 == RemoteResponseBuffer && RemoteResponseBuffer[1]
-				&& RemoteResponseBuffer[2] && RemoteResponseBuffer[3])
+		if ((0 == RemoteResponseBuffer[0]) && (0 ==RemoteResponseBuffer[1])
+				&& (0 == RemoteResponseBuffer[2]) && (0 == RemoteResponseBuffer[3]))
 			return result = BOS_ERROR;
+
+		for (size_t i = 0; i < sizeof(RemoteResponseBuffer) / sizeof(RemoteResponseBuffer[0]); i++) {
+		    RemoteResponseBuffer[i] = 0x00;
+		}
 
 		return result = BOS_OK;
 	} else
@@ -440,7 +444,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 				if((totalNumberOfParams / numberOfParams) >= 1){
 					/* Call this function recursively */
 					SendMessageFromPort(port,src,dst,code,numberOfParams);
-					osDelay(10);
+//					osDelay(10);
 					/* Update remaining number of parameters */
 					totalNumberOfParams -=numberOfParams;
 					ptrShift +=numberOfParams;
@@ -520,7 +524,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 
 			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
 				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-				osDelay(200);
+//				osDelay(200);
 				if(ACK_FLAG == true)
 					break;
 				if(rejected_FLAG == true)
@@ -544,7 +548,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
 				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
-				osDelay(200);
+//				osDelay(200);
 				if(rejected_FLAG == true)
 					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 			}

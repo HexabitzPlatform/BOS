@@ -105,7 +105,7 @@ void MX_FREERTOS_Init(void){
 	xTaskCreate(StartDefaultTask,(const char* ) "DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
 	
 	/* Create the back-end task */
-	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&BackEndTaskHandle);
+	xTaskCreate(BackEndTask,(const char* ) "BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityHigh - osPriorityIdle,&BackEndTaskHandle);
 	
 	/* Create the User task */
 	xTaskCreate(UserTask,(const char* ) "UserTask",(USER_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&UserTaskHandle);
@@ -185,7 +185,7 @@ void StartDefaultTask(void *argument){
 		/* Switch indicator LED according to mode */
 		switch(indMode){
 			case IND_PING:
-				RTOS_IND_blink(200);
+				RTOS_IND_blink(80);
 				indMode =IND_OFF;
 				break;
 				
