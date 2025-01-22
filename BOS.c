@@ -19,8 +19,7 @@ so we can read these output ports when needed instead of figuring out the correc
 uint8_t Output_Port_Array[__N] = {0};
 #endif
 
-
-
+uint8_t ExtraPcPort = 0;
 /*Flag for CLI Task:
  *
  * Activate_CLI_For_First_Time_Flag:
@@ -1120,8 +1119,8 @@ BOS_Status Explore(void)
 
 	myID = 1; 		/* Master ID */
 
+	PcPort = ExtraPcPort;
 	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
-	PcPort = 3;
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
@@ -1251,7 +1250,8 @@ BOS_Status Explore(void)
 			}
 		}
 	}
-	PcPort = 3;
+	PcPort = ExtraPcPort;
+
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	ExploreNeighbors(PcPort);
 	osDelay(50);

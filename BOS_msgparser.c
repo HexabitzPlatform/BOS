@@ -59,6 +59,7 @@ extern volatile uint8_t RemoteResponseFlag;
 extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
 
+extern uint8_t ExtraPcPort;
 /* Routing and Topology */
 extern volatile uint16_t neighbors2[NumOfPorts][2];
 
@@ -147,6 +148,7 @@ void BackEndTask(void *argument) {
 					/* Continue the CLI session on this port */
 					portStatus[port_number] = CLI;
 					PcPort = port_number;
+					ExtraPcPort = port_number;
 
 					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
 
