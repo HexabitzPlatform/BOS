@@ -370,6 +370,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	static uint16_t ptrShift =0,pp=0;
 	bool extendOptions = false, extendCode = false;
 	UBaseType_t TaskPriority;
+	static uint8_t LongMessageFlag = 0;
 	
 	/* Sanity check broadcast/multi-cast and not allowed cases */
 	if((port == 0 && dst == 0) ||																												// cases 3 & 4
@@ -414,8 +415,10 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		message[3] =dst;
 		message[4] =src;
 		/* Options */
-		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] =(BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4) | (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
+		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
+		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
+				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
+
 		if(extendOptions == true){
 			++shift;
 		}
@@ -436,6 +439,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		}
 		else{
 			/* Long message: Set Options byte 8th bit */
+			LongMessageFlag = true;
 			message[5] |=0x80;
 			totalNumberOfParams =numberOfParams;
 			numberOfParams = MAX_PARAMS_PER_MESSAGE;
@@ -450,6 +454,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 					ptrShift +=numberOfParams;
 				}
 				else{
+					LongMessageFlag = false;
 					message[5] &=0x7F; /* Last message. Reset long message flag */
 					numberOfParams =totalNumberOfParams;
 					memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);

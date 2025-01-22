@@ -178,7 +178,7 @@ BOS_t BOS;
 BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
 BOSMessaging_t BOSMessging_default={ .response =
-	BOS_RESPONSE_ALL, .trace =TRACE_NONE,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+		BOS_RESPONSE_NONE, .trace =TRACE_NONE,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
 };
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
@@ -1121,12 +1121,12 @@ BOS_Status Explore(void)
 	myID = 1; 		/* Master ID */
 
 	/* >>> Step 1 - Reverse master ports and explore adjacent neighbors */
-//	PcPort = 4;
+	PcPort = 3;
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
 		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
-	osDelay(100);
+	osDelay(50);
 
 	/* >>> Step 2 - Assign IDs to new modules & update the topology array */
 
@@ -1144,7 +1144,7 @@ BOS_Status Explore(void)
 			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);
 			/* Modify neighbors table */
 			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
-			osDelay(100);
+			osDelay(50);
 		}
 	}
 
@@ -1170,7 +1170,7 @@ BOS_Status Explore(void)
 	{
 		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
 		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-		osDelay(100);
+		osDelay(10);
 	}
 
 
@@ -1251,10 +1251,10 @@ BOS_Status Explore(void)
 			}
 		}
 	}
-//	PcPort = 4;
+	PcPort = 3;
 	/* >>> Step 4 - Make sure all connected modules have been discovered */
 	ExploreNeighbors(PcPort);
-	osDelay(100);
+	osDelay(50);
 
 	/* Check for any unIDed neighbors */
 	for (i=1 ; i<=NumOfPorts ; i++)
@@ -1269,7 +1269,7 @@ BOS_Status Explore(void)
 	for (i=2 ; i<=currentID ; i++)
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
-		osDelay(100);
+		osDelay(200);
 		/* Check for any unIDed neighbors */
 		for (j=1 ; j<=MaxNumOfPorts ; j++)
 		{
@@ -1329,7 +1329,7 @@ BOS_Status Explore(void)
 
 			/* Step 5d - Update module ports directions */
 			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
-			osDelay(100);
+			osDelay(10);
 		}
 
 		/* Step 5e - Update master ports > all normal */
