@@ -514,7 +514,7 @@ void PxMessagingTask(void *argument){
 						case CODE_EXPLORE_ADJ:
 							ExploreNeighbors(port);
 							indMode =IND_TOPOLOGY;
-							osDelay(10);
+							osDelay(50);
 							temp =0;
 							/* Exploration response message */
 							for(uint8_t p =1; p <= NumOfPorts; p++){
@@ -570,7 +570,7 @@ void PxMessagingTask(void *argument){
 								/* Copy the scratchpad to array */
 								memcpy(&array,&longMessageScratchpad,longMessageLastPtr);
 								longMessageLastPtr =0;
-//indMode = IND_TOPOLOGY;
+								indMode = IND_TOPOLOGY;
 							}
 							break;
 							
