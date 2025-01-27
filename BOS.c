@@ -1183,9 +1183,6 @@ BOS_Status Explore(void)
 
 	while (lastID != currentID)
 	{
-		/* Update lastID */
-		lastID = currentID;
-
 		/* Scan all discovered modules */
 		for (i=2 ; i<=currentID ; i++)
 		{
@@ -1255,6 +1252,9 @@ BOS_Status Explore(void)
 				osDelay(100);
 			}
 		}
+
+		/* Update lastID */
+		lastID = currentID;
 	}
 
 	/* Step 4: ******************************************************************/
