@@ -301,7 +301,6 @@ extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 uint8_t minArr(uint8_t *arr,uint8_t *Q);
 uint8_t QnotEmpty(uint8_t *Q);
 void NotifyMessagingTask(uint8_t port);
-uint8_t SaveToRO(void);
 #ifndef __N
 uint8_t ClearROtopology(void);
 #endif
@@ -393,10 +392,10 @@ void LoadEEvars(void){
 /* --- Load array topology stored in Flash RO --- */
 BOS_Status LoadROtopology(void){
 	BOS_Status result =BOS_OK;
-	uint16_t add =2, temp =0;
+	uint16_t add =8, temp =0;
 	
 	/* Load number of modules */
-	temp =(*(__IO uint16_t* )(RO_START_ADDRESS));
+	temp =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS));
 	
 	if(temp == 0xFFFF)				// Memory has been erased
 	{
@@ -413,8 +412,8 @@ BOS_Status LoadROtopology(void){
 		/* Load topology */
 		for(uint8_t i =1; i <= N; i++){
 			for(volatile uint8_t j =0; j <= MaxNumOfPorts; j++){
-				array[i - 1][j] =(*(__IO uint16_t* )(RO_START_ADDRESS + add));
-				add +=2;
+				array[i - 1][j] =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS + add));
+				add +=8;
 			}
 		}
 	}
@@ -684,7 +683,7 @@ BOS_Status LoadEEbuttons(void){
 /* --- Load Command Snippets stored in Flash RO  ---*/
 BOS_Status LoadROsnippets(void){
 	uint8_t i =0;
-	int currentAdd = RO_MID_ADDRESS;
+	int currentAdd = SNIPPETS_START_ADDRESS;
 	char *snipBuffer =(char* )malloc(cmdMAX_INPUT_SIZE);
 	if(snipBuffer == NULL)
 		return BOS_MEM_FULL;
