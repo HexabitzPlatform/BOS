@@ -46,7 +46,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
-extern uint8_t SaveToRO(void);
+extern uint8_t SaveSnippetsToRO(void);
 extern char Processor_type(uint8_t module_name);
 
 /*-----------------------------------------------------------*/
@@ -345,7 +345,7 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	switch(code){
 		case SNIPPET_ACTIVATE:
 			snippets[numOfRecordedSnippets - 1].state = true;
-			SaveToRO();
+			SaveSnippetsToRO();
 			break;
 			
 		case SNIPPET_CONDITION:

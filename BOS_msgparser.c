@@ -87,7 +87,7 @@ extern TaskHandle_t P6MsgTaskHandle;
 extern TaskHandle_t xCommandConsoleTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
-extern uint8_t SaveToRO(void);
+uint8_t SaveTopologyToRO(void);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif
@@ -601,7 +601,7 @@ void PxMessagingTask(void *argument){
 							break;
 							
 						case CODE_EXP_EEPROM:
-							SaveToRO();
+							SaveTopologyToRO();
 							SaveEEportsDir();
 							indMode =IND_PING;
 							break;

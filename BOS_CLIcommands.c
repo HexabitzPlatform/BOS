@@ -21,7 +21,7 @@ const char mathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
 /* Define long messages -------------------------------------------------------*/
 
 /* Exported functions */
-extern uint8_t SaveToRO(void);
+extern uint8_t SaveSnippetsToRO(void);
 extern BOS_Status SaveEEparams(void);
 extern BOS_Status ClearEEportsDir(void);
 #ifndef __N
@@ -1609,7 +1609,7 @@ static portBASE_TYPE actSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	/* Respond to the command */
 	if(result == BOS_OK){
 		snippets[index - 1].state = true;
-		SaveToRO();
+		SaveSnippetsToRO();
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageOK);
 	}
 	else
@@ -1645,7 +1645,7 @@ static portBASE_TYPE pauseSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	/* Respond to the command */
 	if(result == BOS_OK){
 		snippets[index - 1].state = false;
-		SaveToRO();
+		SaveSnippetsToRO();
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageOK);
 	}
 	else
@@ -1697,7 +1697,7 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 		--numOfRecordedSnippets;
 		
 		// Write updated list to RO
-		SaveToRO();
+		SaveSnippetsToRO();
 	}
 	
 	/* Respond to the command */
