@@ -1356,7 +1356,7 @@ BOS_Status Explore(void)
 		for (i=2 ; i<=N ; i++)
 		{
 			SendMessageToModule(i, CODE_PING, 0);
-			osDelay(1*NumberOfHops(i));
+			osDelay(10*NumberOfHops(i));
 		}
 	}
 
