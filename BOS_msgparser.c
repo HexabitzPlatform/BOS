@@ -59,8 +59,9 @@ extern volatile uint8_t RemoteResponseFlag;
 extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
 
+extern uint8_t ExtraPcPort;
 /* Routing and Topology */
-extern uint16_t neighbors2[NumOfPorts][2];
+extern volatile uint16_t neighbors2[NumOfPorts][2];
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
@@ -87,7 +88,7 @@ extern TaskHandle_t P6MsgTaskHandle;
 extern TaskHandle_t xCommandConsoleTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
-uint8_t SaveTopologyToRO(void);
+extern uint8_t SaveTopologyToRO(void);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif
@@ -147,6 +148,7 @@ void BackEndTask(void *argument) {
 					/* Continue the CLI session on this port */
 					portStatus[port_number] = CLI;
 					PcPort = port_number;
+					ExtraPcPort = port_number;
 
 					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
 
@@ -238,7 +240,8 @@ void BackEndTask(void *argument) {
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
 
 				/* Forward Message if Not for Current Module */
-				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID) {
+				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID
+						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 					ForwardReceivedMessage(port_number);
@@ -448,9 +451,12 @@ void PxMessagingTask(void *argument){
 							/* Record your neighbor info */
 							neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
 							neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
+
+							indMode = IND_TOPOLOGY;
+
 							/* Send your own info */
-							messageParams[1] =(uint8_t )myPN;
 							messageParams[0] =(uint8_t )(myPN >> 8);
+							messageParams[1] =(uint8_t )myPN;
 							messageParams[2] =port;
 							osDelay(2);
 							/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
@@ -508,7 +514,7 @@ void PxMessagingTask(void *argument){
 						case CODE_EXPLORE_ADJ:
 							ExploreNeighbors(port);
 							indMode =IND_TOPOLOGY;
-							osDelay(10);
+							osDelay(50);
 							temp =0;
 							/* Exploration response message */
 							for(uint8_t p =1; p <= NumOfPorts; p++){
@@ -564,7 +570,7 @@ void PxMessagingTask(void *argument){
 								/* Copy the scratchpad to array */
 								memcpy(&array,&longMessageScratchpad,longMessageLastPtr);
 								longMessageLastPtr =0;
-//indMode = IND_TOPOLOGY;
+								indMode = IND_TOPOLOGY;
 							}
 							break;
 							
