@@ -1371,7 +1371,12 @@ BOS_Status Explore(void)
 		SaveEEportsDir();
 		osDelay(100);
 		/* Ask other modules to save their data too */
-		SendMessageToModule(BOS_BROADCAST, CODE_EXP_EEPROM, 0);
+		for (i=2 ; i<=N ; i++)
+		{
+			SendMessageToModule(i, CODE_EXP_EEPROM, 0);
+			osDelay(10*NumberOfHops(i));
+		}
+
 	}
 
 	return result;
