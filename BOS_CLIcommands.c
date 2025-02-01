@@ -967,43 +967,43 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
 		
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
-			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"cli",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_CLI;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else
+//			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
+//				BOSMessaging.response = BOS_RESPONSE_ALL;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
+//				BOSMessaging.response = BOS_RESPONSE_MSG;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"cli",xParameterStringLength2)){
+//				BOSMessaging.response = BOS_RESPONSE_CLI;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
+//				BOSMessaging.response = BOS_RESPONSE_NONE;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
-			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_BOTH;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_MESSAGE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"response",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_RESPONSE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else
+//			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
+//				BOSMessaging.trace =TRACE_BOTH;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
+//				BOSMessaging.trace =TRACE_MESSAGE;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"response",xParameterStringLength2)){
+//				BOSMessaging.trace =TRACE_RESPONSE;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
+//				BOSMessaging.trace =TRACE_NONE;
+//				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+//			}
+//			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){
@@ -1190,23 +1190,23 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(!strncmp((const char* )pcParameterString1,"bos.",4)){
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
-			if(BOSMessaging.response == BOS_RESPONSE_ALL)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOSMessaging.response == BOS_RESPONSE_MSG)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOSMessaging.response == BOS_RESPONSE_NONE)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
-			else
+//			if(BOSMessaging.response == BOS_RESPONSE_ALL)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
+//			else if(BOSMessaging.response == BOS_RESPONSE_MSG)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
+//			else if(BOSMessaging.response == BOS_RESPONSE_NONE)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
+//			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
-			if(BOSMessaging.trace == TRACE_BOTH)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOSMessaging.trace == TRACE_MESSAGE)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOSMessaging.trace == TRACE_NONE)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
-			else
+//			if(BOSMessaging.trace == TRACE_BOTH)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
+//			else if(BOSMessaging.trace == TRACE_MESSAGE)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
+//			else if(BOSMessaging.trace == TRACE_NONE)
+//				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
+//			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){

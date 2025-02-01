@@ -246,7 +246,7 @@ void BackEndTask(void *argument) {
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
 					/* in case trace feature is enabled: */
-					BOSMessaging.trace =(traceOptions_t )((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
 					if(BOSMessaging.trace)
 						indMode =IND_SHORT_BLINK;
 
@@ -342,7 +342,7 @@ void PxMessagingTask(void *argument){
 				++shift;
 			}
 			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
-			BOSMessaging.trace =(traceOptions_t )((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
 			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
 			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
 			// 8th bit (MSB) Long message

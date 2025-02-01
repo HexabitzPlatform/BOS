@@ -177,7 +177,7 @@ BOS_t BOS;
 BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
 BOSMessaging_t BOSMessging_default={ .response =
-		BOS_RESPONSE_NONE, .trace =TRACE_NONE,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+		BOS_RESPONSE_NONE, .trace =true,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
 };
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
@@ -561,7 +561,7 @@ BOS_Status LoadEEparams(void){
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
 		BOSMessaging.response =(uint8_t )temp1;
-		BOSMessaging.trace =(traceOptions_t )(temp1 >> 8);
+		BOSMessaging.trace = (temp1 >> 8);
 		/* Couldn't find the variable, load default config */
 	}
 	else{

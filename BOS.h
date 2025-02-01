@@ -106,9 +106,9 @@ enum rtc_weekdays_e {
 typedef enum {
 	FMT_UINT8 =1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL
 } varFormat_t;
-typedef enum {
-	TRACE_NONE =0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
-} traceOptions_t;
+//typedef enum {
+//	TRACE_NONE =0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
+//} traceOptions_t;
 
 /* Number of attempts Type Definition */
 typedef enum {
@@ -163,7 +163,7 @@ typedef struct {
 typedef struct {
 
 	uint8_t response;
-	traceOptions_t trace;
+	bool trace;
 	uint8_t overrun;
 	bool received_Acknowledgment;
 	bool Acknowledgment;
