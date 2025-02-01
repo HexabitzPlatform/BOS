@@ -244,6 +244,12 @@ void BackEndTask(void *argument) {
 						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+
+					/* in case trace feature is enabled: */
+					BOSMessaging.trace =(traceOptions_t )((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+					if(BOSMessaging.trace)
+						indMode =IND_SHORT_BLINK;
+
 					ForwardReceivedMessage(port_number);
 
 				} else {
@@ -362,7 +368,7 @@ void PxMessagingTask(void *argument){
 				ForwardReceivedMessage(port);
 				if(BOSMessaging.trace)
 					indMode =IND_SHORT_BLINK;
-				
+
 				/* Special messages that require local action */
 				if(code == CODE_UPDATE){ // Remote bootloader update
 					Delay_ms(100);
