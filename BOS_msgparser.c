@@ -16,7 +16,7 @@ uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 
-
+uint8_t bcastLastID =0;
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
@@ -118,7 +118,7 @@ extern void NotifyMessagingTask(uint8_t port);
 /* BackEndTask function */
 void BackEndTask(void *argument) {
 
-	uint8_t calculated_crc, port_number, length, port_index;
+	uint8_t calculated_crc, port_number, length, port_index , dst;
 	uint8_t temp_length[NumOfPorts] = { 0 };
 	uint8_t temp_index[NumOfPorts] = { 0 };
 
@@ -238,10 +238,10 @@ void BackEndTask(void *argument) {
 				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+				dst = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3];
 
-				/* Forward Message if Not for Current Module */
-				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID
-						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
+				/* Forward Message in these cases: wrong ID , dst ~= 0 (explore) ,not MULTICAST , not BROADCAST */
+				if ((dst != myID) && (dst != 0) && (dst != BOS_BROADCAST) && (dst != BOS_MULTICAST)) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
@@ -269,6 +269,13 @@ void BackEndTask(void *argument) {
 						Accepted_Messages++;
 						messageLength[port_index] = length;
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+
+						/* Is it a broadcast message with unique ID? */
+						if(dst == BOS_BROADCAST && cMessage[port_index - 1][messageLength[port_index - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_index - 1][messageLength[port_index - 1] - 1]; // Store bcastID
+							BroadcastReceivedMessage(BOS_BROADCAST,port_index);
+							cMessage[port_index - 1][messageLength[port_index - 1] - 1] =0; // Reset bcastID location
+						}
 
 						/* Notify messaging tasks */
 						NotifyMessagingTask(port_number);
@@ -308,7 +315,7 @@ void PxMessagingTask(void *argument){
 	static int8_t cCLIString[cmdMAX_INPUT_SIZE];
 	portBASE_TYPE xReturned;
 	int8_t *pcOutputString;
-	static uint8_t bcastLastID;
+//	static uint8_t bcastLastID;
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -363,33 +370,33 @@ void PxMessagingTask(void *argument){
 			}
 
 			/* Is it a transit message? Check for the case when module is being IDed */
-			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
-				/* Forward the message to its destination */
-				ForwardReceivedMessage(port);
-				if(BOSMessaging.trace)
-					indMode =IND_SHORT_BLINK;
-
-				/* Special messages that require local action */
-				if(code == CODE_UPDATE){ // Remote bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,0);
-				}
-				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
-				}
-			}
-			/* Either broadcast or multicast local message */
-			else{
+//			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
+//				/* Forward the message to its destination */
+//				ForwardReceivedMessage(port);
+//				if(BOSMessaging.trace)
+//					indMode =IND_SHORT_BLINK;
+//
+//				/* Special messages that require local action */
+//				if(code == CODE_UPDATE){ // Remote bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,0);
+//				}
+//				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
+//				}
+//			}
+//			/* Either broadcast or multicast local message */
+//			else{
 				/* Is it a broadcast message with unique ID? */
-				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_BROADCAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-					result =BOS_OK;
-				}
+//				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_BROADCAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					result =BOS_OK;
+//				}
 				/* Reflection of last broadcast message! */
-				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
 					result =BOS_ERR_MSG_Reflection;
 				}
 				
@@ -1419,7 +1426,7 @@ void PxMessagingTask(void *argument){
 						break;
 					}
 				}
-			}
+//			}
 		}
 		
 		/* Is it unknown message? */
