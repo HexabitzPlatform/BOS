@@ -16,7 +16,7 @@ uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 
-uint8_t bcastLastID =0;
+
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
 float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
@@ -111,6 +111,8 @@ extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
+
+uint8_t bcastLastID = 0;
 /* -----------------------------------------------------------------------
  |												 Private Functions	 		|
  -----------------------------------------------------------------------
@@ -121,6 +123,8 @@ void BackEndTask(void *argument) {
 	uint8_t calculated_crc, port_number, length, port_index , dst;
 	uint8_t temp_length[NumOfPorts] = { 0 };
 	uint8_t temp_index[NumOfPorts] = { 0 };
+
+//	static uint8_t bcastLastID;
 
 	for (;;) {
 
@@ -271,10 +275,10 @@ void BackEndTask(void *argument) {
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
 						/* Is it a broadcast message with unique ID? */
-						if(dst == BOS_BROADCAST && cMessage[port_index - 1][messageLength[port_index - 1] - 1] != bcastLastID){
-							bcastID =bcastLastID =cMessage[port_index - 1][messageLength[port_index - 1] - 1]; // Store bcastID
-							BroadcastReceivedMessage(BOS_BROADCAST,port_index);
-							cMessage[port_index - 1][messageLength[port_index - 1] - 1] =0; // Reset bcastID location
+						if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_BROADCAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
 						}
 
 						/* Notify messaging tasks */
@@ -399,7 +403,7 @@ void PxMessagingTask(void *argument){
 				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
 					result =BOS_ERR_MSG_Reflection;
 				}
-				
+
 				/* Is it a multicast message with unique ID? */
 				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
 					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
@@ -419,7 +423,7 @@ void PxMessagingTask(void *argument){
 				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
 					result =BOS_ERR_MSG_Reflection;
 				}
-				
+
 				/* Set shift index to the start of message payload (parameters) */
 				shift +=4;
 				
