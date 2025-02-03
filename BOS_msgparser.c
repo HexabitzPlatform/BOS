@@ -112,7 +112,7 @@ extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
 
-uint8_t bcastLastID = 0;
+volatile uint8_t bcastLastID = 0;
 /* -----------------------------------------------------------------------
  |												 Private Functions	 		|
  -----------------------------------------------------------------------
@@ -270,6 +270,7 @@ void BackEndTask(void *argument) {
 
 					Message_counter++;
 					if (calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3]) {
+
 						Accepted_Messages++;
 						messageLength[port_index] = length;
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
@@ -278,6 +279,13 @@ void BackEndTask(void *argument) {
 						if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
 							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
 							BroadcastReceivedMessage(BOS_BROADCAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+						}
+
+						/* Is it a multicast message with unique ID? */
+						if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_MULTICAST,port_number);
 							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
 						}
 
@@ -299,11 +307,7 @@ void BackEndTask(void *argument) {
 				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
 					Process_Message_Buffer_Index_Start = 0;
 			}
-
-//			taskYIELD();
 		}
-//		osDelay(25);
-//       taskYIELD();
 	}
 }
 
@@ -400,15 +404,15 @@ void PxMessagingTask(void *argument){
 //					result =BOS_OK;
 //				}
 				/* Reflection of last broadcast message! */
-				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-					result =BOS_ERR_MSG_Reflection;
-				}
+//				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+//					result =BOS_ERR_MSG_Reflection;
+//				}
 
 				/* Is it a multicast message with unique ID? */
 				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_MULTICAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_MULTICAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
 					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
 					/* Am I part of this multicast group? */
 					result =BOS_ERR_WrongID;
