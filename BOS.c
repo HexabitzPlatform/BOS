@@ -177,7 +177,7 @@ BOS_t BOS;
 BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
 BOSMessaging_t BOSMessging_default={ .response =
-		BOS_RESPONSE_NONE, .trace =true,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
 };
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
