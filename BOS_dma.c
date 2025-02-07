@@ -47,8 +47,8 @@ extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *hu
 BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num){
 	uint8_t srcPort =GetPort(huartSrc);
 	
-	// 1. Check if single- or multi-cast 
-	// 1.a. If single-cast, switch the DMA channel to streaming if it's available 
+	// 1. Check if single- or multi-cast
+	// 1.a. If single-cast, switch the DMA channel to streaming if it's available
 	if(portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI)		// This port is not streaming so it's single-cast
 	{
 		SwitchMsgDMAToStream(srcPort);
@@ -59,7 +59,7 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 	}
 	else
 		return BOS_ERR_PORT_BUSY;
-	
+
 	// 2. Setup streaming destination
 	dmaStreamDst[srcPort - 1] =huartDst;
 	
@@ -84,11 +84,12 @@ void DMA_IRQHandler(uint8_t port){
 		HAL_DMA_IRQHandler(&msgRxDMA[port - 1]);
 	}
 	else{
-		HAL_DMA_IRQHandler(&streamDMA[port - 1]);
+		HAL_DMA_IRQHandler(&msgRxDMA/*streamDMA*/[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
 		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1]){
-			StopStreamDMA(port);
+//			StopStreamDMA(port);
+			StopDMA(port);
 		}
 	}
 }

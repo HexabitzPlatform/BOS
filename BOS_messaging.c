@@ -122,7 +122,8 @@ void StreamTimerCallback(TimerHandle_t xTimerStream){
 	
 	tid =(uint32_t )pvTimerGetTimerID(xTimerStream);
 	
-	StopStreamDMA(tid);
+//	StopStreamDMA(tid);
+//	StopDMA(tid);
 	
 	SwitchStreamDMAToMsg(tid);
 }
