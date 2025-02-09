@@ -111,6 +111,8 @@ extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
+
+volatile uint8_t bcastLastID = 0;
 /* -----------------------------------------------------------------------
  |												 Private Functions	 		|
  -----------------------------------------------------------------------
@@ -118,13 +120,16 @@ extern void NotifyMessagingTask(uint8_t port);
 /* BackEndTask function */
 void BackEndTask(void *argument) {
 
-	uint8_t calculated_crc, port_number, length, port_index;
+	uint8_t calculated_crc, port_number, length, port_index , dst;
 	uint8_t temp_length[NumOfPorts] = { 0 };
 	uint8_t temp_index[NumOfPorts] = { 0 };
 
+	BOS_Status result =BOS_OK;
+	uint8_t NumofModulesinGroup = 0;
+
 	for (;;) {
 
-        // Wait for notification from USART interrupt handler
+        /* Wait for notification from USART interrupt handler */
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		/* Parsing all module ports */
@@ -133,7 +138,9 @@ void BackEndTask(void *argument) {
 			port_index = port_DMA;
 			index_input[port_DMA] = MSG_RX_BUF_SIZE - (*index_dma[port_DMA]);
 
-			/* 1- Check if there's new data to process */
+			/***************************************************************************************/
+			/* 1- Check if there's new data to process *********************************************/
+			/***************************************************************************************/
 			if (index_input[port_DMA] != index_process[port_DMA]) {
 				port_number = port_DMA + 1;
 
@@ -223,14 +230,17 @@ void BackEndTask(void *argument) {
 
 			}
 
-			/* 2- In case there is no bytes to process
-			 * increase the DMA port index to parse all Module ports
-			 *  */
+			/***************************************************************************************/
+			/* 2- In case there is no bytes to process *********************************************/
+			/***************************************************************************************/
+			/* Increase the DMA port index to parse all Module ports */
 			else if (index_input[port_DMA] == index_process[port_DMA]) {
 				port_DMA++;
 			}
 
-			/* 3- Message Processing: */
+			/***************************************************************************************/
+			/* 3- Message Processing ***************************************************************/
+			/***************************************************************************************/
 			if (Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start) {
 				port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
 				port_index = port_number - 1;
@@ -238,10 +248,10 @@ void BackEndTask(void *argument) {
 				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+				dst = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3];
 
-				/* Forward Message if Not for Current Module */
-				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID
-						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
+				/* Forward Message in these cases: wrong ID , dst ~= 0 (explore) ,not MULTICAST , not BROADCAST */
+				if ((dst != myID) && (dst != 0) && (dst != BOS_BROADCAST) && (dst != BOS_MULTICAST)) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
@@ -270,8 +280,45 @@ void BackEndTask(void *argument) {
 						messageLength[port_index] = length;
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
+						result =BOS_OK;
+
+						/* Is it a broadcast or a multi-cast message with unique ID? */
+						if(dst == BOS_BROADCAST || dst == BOS_MULTICAST) {
+						if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_BROADCAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+						}
+						/* Reflection of last broadcast message! */
+						else if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+							result =BOS_ERR_MSG_Reflection;
+						}
+
+						if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_MULTICAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+							/* Number of members in this multicast group
+							 * TODO: breaks when message is 14 length and padded */
+							NumofModulesinGroup =cMessage[port_number - 1][messageLength[port_number - 1] - 2];
+							/* Am I part of this multicast group? */
+							result =BOS_ERR_WrongID;
+								for (uint8_t i = 0; i < NumofModulesinGroup; i++) {
+									if (myID == cMessage[port_number - 1][messageLength[port_number - 1] - 2 - NumofModulesinGroup + i]) {
+										result = BOS_OK;
+										break;
+									}
+								}
+							}
+						/* Reflection of last multi-cast message! */
+						else if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+							result =BOS_ERR_MSG_Reflection;
+						}
+					}
+
 						/* Notify messaging tasks */
-						NotifyMessagingTask(port_number);
+						if (result == BOS_OK)
+							NotifyMessagingTask(port_number);
 
 					} else {
 						Rejected_Messages++;
@@ -288,11 +335,7 @@ void BackEndTask(void *argument) {
 				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
 					Process_Message_Buffer_Index_Start = 0;
 			}
-
-//			taskYIELD();
 		}
-//		osDelay(25);
-//       taskYIELD();
 	}
 }
 
@@ -308,7 +351,7 @@ void PxMessagingTask(void *argument){
 	static int8_t cCLIString[cmdMAX_INPUT_SIZE];
 	portBASE_TYPE xReturned;
 	int8_t *pcOutputString;
-	static uint8_t bcastLastID;
+//	static uint8_t bcastLastID;
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -363,56 +406,59 @@ void PxMessagingTask(void *argument){
 			}
 
 			/* Is it a transit message? Check for the case when module is being IDed */
-			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
-				/* Forward the message to its destination */
-				ForwardReceivedMessage(port);
-				if(BOSMessaging.trace)
-					indMode =IND_SHORT_BLINK;
+//			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
+//				/* Forward the message to its destination */
+//				ForwardReceivedMessage(port);
+//				if(BOSMessaging.trace)
+//					indMode =IND_SHORT_BLINK;
+//
+//				/* Special messages that require local action */
+//				if(code == CODE_UPDATE){ // Remote bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,0);
+//				}
+//				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
+//				}
+//			}
 
-				/* Special messages that require local action */
-				if(code == CODE_UPDATE){ // Remote bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,0);
-				}
-				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
-				}
-			}
-			/* Either broadcast or multicast local message */
-			else{
+//			/* Either broadcast or multicast local message */
+//			else{
+
+
 				/* Is it a broadcast message with unique ID? */
-				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_BROADCAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-					result =BOS_OK;
-				}
-				/* Reflection of last broadcast message! */
-				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-					result =BOS_ERR_MSG_Reflection;
-				}
-				
+//				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_BROADCAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					result =BOS_OK;
+//				}
+//				/* Reflection of last broadcast message! */
+//				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+//					result =BOS_ERR_MSG_Reflection;
+//				}
+
 				/* Is it a multicast message with unique ID? */
-				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_MULTICAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
-					/* Am I part of this multicast group? */
-					result =BOS_ERR_WrongID;
-					for(i =0; i < temp; i++){
-						if(myID == cMessage[port - 1][messageLength[port - 1] - 2 - temp + i]){
-							result =BOS_OK;
-							break;
-						}
-					}
-				}
-				/* Reflection of last multi-cast message! */
-				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-					result =BOS_ERR_MSG_Reflection;
-				}
-				
+//				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_MULTICAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
+//					/* Am I part of this multicast group? */
+//					result =BOS_ERR_WrongID;
+//					for(i =0; i < temp; i++){
+//						if(myID == cMessage[port - 1][messageLength[port - 1] - 2 - temp + i]){
+//							result =BOS_OK;
+//							break;
+//						}
+//					}
+//				}
+//				/* Reflection of last multi-cast message! */
+//				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+//					result =BOS_ERR_MSG_Reflection;
+//				}
+
 				/* Set shift index to the start of message payload (parameters) */
 				shift +=4;
 				
@@ -1419,7 +1465,7 @@ void PxMessagingTask(void *argument){
 						break;
 					}
 				}
-			}
+//			}
 		}
 		
 		/* Is it unknown message? */
