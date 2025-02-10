@@ -81,10 +81,10 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
  */
 void DMA_IRQHandler(uint8_t port){
 	if(portStatus[port] != STREAM){
-		HAL_DMA_IRQHandler(&msgRxDMA[port - 1]);
+		HAL_DMA_IRQHandler(msgRxDMA[port - 1]);
 	}
 	else{
-		HAL_DMA_IRQHandler(&msgRxDMA/*streamDMA*/[port - 1]);
+		HAL_DMA_IRQHandler(msgRxDMA/*streamDMA*/[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
 		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1]){

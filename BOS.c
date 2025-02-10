@@ -1728,12 +1728,12 @@ void DisplayModuleStatus(uint8_t port){
 	sprintf(pcUserMessage,"\n\rDMA Streams Status:\n\r");
 	strcat((char* )pcOutputString,pcUserMessage);
 	for(char i =1; i <= 6; i++){
-		if(msgRxDMA/*streamDMA*/[i - 1].Instance == 0){
+		if(msgRxDMA/*streamDMA*/[i - 1]->Instance == 0){
 			sprintf(pcUserMessage,"\n\rStreaming DMA %d is free",i);
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 		else{
-			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(msgRxDMA/*streamDMA*/[i - 1].Parent),GetPort(dmaStreamDst[i - 1]));
+			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(msgRxDMA/*streamDMA*/[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 	}
@@ -2285,20 +2285,20 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	
 	// Stop the DMA streams and enable messaging back on these ports
 //	if(streamDMA[port1 - 1].Instance != 0 && streamDMA[port2 - 1].Instance != 0)
-	if(msgRxDMA[port1 - 1].Instance != 0 && msgRxDMA[port2 - 1].Instance != 0)
+	if(msgRxDMA[port1 - 1]->Instance != 0 && msgRxDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
 //	else if(streamDMA[port1 - 1].Instance != 0)
-	else if(msgRxDMA[port1 - 1].Instance != 0)
+	else if(msgRxDMA[port1 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		return BOS_OK;
 	}
 //	else if(streamDMA[port2 - 1].Instance != 0)
-	else if(msgRxDMA[port2 - 1].Instance != 0)
+	else if(msgRxDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
