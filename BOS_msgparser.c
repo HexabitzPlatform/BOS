@@ -473,17 +473,19 @@ void PxMessagingTask(void *argument){
 							
 						case CODE_PING:
 							indMode =IND_PING;
-////							osDelay(10);
-//							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
-//								SendMessageToModule(src,CODE_PING_RESPONSE,0);
+//							osDelay(5);
+							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
+								SendMessageToModule(src,CODE_PING_RESPONSE,0);
 							break;
 							
 						case CODE_PING_RESPONSE:
+							if(PcPort == 0) {
 							if(!moduleAlias[myID][0])
 								sprintf((char* )pcUserMessage,"Hi from module %d\r\n",src);
 							else
 								sprintf((char* )pcUserMessage,"Hi from module %d (%s)\r\n",src,moduleAlias[src]);
 							writePxMutex(PcPort,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
+							}
 							responseStatus =BOS_OK;
 							break;
 							

@@ -161,7 +161,6 @@ typedef struct {
 
 /* BOS Struct Type Definition */
 typedef struct {
-
 	uint8_t response;
 	bool trace;
 	uint8_t overrun;
@@ -169,6 +168,16 @@ typedef struct {
 	bool Acknowledgment;
 	trial_t trial;
 } BOSMessaging_t;
+
+/* Options byte of the BOS Message */
+typedef struct {
+	uint8_t ExtendedOption      : 1; /* If set, then the next byte is an Options byte as well */
+	uint8_t ExtendedMessageCode : 1; /* If set, then message codes are 16 bits */
+	uint8_t Trace               : 1; /* If set, Show Message trace (ping) */
+	uint8_t Reserved            : 2; /* reserved bits */
+	uint8_t Response            : 2; /* */
+	uint8_t LongMessage         : 1; /* If set, then message parameters continue in the next message */
+} BOSOptionByte_t;
 
 /* Module Parameter Struct Type Definition */
 typedef struct {
