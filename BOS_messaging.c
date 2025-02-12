@@ -62,7 +62,7 @@ extern BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeou
  |												 Private Functions	 														|
  ----------------------------------------------------------------------- 
  */
-
+uint16_t dstP[6];
 /* --- Setup DMA streams upon request from another module --- 
  */
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst){
@@ -89,7 +89,7 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 			return BOS_ERR_PORT_BUSY;
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
-		dmaStreamTotal[src - 1] =count;
+		dmaStreamTotal[dst - 1] =count;
 	}
 	else if(direction == BIDIRECTIONAL){
 		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
@@ -106,6 +106,16 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	else
 		return BOS_ERR_WrongParam;
 	
+	if(direction == FORWARD)
+		dstP[src-1] = (direction << 8) + dst;
+	else if(direction == BACKWARD)
+		dstP[dst-1] = (direction << 8) + src;
+	else if(direction == BIDIRECTIONAL)
+	{
+		dstP[src-1] = (direction << 8) + dst;
+		dstP[dst-1] = (direction << 8) + src;
+	}
+
 	/* Start the timeout timer */
 	if(xTimerStream != NULL)
 		xTimerStart(xTimerStream,portMAX_DELAY);

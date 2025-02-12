@@ -77,9 +77,11 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 
 /*-----------------------------------------------------------*/
 
+extern uint16_t dstP[6];
 /* DMA interrupt service routine 
  */
 void DMA_IRQHandler(uint8_t port){
+
 	if(portStatus[port] != STREAM){
 		HAL_DMA_IRQHandler(msgRxDMA[port - 1]);
 	}
@@ -88,8 +90,18 @@ void DMA_IRQHandler(uint8_t port){
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
 		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1]){
-//			StopStreamDMA(port);
-			StopDMA(port);
+
+			uint8_t direction = dstP[port-1]>>8;
+			uint8_t dst = (uint8_t) dstP[port-1];
+			if((direction == FORWARD) || (direction == BACKWARD))
+				SwitchStreamDMAToMsg(port);
+			else
+			{
+				SwitchStreamDMAToMsg(port);
+				SwitchStreamDMAToMsg(dst);
+			}
+
+
 		}
 	}
 }
