@@ -257,9 +257,9 @@ typedef struct
 #define	BUTTON_EVENT_MODE_OR						1
 
 /* BOS Defiitions */
-#define BOS_RESPONSE_ALL							0x60					// Send response messages for both Messaging and CLI
-#define BOS_RESPONSE_MSG							0x20					// Send response messages for Messaging only (no CLI)
-#define BOS_RESPONSE_CLI							0x40					// Send response messages for CLI only (no messages)
+#define BOS_RESPONSE_ALL							0x03					// Send response messages for both Messaging and CLI
+#define BOS_RESPONSE_MSG							0x01					// Send response messages for Messaging only (no CLI)
+#define BOS_RESPONSE_CLI							0x02					// Send response messages for CLI only (no messages)
 #define BOS_RESPONSE_NONE							0x00					// Do not send any response messages
 #define REMOTE_MEMORY_ADD             				0
 #define REMOTE_BOS_PARAM              				1

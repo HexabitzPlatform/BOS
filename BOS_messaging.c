@@ -436,7 +436,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		/* Code - LSB first */
 		message[6 + shift] =(uint8_t )code;
 
-		if(extendCode == true){
+		if(OptionByte.ExtendedMessageCode){
 			++shift;
 			message[6 + shift] =(uint8_t )(code >> 8);
 		}

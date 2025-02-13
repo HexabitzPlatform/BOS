@@ -257,7 +257,7 @@ void BackEndTask(void *argument) {
 
 					/* in case trace feature is enabled: */
 //					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-					OptionByte.Trace = (cMessage[port_number - 1][2]);
+					OptionByte.Trace = ((cMessage[port_number - 1][2] >> 2) & 0x01);
 					if(OptionByte.Trace)
 						indMode =IND_SHORT_BLINK;
 

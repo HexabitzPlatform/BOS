@@ -180,7 +180,7 @@ DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minIn
 //		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
 //};
 BOSOptionByte_t OptionByte;
-BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = false};
+BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = BOS_RESPONSE_NONE};
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
