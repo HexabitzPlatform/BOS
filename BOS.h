@@ -636,6 +636,7 @@ extern void  Module_Init(void);
 extern BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams);
+extern BOS_Status SendLargeMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code , uint8_t *pParameters, uint16_t numberOfParams);
 extern BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout);
 /* Delay APIs */
