@@ -502,7 +502,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 			/* I'm the source of the command and the target is > 1 hop away */
 			if(module != myID){
 				/* Deactivate responses */
-				BOSMessaging.response = BOS_RESPONSE_NONE;
+				OptionByte.Response = BOS_RESPONSE_NONE;
 				
 				/* Forward the command */
 				messageParams[0] =port;

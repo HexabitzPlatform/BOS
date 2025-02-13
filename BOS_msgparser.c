@@ -256,8 +256,9 @@ void BackEndTask(void *argument) {
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
 					/* in case trace feature is enabled: */
-					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-					if(BOSMessaging.trace)
+//					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+					OptionByte.Trace = (cMessage[port_number - 1][2]);
+					if(OptionByte.Trace)
 						indMode =IND_SHORT_BLINK;
 
 					ForwardReceivedMessage(port_number);
@@ -363,13 +364,6 @@ void PxMessagingTask(void *argument){
 		ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
 		
 		if(messageLength[port - 1]){
-			/* Long message? Read Options Byte MSB */
-			if(cMessage[port - 1][2] >> 7){
-				longMessage =1;
-			}
-			else{
-				longMessage =0;
-			}
 			
 			/* Read message source and destination */
 			dst =cMessage[port - 1][0];
@@ -378,32 +372,75 @@ void PxMessagingTask(void *argument){
 			/* Reset array index shift */
 			shift =0;
 			
+			/* Assign the value of option byte to OptionByte structure */
+			*(uint8_t*)&OptionByte = (cMessage[port - 1][2]);
+
 			/* Read message options */
-			if(cMessage[port - 1][2] & 0x01){ // 1st bit (LSB) Extended options - TODO handle extended options case
+			if(OptionByte.ExtendedOptions){ // 1st bit (LSB) Extended options - TODO handle extended options case
 				extendOptions = true;
 				(void )extendOptions; // remove warning
 				++shift;
 			}
-			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
-			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
-			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
-			// 8th bit (MSB) Long message
-			
+
 			/* Read message code - LSB first */
-			if(extendCode == true){
+			if(OptionByte.ExtendedMessageCode){
 				code =(((uint16_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
 				++shift;
 			}
-			else{
+			else
 				code =cMessage[port - 1][3 + shift];
-			}
 
 			/*ACK Massage */
-			if(true == BOSMessaging.received_Acknowledgment){
-				BOSMessaging.Acknowledgment =false;
+			if(OptionByte.Acknowledgment){
+				OptionByte.Acknowledgment =false;
 				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
 			}
+
+//		if(messageLength[port - 1]){
+//			/* Long message? Read Options Byte MSB */
+//			if(cMessage[port - 1][2] >> 7){
+//				longMessage =1;
+//			}
+//			else{
+//				longMessage =0;
+//			}
+//
+//			/* Read message source and destination */
+//			dst =cMessage[port - 1][0];
+//			src =cMessage[port - 1][1];
+//
+//			/* Reset array index shift */
+//			shift =0;
+//
+//			/* Read message options */
+//			if(cMessage[port - 1][2] & 0x01){ // 1st bit (LSB) Extended options - TODO handle extended options case
+//				extendOptions = true;
+//				(void )extendOptions; // remove warning
+//				++shift;
+//			}
+//			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
+//			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+//			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
+//			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
+//			// 8th bit (MSB) Long message
+//
+//			/* Read message code - LSB first */
+//			if(extendCode == true){
+//				code =(((uint16_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
+//				++shift;
+//			}
+//			else{
+//				code =cMessage[port - 1][3 + shift];
+//			}
+//
+//			/*ACK Massage */
+//			if(true == BOSMessaging.received_Acknowledgment){
+//				OptionByte.Acknowledgment =false;
+//				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
+//			}
+
+
+
 
 			/* Is it a transit message? Check for the case when module is being IDed */
 //			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
@@ -474,7 +511,7 @@ void PxMessagingTask(void *argument){
 						case CODE_PING:
 							indMode =IND_PING;
 //							osDelay(5);
-							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
+							if(OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG)
 								SendMessageToModule(src,CODE_PING_RESPONSE,0);
 							break;
 							
@@ -611,7 +648,7 @@ void PxMessagingTask(void *argument){
 							break;
 							
 						case CODE_TOPOLOGY:
-							if(longMessage){
+							if(OptionByte.LongMessage){
 								/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
 								/* Use a 1-byte oriented scratchpad */
 								memcpy(&longMessageScratchpad[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
@@ -695,7 +732,7 @@ void PxMessagingTask(void *argument){
 								/* Restore back PcPort */
 								PcPort =temp;
 								/* Respond to the CLI command */
-								if(BOSMessaging.response == BOS_RESPONSE_ALL){
+								if(OptionByte.Response == BOS_RESPONSE_ALL){
 									/* Copy the generated string to messageParams */
 									memcpy(messageParams,pcOutputString,strlen((char* )pcOutputString));
 									/* Send command response */
@@ -712,7 +749,7 @@ void PxMessagingTask(void *argument){
 							pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 							memset(pcOutputString,0x00,strlen((char* )pcOutputString));
 							/* Copy the response */
-							if(longMessage){
+							if(OptionByte.LongMessage){
 								memcpy(&pcOutputString[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
 								longMessageLastPtr +=numOfParams;
 							}
@@ -1229,7 +1266,7 @@ void PxMessagingTask(void *argument){
 						}
 
 						/* Send confirmation back */
-						if (BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG) {
+						if (OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG) {
 							messageParams[0] = responseStatus;
 							SendMessageToModule(src, CODE_WRITE_REMOTE_RESPONSE, 1);
 						}

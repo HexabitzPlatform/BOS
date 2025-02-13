@@ -171,10 +171,11 @@ typedef struct {
 
 /* Options byte of the BOS Message */
 typedef struct {
-	uint8_t ExtendedOption      : 1; /* If set, then the next byte is an Options byte as well */
+	uint8_t ExtendedOptions     : 1; /* If set, then the next byte is an Options byte as well */
 	uint8_t ExtendedMessageCode : 1; /* If set, then message codes are 16 bits */
 	uint8_t Trace               : 1; /* If set, Show Message trace (ping) */
-	uint8_t Reserved            : 2; /* reserved bits */
+	uint8_t Acknowledgment      : 1; /* */
+	uint8_t Reserved            : 1; /* reserved bits */
 	uint8_t Response            : 2; /* */
 	uint8_t LongMessage         : 1; /* If set, then message parameters continue in the next message */
 } BOSOptionByte_t;
@@ -537,6 +538,8 @@ extern button_t button[NumOfPorts + 1];
 extern bool delayButtonStateReset, needToDelayButtonStateReset;
 extern BOS_t BOS;
 extern BOSMessaging_t BOSMessaging;
+extern BOSOptionByte_t OptionByte;
+extern BOSOptionByte_t UserOptionByte;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];

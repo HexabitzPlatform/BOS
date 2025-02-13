@@ -403,36 +403,46 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		if(src == 0)
 			src =myID;
 		
+		/* ToDo: Implement extended options */
+		if(OptionByte.ExtendedOptions == true)
+			++shift;
+
 		/* Extended code flag? */
 		if(code > 0xFF)
-			extendCode = true;
+			OptionByte.ExtendedMessageCode = true;
 		
-		/* TODO implement extended options */
-
 		/* Construct the message */
 
 		/* Header */
 		message[2] =length;
 		message[3] =dst;
 		message[4] =src;
-		/* Options */
-		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
-				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
 
-		if(extendOptions == true){
-			++shift;
-		}
-		
+		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
+//		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
+//				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
+
+		/* Options */
+	    /* Set the options bits */
+	    OptionByte.Trace = UserOptionByte.Trace;
+	    OptionByte.Acknowledgment = UserOptionByte.Acknowledgment;
+	    OptionByte.Reserved = 0;
+	    OptionByte.Response = UserOptionByte.Response;
+	    OptionByte.LongMessage = LongMessageFlag;
+
+	    /* Assign the byte value to var1 by type-casting */
+	    message[5] = *(uint8_t*)&OptionByte;
+
 		/* Code - LSB first */
 		message[6 + shift] =(uint8_t )code;
+
 		if(extendCode == true){
 			++shift;
 			message[6 + shift] =(uint8_t )(code >> 8);
 		}
 		
-		/* Parameters */
 
+		/* Parameters */
 		if(numberOfParams <= MAX_PARAMS_PER_MESSAGE){
 			memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
 			/* Calculate message length */
