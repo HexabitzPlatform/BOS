@@ -62,7 +62,8 @@ extern BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeou
  |												 Private Functions	 														|
  ----------------------------------------------------------------------- 
  */
-
+uint16_t dstP[6];
+uint32_t ports;
 /* --- Setup DMA streams upon request from another module --- 
  */
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst){
@@ -106,6 +107,17 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	else
 		return BOS_ERR_WrongParam;
 	
+	if(direction == FORWARD)
+		dstP[src-1] = (direction << 8) + dst;
+	else if(direction == BACKWARD)
+		dstP[dst-1] = (direction << 8) + src;
+	else if(direction == BIDIRECTIONAL)
+	{
+		dstP[src-1] = (direction << 8) + dst;
+		dstP[dst-1] = (direction << 8) + src;
+	}
+
+	ports = (direction << 16) + (dst << 8) + src;
 	/* Start the timeout timer */
 	if(xTimerStream != NULL)
 		xTimerStart(xTimerStream,portMAX_DELAY);
@@ -118,14 +130,26 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 /* --- DMA stream timer callback --- 
  */
 void StreamTimerCallback(TimerHandle_t xTimerStream){
-	uint32_t tid =0;
-	
-	tid =(uint32_t )pvTimerGetTimerID(xTimerStream);
-	
+//	uint32_t *tid =0;
+	uint8_t srcP = 0;
+	uint8_t dstP = 0;
+	uint8_t direction = 0;
+//	tid = (uint32_t *)pvTimerGetTimerID(xTimerStream);
+//	port = *tid;
 //	StopStreamDMA(tid);
 //	StopDMA(tid);
-	
-	SwitchStreamDMAToMsg(tid);
+	direction = ports >> 16;
+	dstP = ports >> 8;
+	srcP = (uint8_t)ports;
+	if(direction == FORWARD)
+		SwitchStreamDMAToMsg(srcP);
+	else if(direction == BACKWARD)
+		SwitchStreamDMAToMsg(dstP);
+	else if(direction == BIDIRECTIONAL)
+	{
+		SwitchStreamDMAToMsg(srcP);
+		SwitchStreamDMAToMsg(dstP);
+	}
 }
 
 /*-----------------------------------------------------------*/
