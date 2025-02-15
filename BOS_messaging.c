@@ -348,35 +348,45 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 
 /*-----------------------------------------------------------*/
 
-BOS_Status SendLargeMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code , uint8_t *pParameters, uint16_t numberOfParams) {
-    uint16_t totalNumberOfParams = numberOfParams;
-    uint16_t ptrShift = 0 , chunkSize = 0;
-    bool LongMessageFlag = false;
+/* Send large data (over 46 Bytes) to module */
+BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParameters,uint16_t numberOfParams){
+	uint16_t totalNumberOfParams =numberOfParams;
+	uint16_t ptrShift =0, chunkSize =0;
+	uint8_t port =0;
+	bool LongMessageFlag = false;
 
+	/* Find best output port for destination module */
+#ifdef __N
+		port = Output_Port_Array[dst - 1];
+#else
+	port =FindRoute(myID,dst);
+#endif
 
-    while (totalNumberOfParams > 0) {
-        chunkSize = (totalNumberOfParams > MAX_PARAMS_PER_MESSAGE) ? MAX_PARAMS_PER_MESSAGE : totalNumberOfParams;
+	while(totalNumberOfParams > 0){
+		chunkSize =(totalNumberOfParams > MAX_PARAMS_PER_MESSAGE) ?MAX_PARAMS_PER_MESSAGE: totalNumberOfParams;
 
-        // Copy the relevant chunk of data into messageParams
-        memcpy(messageParams, pParameters + ptrShift, chunkSize);
+		/* Copy the relevant chunk of data into messageParams */
+		memcpy(messageParams,pParameters + ptrShift,chunkSize);
 
-        /* Update total number of remaining parameters */
-        totalNumberOfParams -= chunkSize;
-        ptrShift += chunkSize;
+		/* Update total number of remaining parameters */
+		totalNumberOfParams -=chunkSize;
+		ptrShift +=chunkSize;
 
-        if (totalNumberOfParams > 0) {
-            /* Set long message flag in the header */
-        	OptionByte.LongMessage = true;
-        } else {
-            /* Last message, clear long message flag */
-        	OptionByte.LongMessage = false;
-        }
+		if(totalNumberOfParams > 0){
+			/* Set long message flag */
+			OptionByte.LongMessage = true;
+		}
+		else{
+			/* Last message, clear long message flag */
+			OptionByte.LongMessage = false;
+		}
 
-        /* Send the message */
-        SendMessageFromPort(port, src, dst, code, chunkSize);
-    }
+		/* Send the message */
+		SendMessageFromPort(port,myID,dst,code,chunkSize);
 
-    return BOS_OK;
+	}
+
+	return BOS_OK;
 }
 
 /*-----------------------------------------------------------*/
