@@ -576,22 +576,22 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	if(dst != BOS_BROADCAST && dst != BOS_MULTICAST){
 		/* Transmit the message - single-cast */
 
-//		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
-//			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-			writePxITMutex(port, message, length + 4, cmd50ms);
-//		}
-//		else{
-//
+		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
+			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			writePxITMutex(port, message, length + 4, cmd50ms);
+		}
+		else{
+
 //			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
-//				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 ////				osDelay(200);
 //				if(ACK_FLAG == true)
 //					break;
 //				if(rejected_FLAG == true)
 //					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 //			}
-//		}
-//		ACK_FLAG =false; rejected_FLAG=false;
+		}
+		ACK_FLAG =false; rejected_FLAG=false;
 	}
 
 	/* Transmit the message - multi-cast or broadcast */
@@ -607,11 +607,11 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		for(uint8_t p =1; p <= NumOfPorts; p++){
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
-//				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
-				writePxITMutex(p, message, length + 4, cmd50ms);
+				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
+//				writePxITMutex(p, message, length + 4, cmd50ms);
 //				osDelay(200);
-//				if(rejected_FLAG == true)
-//					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+				if(rejected_FLAG == true)
+					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 			}
 //			rejected_FLAG=false;
 			Delay_us(10);
