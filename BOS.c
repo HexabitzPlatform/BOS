@@ -1364,20 +1364,20 @@ BOS_Status Explore(void)
 	/* Save all (topology and port directions) in RO/EEPROM *********************/
 	/* **************************************************************************/
 
-//	if (result == BOS_OK)
-//	{
-//		/* Save data in the master */
-//		SaveTopologyToRO();
-//		SaveEEportsDir();
-//		osDelay(100);
-//		/* Ask other modules to save their data too */
-//		for (i=2 ; i<=N ; i++)
-//		{
-//			SendMessageToModule(i, CODE_EXP_EEPROM, 0);
-//			osDelay(10*NumberOfHops(i));
-//		}
-//
-//	}
+	if (result == BOS_OK)
+	{
+		/* Save data in the master */
+		SaveTopologyToRO();
+		SaveEEportsDir();
+		osDelay(100);
+		/* Ask other modules to save their data too */
+		for (i=2 ; i<=N ; i++)
+		{
+			SendMessageToModule(i, CODE_EXP_EEPROM, 0);
+			osDelay(10*NumberOfHops(i));
+		}
+
+	}
 
 	return result;
 }
