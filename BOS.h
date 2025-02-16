@@ -161,7 +161,6 @@ typedef struct {
 
 /* BOS Struct Type Definition */
 typedef struct {
-
 	uint8_t response;
 	bool trace;
 	uint8_t overrun;
@@ -169,6 +168,17 @@ typedef struct {
 	bool Acknowledgment;
 	trial_t trial;
 } BOSMessaging_t;
+
+/* Options byte of the BOS Message */
+typedef struct {
+	uint8_t ExtendedOptions     : 1; /* If set, then the next byte is an Options byte as well */
+	uint8_t ExtendedMessageCode : 1; /* If set, then message codes are 16 bits */
+	uint8_t Trace               : 1; /* If set, Show Message trace (ping) */
+	uint8_t Acknowledgment      : 1; /* */
+	uint8_t Reserved            : 1; /* reserved bits */
+	uint8_t Response            : 2; /* */
+	uint8_t LongMessage         : 1; /* If set, then message parameters continue in the next message */
+} BOSOptionByte_t;
 
 /* Module Parameter Struct Type Definition */
 typedef struct {
@@ -247,9 +257,9 @@ typedef struct
 #define	BUTTON_EVENT_MODE_OR						1
 
 /* BOS Defiitions */
-#define BOS_RESPONSE_ALL							0x60					// Send response messages for both Messaging and CLI
-#define BOS_RESPONSE_MSG							0x20					// Send response messages for Messaging only (no CLI)
-#define BOS_RESPONSE_CLI							0x40					// Send response messages for CLI only (no messages)
+#define BOS_RESPONSE_ALL							0x03					// Send response messages for both Messaging and CLI
+#define BOS_RESPONSE_MSG							0x01					// Send response messages for Messaging only (no CLI)
+#define BOS_RESPONSE_CLI							0x02					// Send response messages for CLI only (no messages)
 #define BOS_RESPONSE_NONE							0x00					// Do not send any response messages
 #define REMOTE_MEMORY_ADD             				0
 #define REMOTE_BOS_PARAM              				1
@@ -528,6 +538,8 @@ extern button_t button[NumOfPorts + 1];
 extern bool delayButtonStateReset, needToDelayButtonStateReset;
 extern BOS_t BOS;
 extern BOSMessaging_t BOSMessaging;
+extern BOSOptionByte_t OptionByte;
+extern BOSOptionByte_t UserOptionByte;
 extern uint8_t PcPort, bootStatus;
 extern uint8_t BOS_initialized;
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
@@ -621,6 +633,7 @@ extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern BOS_Status UpdateBaudrate(uint8_t port,uint32_t baudrate);
 extern void  Module_Init(void);
 /* Messaging APIs */
+extern BOS_Status SendLargeMessageToModule(uint8_t dst, uint16_t code , uint8_t *pParameters, uint16_t numberOfParams);
 extern BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams);

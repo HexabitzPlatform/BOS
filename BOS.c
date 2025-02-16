@@ -172,13 +172,15 @@ BOS_Status GetUserDataByte(uint8_t* pData)
 
 
 /* Private and global variables ---------------------------------------------------------*/
-BOSMessaging_t BOSMessaging;
+//BOSMessaging_t BOSMessaging;
 BOS_t BOS;
 BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
-BOSMessaging_t BOSMessging_default={ .response =
-		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
-};
+//BOSMessaging_t BOSMessging_default={ .response =
+//		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+//};
+BOSOptionByte_t OptionByte;
+BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = BOS_RESPONSE_NONE};
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
@@ -560,27 +562,25 @@ BOS_Status LoadEEparams(void){
 	status1 =EE_ReadVariable(_EE_PARAMS_BASE,&temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
-		BOSMessaging.response =(uint8_t )temp1;
-		BOSMessaging.trace = (temp1 >> 8);
+		OptionByte.Response =(uint8_t )temp1;
+		OptionByte.Trace = (temp1 >> 8);
 		/* Couldn't find the variable, load default config */
 	}
 	else{
-		BOSMessaging.response =BOSMessging_default.response;
-		BOSMessaging.trace =BOSMessging_default.trace;
+		OptionByte.Response = UserOptionByte.Response;
+		OptionByte.Trace = UserOptionByte.Trace;
 
 	}
 	/* Read params base - BOS response and BOS trace */
 	status1 =EE_ReadVariable(_EE_PARAMS_Messaging,&temp1);
 
 	if(!status1){
-		BOSMessaging.Acknowledgment =(bool )(temp1 >>15);
-		BOSMessaging.trial =(uint16_t)(temp1 >> 1);
+		OptionByte.Acknowledgment =(bool )(temp1 >>15);
 		/* Couldn't find the variable, load default config */
 	}
-	else{
-		BOSMessaging.Acknowledgment=BOSMessging_default.Acknowledgment;
-		BOSMessaging.trial=BOSMessging_default.trial;
-	}
+	else
+		OptionByte.Acknowledgment= UserOptionByte.Acknowledgment;
+
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
 	if(!status1)
@@ -836,9 +836,9 @@ BOS_Status SaveEEparams(void){
 	BOS_Status result =BOS_OK;
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 5) | (uint16_t )BOSMessaging.response);
-	
-	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
+//	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.trace << 5) | (uint16_t )BOSMessaging.response);
+//
+//	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
 
 	/* Save Button debounce */
 	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.debounce);
@@ -1364,20 +1364,20 @@ BOS_Status Explore(void)
 	/* Save all (topology and port directions) in RO/EEPROM *********************/
 	/* **************************************************************************/
 
-	if (result == BOS_OK)
-	{
-		/* Save data in the master */
-		SaveTopologyToRO();
-		SaveEEportsDir();
-		osDelay(100);
-		/* Ask other modules to save their data too */
-		for (i=2 ; i<=N ; i++)
-		{
-			SendMessageToModule(i, CODE_EXP_EEPROM, 0);
-			osDelay(10*NumberOfHops(i));
-		}
-
-	}
+//	if (result == BOS_OK)
+//	{
+//		/* Save data in the master */
+//		SaveTopologyToRO();
+//		SaveEEportsDir();
+//		osDelay(100);
+//		/* Ask other modules to save their data too */
+//		for (i=2 ; i<=N ; i++)
+//		{
+//			SendMessageToModule(i, CODE_EXP_EEPROM, 0);
+//			osDelay(10*NumberOfHops(i));
+//		}
+//
+//	}
 
 	return result;
 }
