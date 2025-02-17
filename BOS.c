@@ -179,7 +179,7 @@ DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minIn
 //BOSMessaging_t BOSMessging_default={ .response =
 //		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
 //};
-BOSOptionByte_t OptionByte;
+BOSOptionByte_t OptionByte = {0};
 BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = BOS_RESPONSE_NONE};
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
@@ -1172,8 +1172,10 @@ BOS_Status Explore(void)
 	/* Step 2c - Ask neighbors to update their topology array *******************/
 	for (i=2 ; i<=currentID ; i++)
 	{
-		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+		SendLargeMessageToModule(i, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
+
 		osDelay(10);
 	}
 
@@ -1247,8 +1249,9 @@ BOS_Status Explore(void)
 			/* Step 3e - Ask all discovered modules to update their topology array ******/
 			for (j=2 ; j<=currentID ; j++)
 			{
-				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+				SendLargeMessageToModule(j, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
 				osDelay(100);
 			}
 		}
