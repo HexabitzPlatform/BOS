@@ -736,7 +736,8 @@ void PxMessagingTask(void *argument){
 									/* Copy the generated string to messageParams */
 									memcpy(messageParams,pcOutputString,strlen((char* )pcOutputString));
 									/* Send command response */
-									SendMessageToModule(src,CODE_CLI_RESPONSE,strlen((char* )pcOutputString));
+									SendLargeMessageToModule(src, CODE_CLI_RESPONSE, (uint8_t *)pcOutputString, strlen((char* )pcOutputString));
+//									SendMessageToModule(src,CODE_CLI_RESPONSE,strlen((char* )pcOutputString));
 									osDelay(10);
 								}
 							} while(xReturned != pdFALSE);
