@@ -79,8 +79,16 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	
 	/* Start DMA streams */
 	if(direction == FORWARD){
-		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
-			return BOS_ERR_PORT_BUSY;
+		if(dst == P10)
+		{
+			if(StartDMAstream(GetUart(src),GetUart(dst),count) == BOS_ERR_PORT_BUSY)
+				return BOS_ERR_PORT_BUSY;
+		}
+		else
+		{
+			if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
+				return BOS_ERR_PORT_BUSY;
+		}
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&src,StreamTimerCallback);
 		dmaStreamTotal[src - 1] =count;
@@ -720,20 +728,59 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 		}
 	}
 	
-	if(srcM == dstM)
-		port =dstP;
-	else
-		port =FindRoute(srcM,dstM);
-	
-	/* Setup my own DMA stream */
-	SetupDMAStreams(direction,count,timeout,srcP,port);
-	
-	// Store my own streams to EEPROM
-	if(stored){
-		SaveEEstreams(direction,count,timeout,srcP,port,0,0,0,0);
+	if(srcP != P10)
+	{
+		if(srcM == dstM)
+			port =dstP;
+		else
+			port =FindRoute(srcM,dstM);
+
+		/* Setup my own DMA stream */
+		SetupDMAStreams(direction,count,timeout,srcP,port);
+
+		// Store my own streams to EEPROM
+		if(stored){
+			SaveEEstreams(direction,count,timeout,srcP,port,0,0,0,0);
+		}
 	}
+
 	
 	return result;
 }
+uint8_t streamType;
+void StreamToModule(uint8_t srcP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, uint8_t type)
+{
+	/* port to memory */
+	if(type == 1)
+	{
+//		streamType = 1;
+		StartScastDMAStream(srcP, myID, P10, dstM, FORWARD, size, timeout, 0);
+//		HAL_UARTEx_ReceiveToIdle_DMA(GetUart(srcP),pBuffer,size);
+//	    __HAL_DMA_DISABLE_IT(hDMA , DMA_IT_HT);
+	}
+	/* memory to memory */
+	if(type == 2)
+	{
+//		streamType = 1;
+		StartScastDMAStream(P10, myID, P10, dstM, FORWARD, size, timeout, 0);
+		uint8_t port = FindRoute(myID,dstM);
+		HAL_Delay(1000);
+		HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
+//		for(int port = 0;port<=5;port++)
+//		{
+//			if(portStatus[port] == FREE)
+//			{
+//				HAL_UART_Transmit_IT(GetUart(P5), pBuffer, size);
+//			}
+//		}
+//		HAL_UART_Transmit_IT(huart, pBuffer, size);
+	}
+	if(type == 3)
+	{
 
+	}
+
+
+
+}
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
