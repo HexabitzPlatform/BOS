@@ -37,7 +37,7 @@ extern uint8_t UARTRxBufIndex[NumOfPorts];
 extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 volatile uint32_t MBmessageParams[9] ={0};
-extern char cRxedChar;
+//extern char cRxedChar;
 extern uint8_t longMessage;
 extern uint16_t longMessageLastPtr;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts + 1) * MaxNumOfModules];

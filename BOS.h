@@ -31,14 +31,6 @@
 #define _firmTime			__TIME__
 
 
-
-extern char *pcBootloaderUpdateMessage;
-
-extern char *pcRemoteBootloaderUpdateMessage;
-extern char *pcRemoteBootloaderUpdateViaPortMessage;
-
-extern char *pcRemoteBootloaderUpdateWarningMessage;
-
 /* *************************************************************************/
 /* Enumerations Definitions ************************************************/
 /* *************************************************************************/
@@ -456,6 +448,10 @@ typedef struct {
 #define MSG_DMA_INT_PRIORITY                 0 /* Highest priority */
 #define STREAM_DMA_INT_PRIORITY              1
 
+/* Message properties */
+#define MSG_COUNT 		5 /* TODO: messages count should be increased, but there's no enough memory now */
+#define MSG_MAX_SIZE 	56
+
 /* *************************************************************************/
 /* Includes ****************************************************************/
 /* *************************************************************************/
@@ -615,33 +611,75 @@ typedef struct {
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
 
-/* External variables ---------------------------------------------------------*/
-extern char cRxedChar;
-extern uint8_t myID, bcastID;
-extern uint16_t myPN;
-extern uint8_t indMode;
-extern uint8_t N;
-extern const char modulePNstring[NUM_OF_MODULE_PN][6];
-extern uint8_t portStatus[NumOfPorts + 1];
-extern volatile uint16_t neighbors[NumOfPorts][2];
-extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
-extern volatile uint32_t MBmessageParams[9];
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
-extern uint8_t messageLength[NumOfPorts];
-extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
-extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
-static char pcUserMessage[80];
-extern const char *pcParamsHelpString[];
-extern BOS_Status responseStatus;
-extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
+/* *************************************************************************/
+/* External variables ******************************************************/
+/* *************************************************************************/
+
+extern bool delayButtonStateReset;
+extern bool needToDelayButtonStateReset;
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
-extern uint8_t index_input[6] ;
-extern uint8_t index_process[6] ;
-extern volatile uint32_t* index_dma[6] ;
+extern char *pcBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateViaPortMessage;
+extern char *pcRemoteBootloaderUpdateWarningMessage;
+extern const char *pcParamsHelpString[];
+extern const char modulePNstring[NUM_OF_MODULE_PN][6];
+extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
+//extern char cRxedChar;
+static char pcUserMessage[80];
+
+extern uint8_t myID;
+extern uint8_t bcastID;
+extern uint8_t indMode;
+extern uint8_t N;
+extern uint8_t numOfBosCommands;
 extern uint8_t CLI_Data ;
 extern uint8_t port_DMA;
+extern uint8_t PcPort;
+extern uint8_t bootStatus;
+extern uint8_t BOS_initialized;
+extern uint8_t routeDist[];
+extern uint8_t routePrev[];
+extern uint8_t route[];
+extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
+extern uint8_t messageLength[NumOfPorts];
+extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
+extern uint8_t portStatus[NumOfPorts + 1];
+
+/* Flags for CLI Task */
+extern uint8_t Activate_CLI_For_First_Time_Flag;
+extern uint8_t Read_In_CLI_Task_Flag;
+
+/* Messages circular buffer variables */
+extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
+extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
+extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
+extern uint8_t Process_Message_Buffer[MSG_COUNT];
+extern uint8_t Process_Message_Buffer_Index_Start;
+extern uint8_t Process_Message_Buffer_Index_End;
+extern uint8_t index_input[6] ;
+extern uint8_t index_process[6] ;
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+
+extern uint16_t myPN;
+extern volatile uint16_t neighbors[NumOfPorts][2];
+
+extern uint32_t BOS_var_reg[MAX_BOS_VARS];
+extern volatile uint32_t MBmessageParams[9];
+extern volatile uint32_t* index_dma[6];
+
+extern snippet_t snippets[MAX_SNIPPETS];
+extern button_t button[NumOfPorts + 1];
+extern BOS_t BOS;
+extern BOS_Status responseStatus;
+extern BOSOptionByte_t OptionByte;
+extern BOSOptionByte_t UserOptionByte;
+extern RemoteDataBuffer_t RemoteDataBuffer;
+extern module_param_t modParam[];
+//extern BOSMessaging_t BOSMessaging;
+
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
 extern uint8_t routeDist[MaxNumOfModules];
@@ -657,25 +695,6 @@ extern	uint8_t broadcastResponse[__N];
 extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
-extern uint8_t routeDist[];
-extern uint8_t routePrev[];
-extern uint8_t route[];
-extern button_t button[NumOfPorts + 1];
-extern bool delayButtonStateReset, needToDelayButtonStateReset;
-extern BOS_t BOS;
-//extern BOSMessaging_t BOSMessaging;
-extern BOSOptionByte_t OptionByte;
-extern BOSOptionByte_t UserOptionByte;
-extern uint8_t PcPort, bootStatus;
-extern uint8_t BOS_initialized;
-extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-extern snippet_t snippets[MAX_SNIPPETS];
-extern uint8_t numOfBosCommands;
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern RemoteDataBuffer_t RemoteDataBuffer;
-extern module_param_t modParam[];
-
-
 /*Output_Port_Array[__N]:
 This array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
@@ -684,25 +703,6 @@ so we can read these output ports when needed instead of figuring out the correc
 #ifdef __N
 extern uint8_t Output_Port_Array[__N];
 #endif
-
-
-/*Flag for CLI Task:
- *
- * Activate_CLI_For_First_Time_Flag:
- * Default value: 0
- * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
- *
- * Read_In_CLI_Task_Flag:
- * Default value: 0
- * Its value each time a byte is received: 1
- */
-extern uint8_t Activate_CLI_For_First_Time_Flag;
-extern uint8_t Read_In_CLI_Task_Flag;
-
-
-
-#define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
-#define MSG_MAX_SIZE 	56
 
 /*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
 #ifdef __USER_DATA_BUFFER
@@ -716,17 +716,9 @@ extern uint8_t GetUserDataCount(void);
 extern BOS_Status GetUserDataByte(uint8_t* pData);
 #endif
 
-
-//The new messages circular buffer:
-extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
-extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
-extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
-
-
-//Processing message circular buffer:
-extern uint8_t Process_Message_Buffer[MSG_COUNT];
-extern uint8_t Process_Message_Buffer_Index_Start;
-extern uint8_t Process_Message_Buffer_Index_End;
+/* FreeRTOS semaphore handles */
+extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
+extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 
  /*
   *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
