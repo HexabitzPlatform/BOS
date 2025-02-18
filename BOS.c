@@ -50,6 +50,7 @@ volatile uint32_t* index_dma[6] ;
 uint8_t CLI_Data = 0;
 uint8_t port_DMA =0;
 
+uint8_t Buffer[512];
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
