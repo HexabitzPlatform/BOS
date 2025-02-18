@@ -21,8 +21,6 @@
 #include "stm32g0xx_hal.h"
 #elif defined(H41R6)
 #include "stm32f4xx_hal.h"
-#else
-#include "stm32f0xx_hal.h"
 #endif
 
 /* Firmware */
@@ -357,95 +355,110 @@ typedef struct {
 	float    DataFloat[4]; /* Floating point array */
 } RemoteDataBuffer_t;
 
+/* *************************************************************************/
+/* Macro Definitions *******************************************************/
+/* *************************************************************************/
 
 /* Button Events Definition */
-#define	BUTTON_EVENT_CLICKED						0x01
-#define	BUTTON_EVENT_DBL_CLICKED					0x02
-#define	BUTTON_EVENT_PRESSED_FOR_X1_SEC				0x04
-#define	BUTTON_EVENT_PRESSED_FOR_X2_SEC				0x08
-#define	BUTTON_EVENT_PRESSED_FOR_X3_SEC				0x10
-#define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
-#define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
-#define	BUTTON_EVENT_RELEASED_FOR_Y3_SEC			0x80
-#define	BUTTON_EVENT_MODE_CLEAR						0
-#define	BUTTON_EVENT_MODE_OR						1
+#define BUTTON_EVENT_CLICKED                 0x01
+#define BUTTON_EVENT_DBL_CLICKED             0x02
+#define BUTTON_EVENT_PRESSED_FOR_X1_SEC      0x04
+#define BUTTON_EVENT_PRESSED_FOR_X2_SEC      0x08
+#define BUTTON_EVENT_PRESSED_FOR_X3_SEC      0x10
+#define BUTTON_EVENT_RELEASED_FOR_Y1_SEC     0x20
+#define BUTTON_EVENT_RELEASED_FOR_Y2_SEC     0x40
+#define BUTTON_EVENT_RELEASED_FOR_Y3_SEC     0x80
+#define BUTTON_EVENT_MODE_CLEAR              0
+#define BUTTON_EVENT_MODE_OR                 1
 
-/* BOS Defiitions */
-#define BOS_RESPONSE_ALL							0x03					// Send response messages for both Messaging and CLI
-#define BOS_RESPONSE_MSG							0x01					// Send response messages for Messaging only (no CLI)
-#define BOS_RESPONSE_CLI							0x02					// Send response messages for CLI only (no messages)
-#define BOS_RESPONSE_NONE							0x00					// Do not send any response messages
-#define REMOTE_MEMORY_ADD             				0
-#define REMOTE_BOS_PARAM              				1
-#define REMOTE_MODULE_PARAM           				2
-#define REMOTE_BOS_VAR                				3
+/* BOS Response Definitions */
+#define BOS_RESPONSE_ALL                     0x03 /* Send response messages for both Messaging and CLI */
+#define BOS_RESPONSE_MSG                     0x01 /* Send response messages for Messaging only */
+#define BOS_RESPONSE_CLI                     0x02 /* Send response messages for CLI only */
+#define BOS_RESPONSE_NONE                    0x00 /* Do not send any response messages */
+
+/* Remote Memory Types */
+#define REMOTE_MEMORY_ADD                    0
+#define REMOTE_BOS_PARAM                     1
+#define REMOTE_MODULE_PARAM                  2
+#define REMOTE_BOS_VAR                       3
 
 /* Math Operators */
-#define MATH_EQUAL									1
-#define MATH_GREATER								2
-#define MATH_SMALLER								3
-#define MATH_GREATER_EQUAL						    4
-#define MATH_SMALLER_EQUAL						    5
-#define MATH_NOT_EQUAL								6
-#define NUM_MATH_OPERATORS						    6
+#define MATH_EQUAL                           1
+#define MATH_GREATER                         2
+#define MATH_SMALLER                         3
+#define MATH_GREATER_EQUAL                   4
+#define MATH_SMALLER_EQUAL                   5
+#define MATH_NOT_EQUAL                       6
+#define NUM_MATH_OPERATORS                   6
 
 /* Command Snippets */
-#define MAX_SNIPPETS								5							// Max number of accepted Snippets
-#define SNIPPET_CONDITION							1							// Snippet state machine codes
-#define SNIPPET_COMMANDS							2					
-#define SNIPPET_ACTIVATE							3					
-#define SNIP_COND_BUTTON_EVENT				        1							// Snippet command types
-#define SNIP_COND_MODULE_EVENT				        2
-#define SNIP_COND_MODULE_PARAM_CONST	            3
-#define SNIP_COND_MODULE_PARAM_PARAM	            4
+#define MAX_SNIPPETS                         5 /* Max number of accepted Snippets */
+#define SNIPPET_CONDITION                    1 /* Snippet state machine codes */
+#define SNIPPET_COMMANDS                     2
+#define SNIPPET_ACTIVATE                     3
 
-/* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							46							//Number of Modules
-#define P_LAST 										NumOfPorts
-#define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
-#define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
-#define cmdMAX_INPUT_SIZE							50
-#define	MaxNumOfModules								26							// Max Number of Module in one Array
-#define	MaxNumOfGroups								10
-#define MaxNumOfPorts								10							//Max number of ports in one module
-#define MaxLengthOfAlias							9
-#define MAX_BOS_VARS								30							//MAX number of BOS Variables
-#define NumOfKeywords								4
-#define NumOfParamsHelpStrings				        7
-#define DEF_BUTTON_DEBOUNCE						    30							// Button debounce time in ms
-#define DEF_BUTTON_CLICK							50							// Button single click minimum time in ms
-#define DEF_BUTTON_MIN_INTER_CLICK		            5							// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_BUTTON_MAX_INTER_CLICK		            250							// Button max inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_ARRAY_BAUDRATE						    921600						//default baudrate in all module
-#define DEF_CLI_BAUDRATE							921600						//default badurate for CLI
-#define CLI_BAUDRATE_1								115200
-#define MSG_RX_BUF_SIZE								(192)						// 1 Mbps UART at 0.5 KHz parsing rate
-#define MSG_TX_BUF_SIZE								(250)						// 2 Mbps UART at 1 KHz parsing rate
+/* Snippet Command Types */
+#define SNIP_COND_BUTTON_EVENT               1
+#define SNIP_COND_MODULE_EVENT               2
+#define SNIP_COND_MODULE_PARAM_CONST         3
+#define SNIP_COND_MODULE_PARAM_PARAM         4
 
-/* Delay macros */
-#define	Delay_us(t)									StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			        		StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms(t)									HAL_Delay(t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
-#define	Delay_s(t)									HAL_Delay(1000*t)		/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+/* BOS Parameters and Constants */
+#define NUM_OF_MODULE_PN                     46 /* Number of Modules */
+#define P_LAST                               NumOfPorts
+#define MAX_MESSAGE_SIZE                     56 /* Max Number of Bytes in One Message */
+#define MAX_PARAMS_PER_MESSAGE               (MAX_MESSAGE_SIZE - 10) /* Calculated max params per message */
+#define cmdMAX_INPUT_SIZE                    50
+#define MaxNumOfModules                      26 /* Max Number of Modules in one Array */
+#define MaxNumOfGroups                       10
+#define MaxNumOfPorts                        10 /* Max number of ports in one module */
+#define MaxLengthOfAlias                     9
+#define MAX_BOS_VARS                         30 /* Max number of BOS Variables */
+#define NumOfKeywords                        4
+#define NumOfParamsHelpStrings               7
 
-/* Misc macros */
-#define	InGroup(module, group)						( (groupModules[module-1] >> group) & 0x0001 )
+/* Default Button Timings */
+#define DEF_BUTTON_DEBOUNCE                  30 /* Button debounce time in ms */
+#define DEF_BUTTON_CLICK                     50 /* Button single click minimum time in ms */
+#define DEF_BUTTON_MIN_INTER_CLICK           5  /* Min inter-click time (ms) for double clicks */
+#define DEF_BUTTON_MAX_INTER_CLICK           250 /* Max inter-click time (ms) for double clicks */
 
-/* Serial Wire Interface */
-#define SWDIO_PIN			            			GPIO_PIN_13
-#define	SWDIO_PORT		                			GPIOA
-#define	SWCLK_PIN			            			GPIO_PIN_14
-#define	SWCLK_PORT		                			GPIOA
+/* Default Baud Rates */
+#define DEF_ARRAY_BAUDRATE                   921600 /* Default baud rate for all modules */
+#define DEF_CLI_BAUDRATE                     921600 /* Default baud rate for CLI */
+#define CLI_BAUDRATE_1                       115200
 
-/* MCU UUID */
-#define MCU_F0_UUID_BASE							0x1FFFF7AC
-#define MCU_F0_FLASH_SIZE_BASE		    			0x1FFFF7CC
+/* Message Buffer Sizes */
+#define MSG_RX_BUF_SIZE                      192 /* 1 Mbps UART at 0.5 KHz parsing rate */
+#define MSG_TX_BUF_SIZE                      250 /* 2 Mbps UART at 1 KHz parsing rate */
 
-/* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
-#define	MSG_DMA_INT_PRIORITY						0
-#define	STREAM_DMA_INT_PRIORITY		    			1
+/* Delay Macros */
+#define Delay_us(t)                          StartMicroDelay(t) /* RTOS-safe microsecond delay */
+#define Delay_ms_no_rtos(t)                  StartMilliDelay(t) /* RTOS-safe millisecond delay */
+#define Delay_ms(t)                          HAL_Delay(t)       /* Non-RTOS safe millisecond delay */
+#define Delay_s(t)                           HAL_Delay(1000 * t) /* Non-RTOS safe second delay */
 
-/* Includes ------------------------------------------------------------------*/
+/* Miscellaneous Macros */
+#define InGroup(module, group)               ((groupModules[module - 1] >> group) & 0x0001)
+
+/* Serial Wire Interface (SWI) */
+#define SWDIO_PIN                            GPIO_PIN_13
+#define SWDIO_PORT                           GPIOA
+#define SWCLK_PIN                            GPIO_PIN_14
+#define SWCLK_PORT                           GPIOA
+
+/* MCU Unique Identifiers */
+#define MCU_F0_UUID_BASE                     0x1FFFF7AC
+#define MCU_F0_FLASH_SIZE_BASE               0x1FFFF7CC
+
+/* Interrupt Priorities */
+#define MSG_DMA_INT_PRIORITY                 0 /* Highest priority */
+#define STREAM_DMA_INT_PRIORITY              1
+
+/* *************************************************************************/
+/* Includes ****************************************************************/
+/* *************************************************************************/
 
 /* Project Header File */
 #include "project.h" 
@@ -465,7 +478,6 @@ typedef struct {
 /* Emulated EEPROM from ST */
 #include "eeprom_emul.h"
 #include "flash_interface.h"
-
 
 /* C STD Library */
 #include <stdio.h>
@@ -493,7 +505,7 @@ typedef struct {
 	#include "H08R6.h"	
 #endif
 #ifdef H09R9
-#include "H09R9.h"
+    #include "H09R9.h"
 #endif
 #ifdef H1BR6
 	#include "H1BR6.h"	
@@ -541,64 +553,64 @@ typedef struct {
 	#include "H15R0.h"	
 #endif
 #ifdef H10R4
-#include "H10R4.h"
+    #include "H10R4.h"
 #endif
 #ifdef H2AR3
-#include "H2AR3.h"
+    #include "H2AR3.h"
 #endif
 #ifdef H41R6
-#include "H41R6.h"
+    #include "H41R6.h"
 #endif
 #ifdef H3BR6
-#include "H3BR6.h"
+    #include "H3BR6.h"
 #endif
 #ifdef H3BR7
-#include "H3BR7.h"
+    #include "H3BR7.h"
 #endif
 #ifdef H18R1
-#include "H18R1.h"
+    #include "H18R1.h"
 #endif
 #ifdef H1FR5
-#include "H1FR5.h"
+    #include "H1FR5.h"
 #endif
 #ifdef H3BR2
-#include "H3BR2.h"
+    #include "H3BR2.h"
 #endif
 #ifdef H21R2
-#include "H21R2.h"
+    #include "H21R2.h"
 #endif
 #ifdef H17R1
-#include "H17R1.h"
+    #include "H17R1.h"
 #endif
 #ifdef H15R8
-#include "H15R8.h"
+    #include "H15R8.h"
 #endif
 #ifdef H2BR0
-#include "H2BR0.h"
+    #include "H2BR0.h"
 #endif
 #ifdef H2BR1
-#include "H2BR1.h"
+    #include "H2BR1.h"
 #endif
 #ifdef H05R0
-#include "H05R0.h"
+    #include "H05R0.h"
 #endif
 #ifdef H07R8
-#include "H07R8.h"
+    #include "H07R8.h"
 #endif
 #ifdef H08R7
-#include "H08R7.h"
+    #include "H08R7.h"
 #endif
 #ifdef H16R6
-#include "H16R6.h"
+    #include "H16R6.h"
 #endif
 #ifdef P08R7
-#include "P08R7.h"
+    #include "P08R7.h"
 #endif
 #ifdef P01R0
-#include "P01R0.h"
+    #include "P01R0.h"
 #endif
 #ifdef H19R0
-#include "H19R0.h"
+    #include "H19R0.h"
 #endif
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
