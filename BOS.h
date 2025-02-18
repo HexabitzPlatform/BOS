@@ -776,6 +776,7 @@ extern BOS_Status AddModuleToGroup(uint8_t module,char *group);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 extern BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored);
+extern void StreamToModule(uint8_t srcP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, uint8_t type);
 #define	NumberOfHops(i)			routeDist[i-1]
 
 /* Buttons APIs */
