@@ -89,7 +89,7 @@ void DMA_IRQHandler(uint8_t port){
 		HAL_DMA_IRQHandler(msgRxDMA/*streamDMA*/[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
-		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1]){
+		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t) dstP[port-1] == P10)){
 
 			uint8_t direction = dstP[port-1]>>8;
 			uint8_t dst = (uint8_t) dstP[port-1];
