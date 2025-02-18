@@ -172,13 +172,15 @@ BOS_Status GetUserDataByte(uint8_t* pData)
 
 
 /* Private and global variables ---------------------------------------------------------*/
-BOSMessaging_t BOSMessaging;
+//BOSMessaging_t BOSMessaging;
 BOS_t BOS;
 BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
 DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
-BOSMessaging_t BOSMessging_default={ .response =
-		BOS_RESPONSE_NONE, .trace =true,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
-};
+//BOSMessaging_t BOSMessging_default={ .response =
+//		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
+//};
+BOSOptionByte_t OptionByte = {0};
+BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = BOS_RESPONSE_NONE};
 uint16_t myPN = modulePN;
 uint8_t indMode =IND_OFF;
 
@@ -251,7 +253,7 @@ uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	// Buffer for received mess
 char message[MAX_MESSAGE_SIZE] ={0};					// Buffer to construct a message to be sent
 uint8_t messageLength[NumOfPorts] ={0};
 uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-char cRxedChar =0;
+//char cRxedChar =0;
 uint8_t longMessage =0;
 uint16_t longMessageLastPtr =0;
 static char pcUserMessage[80];
@@ -560,27 +562,25 @@ BOS_Status LoadEEparams(void){
 	status1 =EE_ReadVariable(_EE_PARAMS_BASE,&temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
-		BOSMessaging.response =(uint8_t )temp1;
-		BOSMessaging.trace = (temp1 >> 8);
+		OptionByte.Response =(uint8_t )temp1;
+		OptionByte.Trace = (temp1 >> 8);
 		/* Couldn't find the variable, load default config */
 	}
 	else{
-		BOSMessaging.response =BOSMessging_default.response;
-		BOSMessaging.trace =BOSMessging_default.trace;
+		OptionByte.Response = UserOptionByte.Response;
+		OptionByte.Trace = UserOptionByte.Trace;
 
 	}
 	/* Read params base - BOS response and BOS trace */
 	status1 =EE_ReadVariable(_EE_PARAMS_Messaging,&temp1);
 
 	if(!status1){
-		BOSMessaging.Acknowledgment =(bool )(temp1 >>15);
-		BOSMessaging.trial =(uint16_t)(temp1 >> 1);
+		OptionByte.Acknowledgment =(bool )(temp1 >>15);
 		/* Couldn't find the variable, load default config */
 	}
-	else{
-		BOSMessaging.Acknowledgment=BOSMessging_default.Acknowledgment;
-		BOSMessaging.trial=BOSMessging_default.trial;
-	}
+	else
+		OptionByte.Acknowledgment= UserOptionByte.Acknowledgment;
+
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
 	if(!status1)
@@ -836,9 +836,9 @@ BOS_Status SaveEEparams(void){
 	BOS_Status result =BOS_OK;
 	
 	/* Save params base - BOS response & BOS trace */
-	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 5) | (uint16_t )BOSMessaging.response);
-	
-	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
+//	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.trace << 5) | (uint16_t )BOSMessaging.response);
+//
+//	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
 
 	/* Save Button debounce */
 	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.debounce);
@@ -1172,8 +1172,10 @@ BOS_Status Explore(void)
 	/* Step 2c - Ask neighbors to update their topology array *******************/
 	for (i=2 ; i<=currentID ; i++)
 	{
-		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+		SendLargeMessageToModule(i, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
+
 		osDelay(10);
 	}
 
@@ -1247,8 +1249,9 @@ BOS_Status Explore(void)
 			/* Step 3e - Ask all discovered modules to update their topology array ******/
 			for (j=2 ; j<=currentID ; j++)
 			{
-				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+//				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
+//				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
+				SendLargeMessageToModule(j, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
 				osDelay(100);
 			}
 		}
@@ -1728,12 +1731,12 @@ void DisplayModuleStatus(uint8_t port){
 	sprintf(pcUserMessage,"\n\rDMA Streams Status:\n\r");
 	strcat((char* )pcOutputString,pcUserMessage);
 	for(char i =1; i <= 6; i++){
-		if(msgRxDMA/*streamDMA*/[i - 1].Instance == 0){
+		if(msgRxDMA/*streamDMA*/[i - 1]->Instance == 0){
 			sprintf(pcUserMessage,"\n\rStreaming DMA %d is free",i);
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 		else{
-			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(msgRxDMA/*streamDMA*/[i - 1].Parent),GetPort(dmaStreamDst[i - 1]));
+			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(msgRxDMA/*streamDMA*/[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 	}
@@ -2285,20 +2288,20 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	
 	// Stop the DMA streams and enable messaging back on these ports
 //	if(streamDMA[port1 - 1].Instance != 0 && streamDMA[port2 - 1].Instance != 0)
-	if(msgRxDMA[port1 - 1].Instance != 0 && msgRxDMA[port2 - 1].Instance != 0)
+	if(msgRxDMA[port1 - 1]->Instance != 0 && msgRxDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
 //	else if(streamDMA[port1 - 1].Instance != 0)
-	else if(msgRxDMA[port1 - 1].Instance != 0)
+	else if(msgRxDMA[port1 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		return BOS_OK;
 	}
 //	else if(streamDMA[port2 - 1].Instance != 0)
-	else if(msgRxDMA[port2 - 1].Instance != 0)
+	else if(msgRxDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;

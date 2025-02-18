@@ -90,7 +90,7 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 			return BOS_ERR_PORT_BUSY;
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
-		dmaStreamTotal[src - 1] =count;
+		dmaStreamTotal[dst - 1] =count;
 	}
 	else if(direction == BIDIRECTIONAL){
 		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
@@ -372,6 +372,50 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 
 /*-----------------------------------------------------------*/
 
+/* Send large data (over 46 Bytes) to module */
+BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParameters,uint16_t numberOfParams){
+	uint16_t totalNumberOfParams =numberOfParams;
+	uint16_t ptrShift =0, chunkSize =0;
+	uint8_t port =0;
+	bool LongMessageFlag = false;
+
+	/* Find best output port for destination module */
+#ifdef __N
+		port = Output_Port_Array[dst - 1];
+#else
+	port =FindRoute(myID,dst);
+#endif
+
+	while(totalNumberOfParams > 0){
+		chunkSize =(totalNumberOfParams > MAX_PARAMS_PER_MESSAGE) ?MAX_PARAMS_PER_MESSAGE: totalNumberOfParams;
+
+		/* Copy the relevant chunk of data into messageParams */
+		memcpy(messageParams,pParameters + ptrShift,chunkSize);
+
+		/* Update total number of remaining parameters */
+		totalNumberOfParams -=chunkSize;
+		ptrShift +=chunkSize;
+
+		if(totalNumberOfParams > 0){
+			/* Set long message flag */
+			OptionByte.LongMessage = true;
+		}
+		else{
+			/* Last message, clear long message flag */
+			OptionByte.LongMessage = false;
+		}
+
+		/* Send the message */
+//		SendMessageFromPort(port,myID,dst,code,chunkSize);
+		SendMessageToModule(dst, code, chunkSize);
+
+	}
+
+	return BOS_OK;
+}
+
+/*-----------------------------------------------------------*/
+
 /* --- Send a message from a specific port 
  Note: The messageParams buffer does not get erased here to enable reuse for other transmissions.
  Make sure you manually erase the buffer when you're done with it. 
@@ -427,69 +471,79 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		if(src == 0)
 			src =myID;
 		
+		/* ToDo: Implement extended options */
+		if(OptionByte.ExtendedOptions == true)
+			++shift;
+
 		/* Extended code flag? */
 		if(code > 0xFF)
-			extendCode = true;
+			OptionByte.ExtendedMessageCode = true;
 		
-		/* TODO implement extended options */
-
 		/* Construct the message */
 
 		/* Header */
 		message[2] =length;
 		message[3] =dst;
 		message[4] =src;
-		/* Options */
-		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
-				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
 
-		if(extendOptions == true){
-			++shift;
-		}
-		
+		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
+//		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
+//				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
+
+		/* Options */
+	    /* Set the options bits */
+	    OptionByte.Trace = UserOptionByte.Trace;
+	    OptionByte.Acknowledgment = UserOptionByte.Acknowledgment;
+	    OptionByte.Reserved = 0;
+	    OptionByte.Response = UserOptionByte.Response;
+//	    OptionByte.LongMessage = LongMessageFlag;
+
+	    /* Assign the byte value to var1 by type-casting */
+	    message[5] = *(uint8_t*)&OptionByte;
+
 		/* Code - LSB first */
 		message[6 + shift] =(uint8_t )code;
-		if(extendCode == true){
+
+		if(OptionByte.ExtendedMessageCode){
 			++shift;
 			message[6 + shift] =(uint8_t )(code >> 8);
 		}
 		
-		/* Parameters */
 
+		/* Parameters */
 		if(numberOfParams <= MAX_PARAMS_PER_MESSAGE){
 			memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
 			/* Calculate message length */
 			length =numberOfParams + shift + 4;
 		}
-		else{
-			/* Long message: Set Options byte 8th bit */
-			LongMessageFlag = true;
-			message[5] |=0x80;
-			totalNumberOfParams =numberOfParams;
-			numberOfParams = MAX_PARAMS_PER_MESSAGE;
-			/* Break into multiple messages */
-			while(totalNumberOfParams != 0){
-				if((totalNumberOfParams / numberOfParams) >= 1){
-					/* Call this function recursively */
-					SendMessageFromPort(port,src,dst,code,numberOfParams);
-//					osDelay(10);
-					/* Update remaining number of parameters */
-					totalNumberOfParams -=numberOfParams;
-					ptrShift +=numberOfParams;
-				}
-				else{
-					LongMessageFlag = false;
-					message[5] &=0x7F; /* Last message. Reset long message flag */
-					numberOfParams =totalNumberOfParams;
-					memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
-					ptrShift =0;
-					totalNumberOfParams =0;
-					/* Calculate message length */
-					length =numberOfParams + shift + 4;
-				}
-			}
-		}
+//		else{
+//			/* Long message: Set Options byte 8th bit */
+//			LongMessageFlag = true;
+//			message[5] |=0x80;
+//			totalNumberOfParams =numberOfParams;
+//			numberOfParams = MAX_PARAMS_PER_MESSAGE;
+//			/* Break into multiple messages */
+//			while(totalNumberOfParams != 0){
+//				if((totalNumberOfParams / numberOfParams) >= 1){
+//					/* Call this function recursively */
+//					SendMessageFromPort(port,src,dst,code,numberOfParams);
+////					osDelay(10);
+//					/* Update remaining number of parameters */
+//					totalNumberOfParams -=numberOfParams;
+//					ptrShift +=numberOfParams;
+//				}
+//				else{
+//					LongMessageFlag = false;
+//					message[5] &=0x7F; /* Last message. Reset long message flag */
+//					numberOfParams =totalNumberOfParams;
+//					memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
+//					ptrShift =0;
+//					totalNumberOfParams =0;
+//					/* Calculate message length */
+//					length =numberOfParams + shift + 4;
+//				}
+//			}
+//		}
 		
 		/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
 		/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
@@ -549,17 +603,18 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 
 		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
 			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			writePxITMutex(port, message, length + 4, cmd50ms);
 		}
 		else{
 
-			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
+//			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
 				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-//				osDelay(200);
-				if(ACK_FLAG == true)
-					break;
-				if(rejected_FLAG == true)
-					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-			}
+////				osDelay(200);
+//				if(ACK_FLAG == true)
+//					break;
+//				if(rejected_FLAG == true)
+//					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			}
 		}
 		ACK_FLAG =false; rejected_FLAG=false;
 	}
@@ -578,11 +633,12 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
 				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
+//				writePxITMutex(p, message, length + 4, cmd50ms);
 //				osDelay(200);
 				if(rejected_FLAG == true)
 					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 			}
-			rejected_FLAG=false;
+//			rejected_FLAG=false;
 			Delay_us(10);
 		}
 	}

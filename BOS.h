@@ -21,8 +21,6 @@
 #include "stm32g0xx_hal.h"
 #elif defined(H41R6)
 #include "stm32f4xx_hal.h"
-#else
-#include "stm32f0xx_hal.h"
 #endif
 
 /* Firmware */
@@ -33,295 +31,430 @@
 #define _firmTime			__TIME__
 
 
-
-extern char *pcBootloaderUpdateMessage;
-
-extern char *pcRemoteBootloaderUpdateMessage;
-extern char *pcRemoteBootloaderUpdateViaPortMessage;
-
-extern char *pcRemoteBootloaderUpdateWarningMessage;
-
-
-/* Enumerations */
+/* *************************************************************************/
+/* Enumerations Definitions ************************************************/
+/* *************************************************************************/
+/* Available ports on the module */
 enum PortNames_e {
-	PC, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, PUSB, P_RS485
+	PC,     /* Port for the controller (PC) */
+	P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,  /* General ports */
+	PUSB,   /* USB port */
+	P_RS485 /* RS485 communication port */
 };
 
+/* Button names on the module */
 enum ButtonNames_e {
 	B1 =1, B2, B3, B4, B5, B6, B7, B8, B9, B10
 };
 
+/* Status of a port */
 enum PortStatus_e {
-	FREE, MSG, STREAM, CLI, PORTBUTTON, OVERRUN, CUSTOM, H_Status, Z_Status
+	FREE,       /* Port is available */
+	MSG,        /* Port is used for messaging */
+	STREAM,     /* Port is used for streaming data */
+	CLI,        /* Port is in Command Line Interface mode */
+	PORTBUTTON, /* Port is used as a button input */
+	OVERRUN,    /* Port has encountered data overrun */
+	CUSTOM,     /* Port is in a custom mode */
+	H_Status,   /* 'H’=72 is message start delimiters */
+	Z_Status    /* ‘Z’=90 is message start delimiters */
 };
 
+/* UART data direction */
 enum UartDirection_e {
-	NORMAL, REVERSED
+	NORMAL,   /* Normal UART transmission direction */
+	REVERSED  /* Reversed UART transmission direction */
 };
 
-enum modulePartNumbers_e {
-	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6, _P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1, _H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4, _H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0,_H05R0,_H3BR7,_H2BR1,_H07R8,_H08R7,_H16R6,_P08R7,_H19R0
+/* Different module part numbers */
+enum ModulePartNumbers_e {
+	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6,
+	_P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1,
+	_H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4,
+	_H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,
+	_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0,_H05R0,
+	_H3BR7,_H2BR1,_H07R8,_H08R7,_H16R6,_P08R7,_H19R0
 };
+
+/* LED indicator modes */
 enum IndMode_e {
-	IND_OFF, IND_PING, IND_TOPOLOGY, IND_SHORT_BLINK
-};
-enum DMAStreamDirection_e {
-	FORWARD, BACKWARD, BIDIRECTIONAL
-};
-enum buttonType_e {
-	NONE =0, MOMENTARY_NO, MOMENTARY_NC, ONOFF_NO, ONOFF_NC
-};
-/* NO: Naturally Open, NC: Naturally CLosed */
-enum buttonState_e {
-	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED, PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC, PRESSED_FOR_X3_SEC, RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC
-};
-enum bootStatus_e {
-	POWER_ON_BOOT, RESET_BOOT
+	IND_OFF,        /* Indicator off */
+	IND_PING,       /* Indicator blinks when pinged */
+	IND_TOPOLOGY,   /* Indicator used for topology identification */
+	IND_SHORT_BLINK /* Short blink mode */
 };
 
-/* Color Enumerations */
+/* DMA stream direction */
+enum DMAStreamDirection_e {
+	FORWARD,      /* Data moves forward */
+	BACKWARD,     /* Data moves backward */
+	BIDIRECTIONAL /* Data moves in both directions */
+};
+
+/* Button types */
+enum ButtonType_e {
+	NONE = 0,      /* No button */
+	MOMENTARY_NO,  /* Momentary button, normally open */
+	MOMENTARY_NC,  /* Momentary button, normally closed */
+	ONOFF_NO,      /* On/Off button, normally open */
+	ONOFF_NC       /* On/Off button, normally closed */
+};
+
+/* Button states */
+enum ButtonState_e {
+	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED,
+	PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC, PRESSED_FOR_X3_SEC,
+	RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC
+};
+
+/* Boot statuses */
+enum BootStatus_e {
+	POWER_ON_BOOT, /* Booting from power-on */
+	RESET_BOOT     /* Booting from reset */
+};
+
+/* Basic colors */
 enum BasicColors {
 	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN,AQUA,PURPLE,LIGHTBLUE,ORANGE,INDIGO,
 };
 
-/* RGB LED Mode Enumerations */
+/* RGB LED operating modes */
 enum RGBLedMode {
-	RGB_PULSE_RGB =1, RGB_PULSE_COLOR, RGB_SWEEP_BASIC, RGB_SWEEP_FINE, RGB_DIM_UP, RGB_DIM_UP_WAIT, RGB_DIM_DOWN, RGB_DIM_DOWN_WAIT, RGB_DIM_UP_DOWN, RGB_DIM_DOWN_UP, RGB_DIM_UP_DOWN_WAIT, RGB_DIM_DOWN_UP_WAIT
+	RGB_PULSE_RGB = 1,    /* Pulsing RGB colors */
+	RGB_PULSE_COLOR,      /* Pulsing a single color */
+	RGB_SWEEP_BASIC,      /* Sweeping through basic colors */
+	RGB_SWEEP_FINE,       /* Smooth color sweeping */
+	RGB_DIM_UP,           /* Gradually increasing brightness */
+	RGB_DIM_UP_WAIT,      /* Gradually increasing brightness with wait time */
+	RGB_DIM_DOWN,         /* Gradually decreasing brightness */
+	RGB_DIM_DOWN_WAIT,    /* Gradually decreasing brightness with wait time */
+	RGB_DIM_UP_DOWN,      /* Brightness up then down */
+	RGB_DIM_DOWN_UP,      /* Brightness down then up */
+	RGB_DIM_UP_DOWN_WAIT, /* Brightness up-down with wait */
+	RGB_DIM_DOWN_UP_WAIT  /* Brightness down-up with wait */
 };
 
-/* RTC Enums */
-enum rtc_ampm_e {
-	RTC_AM =1, RTC_PM
+/* RTC time periods (AM/PM) */
+enum TimePeriod_e {
+	RTC_AM = 1, /* AM (Before Noon) */
+	RTC_PM      /* PM (After Noon) */
 };
-enum rtc_daylight_e {
-	DAYLIGHT_SUB1H =-1, DAYLIGHT_NONE =0, DAYLIGHT_ADD1H =1
+
+/* Daylight saving adjustments */
+enum Daylight_e {
+	DAYLIGHT_SUB1H = -1, /* Subtract 1 hour for daylight saving */
+	DAYLIGHT_NONE = 0,   /* No daylight saving adjustment */
+	DAYLIGHT_ADD1H = 1   /* Add 1 hour for daylight saving */
 };
-enum rtc_months_e {
+
+/* Months of the year */
+enum Months_e {
 	JANUARY =1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER
 };
-enum rtc_weekdays_e {
+
+/* Days of the week */
+enum Weekdays_e {
 	MONDAY =1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
 };
-/* Type definitions */
+
+/* *************************************************************************/
+/* Typedef Definitions *****************************************************/
+/* *************************************************************************/
+
+/* Typedef Enumeration Definitions *****************************************/
+/* Variable data formats */
 typedef enum {
-	FMT_UINT8 =1, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL
+	FMT_UINT8 = 1,  /* Unsigned 8-bit integer */
+	FMT_INT8,       /* Signed 8-bit integer */
+	FMT_UINT16,     /* Unsigned 16-bit integer */
+	FMT_INT16,      /* Signed 16-bit integer */
+	FMT_UINT32,     /* Unsigned 32-bit integer */
+	FMT_INT32,      /* Signed 32-bit integer */
+	FMT_FLOAT,      /* Floating-point number */
+	FMT_BOOL        /* Boolean value (true/false) */
 } varFormat_t;
+
 //typedef enum {
 //	TRACE_NONE =0, TRACE_MESSAGE, TRACE_RESPONSE, TRACE_BOTH
 //} traceOptions_t;
 
 /* Number of attempts Type Definition */
-typedef enum {
-	once =1, twice=2, three_time=3, forever =0x8000
-} trial_t;
+//typedef enum {
+//	once =1, twice=2, three_time=3, forever =0x8000
+//} trial_t;
 
-/* BOS_Status Type Definition */
+/* BOS system status and error codes */
 typedef enum {
-	BOS_OK =0, BOS_ERR_UnknownMessage =1, BOS_ERR_NoResponse =2, BOS_ERR_MSG_Reflection =3, BOS_ERR_UnIDedModule =5, BOS_ERR_Keyword =6, BOS_ERR_ExistingAlias =7, BOS_ERR_ExistingCmd =8, BOS_ERR_EEPROM =10, BOS_ERR_BUTTON_NOT_DEFINED =11, BOS_ERR_BUTTON_PRESS_EVENT_FULL =12, BOS_ERR_BUTTON_RELEASE_EVENT_FULL =13, BOS_ERR_SNIP_MEM_FULL =14, BOS_ERR_REMOTE_READ_TIMEOUT =15, BOS_ERR_REMOTE_READ_NO_VAR =16, BOS_ERR_REMOTE_WRITE_TIMEOUT =17, BOS_ERR_REMOTE_WRITE_MEM_FULL =18, BOS_ERR_REMOTE_WRITE_INDEX =19, BOS_ERR_LOCAL_FORMAT_UPDATED =20, BOS_ERR_REMOTE_WRITE_ADDRESS =21, BOS_ERR_REMOTE_WRITE_FLASH =22, BOS_ERR_PORT_BUSY =23,BOS_ERR_TIMEOUT=24 , BOS_ERR_WrongName =100, BOS_ERR_WrongGroup =101, BOS_ERR_WrongID =102, BOS_ERR_WrongParam =103, BOS_ERR_WrongValue =104, BOS_ERR_MSG_DOES_NOT_FIT =105, BOS_MEM_ERASED =250, BOS_MEM_FULL =251, BOS_MULTICAST =254, BOS_BROADCAST =255, BOS_ERROR =255
+	BOS_OK = 0,                          /* Operation successful */
+	BOS_ERR_UnknownMessage = 1,          /* Unknown message received */
+	BOS_ERR_NoResponse = 2,              /* No response from module */
+	BOS_ERR_MSG_Reflection = 3,          /* Message reflection detected */
+	BOS_ERR_UnIDedModule = 5,            /* Unidentified module */
+	BOS_ERR_Keyword = 6,                 /* Invalid keyword */
+	BOS_ERR_ExistingAlias = 7,           /* Alias already exists */
+	BOS_ERR_ExistingCmd = 8,             /* Command already exists */
+	BOS_ERR_EEPROM = 10,                 /* EEPROM error */
+	BOS_ERR_BUTTON_NOT_DEFINED = 11,     /* Button not defined */
+	BOS_ERR_BUTTON_PRESS_EVENT_FULL = 12,/* Button press event memory full */
+	BOS_ERR_BUTTON_RELEASE_EVENT_FULL = 13, /* Button release event memory full */
+	BOS_ERR_SNIP_MEM_FULL = 14,          /* Snippet memory full */
+	BOS_ERR_REMOTE_READ_TIMEOUT = 15,    /* Timeout during remote read */
+	BOS_ERR_REMOTE_READ_NO_VAR = 16,     /* No variable found during remote read */
+	BOS_ERR_REMOTE_WRITE_TIMEOUT = 17,   /* Timeout during remote write */
+	BOS_ERR_REMOTE_WRITE_MEM_FULL = 18,  /* Remote write memory full */
+	BOS_ERR_REMOTE_WRITE_INDEX = 19,     /* Invalid remote write index */
+	BOS_ERR_LOCAL_FORMAT_UPDATED = 20,   /* Local format updated */
+	BOS_ERR_REMOTE_WRITE_ADDRESS = 21,   /* Invalid remote write address */
+	BOS_ERR_REMOTE_WRITE_FLASH = 22,     /* Remote write flash error */
+	BOS_ERR_PORT_BUSY = 23,              /* Communication port busy */
+	BOS_ERR_TIMEOUT = 24,                /* Operation timeout */
+	BOS_ERR_WrongName = 100,             /* Incorrect name */
+	BOS_ERR_WrongGroup = 101,            /* Incorrect group */
+	BOS_ERR_WrongID = 102,               /* Incorrect ID */
+	BOS_ERR_WrongParam = 103,            /* Incorrect parameter */
+	BOS_ERR_WrongValue = 104,            /* Incorrect value */
+	BOS_ERR_MSG_DOES_NOT_FIT = 105,      /* Message does not fit */
+	BOS_MEM_ERASED = 250,                /* Memory erased */
+	BOS_MEM_FULL = 251,                  /* Memory full */
+	BOS_MULTICAST = 254,                 /* Multicast message */
+	BOS_BROADCAST = 255,                 /* Broadcast message */
+	BOS_ERROR = 255                      /* Generic error */
 } BOS_Status;
 
-/* Wake-up from standby pins*/
+/* Wake-up pins from standby mode */
 typedef enum {
-	PA0_PIN = 0, PA2_PIN, PB5_PIN, PC13_PIN, NRST_PIN
+	PA0_PIN = 0, /* Pin PA0 */
+	PA2_PIN,     /* Pin PA2 */
+	PB5_PIN,     /* Pin PB5 */
+	PC13_PIN,    /* Pin PC13 */
+	NRST_PIN     /* Reset pin */
 } WakeupPins_t;
 
-/* Button Configuration Struct Type Definition */
+/* Typedef Structure Definitions *******************************************/
+/* Button configuration settings */
 typedef struct {
-	uint16_t debounce;
-	uint16_t singleClickTime;
-	uint8_t minInterClickTime;
-	uint8_t maxInterClickTime;
+	uint16_t debounce;         /* Debounce time in milliseconds */
+	uint16_t singleClickTime;  /* Maximum time for a single click */
+	uint8_t minInterClickTime; /* Minimum time between consecutive clicks */
+	uint8_t maxInterClickTime; /* Maximum time between consecutive clicks */
 } buttonsConfig_t;
 
-/* Time/Date Struct Type Definition */
+/* Button properties */
 typedef struct {
-	uint16_t msec;
-	uint8_t seconds;
-	uint8_t minutes;
-	uint8_t hours;
-	uint8_t ampm;
+	uint8_t state;         /* Current button state */
+	uint8_t type;          /* Type of button */
+	uint8_t pressedX1Sec;  /* Button pressed for X1 seconds */
+	uint8_t pressedX2Sec;  /* Button pressed for X2 seconds */
+	uint8_t pressedX3Sec;  /* Button pressed for X3 seconds */
+	uint8_t releasedY1Sec; /* Button released for Y1 seconds */
+	uint8_t releasedY2Sec; /* Button released for Y2 seconds */
+	uint8_t releasedY3Sec; /* Button released for Y3 seconds */
+	uint8_t events;        /* Event status */
+} button_t;
+
+/* Time representation */
+typedef struct {
+	uint16_t msec;   /* Milliseconds */
+	uint8_t seconds; /* Seconds */
+	uint8_t minutes; /* Minutes */
+	uint8_t hours;   /* Hours */
+	uint8_t ampm;    /* AM/PM indicator */
 } BOS_time_t;
+
+/* Date representation */
 typedef struct {
-	uint8_t weekday;
-	uint8_t day;
-	uint8_t month;
-	uint16_t year;
+	uint8_t weekday; /* Day of the week (Monday = 1, Sunday = 7) */
+	uint8_t day;     /* Day of the month */
+	uint8_t month;   /* Month (1 = January, 12 = December) */
+	uint16_t year;   /* Year */
 } BOS_date_t;
 
-/* BOS Struct Type Definition */
+/* BOS system configuration structure */
 typedef struct {
-	buttonsConfig_t buttons;
-	uint32_t clibaudrate;
-	uint8_t daylightsaving;
-	uint8_t hourformat;
-	BOS_time_t time;						// Not saved with BOS parameters
-	BOS_date_t date;						// Not saved with BOS parameters
-	uint8_t disableCLI;
+	buttonsConfig_t buttons; /* Button configuration */
+	uint32_t clibaudrate;    /* CLI baud rate */
+	uint8_t daylightsaving;  /* Daylight saving mode */
+	uint8_t hourformat;      /* Hour format (12h/24h) */
+	BOS_time_t time;         /* Current system time (not saved) */
+	BOS_date_t date;         /* Current system date (not saved) */
+	uint8_t disableCLI;      /* Disable command-line interface */
 } BOS_t;
 
 /* BOS Struct Type Definition */
-typedef struct {
+//typedef struct {
+//	uint8_t response;
+//	bool trace;
+//	uint8_t overrun;
+//	bool received_Acknowledgment;
+//	bool Acknowledgment;
+//	trial_t trial;
+//} BOSMessaging_t;
 
-	uint8_t response;
-	bool trace;
-	uint8_t overrun;
-	bool received_Acknowledgment;
-	bool Acknowledgment;
-	trial_t trial;
-} BOSMessaging_t;
-
-/* Module Parameter Struct Type Definition */
+/* BOS message option byte structure */
 typedef struct {
-	void *paramPtr;
-	varFormat_t paramFormat;
-	char *paramName;
+	uint8_t ExtendedOptions     : 1; /* If set, additional option byte follows */
+	uint8_t ExtendedMessageCode : 1; /* If set, message codes are 16-bit */
+	uint8_t Trace               : 1; /* If set, message trace (ping) is enabled */
+	uint8_t Acknowledgment      : 1; /* Message acknowledgment flag */
+	uint8_t Reserved            : 1; /* Reserved for future use */
+	uint8_t Response            : 2; /* Response type */
+	uint8_t LongMessage         : 1; /* If set, message continues in next packet */
+} BOSOptionByte_t;
+
+/* Module parameters */
+typedef struct {
+	void *paramPtr;          /* Pointer to parameter data */
+	varFormat_t paramFormat; /* Format of the parameter */
+	char *paramName;         /* Name of the parameter */
 } module_param_t;
-extern module_param_t modParam[];
 
-/* Button Struct Type Definition */
+/* Snippet conditionals */
 typedef struct {
-	uint8_t state;
-	uint8_t type;
-	uint8_t pressedX1Sec;
-	uint8_t pressedX2Sec;
-	uint8_t pressedX3Sec;
-	uint8_t releasedY1Sec;
-	uint8_t releasedY2Sec;
-	uint8_t releasedY3Sec;
-	uint8_t events;
-} button_t;
-
-/* Snippet Conditionals Struct Type Definition */
-typedef struct {
-	uint8_t conditionType;
-	uint8_t mathOperator;
-	uint8_t buffer1[4];
-	uint8_t buffer2[4];
+	uint8_t conditionType; /* Type of condition */
+	uint8_t mathOperator;  /* Mathematical operator */
+	uint8_t buffer1[4];    /* First condition buffer */
+	uint8_t buffer2[4];    /* Second condition buffer */
 } snippetConditions_t;
 
-/* Snippet Struct Type Definition */
+/* Snippet properties */
 typedef struct {
-	snippetConditions_t cond;
-	char *cmd;
-	uint8_t state;
+	snippetConditions_t cond; /* Snippet conditionals */
+	char *cmd;     /* Command string */
+	uint8_t state; /* Snippet state */
 } snippet_t;
 
-/* Receiving the Defalt_Value for the H1DR5 module */
-typedef struct receiveDefaltValue {
-		uint8_t Local_mac_addr[6];
-		uint8_t Remote_mac_addr[6];
-		uint8_t Local_IP[4];
-		uint8_t Remote_IP[4];
-		uint8_t ip_mask[4];
-		uint8_t ip_dest[4];
-		uint8_t Local_PORT;
-		uint8_t Remote_PORT;
-
+/* Receiving default values for H1DR5 module */
+typedef struct {
+	uint8_t Local_mac_addr[6];  /* Local MAC address */
+	uint8_t Remote_mac_addr[6]; /* Remote MAC address */
+	uint8_t Local_IP[4];        /* Local IP address */
+	uint8_t Remote_IP[4];       /* Remote IP address */
+	uint8_t ip_mask[4];         /* Subnet mask */
+	uint8_t ip_dest[4];         /* Destination IP */
+	uint8_t Local_PORT;         /* Local port number */
+	uint8_t Remote_PORT;        /* Remote port number */
 } receive_defalt_value;
 
+/* Remote data buffer used to store data from message codes */
+typedef struct {
+	bool     Databool;     /* Boolean data */
+	int8_t   Data8;        /* Signed 8-bit integer */
+	uint8_t  DataU8[3];    /* Unsigned 8-bit array */
+	int16_t  Data16;       /* Signed 16-bit integer */
+	uint16_t DataU16[3];   /* Unsigned 16-bit array */
+	int32_t  Data32;       /* Signed 32-bit integer */
+	uint32_t DataU32;      /* Unsigned 32-bit integer */
+	float    DataFloat[4]; /* Floating point array */
+} RemoteDataBuffer_t;
 
-/*  */
-typedef struct
-{
-	bool     Databool;
-	int8_t   Data8;
-	uint8_t  DataU8[3];
-	int16_t  Data16;
-	uint16_t DataU16[3];
-	int32_t  Data32;
-	uint32_t DataU32;
-	float    DataFloat[4];
-}RemoteDataBuffer_t;
-
+/* *************************************************************************/
+/* Macro Definitions *******************************************************/
+/* *************************************************************************/
 
 /* Button Events Definition */
-#define	BUTTON_EVENT_CLICKED						0x01
-#define	BUTTON_EVENT_DBL_CLICKED					0x02
-#define	BUTTON_EVENT_PRESSED_FOR_X1_SEC				0x04
-#define	BUTTON_EVENT_PRESSED_FOR_X2_SEC				0x08
-#define	BUTTON_EVENT_PRESSED_FOR_X3_SEC				0x10
-#define	BUTTON_EVENT_RELEASED_FOR_Y1_SEC			0x20
-#define	BUTTON_EVENT_RELEASED_FOR_Y2_SEC			0x40
-#define	BUTTON_EVENT_RELEASED_FOR_Y3_SEC			0x80
-#define	BUTTON_EVENT_MODE_CLEAR						0
-#define	BUTTON_EVENT_MODE_OR						1
+#define BUTTON_EVENT_CLICKED                 0x01
+#define BUTTON_EVENT_DBL_CLICKED             0x02
+#define BUTTON_EVENT_PRESSED_FOR_X1_SEC      0x04
+#define BUTTON_EVENT_PRESSED_FOR_X2_SEC      0x08
+#define BUTTON_EVENT_PRESSED_FOR_X3_SEC      0x10
+#define BUTTON_EVENT_RELEASED_FOR_Y1_SEC     0x20
+#define BUTTON_EVENT_RELEASED_FOR_Y2_SEC     0x40
+#define BUTTON_EVENT_RELEASED_FOR_Y3_SEC     0x80
+#define BUTTON_EVENT_MODE_CLEAR              0
+#define BUTTON_EVENT_MODE_OR                 1
 
-/* BOS Defiitions */
-#define BOS_RESPONSE_ALL							0x60					// Send response messages for both Messaging and CLI
-#define BOS_RESPONSE_MSG							0x20					// Send response messages for Messaging only (no CLI)
-#define BOS_RESPONSE_CLI							0x40					// Send response messages for CLI only (no messages)
-#define BOS_RESPONSE_NONE							0x00					// Do not send any response messages
-#define REMOTE_MEMORY_ADD             				0
-#define REMOTE_BOS_PARAM              				1
-#define REMOTE_MODULE_PARAM           				2
-#define REMOTE_BOS_VAR                				3
+/* BOS Response Definitions */
+#define BOS_RESPONSE_ALL                     0x03 /* Send response messages for both Messaging and CLI */
+#define BOS_RESPONSE_MSG                     0x01 /* Send response messages for Messaging only */
+#define BOS_RESPONSE_CLI                     0x02 /* Send response messages for CLI only */
+#define BOS_RESPONSE_NONE                    0x00 /* Do not send any response messages */
+
+/* Remote Memory Types */
+#define REMOTE_MEMORY_ADD                    0
+#define REMOTE_BOS_PARAM                     1
+#define REMOTE_MODULE_PARAM                  2
+#define REMOTE_BOS_VAR                       3
 
 /* Math Operators */
-#define MATH_EQUAL									1
-#define MATH_GREATER								2
-#define MATH_SMALLER								3
-#define MATH_GREATER_EQUAL						    4
-#define MATH_SMALLER_EQUAL						    5
-#define MATH_NOT_EQUAL								6
-#define NUM_MATH_OPERATORS						    6
+#define MATH_EQUAL                           1
+#define MATH_GREATER                         2
+#define MATH_SMALLER                         3
+#define MATH_GREATER_EQUAL                   4
+#define MATH_SMALLER_EQUAL                   5
+#define MATH_NOT_EQUAL                       6
+#define NUM_MATH_OPERATORS                   6
 
 /* Command Snippets */
-#define MAX_SNIPPETS								5							// Max number of accepted Snippets
-#define SNIPPET_CONDITION							1							// Snippet state machine codes
-#define SNIPPET_COMMANDS							2					
-#define SNIPPET_ACTIVATE							3					
-#define SNIP_COND_BUTTON_EVENT				        1							// Snippet command types
-#define SNIP_COND_MODULE_EVENT				        2
-#define SNIP_COND_MODULE_PARAM_CONST	            3
-#define SNIP_COND_MODULE_PARAM_PARAM	            4
+#define MAX_SNIPPETS                         5 /* Max number of accepted Snippets */
+#define SNIPPET_CONDITION                    1 /* Snippet state machine codes */
+#define SNIPPET_COMMANDS                     2
+#define SNIPPET_ACTIVATE                     3
 
-/* BOS Parameters and constants */
-#define NUM_OF_MODULE_PN							46							//Number of Modules
-#define P_LAST 										NumOfPorts
-#define MAX_MESSAGE_SIZE							56							//Max Number of Bytes in One Message
-#define MAX_PARAMS_PER_MESSAGE				       (MAX_MESSAGE_SIZE-10)		// H + Z + length + Dst + Src + 1 x Options + 2 x Code + CRC + 1 x reserved = 10
-#define cmdMAX_INPUT_SIZE							50
-#define	MaxNumOfModules								26							// Max Number of Module in one Array
-#define	MaxNumOfGroups								10
-#define MaxNumOfPorts								10							//Max number of ports in one module
-#define MaxLengthOfAlias							9
-#define MAX_BOS_VARS								30							//MAX number of BOS Variables
-#define NumOfKeywords								4
-#define NumOfParamsHelpStrings				        7
-#define DEF_BUTTON_DEBOUNCE						    30							// Button debounce time in ms
-#define DEF_BUTTON_CLICK							50							// Button single click minimum time in ms
-#define DEF_BUTTON_MIN_INTER_CLICK		            5							// Button min inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_BUTTON_MAX_INTER_CLICK		            250							// Button max inter-click time (in ms) for double clicks (uint8_t size)
-#define DEF_ARRAY_BAUDRATE						    921600						//default baudrate in all module
-#define DEF_CLI_BAUDRATE							921600						//default badurate for CLI
-#define CLI_BAUDRATE_1								115200
-#define MSG_RX_BUF_SIZE								(192)						// 1 Mbps UART at 0.5 KHz parsing rate
-#define MSG_TX_BUF_SIZE								(250)						// 2 Mbps UART at 1 KHz parsing rate
+/* Snippet Command Types */
+#define SNIP_COND_BUTTON_EVENT               1
+#define SNIP_COND_MODULE_EVENT               2
+#define SNIP_COND_MODULE_PARAM_CONST         3
+#define SNIP_COND_MODULE_PARAM_PARAM         4
 
-/* Delay macros */
-#define	Delay_us(t)									StartMicroDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms_no_rtos(t)			        		StartMilliDelay(t)		/* RTOS safe blocking delay (16 bits) - Use before and after starting the scheduler */
-#define	Delay_ms(t)									HAL_Delay(t)			/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
-#define	Delay_s(t)									HAL_Delay(1000*t)		/* Non-RTOS safe (32 bits) - Use only after starting the scheduler */
+/* BOS Parameters and Constants */
+#define NUM_OF_MODULE_PN                     46 /* Number of Modules */
+#define P_LAST                               NumOfPorts
+#define MAX_MESSAGE_SIZE                     56 /* Max Number of Bytes in One Message */
+#define MAX_PARAMS_PER_MESSAGE               (MAX_MESSAGE_SIZE - 10) /* Calculated max params per message */
+#define cmdMAX_INPUT_SIZE                    50
+#define MaxNumOfModules                      26 /* Max Number of Modules in one Array */
+#define MaxNumOfGroups                       10
+#define MaxNumOfPorts                        10 /* Max number of ports in one module */
+#define MaxLengthOfAlias                     9
+#define MAX_BOS_VARS                         30 /* Max number of BOS Variables */
+#define NumOfKeywords                        4
+#define NumOfParamsHelpStrings               7
 
-/* Misc macros */
-#define	InGroup(module, group)						( (groupModules[module-1] >> group) & 0x0001 )
+/* Default Button Timings */
+#define DEF_BUTTON_DEBOUNCE                  30 /* Button debounce time in ms */
+#define DEF_BUTTON_CLICK                     50 /* Button single click minimum time in ms */
+#define DEF_BUTTON_MIN_INTER_CLICK           5  /* Min inter-click time (ms) for double clicks */
+#define DEF_BUTTON_MAX_INTER_CLICK           250 /* Max inter-click time (ms) for double clicks */
 
-/* Serial Wire Interface */
-#define SWDIO_PIN			            			GPIO_PIN_13
-#define	SWDIO_PORT		                			GPIOA
-#define	SWCLK_PIN			            			GPIO_PIN_14
-#define	SWCLK_PORT		                			GPIOA
+/* Default Baud Rates */
+#define DEF_ARRAY_BAUDRATE                   921600 /* Default baud rate for all modules */
+#define DEF_CLI_BAUDRATE                     921600 /* Default baud rate for CLI */
+#define CLI_BAUDRATE_1                       115200
 
-/* MCU UUID */
-#define MCU_F0_UUID_BASE							0x1FFFF7AC
-#define MCU_F0_FLASH_SIZE_BASE		    			0x1FFFF7CC
+/* Message Buffer Sizes */
+#define MSG_RX_BUF_SIZE                      192 /* 1 Mbps UART at 0.5 KHz parsing rate */
+#define MSG_TX_BUF_SIZE                      250 /* 2 Mbps UART at 1 KHz parsing rate */
 
-/* Interrupt Priorities - 0 (highest) to 3 in F0 MCUs */
-#define	MSG_DMA_INT_PRIORITY						0
-#define	STREAM_DMA_INT_PRIORITY		    			1
+/* Delay Macros */
+#define Delay_us(t)                          StartMicroDelay(t) /* RTOS-safe microsecond delay */
+#define Delay_ms_no_rtos(t)                  StartMilliDelay(t) /* RTOS-safe millisecond delay */
+#define Delay_ms(t)                          HAL_Delay(t)       /* Non-RTOS safe millisecond delay */
+#define Delay_s(t)                           HAL_Delay(1000 * t) /* Non-RTOS safe second delay */
 
-/* Includes ------------------------------------------------------------------*/
+/* Miscellaneous Macros */
+#define InGroup(module, group)               ((groupModules[module - 1] >> group) & 0x0001)
+
+/* Serial Wire Interface (SWI) */
+#define SWDIO_PIN                            GPIO_PIN_13
+#define SWDIO_PORT                           GPIOA
+#define SWCLK_PIN                            GPIO_PIN_14
+#define SWCLK_PORT                           GPIOA
+
+/* MCU Unique Identifiers */
+#define MCU_F0_UUID_BASE                     0x1FFFF7AC
+#define MCU_F0_FLASH_SIZE_BASE               0x1FFFF7CC
+
+/* Interrupt Priorities */
+#define MSG_DMA_INT_PRIORITY                 0 /* Highest priority */
+#define STREAM_DMA_INT_PRIORITY              1
+
+/* Message properties */
+#define MSG_COUNT 		5 /* TODO: messages count should be increased, but there's no enough memory now */
+#define MSG_MAX_SIZE 	56
+
+/* *************************************************************************/
+/* Includes ****************************************************************/
+/* *************************************************************************/
 
 /* Project Header File */
 #include "project.h" 
@@ -341,7 +474,6 @@ typedef struct
 /* Emulated EEPROM from ST */
 #include "eeprom_emul.h"
 #include "flash_interface.h"
-
 
 /* C STD Library */
 #include <stdio.h>
@@ -369,7 +501,7 @@ typedef struct
 	#include "H08R6.h"	
 #endif
 #ifdef H09R9
-#include "H09R9.h"
+    #include "H09R9.h"
 #endif
 #ifdef H1BR6
 	#include "H1BR6.h"	
@@ -417,95 +549,137 @@ typedef struct
 	#include "H15R0.h"	
 #endif
 #ifdef H10R4
-#include "H10R4.h"
+    #include "H10R4.h"
 #endif
 #ifdef H2AR3
-#include "H2AR3.h"
+    #include "H2AR3.h"
 #endif
 #ifdef H41R6
-#include "H41R6.h"
+    #include "H41R6.h"
 #endif
 #ifdef H3BR6
-#include "H3BR6.h"
+    #include "H3BR6.h"
 #endif
 #ifdef H3BR7
-#include "H3BR7.h"
+    #include "H3BR7.h"
 #endif
 #ifdef H18R1
-#include "H18R1.h"
+    #include "H18R1.h"
 #endif
 #ifdef H1FR5
-#include "H1FR5.h"
+    #include "H1FR5.h"
 #endif
 #ifdef H3BR2
-#include "H3BR2.h"
+    #include "H3BR2.h"
 #endif
 #ifdef H21R2
-#include "H21R2.h"
+    #include "H21R2.h"
 #endif
 #ifdef H17R1
-#include "H17R1.h"
+    #include "H17R1.h"
 #endif
 #ifdef H15R8
-#include "H15R8.h"
+    #include "H15R8.h"
 #endif
 #ifdef H2BR0
-#include "H2BR0.h"
+    #include "H2BR0.h"
 #endif
 #ifdef H2BR1
-#include "H2BR1.h"
+    #include "H2BR1.h"
 #endif
 #ifdef H05R0
-#include "H05R0.h"
+    #include "H05R0.h"
 #endif
 #ifdef H07R8
-#include "H07R8.h"
+    #include "H07R8.h"
 #endif
 #ifdef H08R7
-#include "H08R7.h"
+    #include "H08R7.h"
 #endif
 #ifdef H16R6
-#include "H16R6.h"
+    #include "H16R6.h"
 #endif
 #ifdef P08R7
-#include "P08R7.h"
+    #include "P08R7.h"
 #endif
 #ifdef P01R0
-#include "P01R0.h"
+    #include "P01R0.h"
 #endif
 #ifdef H19R0
-#include "H19R0.h"
+    #include "H19R0.h"
 #endif
 /* More BOS header files - must be defined after module headers */
 #include "BOS_DMA.h"
 
-/* External variables ---------------------------------------------------------*/
-extern char cRxedChar;
-extern uint8_t myID, bcastID;
-extern uint16_t myPN;
-extern uint8_t indMode;
-extern uint8_t N;
-extern const char modulePNstring[NUM_OF_MODULE_PN][6];
-extern uint8_t portStatus[NumOfPorts + 1];
-extern volatile uint16_t neighbors[NumOfPorts][2];
-extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
-extern volatile uint32_t MBmessageParams[9];
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
-extern uint8_t messageLength[NumOfPorts];
-extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
-extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
-static char pcUserMessage[80];
-extern const char *pcParamsHelpString[];
-extern BOS_Status responseStatus;
-extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
+/* *************************************************************************/
+/* External variables ******************************************************/
+/* *************************************************************************/
+
+extern bool delayButtonStateReset;
+extern bool needToDelayButtonStateReset;
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
 
-extern uint8_t index_input[6] ;
-extern uint8_t index_process[6] ;
-extern volatile uint32_t* index_dma[6] ;
+extern char *pcBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateMessage;
+extern char *pcRemoteBootloaderUpdateViaPortMessage;
+extern char *pcRemoteBootloaderUpdateWarningMessage;
+extern const char *pcParamsHelpString[];
+extern const char modulePNstring[NUM_OF_MODULE_PN][6];
+extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
+//extern char cRxedChar;
+static char pcUserMessage[80];
+
+extern uint8_t myID;
+extern uint8_t bcastID;
+extern uint8_t indMode;
+extern uint8_t N;
+extern uint8_t numOfBosCommands;
 extern uint8_t CLI_Data ;
 extern uint8_t port_DMA;
+extern uint8_t PcPort;
+extern uint8_t bootStatus;
+extern uint8_t BOS_initialized;
+extern uint8_t routeDist[];
+extern uint8_t routePrev[];
+extern uint8_t route[];
+extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
+extern uint8_t messageLength[NumOfPorts];
+extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
+extern uint8_t portStatus[NumOfPorts + 1];
+
+/* Flags for CLI Task */
+extern uint8_t Activate_CLI_For_First_Time_Flag;
+extern uint8_t Read_In_CLI_Task_Flag;
+
+/* Messages circular buffer variables */
+extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
+extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
+extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
+extern uint8_t Process_Message_Buffer[MSG_COUNT];
+extern uint8_t Process_Message_Buffer_Index_Start;
+extern uint8_t Process_Message_Buffer_Index_End;
+extern uint8_t index_input[6] ;
+extern uint8_t index_process[6] ;
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+
+extern uint16_t myPN;
+extern volatile uint16_t neighbors[NumOfPorts][2];
+
+extern uint32_t BOS_var_reg[MAX_BOS_VARS];
+extern volatile uint32_t MBmessageParams[9];
+extern volatile uint32_t* index_dma[6];
+
+extern snippet_t snippets[MAX_SNIPPETS];
+extern button_t button[NumOfPorts + 1];
+extern BOS_t BOS;
+extern BOS_Status responseStatus;
+extern BOSOptionByte_t OptionByte;
+extern BOSOptionByte_t UserOptionByte;
+extern RemoteDataBuffer_t RemoteDataBuffer;
+extern module_param_t modParam[];
+//extern BOSMessaging_t BOSMessaging;
+
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
 extern uint8_t routeDist[MaxNumOfModules];
@@ -521,23 +695,6 @@ extern	uint8_t broadcastResponse[__N];
 extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
 #endif
 
-extern uint8_t routeDist[];
-extern uint8_t routePrev[];
-extern uint8_t route[];
-extern button_t button[NumOfPorts + 1];
-extern bool delayButtonStateReset, needToDelayButtonStateReset;
-extern BOS_t BOS;
-extern BOSMessaging_t BOSMessaging;
-extern uint8_t PcPort, bootStatus;
-extern uint8_t BOS_initialized;
-extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-extern snippet_t snippets[MAX_SNIPPETS];
-extern uint8_t numOfBosCommands;
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern RemoteDataBuffer_t RemoteDataBuffer;
-
-
-
 /*Output_Port_Array[__N]:
 This array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
@@ -546,25 +703,6 @@ so we can read these output ports when needed instead of figuring out the correc
 #ifdef __N
 extern uint8_t Output_Port_Array[__N];
 #endif
-
-
-/*Flag for CLI Task:
- *
- * Activate_CLI_For_First_Time_Flag:
- * Default value: 0
- * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
- *
- * Read_In_CLI_Task_Flag:
- * Default value: 0
- * Its value each time a byte is received: 1
- */
-extern uint8_t Activate_CLI_For_First_Time_Flag;
-extern uint8_t Read_In_CLI_Task_Flag;
-
-
-
-#define MSG_COUNT 		5 //TODO: messages count should be increased, but there's no enough memory now.
-#define MSG_MAX_SIZE 	56
 
 /*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
 #ifdef __USER_DATA_BUFFER
@@ -578,17 +716,9 @@ extern uint8_t GetUserDataCount(void);
 extern BOS_Status GetUserDataByte(uint8_t* pData);
 #endif
 
-
-//The new messages circular buffer:
-extern uint8_t MSG_Buffer_Index_Start[NumOfPorts];
-extern uint8_t MSG_Buffer_Index_End[NumOfPorts];
-extern uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE];
-
-
-//Processing message circular buffer:
-extern uint8_t Process_Message_Buffer[MSG_COUNT];
-extern uint8_t Process_Message_Buffer_Index_Start;
-extern uint8_t Process_Message_Buffer_Index_End;
+/* FreeRTOS semaphore handles */
+extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
+extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 
  /*
   *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
@@ -621,6 +751,7 @@ extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern BOS_Status UpdateBaudrate(uint8_t port,uint32_t baudrate);
 extern void  Module_Init(void);
 /* Messaging APIs */
+extern BOS_Status SendLargeMessageToModule(uint8_t dst, uint16_t code , uint8_t *pParameters, uint16_t numberOfParams);
 extern BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams);

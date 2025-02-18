@@ -37,7 +37,7 @@ extern uint8_t UARTRxBufIndex[NumOfPorts];
 extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 volatile uint32_t MBmessageParams[9] ={0};
-extern char cRxedChar;
+//extern char cRxedChar;
 extern uint8_t longMessage;
 extern uint16_t longMessageLastPtr;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts + 1) * MaxNumOfModules];
@@ -111,6 +111,8 @@ extern void CheckAttachedButtons(void);
 extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
+
+volatile uint8_t bcastLastID = 0;
 /* -----------------------------------------------------------------------
  |												 Private Functions	 		|
  -----------------------------------------------------------------------
@@ -118,13 +120,16 @@ extern void NotifyMessagingTask(uint8_t port);
 /* BackEndTask function */
 void BackEndTask(void *argument) {
 
-	uint8_t calculated_crc, port_number, length, port_index;
+	uint8_t calculated_crc, port_number, length, port_index , dst;
 	uint8_t temp_length[NumOfPorts] = { 0 };
 	uint8_t temp_index[NumOfPorts] = { 0 };
 
+	BOS_Status result =BOS_OK;
+	uint8_t NumofModulesinGroup = 0;
+
 	for (;;) {
 
-        // Wait for notification from USART interrupt handler
+        /* Wait for notification from USART interrupt handler */
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		/* Parsing all module ports */
@@ -133,7 +138,9 @@ void BackEndTask(void *argument) {
 			port_index = port_DMA;
 			index_input[port_DMA] = MSG_RX_BUF_SIZE - (*index_dma[port_DMA]);
 
-			/* 1- Check if there's new data to process */
+			/***************************************************************************************/
+			/* 1- Check if there's new data to process *********************************************/
+			/***************************************************************************************/
 			if (index_input[port_DMA] != index_process[port_DMA]) {
 				port_number = port_DMA + 1;
 
@@ -223,14 +230,17 @@ void BackEndTask(void *argument) {
 
 			}
 
-			/* 2- In case there is no bytes to process
-			 * increase the DMA port index to parse all Module ports
-			 *  */
+			/***************************************************************************************/
+			/* 2- In case there is no bytes to process *********************************************/
+			/***************************************************************************************/
+			/* Increase the DMA port index to parse all Module ports */
 			else if (index_input[port_DMA] == index_process[port_DMA]) {
 				port_DMA++;
 			}
 
-			/* 3- Message Processing: */
+			/***************************************************************************************/
+			/* 3- Message Processing ***************************************************************/
+			/***************************************************************************************/
 			if (Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start) {
 				port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
 				port_index = port_number - 1;
@@ -238,16 +248,17 @@ void BackEndTask(void *argument) {
 				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
 
 				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+				dst = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3];
 
-				/* Forward Message if Not for Current Module */
-				if (MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != myID
-						&& MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3] != 0) {
+				/* Forward Message in these cases: wrong ID , dst ~= 0 (explore) ,not MULTICAST , not BROADCAST */
+				if ((dst != myID) && (dst != 0) && (dst != BOS_BROADCAST) && (dst != BOS_MULTICAST)) {
 					messageLength[port_index] = length;
 					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
 					/* in case trace feature is enabled: */
-					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-					if(BOSMessaging.trace)
+//					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+					OptionByte.Trace = ((cMessage[port_number - 1][2] >> 2) & 0x01);
+					if(OptionByte.Trace)
 						indMode =IND_SHORT_BLINK;
 
 					ForwardReceivedMessage(port_number);
@@ -270,8 +281,45 @@ void BackEndTask(void *argument) {
 						messageLength[port_index] = length;
 						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
 
+						result =BOS_OK;
+
+						/* Is it a broadcast or a multi-cast message with unique ID? */
+						if(dst == BOS_BROADCAST || dst == BOS_MULTICAST) {
+						if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_BROADCAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+						}
+						/* Reflection of last broadcast message! */
+						else if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+							result =BOS_ERR_MSG_Reflection;
+						}
+
+						if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+							BroadcastReceivedMessage(BOS_MULTICAST,port_number);
+							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+							/* Number of members in this multicast group
+							 * TODO: breaks when message is 14 length and padded */
+							NumofModulesinGroup =cMessage[port_number - 1][messageLength[port_number - 1] - 2];
+							/* Am I part of this multicast group? */
+							result =BOS_ERR_WrongID;
+								for (uint8_t i = 0; i < NumofModulesinGroup; i++) {
+									if (myID == cMessage[port_number - 1][messageLength[port_number - 1] - 2 - NumofModulesinGroup + i]) {
+										result = BOS_OK;
+										break;
+									}
+								}
+							}
+						/* Reflection of last multi-cast message! */
+						else if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+							result =BOS_ERR_MSG_Reflection;
+						}
+					}
+
 						/* Notify messaging tasks */
-						NotifyMessagingTask(port_number);
+						if (result == BOS_OK)
+							NotifyMessagingTask(port_number);
 
 					} else {
 						Rejected_Messages++;
@@ -288,11 +336,7 @@ void BackEndTask(void *argument) {
 				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
 					Process_Message_Buffer_Index_Start = 0;
 			}
-
-//			taskYIELD();
 		}
-//		osDelay(25);
-//       taskYIELD();
 	}
 }
 
@@ -308,7 +352,7 @@ void PxMessagingTask(void *argument){
 	static int8_t cCLIString[cmdMAX_INPUT_SIZE];
 	portBASE_TYPE xReturned;
 	int8_t *pcOutputString;
-	static uint8_t bcastLastID;
+//	static uint8_t bcastLastID;
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -320,13 +364,6 @@ void PxMessagingTask(void *argument){
 		ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
 		
 		if(messageLength[port - 1]){
-			/* Long message? Read Options Byte MSB */
-			if(cMessage[port - 1][2] >> 7){
-				longMessage =1;
-			}
-			else{
-				longMessage =0;
-			}
 			
 			/* Read message source and destination */
 			dst =cMessage[port - 1][0];
@@ -335,84 +372,130 @@ void PxMessagingTask(void *argument){
 			/* Reset array index shift */
 			shift =0;
 			
+			/* Assign the value of option byte to OptionByte structure */
+			*(uint8_t*)&OptionByte = (cMessage[port - 1][2]);
+
 			/* Read message options */
-			if(cMessage[port - 1][2] & 0x01){ // 1st bit (LSB) Extended options - TODO handle extended options case
+			if(OptionByte.ExtendedOptions){ // 1st bit (LSB) Extended options - TODO handle extended options case
 				extendOptions = true;
 				(void )extendOptions; // remove warning
 				++shift;
 			}
-			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
-			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
-			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
-			// 8th bit (MSB) Long message
-			
+
 			/* Read message code - LSB first */
-			if(extendCode == true){
+			if(OptionByte.ExtendedMessageCode){
 				code =(((uint16_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
 				++shift;
 			}
-			else{
+			else
 				code =cMessage[port - 1][3 + shift];
-			}
 
 			/*ACK Massage */
-			if(true == BOSMessaging.received_Acknowledgment){
-				BOSMessaging.Acknowledgment =false;
+			if(OptionByte.Acknowledgment){
+				OptionByte.Acknowledgment =false;
 				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
 			}
 
-			/* Is it a transit message? Check for the case when module is being IDed */
-			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
-				/* Forward the message to its destination */
-				ForwardReceivedMessage(port);
-				if(BOSMessaging.trace)
-					indMode =IND_SHORT_BLINK;
+//		if(messageLength[port - 1]){
+//			/* Long message? Read Options Byte MSB */
+//			if(cMessage[port - 1][2] >> 7){
+//				longMessage =1;
+//			}
+//			else{
+//				longMessage =0;
+//			}
+//
+//			/* Read message source and destination */
+//			dst =cMessage[port - 1][0];
+//			src =cMessage[port - 1][1];
+//
+//			/* Reset array index shift */
+//			shift =0;
+//
+//			/* Read message options */
+//			if(cMessage[port - 1][2] & 0x01){ // 1st bit (LSB) Extended options - TODO handle extended options case
+//				extendOptions = true;
+//				(void )extendOptions; // remove warning
+//				++shift;
+//			}
+//			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
+//			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
+//			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
+//			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
+//			// 8th bit (MSB) Long message
+//
+//			/* Read message code - LSB first */
+//			if(extendCode == true){
+//				code =(((uint16_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
+//				++shift;
+//			}
+//			else{
+//				code =cMessage[port - 1][3 + shift];
+//			}
+//
+//			/*ACK Massage */
+//			if(true == BOSMessaging.received_Acknowledgment){
+//				OptionByte.Acknowledgment =false;
+//				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
+//			}
 
-				/* Special messages that require local action */
-				if(code == CODE_UPDATE){ // Remote bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,0);
-				}
-				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
-					Delay_ms(100);
-					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
-				}
-			}
-			/* Either broadcast or multicast local message */
-			else{
+
+
+
+			/* Is it a transit message? Check for the case when module is being IDed */
+//			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
+//				/* Forward the message to its destination */
+//				ForwardReceivedMessage(port);
+//				if(BOSMessaging.trace)
+//					indMode =IND_SHORT_BLINK;
+//
+//				/* Special messages that require local action */
+//				if(code == CODE_UPDATE){ // Remote bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,0);
+//				}
+//				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
+//					Delay_ms(100);
+//					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
+//				}
+//			}
+
+//			/* Either broadcast or multicast local message */
+//			else{
+
+
 				/* Is it a broadcast message with unique ID? */
-				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_BROADCAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-					result =BOS_OK;
-				}
-				/* Reflection of last broadcast message! */
-				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-					result =BOS_ERR_MSG_Reflection;
-				}
-				
+//				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_BROADCAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					result =BOS_OK;
+//				}
+//				/* Reflection of last broadcast message! */
+//				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+//					result =BOS_ERR_MSG_Reflection;
+//				}
+
 				/* Is it a multicast message with unique ID? */
-				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-					BroadcastReceivedMessage(BOS_MULTICAST,port);
-					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
-					/* Am I part of this multicast group? */
-					result =BOS_ERR_WrongID;
-					for(i =0; i < temp; i++){
-						if(myID == cMessage[port - 1][messageLength[port - 1] - 2 - temp + i]){
-							result =BOS_OK;
-							break;
-						}
-					}
-				}
-				/* Reflection of last multi-cast message! */
-				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-					result =BOS_ERR_MSG_Reflection;
-				}
-				
+//				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
+//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
+//					BroadcastReceivedMessage(BOS_MULTICAST,port);
+//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
+//					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
+//					/* Am I part of this multicast group? */
+//					result =BOS_ERR_WrongID;
+//					for(i =0; i < temp; i++){
+//						if(myID == cMessage[port - 1][messageLength[port - 1] - 2 - temp + i]){
+//							result =BOS_OK;
+//							break;
+//						}
+//					}
+//				}
+//				/* Reflection of last multi-cast message! */
+//				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
+//					result =BOS_ERR_MSG_Reflection;
+//				}
+
 				/* Set shift index to the start of message payload (parameters) */
 				shift +=4;
 				
@@ -427,17 +510,19 @@ void PxMessagingTask(void *argument){
 							
 						case CODE_PING:
 							indMode =IND_PING;
-////							osDelay(10);
-//							if(BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG)
-//								SendMessageToModule(src,CODE_PING_RESPONSE,0);
+//							osDelay(5);
+							if(OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG)
+								SendMessageToModule(src,CODE_PING_RESPONSE,0);
 							break;
 							
 						case CODE_PING_RESPONSE:
+							if(PcPort == 0) {
 							if(!moduleAlias[myID][0])
 								sprintf((char* )pcUserMessage,"Hi from module %d\r\n",src);
 							else
 								sprintf((char* )pcUserMessage,"Hi from module %d (%s)\r\n",src,moduleAlias[src]);
 							writePxMutex(PcPort,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
+							}
 							responseStatus =BOS_OK;
 							break;
 							
@@ -563,7 +648,7 @@ void PxMessagingTask(void *argument){
 							break;
 							
 						case CODE_TOPOLOGY:
-							if(longMessage){
+							if(OptionByte.LongMessage){
 								/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
 								/* Use a 1-byte oriented scratchpad */
 								memcpy(&longMessageScratchpad[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
@@ -647,11 +732,12 @@ void PxMessagingTask(void *argument){
 								/* Restore back PcPort */
 								PcPort =temp;
 								/* Respond to the CLI command */
-								if(BOSMessaging.response == BOS_RESPONSE_ALL){
+								if(OptionByte.Response == BOS_RESPONSE_ALL){
 									/* Copy the generated string to messageParams */
 									memcpy(messageParams,pcOutputString,strlen((char* )pcOutputString));
 									/* Send command response */
-									SendMessageToModule(src,CODE_CLI_RESPONSE,strlen((char* )pcOutputString));
+									SendLargeMessageToModule(src, CODE_CLI_RESPONSE, (uint8_t *)pcOutputString, strlen((char* )pcOutputString));
+//									SendMessageToModule(src,CODE_CLI_RESPONSE,strlen((char* )pcOutputString));
 									osDelay(10);
 								}
 							} while(xReturned != pdFALSE);
@@ -664,7 +750,7 @@ void PxMessagingTask(void *argument){
 							pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 							memset(pcOutputString,0x00,strlen((char* )pcOutputString));
 							/* Copy the response */
-							if(longMessage){
+							if(OptionByte.LongMessage){
 								memcpy(&pcOutputString[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
 								longMessageLastPtr +=numOfParams;
 							}
@@ -1181,7 +1267,7 @@ void PxMessagingTask(void *argument){
 						}
 
 						/* Send confirmation back */
-						if (BOSMessaging.response == BOS_RESPONSE_ALL || BOSMessaging.response == BOS_RESPONSE_MSG) {
+						if (OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG) {
 							messageParams[0] = responseStatus;
 							SendMessageToModule(src, CODE_WRITE_REMOTE_RESPONSE, 1);
 						}
@@ -1419,7 +1505,7 @@ void PxMessagingTask(void *argument){
 						break;
 					}
 				}
-			}
+//			}
 		}
 		
 		/* Is it unknown message? */

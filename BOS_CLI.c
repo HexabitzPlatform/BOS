@@ -276,7 +276,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 				else{
 					/* Special commands that convert into custom a Message */
 					if(!strncmp((char* )loc + 1,"update",6)){			// remote update
-						BOSMessaging.response = BOS_RESPONSE_NONE;
+						OptionByte.Response = BOS_RESPONSE_NONE;
 						SendMessageToModule(id,CODE_UPDATE,0);
 						osDelay(100);
 						/* Execute locally */
@@ -294,7 +294,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 					}
 					
 					/* Wait for response if needed */
-					if(BOSMessaging.response == BOS_RESPONSE_ALL){
+					if(OptionByte.Response == BOS_RESPONSE_ALL){
 						ulTaskNotifyTake(pdTRUE,1000);		//cmd500ms
 						/* If timeout */
 						if(responseStatus != BOS_OK){
@@ -664,7 +664,7 @@ BOS_Status ExecuteSnippet(void){
 		{
 			if(CheckSnippetCondition(s))				// Process Snippet condition
 			{
-				BOSMessaging.response = BOS_RESPONSE_MSG;		// Disable CLI response
+				OptionByte.Response = BOS_RESPONSE_MSG;		// Disable CLI response
 				// Loop over all recorded Snippet commands
 				while(ParseSnippetCommand(snippets[s].cmd,(int8_t* )&cInputString) != false){
 					/* Pass the received command to the command interpreter.  The
