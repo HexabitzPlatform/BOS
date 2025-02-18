@@ -253,7 +253,7 @@ uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	// Buffer for received mess
 char message[MAX_MESSAGE_SIZE] ={0};					// Buffer to construct a message to be sent
 uint8_t messageLength[NumOfPorts] ={0};
 uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-//char cRxedChar =0;
+char cRxedChar =0;
 uint8_t longMessage =0;
 uint16_t longMessageLastPtr =0;
 static char pcUserMessage[80];
