@@ -1841,7 +1841,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	portBASE_TYPE xParameterStringLength1 =0;
 	BOS_Status result =BOS_OK;
 	uint8_t portt, ports;
-	extern uint8_t UARTRxBufIndex[NumOfPorts];
+//	extern uint8_t UARTRxBufIndex[NumOfPorts];
 	char WriteVaule[1] ="H";
 	char ReadValue[1];
 	int LastEnter =0;
@@ -1855,7 +1855,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(strcmp((char* )pcParameterString1,"all") == 0){
 		if(LastEnter == 0)
-			LastEnter =UARTRxBufIndex[PcPort - 1];
+//			LastEnter =UARTRxBufIndex[PcPort - 1];
 		for(ports =1; ports <= NumOfPorts; ports++){
 			if(PcPort != ports){
 				WriteVaule[0] =rand();

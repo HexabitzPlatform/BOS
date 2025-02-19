@@ -7,75 +7,65 @@
  
  */
 
-/* Includes ------------------------------------------------------------------*/
+
+/* Includes ****************************************************************/
 #include "BOS.h"
 
-//New BackEndTask Variables:
-uint16_t Accepted_Messages = 0, Rejected_Messages = 0, Message_counter=0;
-uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
-/* Private and global variables ----------------------------------------------*/
-/* Used in the run time stats calculations */
 
-uint8_t Activate_CLI_For_First_Time_Flag = 0;
-//uint8_t Read_In_CLI_Task_Flag = 0;
-uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
-uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
-uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
-uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
-uint8_t Process_Message_Buffer_Index_Start = 0;
-uint8_t Process_Message_Buffer_Index_End = 0;
-uint8_t index_input[6]={0};
-uint8_t index_process[6]={0};
-uint8_t CLI_Data = 0;
+/***************************************************************************/
+/* Private and global variables ********************************************/
+/***************************************************************************/
+
+/* BackEndTask global variables ********************************************/
+uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
+uint8_t Activate_CLI_For_First_Time_Flag =0;
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] ={0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] ={0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] ={0};
+uint8_t Process_Message_Buffer[MSG_COUNT] ={0};
+uint8_t Process_Message_Buffer_Index_Start =0;
+uint8_t Process_Message_Buffer_Index_End =0;
+volatile uint8_t bcastLastID = 0;
+uint8_t index_process[6] ={0};
+uint8_t index_input[6] ={0};
+uint8_t CLI_Data =0;
 uint8_t port_DMA =0;
 
+uint16_t Accepted_Messages =0;
+uint16_t Rejected_Messages =0;
+uint16_t Message_counter =0;
 
-uint16_t stackWaterMark;
-uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
-float InternalVoltageReferance =0, InternalTemperature =0, ADCPercentage =0, ADCValue =0;
-uint32_t totalnumberofrecevedmesg =0;
-int packetStart =0, packetEnd =0, packetLength =0, parseStart =0;
-uint8_t PortSelect , PinSelect;
-/* Receiving the Defalt_Value for the H1DR5 module */
-receive_defalt_value defalt_data;
-
-/* Remote Buffer of Messages */
-RemoteDataBuffer_t RemoteDataBuffer;
-
-/* Exported Variables */
-//extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed
-//extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
-//extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
-extern uint8_t UARTRxBufIndex[NumOfPorts];
-//extern uint8_t messageLength[NumOfPorts];
-extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
-volatile uint32_t MBmessageParams[9] ={0};
-//extern char cRxedChar;
-uint8_t longMessage =0;
-uint16_t longMessageLastPtr =0;
+/* PxMsgTaskHandle global variables ****************************************/
+uint16_t ADCPort =0;
+uint16_t ADCSide =0;
+uint8_t PortSelect =0;
+uint8_t PinSelect =0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts + 1) * MaxNumOfModules];
-//extern BOS_Status responseStatus;
-//extern uint8_t bcastID; // Counter for unique broadcast ID
-//extern uint8_t PcPort;
-//extern uint8_t BOS_initialized;
-//extern uint64_t remoteBuffer;
-extern varFormat_t remoteVarFormat;
 
-//#ifndef __N
-//uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
-//#else
-//uint16_t arrayPortsDir[__N ];
-//#endif
+uint16_t longMessageLastPtr =0;
 
+//volatile uint32_t MBmessageParams[9] ={0};
+
+float ADCValue =0;
+float ADCPercentage =0;
+float InternalTemperature =0;
+float InternalVoltageReferance =0;
+
+receive_defalt_value defalt_data;     /* Receiving the Defalt_Value for the H1DR5 module */
+RemoteDataBuffer_t RemoteDataBuffer;  /* Remote Buffer of Messages */
+
+/***************************************************************************/
+/* Exported variables ******************************************************/
+/***************************************************************************/
+extern uint8_t ExtraPcPort;
+extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 extern volatile uint8_t RemoteResponseFlag;
 extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
+//extern uint8_t UARTRxBufIndex[NumOfPorts];
+extern varFormat_t remoteVarFormat;
 
-extern uint8_t ExtraPcPort;
-/* Routing and Topology */
-//volatile uint16_t neighbors2[NumOfPorts][2] ={0};
-
-/* Messaging tasks */
+/* Exported Messaging tasks handles ****************************************/
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
 extern TaskHandle_t P1MsgTaskHandle;
@@ -99,23 +89,23 @@ extern TaskHandle_t P6MsgTaskHandle;
 /* UARTcmd task */
 extern TaskHandle_t xCommandConsoleTaskHandle;
 
-/* Private function prototypes -----------------------------------------------*/
+/***************************************************************************/
+/* Exported Functions ******************************************************/
+/***************************************************************************/
 extern uint8_t SaveTopologyToRO(void);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif
-extern uint8_t LoadROtopology(void);
+//extern uint8_t LoadROtopology(void);
 extern BOS_Status SaveEEportsDir(void);
 extern BOS_Status ClearEEportsDir(void);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
- BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
-/* Module exported internal functions */
-extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 
 /* Module exported internal functions */
+extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 extern uint8_t IsModuleParameter(char *name);
 
 /* BOS exported internal functions */
@@ -124,11 +114,16 @@ extern void ResetAttachedButtonStates(uint8_t *deferReset);
 extern BOS_Status ExecuteSnippet(void);
 extern void NotifyMessagingTask(uint8_t port);
 
-volatile uint8_t bcastLastID = 0;
-/* -----------------------------------------------------------------------
- |												 Private Functions	 		|
- -----------------------------------------------------------------------
- */
+
+/***************************************************************************/
+/* Private function prototypes *********************************************/
+/***************************************************************************/
+BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
+
+
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
 /* BackEndTask function */
 void BackEndTask(void *argument) {
 
@@ -1293,24 +1288,24 @@ void PxMessagingTask(void *argument){
 							writePxMutex(cMessage[port - 1][shift],(char* )&cMessage[port - 1][shift + 1],numOfParams - 1,10,10);
 							break;
 							
-						case CODE_READ_REMOTE_ModBus_RESPONSE:
-							switch(cMessage[port - 1][0 + shift]){
-								case 0:
-									MBmessageParams[0] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-									MBmessageParams[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-									MBmessageParams[2] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-									break;
-									
-								case 1:
-									MBmessageParams[3] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-									MBmessageParams[4] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-									MBmessageParams[5] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-									break;
-									
-								case 2:
-									MBmessageParams[6] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-
-							}
+//						case CODE_READ_REMOTE_ModBus_RESPONSE:
+//							switch(cMessage[port - 1][0 + shift]){
+//								case 0:
+//									MBmessageParams[0] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
+//									MBmessageParams[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
+//									MBmessageParams[2] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
+//									break;
+//
+//								case 1:
+//									MBmessageParams[3] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
+//									MBmessageParams[4] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
+//									MBmessageParams[5] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
+//									break;
+//
+//								case 2:
+//									MBmessageParams[6] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
+//
+//							}
 					case CODE_READ_ADC_VALUE:
 						ADCPort = cMessage[port - 1][shift];
 						ADCSide = cMessage[port - 1][shift + 1];
@@ -1326,18 +1321,18 @@ void PxMessagingTask(void *argument){
 					case CODE_READ_VREF:
 						ReadTempAndVref(&InternalTemperature, &InternalVoltageReferance);
 
-					case CODE_READ_ADC_PERCENTAGE:
-						ADCPort = cMessage[port - 1][shift];
-						GetReadPrecentage(ADCPort, &ADCPercentage);
-						MBmessageParams[7] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
-								+ ((uint32_t) cMessage[port - 1][6 + shift] << 8)
-								+ ((uint32_t) cMessage[port - 1][7 + shift] << 16)
-								+ ((uint32_t) cMessage[port - 1][8 + shift] << 24);
-						MBmessageParams[8] = ((uint32_t) cMessage[port - 1][9 + shift] << 0)
-								+ ((uint32_t) cMessage[port - 1][10 + shift] << 8)
-								+ ((uint32_t) cMessage[port - 1][11 + shift] << 16)
-								+ ((uint32_t) cMessage[port - 1][12 + shift] << 24);
-						break;
+//					case CODE_READ_ADC_PERCENTAGE:
+//						ADCPort = cMessage[port - 1][shift];
+//						GetReadPrecentage(ADCPort, &ADCPercentage);
+//						MBmessageParams[7] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+//								+ ((uint32_t) cMessage[port - 1][6 + shift] << 8)
+//								+ ((uint32_t) cMessage[port - 1][7 + shift] << 16)
+//								+ ((uint32_t) cMessage[port - 1][8 + shift] << 24);
+//						MBmessageParams[8] = ((uint32_t) cMessage[port - 1][9 + shift] << 0)
+//								+ ((uint32_t) cMessage[port - 1][10 + shift] << 8)
+//								+ ((uint32_t) cMessage[port - 1][11 + shift] << 16)
+//								+ ((uint32_t) cMessage[port - 1][12 + shift] << 24);
+//						break;
 					case MSG_Acknowledgment_Accepted:
 						ACK_FLAG = 1;
 						break;

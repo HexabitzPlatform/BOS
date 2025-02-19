@@ -31,8 +31,8 @@ char pcWelcomePortMessage[40] ={0};
 
 /* Exported Variables --------------------------------------------------------*/
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern uint16_t timedoutMsg;
-extern uint8_t UARTRxBufIndex[NumOfPorts];
+uint16_t timedoutMsg = 0;
+//extern uint8_t UARTRxBufIndex[NumOfPorts];
 
 /* Internal functions ---------------------------------------------------------*/
 
