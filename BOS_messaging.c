@@ -79,6 +79,10 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	
 	/* Start DMA streams */
 	if(direction == FORWARD){
+		/*
+		 * if was destination port number is virtual port this mean we want to receive data
+		 * from source module(port,memory) to memory in the destination module
+		 */
 		if(dst == P_VIRTUAL)
 		{
 			if(StartDMAstream(GetUart(src),GetUart(dst),count) == BOS_ERR_PORT_BUSY)
@@ -727,7 +731,10 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 			osDelay(10);
 		}
 	}
-	
+	/*
+	 * if was source port number is virtual port this mean we want to transfer data
+	 * from memory from source module to port or memory in destination module
+	 */
 	if(srcP != P_VIRTUAL)
 	{
 		if(srcM == dstM)
@@ -747,43 +754,20 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 	
 	return result;
 }
-uint8_t streamType;
-void StreamToModule(uint8_t srcP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, uint8_t type)
-{
-	/* port to memory */
-	if(type == 1)
-	{
-//		streamType = 1;
-		StartScastDMAStream(srcP, myID, P10, dstM, FORWARD, size, timeout, 0);
-//		HAL_UARTEx_ReceiveToIdle_DMA(GetUart(srcP),pBuffer,size);
-//	    __HAL_DMA_DISABLE_IT(hDMA , DMA_IT_HT);
-	}
-	/* memory to memory */
-	if(type == 2)
-	{
-//		streamType = 1;
-		StartScastDMAStream(P10, myID, P10, dstM, FORWARD, size, timeout, 0);
-		uint8_t port = FindRoute(myID,dstM);
-		HAL_Delay(1000);
-		HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
-//		for(int port = 0;port<=5;port++)
-//		{
-//			if(portStatus[port] == FREE)
-//			{
-//				HAL_UART_Transmit_IT(GetUart(P5), pBuffer, size);
-//			}
-//		}
-//		HAL_UART_Transmit_IT(huart, pBuffer, size);
-	}
-	if(type == 3)
-	{
 
-	}
-
-
-
-}
-
+/*********************************************************************************************************************/
+/*
+ * @brief: Transferring stream data from port in the source module to port in the destination module and vice versa.
+ * @param1: source port number.
+ * @param2: source module id.
+ * @param3: destination port number.
+ * @param4: destination module id.
+ * @param5: flow data direction(FORWARD,BACKWARD,BIDIRECTIONAL)
+ * @param6: size of stream data.
+ * @param7: flow data timeout.
+ * @param8: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
 BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
@@ -792,6 +776,16 @@ BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t ds
 	return result;
 }
 
+/*********************************************************************************************************************/
+/*
+ * @brief: Transferring stream data from port in the source module to RAM memory in the destination module.
+ * @param1: source port number.
+ * @param2: destination module id.
+ * @param3: size of stream data.
+ * @param4: flow data timeout.
+ * @param5: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
 BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
@@ -801,6 +795,17 @@ BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_
 	return result;
 }
 
+/*********************************************************************************************************************/
+/*
+ * @brief: Transferring stream data from RAM memory in the source module to port in the destination module.
+ * @param1: destination port number.
+ * @param2: destination module id.
+ * @param3: buffer to be sent.
+ * @param4: size of stream data.
+ * @param5: flow data timeout.
+ * @param6: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
 BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
@@ -813,6 +818,16 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
 	return result;
 }
 
+/*********************************************************************************************************************/
+/*
+ * @brief: Transferring stream data from RAM memory in the source module to RAM memory in the destination module.
+ * @param1: destination module id.
+ * @param2: buffer to be sent.
+ * @param3: size of stream data.
+ * @param4: flow data timeout.
+ * @param5: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
 BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
