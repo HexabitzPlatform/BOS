@@ -619,6 +619,7 @@ extern bool delayButtonStateReset;
 extern bool needToDelayButtonStateReset;
 extern bool ACK_FLAG;
 extern bool rejected_FLAG;
+extern bool AddBcastPayload;
 
 extern char *pcBootloaderUpdateMessage;
 extern char *pcRemoteBootloaderUpdateMessage;
@@ -629,6 +630,7 @@ extern const char modulePNstring[NUM_OF_MODULE_PN][6];
 extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
 extern char cRxedChar;
 static char pcUserMessage[80];
+extern char message[MAX_MESSAGE_SIZE];
 
 extern uint8_t myID;
 extern uint8_t bcastID;
@@ -640,6 +642,7 @@ extern uint8_t port_DMA;
 extern uint8_t PcPort;
 extern uint8_t bootStatus;
 extern uint8_t BOS_initialized;
+extern uint8_t dstGroupID;
 extern uint8_t routeDist[];
 extern uint8_t routePrev[];
 extern uint8_t route[];
@@ -664,11 +667,15 @@ extern uint8_t index_process[6] ;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 extern uint16_t myPN;
-extern volatile uint16_t neighbors[NumOfPorts][2];
+extern uint16_t neighbors[NumOfPorts][2];
+extern uint16_t neighbors2[NumOfPorts][2];
+extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
 
 extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 extern volatile uint32_t MBmessageParams[9];
 extern volatile uint32_t* index_dma[6];
+
+extern uint64_t remoteBuffer;
 
 extern snippet_t snippets[MAX_SNIPPETS];
 extern button_t button[NumOfPorts + 1];
@@ -687,12 +694,14 @@ extern uint8_t routePrev[MaxNumOfModules];
 extern char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1]; /* moduleAlias[0] used to store alias for module 0 */
 extern uint8_t broadcastResponse[MaxNumOfModules];
 extern uint16_t groupModules[MaxNumOfModules]; /* Group 0 (LSB) to Group 15 (MSB) */
+extern uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
 #else
 extern	uint8_t routeDist[__N];
 extern	uint8_t routePrev[__N];
 extern	char moduleAlias[__N+1][MaxLengthOfAlias+1];
 extern	uint8_t broadcastResponse[__N];
 extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
+extern uint16_t arrayPortsDir[__N ];
 #endif
 
 /*Output_Port_Array[__N]:

@@ -30,38 +30,37 @@ receive_defalt_value defalt_data;
 RemoteDataBuffer_t RemoteDataBuffer;
 
 /* Exported Variables */
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed 
-extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
+//extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed
+//extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
 extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 extern uint8_t UARTRxBufIndex[NumOfPorts];
-extern uint8_t messageLength[NumOfPorts];
+//extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 volatile uint32_t MBmessageParams[9] ={0};
-extern char cRxedChar;
-extern uint8_t longMessage;
-extern uint16_t longMessageLastPtr;
+//extern char cRxedChar;
+uint8_t longMessage =0;
+uint16_t longMessageLastPtr =0;
 static uint8_t longMessageScratchpad[(MaxNumOfPorts + 1) * MaxNumOfModules];
-extern BOS_Status responseStatus;
-extern uint8_t bcastID; // Counter for unique broadcast ID
-extern uint8_t PcPort;
-extern uint8_t BOS_initialized;
-extern uint64_t remoteBuffer;
+//extern BOS_Status responseStatus;
+//extern uint8_t bcastID; // Counter for unique broadcast ID
+//extern uint8_t PcPort;
+//extern uint8_t BOS_initialized;
+//extern uint64_t remoteBuffer;
 extern varFormat_t remoteVarFormat;
-#ifndef __N
-extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
-extern uint16_t arrayPortsDir[MaxNumOfModules];
-extern uint8_t broadcastResponse[MaxNumOfModules];
-extern uint16_t groupModules[MaxNumOfModules];
-#else
-extern uint16_t arrayPortsDir[__N ];
-#endif
+
+//#ifndef __N
+//uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
+//#else
+//uint16_t arrayPortsDir[__N ];
+//#endif
+
 extern volatile uint8_t RemoteResponseFlag;
 extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
 
 extern uint8_t ExtraPcPort;
 /* Routing and Topology */
-extern volatile uint16_t neighbors2[NumOfPorts][2];
+//volatile uint16_t neighbors2[NumOfPorts][2] ={0};
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;

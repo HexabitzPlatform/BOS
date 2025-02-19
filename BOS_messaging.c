@@ -11,12 +11,12 @@
 #include "BOS_messaging.h"
 
 /* Private and global variables ----------------------------------------------*/
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed 
-extern char message[MAX_MESSAGE_SIZE];										// Buffer to construct a message to be sent
-extern uint8_t dstGroupID;
-extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
+//extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed
+//extern char message[MAX_MESSAGE_SIZE];										// Buffer to construct a message to be sent
+//extern uint8_t dstGroupID;
+//extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
 extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
-extern bool AddBcastPayload;
+//extern bool AddBcastPayload;
 BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 uint32_t totalnumberoftransmiitedmesg=0;

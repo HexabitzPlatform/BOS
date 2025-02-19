@@ -10,6 +10,54 @@
 /* Includes ------------------------------------------------------------------*/
 #include "BOS.h"
 
+
+/***************************************************************************/
+/* Exported variables ******************************************************/
+/***************************************************************************/
+
+bool ACK_FLAG=0,rejected_FLAG=0;
+bool AddBcastPayload = false;
+
+uint8_t Activate_CLI_For_First_Time_Flag = 0;
+uint8_t Read_In_CLI_Task_Flag = 0;
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
+uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
+uint8_t Process_Message_Buffer_Index_Start = 0;
+uint8_t Process_Message_Buffer_Index_End = 0;
+uint8_t index_input[6]={0};
+uint8_t index_process[6]={0};
+volatile uint32_t* index_dma[6] ;
+uint8_t CLI_Data = 0;
+uint8_t port_DMA =0;
+uint8_t numOfBosCommands = 0;
+uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	// Buffer for received messages and ready to be parsed
+uint8_t messageLength[NumOfPorts] ={0};
+uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
+uint8_t portStatus[NumOfPorts + 1] ={0};
+uint8_t bcastID =0;			// Counter for unique broadcast ID
+uint8_t PcPort =0;
+uint8_t BOS_initialized =0;
+uint8_t dstGroupID =BOS_BROADCAST;
+uint8_t indMode =IND_OFF;
+
+uint16_t myPN = modulePN;
+uint16_t neighbors[NumOfPorts][2] ={0};
+uint16_t neighbors2[NumOfPorts][2] ={0};
+uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
+
+char message[MAX_MESSAGE_SIZE] ={0};					// Buffer to construct a message to be sent
+char cRxedChar =0;
+//uint8_t longMessage =0;
+//uint16_t longMessageLastPtr =0;
+
+char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1] ={0};
+
+uint32_t BOS_var_reg[MAX_BOS_VARS];	// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
+uint64_t remoteBuffer =0;
+
+
 /*Output_Port_Array[__N]:
 This array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
@@ -19,96 +67,6 @@ so we can read these output ports when needed instead of figuring out the correc
 uint8_t Output_Port_Array[__N] = {0};
 #endif
 
-uint8_t ExtraPcPort = 0;
-/*Flag for CLI Task:
- *
- * Activate_CLI_For_First_Time_Flag:
- * Default value: 0
- * Its Value after receiving '\r' for the first time (setting a port as PcPort): 1
- *
- * Read_In_CLI_Task_Flag:
- * Default value: 0
- * Its value each time a byte is received: 1
- */
-uint8_t Activate_CLI_For_First_Time_Flag = 0;
-uint8_t Read_In_CLI_Task_Flag = 0;
-
-//The new messages circular buffer:
-uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
-uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
-uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
-
-
-//Processing message circular buffer:
-uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
-uint8_t Process_Message_Buffer_Index_Start = 0;
-uint8_t Process_Message_Buffer_Index_End = 0;
-
-uint8_t index_input[6]={0};
-uint8_t index_process[6]={0};
-volatile uint32_t* index_dma[6] ;
-uint8_t CLI_Data = 0;
-uint8_t port_DMA =0;
-
-/*
- *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
- *instead of writePxDMAMutex (the previous function)
- */
-
-
- // Function To find  type of MCU
-char Processor_type(uint8_t module_name)
-{
-	if( module_name==_H1AR2 || module_name==_H23R3 ||
-		module_name==_H10R4 || module_name==_H0FR6 ||
-		module_name==_H41R6 || module_name==_H15R0 ||
-		module_name==_H1DR1 || module_name==_H07R3 )
-	{
-	  return 'F' ;
-      }
-    else
-      {
-	  return 'G';
-	  }
-}
-
-//Function To find Name of Module
-uint8_t Get_Module_Name(uint8_t dst)
-{
-	 return array[dst-1][0];
-}
-
-HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
-{
-	uint8_t module_name=Get_Module_Name(dst);
-	HAL_StatusTypeDef result =HAL_ERROR;
-
-	if(GetUart(port) != NULL)
-	{
-		/* Wait for the mutex to be available. */
-		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
-		{
-			if(Processor_type(module_name)=='G')
-			{
-				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
-			}
-			else
-			{
-			for(uint8_t i=0;i<n;i++)
-			  {
-				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
-				buffer++;
-				//Delay_us(500);
-			 	Delay_ms(2);
-			  }
-			}
-		}
-	}
-
-	Delay_ms(5);// Delay Between Sending Two Messages.
-	return result;
-}
-
 /*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
 #ifdef __USER_DATA_BUFFER
 uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
@@ -116,73 +74,36 @@ uint8_t UserData=0;
 uint8_t indexInputUserDataBuffer = 0;
 uint8_t indexProcessUserDataBuffer = 0;
 volatile uint32_t* DMACountUserDataBuffer = NULL;
-
-
-uint8_t GetUserDataCount(void)
-{
-	indexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*DMACountUserDataBuffer);
-
-	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
-	{
-		return 0;
-	}
-
-	else
-	{
-		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
-		{
-			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
-		}
-		else
-		{
-			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
-		}
-	}
-}
-
-
-BOS_Status GetUserDataByte(uint8_t* pData)
-{
-
-	if(GetUserDataCount() != 0)
-	{
-		if(pData == NULL)
-		{
-			return BOS_ERROR;
-		}
-
-		*pData =  UserBufferData[indexProcessUserDataBuffer];
-		indexProcessUserDataBuffer++;
-		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
-		{
-			indexProcessUserDataBuffer = 0;
-		}
-		return BOS_OK;
-	}
-
-	else
-	{
-		return BOS_ERROR;
-	}
-
-}
 #endif
 
-/*...................................................................................*/
+#ifndef __N
+uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1] ={{0}}; /* Array topology */
+uint8_t routeDist[MaxNumOfModules] ={0};
+uint8_t routePrev[MaxNumOfModules] ={0};
+char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1] ={0}; /* moduleAlias[0] used to store alias for module 0 */
+uint8_t broadcastResponse[MaxNumOfModules] ={0};
+uint16_t groupModules[MaxNumOfModules] ={0}; /* Group 0 (LSB) to Group 15 (MSB) */
+uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
+uint8_t N =1;
+uint8_t myID =0;
+#else
+	uint8_t routeDist[__N] = {0};
+	uint8_t routePrev[__N] = {0};
+	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
+	uint8_t broadcastResponse[__N] = {0};
+	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
+	uint16_t arrayPortsDir[__N ] = {0};
+	uint8_t N = __N;
+	uint8_t myID = _module;
+#endif
 
-
-/* Private and global variables ---------------------------------------------------------*/
 //BOSMessaging_t BOSMessaging;
 BOS_t BOS;
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE,  .buttons.debounce =
-DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK, .buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK, .buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK, .daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
-//BOSMessaging_t BOSMessging_default={ .response =
-//		BOS_RESPONSE_NONE, .trace =false,.Acknowledgment=false,.trial=once,.received_Acknowledgment=false,
-//};
-BOSOptionByte_t OptionByte = {0};
-BOSOptionByte_t UserOptionByte ={.Trace = false , .Acknowledgment = false , .Response = BOS_RESPONSE_NONE};
-uint16_t myPN = modulePN;
-uint8_t indMode =IND_OFF;
+BOSOptionByte_t OptionByte ={0};
+BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
+BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.debounce =DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
+BOS_Status responseStatus =BOS_OK;
+varFormat_t remoteVarFormat =FMT_UINT8;
 
 /* Define module PN strings [available PNs+1][5 chars] */
 const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6","H3BR6","H18R1","H1FR5","H3BR2","H21R2","H17R1","H15R8","H2BR0","H05R0","H3BR7","H2BR1","H07R8","H08R7","H16R6","P08R7","H19R0"};
@@ -193,7 +114,7 @@ static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
 const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-bool ACK_FLAG=0,rejected_FLAG=0;
+
 //static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
 
 /* Define long messages -------------------------------------------------------*/
@@ -213,58 +134,19 @@ typedef struct xCOMMAND_INPUT_LIST {
 	struct xCOMMAND_INPUT_LIST *pxNext;
 } CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
-uint8_t numOfBosCommands;
 
-/* Number of modules in the array */
-#ifndef __N
-uint8_t N =1;
-uint8_t myID =0;
-#else
-	uint8_t N = __N;
-	uint8_t myID = _module;
-#endif
+
 
 /* Routing and topology ....................................................................... */
-uint8_t portStatus[NumOfPorts + 1] ={0};
-volatile uint16_t neighbors[NumOfPorts][2] ={0};
-volatile uint16_t neighbors2[NumOfPorts][2] ={0};
-uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
-bool AddBcastPayload = false;
-uint8_t dstGroupID =BOS_BROADCAST;
-char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1] ={0};
-#ifndef __N
-uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1] ={{0}}; /* Array topology */
-uint8_t routeDist[MaxNumOfModules] ={0};
-uint8_t routePrev[MaxNumOfModules] ={0};
-char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1] ={0}; /* moduleAlias[0] used to store alias for module 0 */
-uint8_t broadcastResponse[MaxNumOfModules] ={0};
-uint16_t groupModules[MaxNumOfModules] ={0}; /* Group 0 (LSB) to Group 15 (MSB) */
-#else
-	uint8_t routeDist[__N] = {0};
-	uint8_t routePrev[__N] = {0};
-	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
-	uint8_t broadcastResponse[__N] = {0};
-	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
-#endif
+
+
 /* ............................................................................................. */
 
 /* Buffers and communication.................................................................... */
-uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	// Buffer for received messages and ready to be parsed
-char message[MAX_MESSAGE_SIZE] ={0};					// Buffer to construct a message to be sent
-uint8_t messageLength[NumOfPorts] ={0};
-uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-char cRxedChar =0;
-uint8_t longMessage =0;
-uint16_t longMessageLastPtr =0;
-static char pcUserMessage[80];
-BOS_Status responseStatus =BOS_OK;
-uint8_t bcastID =0;			// Counter for unique broadcast ID
-uint8_t PcPort =0;
-uint8_t BOS_initialized =0;
-uint32_t BOS_var_reg[MAX_BOS_VARS];	// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
-uint64_t remoteBuffer =0;
-varFormat_t remoteVarFormat =FMT_UINT8;
+
+uint8_t ExtraPcPort = 0;
 uint8_t CLI_LOW_Baudrate_Flag =0; 		//Flag for Lower CLI baudrate is set
+static char pcUserMessage[80];
 /* ............................................................................................. */
 
 /* Messaging tasks.............................................................................. */
@@ -287,7 +169,6 @@ extern TaskHandle_t P5MsgTaskHandle;
 #ifdef _P6
 extern TaskHandle_t P6MsgTaskHandle;
 #endif
-/* ............................................................................................. */
 
 /* UARTcmd task */
 extern TaskHandle_t xCommandConsoleTaskHandle;
@@ -354,10 +235,65 @@ const char *pcParamsHelpString[NumOfParamsHelpStrings] ={"\r\nBOS.response: all,
 
 /* ............................................................................................. */
 
-/* -----------------------------------------------------------------------
- |												 Private Functions	 														|
- -----------------------------------------------------------------------
- */
+
+
+// Function To find  type of MCU
+char Processor_type(uint8_t module_name)
+{
+	if( module_name==_H1AR2 || module_name==_H23R3 ||
+		module_name==_H10R4 || module_name==_H0FR6 ||
+		module_name==_H41R6 || module_name==_H15R0 ||
+		module_name==_H1DR1 || module_name==_H07R3 )
+	{
+	  return 'F' ;
+     }
+   else
+     {
+	  return 'G';
+	  }
+}
+
+//Function To find Name of Module
+uint8_t Get_Module_Name(uint8_t dst)
+{
+	 return array[dst-1][0];
+}
+
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
+{
+	uint8_t module_name=Get_Module_Name(dst);
+	HAL_StatusTypeDef result =HAL_ERROR;
+
+	if(GetUart(port) != NULL)
+	{
+		/* Wait for the mutex to be available. */
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
+		{
+			if(Processor_type(module_name)=='G')
+			{
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
+			}
+			else
+			{
+			for(uint8_t i=0;i<n;i++)
+			  {
+				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
+				buffer++;
+				//Delay_us(500);
+			 	Delay_ms(2);
+			  }
+			}
+		}
+	}
+
+	Delay_ms(5);// Delay Between Sending Two Messages.
+	return result;
+}
+
+
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
 
 /* --- Load stored variables,Ports directions,Module's name , Group...etc. from emulated EEPROM ---------------------------------------*/
 
@@ -981,12 +917,11 @@ uint8_t IsMathOperator(char *string){
 	return 0;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
-/* -----------------------------------------------------------------------
- |						BOS related APIS	  							  |
- -------------------------------------------------------------------------
- */
+/***************************************************************************/
+/*************************** BOS General Functions *************************/
+/***************************************************************************/
 
 /* --- BitzOS initialization. 
  */
@@ -1081,6 +1016,9 @@ void BOS_Init(void){
 
 	BOS_initialized =1;
 }
+
+/***************************************************************************/
+
 void Module_Init(void){
 
 	/* Reset all peripherals, Initializes the Flash interface and the Systick. */
@@ -1107,7 +1045,62 @@ void Module_Init(void){
 	/* Start scheduler */
 	osKernelStart();
 }
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
+
+#ifdef __USER_DATA_BUFFER
+uint8_t GetUserDataCount(void)
+{
+	indexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*DMACountUserDataBuffer);
+
+	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
+	{
+		return 0;
+	}
+
+	else
+	{
+		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
+		}
+		else
+		{
+			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
+		}
+	}
+}
+
+
+BOS_Status GetUserDataByte(uint8_t* pData)
+{
+
+	if(GetUserDataCount() != 0)
+	{
+		if(pData == NULL)
+		{
+			return BOS_ERROR;
+		}
+
+		*pData =  UserBufferData[indexProcessUserDataBuffer];
+		indexProcessUserDataBuffer++;
+		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
+		{
+			indexProcessUserDataBuffer = 0;
+		}
+		return BOS_OK;
+	}
+
+	else
+	{
+		return BOS_ERROR;
+	}
+
+}
+#endif
+
+/***************************************************************************/
+
 #ifndef __N
 /* --- Explore the array and create its topology (executed only by master)
 */
@@ -1385,7 +1378,9 @@ BOS_Status Explore(void)
 	return result;
 }
 #endif
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
+
 #ifndef __N
 /* --- Explore adjacent neighbors 
  */
@@ -1409,7 +1404,8 @@ BOS_Status ExploreNeighbors(uint8_t ignore){
 	return result;
 }
 #endif
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 
 /* --- Find array broadcast routes starting from a given module (Takes about 50 usec) */
 BOS_Status FindBroadcastRoutes(uint8_t src){
@@ -1462,7 +1458,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Find the shortest route to a module using Dijkstra's algorithm ---
  
@@ -1574,6 +1570,8 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 	return 0;
 }
 
+/***************************************************************************/
+
 /* --- Used by FoundRoute: Find the index of the minimum module in dist that is still unvisited
  */
 uint8_t minArr(uint8_t *arr,uint8_t *Q){
@@ -1594,7 +1592,7 @@ uint8_t minArr(uint8_t *arr,uint8_t *Q){
 	return index;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Used by FoundRoute: Check if Q is empty (all modules have been visited)
  */
@@ -1607,7 +1605,8 @@ uint8_t QnotEmpty(uint8_t *Q){
 	
 	return temp;
 }
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 
 /* --- Display array topology in human-readable format through module port --- 
  */
@@ -1647,7 +1646,7 @@ void DisplayTopology(uint8_t port){
 	writePxMutex(port,"\n",1,cmd50ms,HAL_MAX_DELAY);
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Display ports directions in human-readable format through module port --- 
  */
@@ -1672,7 +1671,7 @@ void DisplayPortsDir(uint8_t port){
 	HAL_MAX_DELAY);
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Display a description of current module status (Firmware, Ports, P2P DMAs) --- 
  */
@@ -1763,7 +1762,7 @@ void DisplayModuleStatus(uint8_t port){
 	
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Extract module ID from it's alias, ID string or keyword --- 
  */
@@ -1803,7 +1802,7 @@ int16_t GetID(char *string){
 	
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Name a module with an alias --- 
  */
@@ -1853,7 +1852,7 @@ BOS_Status NameModule(uint8_t module,char *alias){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Add a module to this group --- 
  */
@@ -1922,7 +1921,7 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 
 
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Write a value to a remote module.
  module: Remote module ID.
@@ -2028,7 +2027,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Read a variable from a remote module. 
  This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
@@ -2062,7 +2061,7 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteAddress,varFormat_t *remot
 //		return NULL;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Read a memory address from a remote module. 
  This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
@@ -2098,7 +2097,7 @@ uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteAddress,varFormat_t req
 		return NULL;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Read a parameter from a remote module. 
  This API returns a pointer to the remote parameter. Cast this pointer to match the appropriate format.
@@ -2133,7 +2132,7 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFo
 		return NULL;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Write a value to a remote module. 
  dstModuleID: Remote module ID.
@@ -2146,7 +2145,7 @@ BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t BOS
 	return WriteToRemote(dstModuleID,localVarAddress,BOSVarAddress,format,timeout,0);
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Assign an index to a new BOS variable. BOS variables must be global or static to ensure we don't refernce a stack address.
  */
@@ -2161,9 +2160,9 @@ uint8_t AddBOSvar(varFormat_t format,uint32_t address){
 	
 	return 0;			// Memory full
 }
-/*-----------------------------------------------------------*/
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+
 /*  Read three variables From ModBus module , by sending a request
  to MB module , which responed and send the variables and store it
  in MBmessageParams.
@@ -2208,7 +2207,8 @@ BOS_Status ReadFromMBModule(uint8_t dst,uint8_t rank,uint32_t timeout){
 	
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+
 /*  Write three variables to ModBus module:
  dst : When creating topology , you have to consider :
  MB module ID is 1.
@@ -2247,9 +2247,8 @@ BOS_Status WriteToMBModule(uint8_t dst,uint8_t rank,float var1,float var2,float 
 	
 	return result;
 }
-/*-----------------------------------------------------------*/
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Make a data string with format weekday / month / date / year */
 char* GetDateString(void){
@@ -2260,7 +2259,7 @@ char* GetDateString(void){
 	return buffer;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Make a time string with format hour / minute / second*/
 char* GetTimeString(void){
@@ -2271,7 +2270,7 @@ char* GetTimeString(void){
 	return buffer;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Bridge two array/communication ports together */
 BOS_Status Bridge(uint8_t port1,uint8_t port2){
@@ -2279,7 +2278,7 @@ BOS_Status Bridge(uint8_t port1,uint8_t port2){
 	return StartScastDMAStream(port1,myID,port2,myID,BIDIRECTIONAL,0xFFFFFFFF,0xFFFFFFFF,true);
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Un-bridge two array/communication ports  */
 BOS_Status Unbridge(uint8_t port1,uint8_t port2){
@@ -2311,7 +2310,7 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	}
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 
 /* --- Print formatted text to one of the module ports */
 BOS_Status printfp(uint8_t port,char *str){
@@ -2321,7 +2320,8 @@ BOS_Status printfp(uint8_t port,char *str){
 		return BOS_ERROR;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+
 /* enable stop mode regarding only UART1 , UART2 , and UART3 */
 BOS_Status EnableStopModebyUARTx(uint8_t port) {
 
@@ -2355,7 +2355,8 @@ BOS_Status EnableStopModebyUARTx(uint8_t port) {
 
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+
 /* Enable standby mode regarding wake-up pins:
  * WKUP1: PA0  pin
  * WKUP4: PA2  pin
@@ -2401,7 +2402,8 @@ BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins) {
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+
 /* Disable standby mode regarding wake-up pins:
  * WKUP1: PA0  pin
  * WKUP4: PA2  pin
