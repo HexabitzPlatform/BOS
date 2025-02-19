@@ -124,7 +124,8 @@ BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t d
 /***************************************************************************/
 /*****************************  Private Functions **************************/
 /***************************************************************************/
-/* BackEndTask function */
+
+/* BackEndTask function ****************************************************/
 void BackEndTask(void *argument) {
 
 	uint8_t calculated_crc, port_number, length, port_index , dst;
@@ -347,8 +348,7 @@ void BackEndTask(void *argument) {
 	}
 }
 
-/* ---------------------------- PxMessagingTask function ---------------------------------  */
-
+/* PxMessagingTask function ************************************************/
 void PxMessagingTask(void *argument){
 	BOS_Status result =BOS_OK;
 	HAL_StatusTypeDef status =HAL_OK;
