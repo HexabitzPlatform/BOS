@@ -11,7 +11,7 @@
 
 /* Internal Variables --------------------------------------------------------*/
 snippet_t snippets[MAX_SNIPPETS];		// Buffer to hold CLI Snippets
-uint8_t numOfRecordedSnippets =0;
+//uint8_t numOfRecordedSnippets =0;
 
 static char *pcWelcomeMessage ="\n\r\n\r====================================================	\
      \n\r====================================================	\

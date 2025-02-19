@@ -91,7 +91,7 @@ extern void initialValue(void);
 extern BOS_Status ExecuteSnippet(void);
 
 
-extern void NotifyMessagingTask(uint8_t port);
+//extern void NotifyMessagingTask(uint8_t port);
 
 extern IWDG_HandleTypeDef hiwdg;
 

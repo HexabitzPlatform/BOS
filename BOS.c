@@ -15,48 +15,59 @@
 /* Exported variables ******************************************************/
 /***************************************************************************/
 
-bool ACK_FLAG=0,rejected_FLAG=0;
+bool ACK_FLAG=0;
+bool rejected_FLAG=0;
 bool AddBcastPayload = false;
 
-uint8_t Activate_CLI_For_First_Time_Flag = 0;
-uint8_t Read_In_CLI_Task_Flag = 0;
-uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
-uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
-uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
-uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
-uint8_t Process_Message_Buffer_Index_Start = 0;
-uint8_t Process_Message_Buffer_Index_End = 0;
-uint8_t index_input[6]={0};
-uint8_t index_process[6]={0};
-volatile uint32_t* index_dma[6] ;
-uint8_t CLI_Data = 0;
-uint8_t port_DMA =0;
-uint8_t numOfBosCommands = 0;
-uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	// Buffer for received messages and ready to be parsed
-uint8_t messageLength[NumOfPorts] ={0};
-uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-uint8_t portStatus[NumOfPorts + 1] ={0};
-uint8_t bcastID =0;			// Counter for unique broadcast ID
+char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1] ={0};
+char message[MAX_MESSAGE_SIZE] ={0};	/* Buffer to construct a message to be sent */
+char cRxedChar =0;
+
+/* Define module PN strings [available PNs+1][5 chars] */
+const char modulePNstring[NUM_OF_MODULE_PN][6] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6",
+	"P08R6", "H09R0", "H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7", "H1AR2", "H0AR9", "H1DR1",
+	"H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6", "H3BR6", "H18R1", "H1FR5", "H3BR2",
+	"H21R2", "H17R1", "H15R8", "H2BR0", "H05R0", "H3BR7", "H2BR1", "H07R8", "H08R7", "H16R6", "P08R7", "H19R0"};
+static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
+static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+const char *pcParamsHelpString[NumOfParamsHelpStrings] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n",
+	        "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
+           you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n",
+           "BOS.singleclicktime: 1 ..... 65536 msec\r\n", "BOS.mininterclicktime: 1 ... 255 msec\r\n", "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
+const char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
+			utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
+const char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
+const char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
+			\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
+			- You must power cycle the entire array after the update is finished.\n\r";
+char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
+
 uint8_t PcPort =0;
-uint8_t BOS_initialized =0;
-uint8_t dstGroupID =BOS_BROADCAST;
+uint8_t bcastID =0;			/* Counter for unique broadcast ID */
 uint8_t indMode =IND_OFF;
+uint8_t BOS_initialized =0;
+uint8_t numOfBosCommands = 0;
+uint8_t dstGroupID =BOS_BROADCAST;
+uint8_t numOfRecordedSnippets =0;
+uint8_t Read_In_CLI_Task_Flag = 0;
+uint8_t messageLength[NumOfPorts] ={0};
+uint8_t portStatus[NumOfPorts + 1] ={0};
+uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	/* Buffer for received messages and ready to be parsed */
+uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
 
 uint16_t myPN = modulePN;
 uint16_t neighbors[NumOfPorts][2] ={0};
 uint16_t neighbors2[NumOfPorts][2] ={0};
 uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
 
-char message[MAX_MESSAGE_SIZE] ={0};					// Buffer to construct a message to be sent
-char cRxedChar =0;
-//uint8_t longMessage =0;
-//uint16_t longMessageLastPtr =0;
+/* BOS variables register: Bits 31-16:
+ * variable RAM address shift from SRAM_BASE, Bits 15-8: status.
+ * Bits 7-0: format. */
+uint32_t BOS_var_reg[MAX_BOS_VARS];
+volatile uint32_t* index_dma[6] ;
 
-char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1] ={0};
-
-uint32_t BOS_var_reg[MAX_BOS_VARS];	// BOS variables register: Bits 31-16: variable RAM address shift from SRAM_BASE, Bits 15-8: status. Bits 7-0: format.
 uint64_t remoteBuffer =0;
-
 
 /*Output_Port_Array[__N]:
 This array stores all solutions (output ports) to send messages
@@ -67,7 +78,7 @@ so we can read these output ports when needed instead of figuring out the correc
 uint8_t Output_Port_Array[__N] = {0};
 #endif
 
-/*..............User Data from external ports (like USB, Ethernet, BLE ...)..........*/
+/* User Data from external ports (USB, Ethernet, BLE ...) ******************/
 #ifdef __USER_DATA_BUFFER
 uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
 uint8_t UserData=0;
@@ -91,105 +102,64 @@ uint8_t myID =0;
 	uint8_t routePrev[__N] = {0};
 	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
 	uint8_t broadcastResponse[__N] = {0};
-	uint16_t groupModules[__N] = {0};									/* Group 0 (LSB) to Group 15 (MSB) */
+	uint16_t groupModules[__N] = {0};
 	uint16_t arrayPortsDir[__N ] = {0};
 	uint8_t N = __N;
 	uint8_t myID = _module;
 #endif
 
-//BOSMessaging_t BOSMessaging;
 BOS_t BOS;
 BOSOptionByte_t OptionByte ={0};
-BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.debounce =DEF_BUTTON_DEBOUNCE, .buttons.singleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24, .disableCLI = false};
 BOS_Status responseStatus =BOS_OK;
 varFormat_t remoteVarFormat =FMT_UINT8;
+BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
+BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.debounce =DEF_BUTTON_DEBOUNCE,
+	.buttons.singleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
+	.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24,
+	.disableCLI = false};
 
-/* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"",  "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6", "P08R6", "H09R0","H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7","H1AR2","H0AR9","H1DR1", "H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6","H3BR6","H18R1","H1FR5","H3BR2","H21R2","H17R1","H15R8","H2BR0","H05R0","H3BR7","H2BR1","H07R8","H08R7","H16R6","P08R7","H19R0"};
-
-/* Define BOS keywords */
-static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
-
-const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-
-//static const char mathStr[NUM_MATH_OPERATORS][3] = {"==", ">", "<", ">=", "<=", "!="};
-
-/* Define long messages -------------------------------------------------------*/
-char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
-								  utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
-
-char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
-char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
-
-char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
-											   \n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
-											   - You must power cycle the entire array after the update is finished.\n\r";
-
-/* Define CLI command list*/
+/* Exported internally: CLI command list ***********************************/
 typedef struct xCOMMAND_INPUT_LIST {
 	const CLI_Command_Definition_t *pxCommandLineDefinition;
 	struct xCOMMAND_INPUT_LIST *pxNext;
 } CLI_Definition_List_Item_t;
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
-
-
-/* Routing and topology ....................................................................... */
-
-
-/* ............................................................................................. */
-
-/* Buffers and communication.................................................................... */
-
-uint8_t ExtraPcPort = 0;
-uint8_t CLI_LOW_Baudrate_Flag =0; 		//Flag for Lower CLI baudrate is set
+/* Local Variables *********************************************************/
 static char pcUserMessage[80];
-/* ............................................................................................. */
+uint8_t ExtraPcPort = 0;
+uint8_t CLI_LOW_Baudrate_Flag =0; 	/* Flag for Lower CLI baudrate is set */
 
-/* Messaging tasks.............................................................................. */
-extern TaskHandle_t UserTaskHandle;
-#ifdef _P1
-extern TaskHandle_t P1MsgTaskHandle;
-#endif
-#ifdef _P2
-extern TaskHandle_t P2MsgTaskHandle;
-#endif
-#ifdef _P3
-extern TaskHandle_t P3MsgTaskHandle;
-#endif
-#ifdef _P4
-extern TaskHandle_t P4MsgTaskHandle;
-#endif
-#ifdef _P5
-extern TaskHandle_t P5MsgTaskHandle;
-#endif
-#ifdef _P6
-extern TaskHandle_t P6MsgTaskHandle;
-#endif
+/***************************************************************************/
+/* Exported Functions ******************************************************/
+/***************************************************************************/
 
-/* UARTcmd task */
-extern TaskHandle_t xCommandConsoleTaskHandle;
+/* Module exported internal functions **************************************/
+extern uint8_t SaveTopologyToRO(void);
+extern uint8_t IsFactoryReset(void);
+extern BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t *RX_Port,uint16_t *RX_Pin);
+extern BOS_Status RTC_Init(void);
+extern void Module_Peripheral_Init(void);
+extern void TIM_USEC_Init(void);
+extern void TIM_MSEC_Init(void);
+extern void MX_IWDG_Init(void);
 
-/* Variables exported internally */
-extern uint8_t numOfRecordedSnippets;
-extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
+/* BOS exported internal functions *****************************************/
+extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
 
-/* Private function prototypes -----------------------------------------------*/
+/***************************************************************************/
+/* Private function prototypes *********************************************/
+/***************************************************************************/
+void EE_FormatForFactoryReset(void);
+uint8_t IsModuleParameter(char *name);
+BOS_Status ClearEEportsDir(void);
+BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force);
 
-/* Explore related APIs */
+/* Find Route related APIs ****************************************************/
 uint8_t minArr(uint8_t *arr,uint8_t *Q);
 uint8_t QnotEmpty(uint8_t *Q);
-void NotifyMessagingTask(uint8_t port);
-#ifndef __N
-uint8_t ClearROtopology(void);
-#endif
-uint8_t SaveTopologyToRO(void);
-/*--------------------------------------------------------------*/
 
-/* Load form EEPROM related APIs */
+/* Load form EEPROM related APIs *******************************************/
 BOS_Status LoadROsnippets(void);
 BOS_Status LoadROtopology(void);
 BOS_Status LoadEEportsDir(void);
@@ -198,43 +168,13 @@ BOS_Status LoadEEgroup(void);
 BOS_Status LoadEEstreams(void);
 BOS_Status LoadEEbuttons(void);
 BOS_Status LoadEEparams(void);
-/*--------------------------------------------------------------*/
 
-/* Save to EEPROM related APIs */
+/* Save to EEPROM related APIs *********************************************/
 BOS_Status SaveEEportsDir(void);
 BOS_Status SaveEEalias(void);
 BOS_Status SaveEEgroup(void);
 BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src1,uint8_t dst1,uint8_t src2,uint8_t dst2,uint8_t src3,uint8_t dst3);
 BOS_Status SaveEEparams(void);
-
-/*--------------------------------------------------------------*/
-BOS_Status ClearEEportsDir(void);
-BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
-//void StreamTimerCallback( TimerHandle_t xTimerStream );
-uint8_t IsFactoryReset(void);
-void EE_FormatForFactoryReset(void);
-BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t *RX_Port,uint16_t *RX_Pin);
-
-BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force);
-void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
-BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
-
-/* Module exported internal functions */
-extern uint8_t IsModuleParameter(char *name);
-extern void Module_Peripheral_Init(void);
-extern void TIM_USEC_Init(void);
-extern void TIM_MSEC_Init(void);
-extern void MX_IWDG_Init(void);
-extern BOS_Status RTC_Init(void);
-extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
-
-extern bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
-
-const char *pcParamsHelpString[NumOfParamsHelpStrings] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n", "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
-           you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n", "BOS.singleclicktime: 1 ..... 65536 msec\r\n", "BOS.mininterclicktime: 1 ... 255 msec\r\n", "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
-
-/* ............................................................................................. */
-
 
 
 // Function To find  type of MCU
@@ -254,50 +194,42 @@ char Processor_type(uint8_t module_name)
 }
 
 //Function To find Name of Module
-uint8_t Get_Module_Name(uint8_t dst)
-{
-	 return array[dst-1][0];
+uint8_t Get_Module_Name(uint8_t dst){
+	return array[dst - 1][0];
 }
 
-HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst)
-{
-	uint8_t module_name=Get_Module_Name(dst);
+HAL_StatusTypeDef Send_BOS_Message(uint8_t port,uint8_t *buffer,uint16_t n,uint32_t mutexTimeout,uint8_t dst){
+	uint8_t module_name =Get_Module_Name(dst);
 	HAL_StatusTypeDef result =HAL_ERROR;
 
-	if(GetUart(port) != NULL)
-	{
+	if(GetUart(port) != NULL){
 		/* Wait for the mutex to be available. */
-		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK)
-		{
-			if(Processor_type(module_name)=='G')
-			{
+		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
+			if(Processor_type(module_name) == 'G'){
 				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
 			}
-			else
-			{
-			for(uint8_t i=0;i<n;i++)
-			  {
-				result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
-				buffer++;
-				//Delay_us(500);
-			 	Delay_ms(2);
-			  }
+			else{
+				for(uint8_t i =0; i < n; i++){
+					result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
+					buffer++;
+					//Delay_us(500);
+					Delay_ms(2);
+				}
 			}
 		}
 	}
 
-	Delay_ms(5);// Delay Between Sending Two Messages.
+	Delay_ms(5); 		// Delay Between Sending Two Messages.
 	return result;
 }
-
 
 /***************************************************************************/
 /*****************************  Private Functions **************************/
 /***************************************************************************/
 
-/* --- Load stored variables,Ports directions,Module's name , Group...etc. from emulated EEPROM ---------------------------------------*/
-
-// --- Load stored variables from emulated EEPROM
+/* Load stored variables,Ports directions,Module's name ...etc
+ * from emulated EEPROM and RO Flash
+ */
 void LoadEEvars(void){
 	/* Load array topology */
 #ifndef __N
@@ -321,13 +253,12 @@ void LoadEEvars(void){
 	/* Load buttons */
 	LoadEEbuttons();
 	
-	// Load Command Snippets
+	/* Load Command Snippets */
 	LoadROsnippets();
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Load array topology stored in Flash RO --- */
+/***************************************************************************/
+/* Load array topology stored in Flash RO */
 BOS_Status LoadROtopology(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =8, temp =0;
@@ -335,8 +266,7 @@ BOS_Status LoadROtopology(void){
 	/* Load number of modules */
 	temp =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS));
 	
-	if(temp == 0xFFFF)				// Memory has been erased
-	{
+	if(temp == 0xFFFF){   /* if memory has been erased */
 		N =1;
 		myID =0;
 		return BOS_MEM_ERASED;
@@ -359,8 +289,8 @@ BOS_Status LoadROtopology(void){
 	return result;
 }
 
-/* --- Load array ports directions stored in EEPROM --- */
-
+/***************************************************************************/
+/* Load array ports directions stored in Emulated EEPROM */
 BOS_Status LoadEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
@@ -374,15 +304,13 @@ BOS_Status LoadEEportsDir(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Load module alias stored in EEPROM --- */
+/***************************************************************************/
+/* Load module alias stored in Emulated EEPROM */
 BOS_Status LoadEEalias(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =0, temp =0;
 	
-	for(uint8_t i =0; i <= N; i++)				// N+1 module aliases
-	    {
+	for(uint8_t i =0; i <= N; i++){ // N+1 module aliases
 		for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
 			EE_ReadVariable(_EE_ALIAS_BASE + add,&temp);
 			moduleAlias[i][j] =(uint8_t )temp;
@@ -395,24 +323,21 @@ BOS_Status LoadEEalias(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Load module groups stored in EEPROM --- */
+/***************************************************************************/
+/* Load module groups stored in Emulated EEPROM */
 BOS_Status LoadEEgroup(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =0, temp =0;
 	uint8_t i =0;
 	
 	/* Load group members */
-	for(i =0; i < N; i++)			// N modules
-	    {
+	for(i =0; i < N; i++){ // N modules
 		EE_ReadVariable(_EE_GROUP_MODULES_BASE + add,&groupModules[i]);
 		add++;
 	}
 	
 	/* Load group alias */
-	for(i =0; i < MaxNumOfGroups; i++)		// MaxNumOfGroups group aliases
-	    {
+	for(i =0; i < MaxNumOfGroups; i++){
 		for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
 			EE_ReadVariable(_EE_GROUP_ALIAS_BASE + add,&temp);
 			groupAlias[i][j] =(uint8_t )temp;
@@ -425,10 +350,8 @@ BOS_Status LoadEEgroup(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Load module DMA streams --- */
-
+/***************************************************************************/
+/* Load module DMA streams stored in Emulated EEPROM */
 BOS_Status LoadEEstreams(void){
 	BOS_Status result =BOS_OK;
 	uint16_t temp1 =0, temp2 =0, status1 =0, status2 =0;
@@ -488,8 +411,8 @@ BOS_Status LoadEEstreams(void){
 	return result;
 }
 
-// --- Load module parameters from emulated EEPROM. If erased, load defaults --- */
-
+/***************************************************************************/
+/* Load module parameters stored in Emulated EEPROM */
 BOS_Status LoadEEparams(void){
 	BOS_Status result =BOS_OK;
 	uint16_t temp1, temp2, status1, status2;
@@ -499,23 +422,23 @@ BOS_Status LoadEEparams(void){
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
 		OptionByte.Response =(uint8_t )temp1;
-		OptionByte.Trace = (temp1 >> 8);
+		OptionByte.Trace =(temp1 >> 8);
 		/* Couldn't find the variable, load default config */
 	}
 	else{
-		OptionByte.Response = UserOptionByte.Response;
-		OptionByte.Trace = UserOptionByte.Trace;
+		OptionByte.Response =UserOptionByte.Response;
+		OptionByte.Trace =UserOptionByte.Trace;
 
 	}
 	/* Read params base - BOS response and BOS trace */
 	status1 =EE_ReadVariable(_EE_PARAMS_Messaging,&temp1);
 
 	if(!status1){
-		OptionByte.Acknowledgment =(bool )(temp1 >>15);
+		OptionByte.Acknowledgment =(bool )(temp1 >> 15);
 		/* Couldn't find the variable, load default config */
 	}
 	else
-		OptionByte.Acknowledgment= UserOptionByte.Acknowledgment;
+		OptionByte.Acknowledgment =UserOptionByte.Acknowledgment;
 
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
@@ -578,9 +501,8 @@ BOS_Status LoadEEparams(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Load button definitions and events from EEPROM --- */
+/***************************************************************************/
+/* Load button definitions and events stored in Emulated EEPROM */
 BOS_Status LoadEEbuttons(void){
 	BOS_Status result =BOS_OK;
 	uint16_t temp16 =0, status1 =0;
@@ -615,8 +537,8 @@ BOS_Status LoadEEbuttons(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-/* --- Load Command Snippets stored in Flash RO  ---*/
+/***************************************************************************/
+/* Load Command Snippets stored in Flash RO */
 BOS_Status LoadROsnippets(void){
 	uint8_t i =0;
 	int currentAdd = SNIPPETS_START_ADDRESS;
@@ -637,7 +559,7 @@ BOS_Status LoadROsnippets(void){
 		memset(snipBuffer,0,sizeof(snippet_t));
 		i =0;
 		// Load commands until you get next 0xFE
-		currentAdd=currentAdd+20;
+		currentAdd =currentAdd + 20;
 		while(*(uint8_t* )currentAdd != 0xFE && *(uint8_t* )currentAdd != 0xFF && i < cmdMAX_INPUT_SIZE){
 			snipBuffer[i] =*(uint8_t* )currentAdd;
 			++currentAdd;
@@ -667,16 +589,8 @@ BOS_Status LoadROsnippets(void){
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------*/
-
-/* --- Save Ports directions,Module's name, Group...etc. from emulated EEPROM ---------------------------------------*/
-
-/* Save to EEPROM related APIs */
-
-/* --- Save array ports directions in EEPROM ---*/
-
+/***************************************************************************/
+/* Save array ports directions to Emulated EEPROM */
 BOS_Status SaveEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
@@ -691,8 +605,8 @@ BOS_Status SaveEEportsDir(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-// --- Save module alias in EEPROM ---
+/***************************************************************************/
+/* Save module alias to Emulated EEPROM */
 BOS_Status SaveEEalias(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =0, temp =0;
@@ -711,18 +625,15 @@ BOS_Status SaveEEalias(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Save module groups in EEPROM ---*/
-
+/***************************************************************************/
+/* Save module groups to Emulated EEPROM */
 BOS_Status SaveEEgroup(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =0, temp =0;
 	uint8_t i =0;
 	
 	/* Save group members */
-	for(i =0; i < N; i++)			// N modules
-	    {
+	for(i =0; i < N; i++){  /* N modules */
 		if(groupModules[i]){
 			EE_WriteVariable(_EE_GROUP_MODULES_BASE + add,groupModules[i]);
 			add++;
@@ -730,8 +641,7 @@ BOS_Status SaveEEgroup(void){
 	}
 	
 	/* Save group alias */
-	for(i =0; i < MaxNumOfGroups; i++)		// MaxNumOfGroups group aliases
-	    {
+	for(i =0; i < MaxNumOfGroups; i++){
 		if(groupAlias[i][0]){
 			for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
 				temp =(uint16_t )(groupAlias[i][j - 1] << 8) + groupAlias[i][j];
@@ -744,9 +654,8 @@ BOS_Status SaveEEgroup(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Save DMA streams to emulated EEPROM.*/
+/***************************************************************************/
+/* Save DMA streams to Emulated EEPROM*/
 BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src1,uint8_t dst1,uint8_t src2,uint8_t dst2,uint8_t src3,uint8_t dst3){
 	BOS_Status result =BOS_OK;
 	
@@ -762,18 +671,13 @@ BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/*-----------------------------------------------------------*/
-
-/* --- Save module parameters to emulated EEPROM. ---*/
-
+/***************************************************************************/
+/* --- Save module parameters to Emulated EEPROM */
 BOS_Status SaveEEparams(void){
 	BOS_Status result =BOS_OK;
 	
 	/* Save params base - BOS response & BOS trace */
 //	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.trace << 5) | (uint16_t )BOSMessaging.response);
-//
 //	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
 
 	/* Save Button debounce */
@@ -798,10 +702,8 @@ BOS_Status SaveEEparams(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Clear array ports directions in EEPROM --- */
-
+/***************************************************************************/
+/* Clear array ports directions in Emulated EEPROM */
 BOS_Status ClearEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
@@ -818,9 +720,9 @@ BOS_Status ClearEEportsDir(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 //TODO change loction of the API
-// --- Format emulated EEPROM for a factory reset
+/* Format Emulated EEPROM for a factory reset */
 void EE_FormatForFactoryReset(void){
 	/* Check if EEPROM was just formated? */
 	/* Flag address (STM32F09x) - Last 4 words of SRAM */
@@ -833,13 +735,11 @@ void EE_FormatForFactoryReset(void){
 			*((unsigned long* )0x20007FF0) =0xBEEFDEAD;
 		}
 	}
-	
 }
 
-/*----------------------------------------------------------------*/
-
-/* --- Check if booting into lower CLI baudrate:
- - Connect P1 TXD and P2 RXD to boot CLI at 115200
+/***************************************************************************/
+/* Check if booting into lower CLI baudrate:
+ * Connect P1 TXD and P2 RXD to boot CLI at 115200
  */
 uint8_t IsLowerCLIbaud(void){
 	
@@ -879,13 +779,9 @@ uint8_t IsLowerCLIbaud(void){
 	return 0;
 }
 
-/*-----------------------------------------------------------*/
-/*-----------------------------------------------------------*/
-
-
-/*-----------------------------------------------------------*/
-
-/* --- Check if this string is a local module parameter or event. Returns parameter index+1
+/***************************************************************************/
+/* Check if this string is a local module parameter or event
+ * Returns parameter index+1
  */
 uint8_t IsModuleParameter(char *name){
 	for(uint8_t i =0; i < NUM_MODULE_PARAMS; i++){
@@ -895,10 +791,8 @@ uint8_t IsModuleParameter(char *name){
 	return 0;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Check if this string is a math operator and return its enum
- */
+/***************************************************************************/
+/* Check if this string is a math operator and return its enum */
 uint8_t IsMathOperator(char *string){
 	for(uint8_t i =0; i < NUM_MATH_OPERATORS; i++){
 		if(!strcmp(string,"="))
@@ -916,8 +810,6 @@ uint8_t IsMathOperator(char *string){
 	}
 	return 0;
 }
-
-/***************************************************************************/
 
 /***************************************************************************/
 /*************************** BOS General Functions *************************/

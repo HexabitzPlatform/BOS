@@ -27,7 +27,7 @@ uint8_t Rx_Data[NumOfPorts] = {0};
 /* Exported variables ---------------------------------------------------------*/
 
 uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] ={0};
-uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
+//uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
 uint8_t UARTRxBufIndex[NumOfPorts] ={0};
 UART_HandleTypeDef *dmaStreamDst[NumOfPorts] ={0};
 uint32_t dmaStreamCount[NumOfPorts] ={0};

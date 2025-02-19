@@ -16,6 +16,19 @@ uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
 /* Private and global variables ----------------------------------------------*/
 /* Used in the run time stats calculations */
 
+uint8_t Activate_CLI_For_First_Time_Flag = 0;
+//uint8_t Read_In_CLI_Task_Flag = 0;
+uint8_t MSG_Buffer_Index_Start[NumOfPorts] = {0};
+uint8_t MSG_Buffer_Index_End[NumOfPorts] = {0};
+uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] = {0};
+uint8_t Process_Message_Buffer[MSG_COUNT] = {0};
+uint8_t Process_Message_Buffer_Index_Start = 0;
+uint8_t Process_Message_Buffer_Index_End = 0;
+uint8_t index_input[6]={0};
+uint8_t index_process[6]={0};
+uint8_t CLI_Data = 0;
+uint8_t port_DMA =0;
+
 
 uint16_t stackWaterMark;
 uint16_t rejectedMsg =0, acceptedMsg =0, timedoutMsg =0, ADCPort =0, ADCSide =0;
@@ -32,7 +45,7 @@ RemoteDataBuffer_t RemoteDataBuffer;
 /* Exported Variables */
 //extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE]; // Buffer for messages received and ready to be parsed
 //extern char message[MAX_MESSAGE_SIZE]; // Buffer to construct a message to be sent
-extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
+//extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
 extern uint8_t UARTRxBufIndex[NumOfPorts];
 //extern uint8_t messageLength[NumOfPorts];
 extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
@@ -97,7 +110,7 @@ extern BOS_Status ClearEEportsDir(void);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
-extern BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
+ BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
 extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 /* Module exported internal functions */
 extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);

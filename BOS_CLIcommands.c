@@ -13,7 +13,18 @@
 /* Private and Golbal variables ----------------------------------------------*/
 extern BOS_t BOS;
 extern BOS_t BOS_default;
-extern uint8_t numOfRecordedSnippets;
+//extern uint8_t numOfRecordedSnippets;
+
+//char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
+//								  utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
+//char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
+//char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
+//char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
+//											   \n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
+//											   - You must power cycle the entire array after the update is finished.\n\r";
+//const char *pcParamsHelpString[NumOfParamsHelpStrings] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n", "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
+//           you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n", "BOS.singleclicktime: 1 ..... 65536 msec\r\n", "BOS.mininterclicktime: 1 ... 255 msec\r\n", "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
+
 
 /* Define BOS keywords */
 const char mathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
