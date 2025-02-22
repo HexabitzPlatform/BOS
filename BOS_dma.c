@@ -36,9 +36,6 @@ bool MsgDMAStopped[NumOfPorts] ={0};
 
 /* Private variables ---------------------------------------------------------*/
 
-/* External functions --------------------------------------------------------*/
-extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
-
 
 /*-----------------------------------------------------------*/
 
@@ -83,10 +80,10 @@ extern uint16_t dstP[6];
 void DMA_IRQHandler(uint8_t port){
 
 	if(portStatus[port] != STREAM){
-		HAL_DMA_IRQHandler(msgRxDMA[port - 1]);
+		HAL_DMA_IRQHandler(hUartDMA[port - 1]);
 	}
 	else{
-		HAL_DMA_IRQHandler(msgRxDMA/*streamDMA*/[port - 1]);
+		HAL_DMA_IRQHandler(hUartDMA[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
 		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t) dstP[port-1] == P_VIRTUAL)){

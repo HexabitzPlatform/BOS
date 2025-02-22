@@ -50,7 +50,7 @@ volatile uint32_t* index_dma[6] ;
 uint8_t CLI_Data = 0;
 uint8_t port_DMA =0;
 
-uint8_t Buffer[512];
+uint8_t streamBuffer[STREAM_BUF_SIZE];
 /*
  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
  *instead of writePxDMAMutex (the previous function)
@@ -1732,12 +1732,12 @@ void DisplayModuleStatus(uint8_t port){
 	sprintf(pcUserMessage,"\n\rDMA Streams Status:\n\r");
 	strcat((char* )pcOutputString,pcUserMessage);
 	for(char i =1; i <= 6; i++){
-		if(msgRxDMA/*streamDMA*/[i - 1]->Instance == 0){
+		if(hUartDMA[i - 1]->Instance == 0){
 			sprintf(pcUserMessage,"\n\rStreaming DMA %d is free",i);
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 		else{
-			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(msgRxDMA/*streamDMA*/[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
+			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(hUartDMA[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 	}
@@ -2288,21 +2288,18 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	SaveEEstreams(0,0,0,0,0,0,0,0,0);
 	
 	// Stop the DMA streams and enable messaging back on these ports
-//	if(streamDMA[port1 - 1].Instance != 0 && streamDMA[port2 - 1].Instance != 0)
-	if(msgRxDMA[port1 - 1]->Instance != 0 && msgRxDMA[port2 - 1]->Instance != 0)
+	if(hUartDMA[port1 - 1]->Instance != 0 && hUartDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
-//	else if(streamDMA[port1 - 1].Instance != 0)
-	else if(msgRxDMA[port1 - 1]->Instance != 0)
+	else if(hUartDMA[port1 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		return BOS_OK;
 	}
-//	else if(streamDMA[port2 - 1].Instance != 0)
-	else if(msgRxDMA[port2 - 1]->Instance != 0)
+	else if(hUartDMA[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;

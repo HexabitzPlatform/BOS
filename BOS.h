@@ -426,6 +426,9 @@ typedef struct {
 #define MSG_RX_BUF_SIZE                      192 /* 1 Mbps UART at 0.5 KHz parsing rate */
 #define MSG_TX_BUF_SIZE                      250 /* 2 Mbps UART at 1 KHz parsing rate */
 
+/* Stream Buffer Sizes */
+#define STREAM_BUF_SIZE                      512
+
 /* Delay Macros */
 #define Delay_us(t)                          StartMicroDelay(t) /* RTOS-safe microsecond delay */
 #define Delay_ms_no_rtos(t)                  StartMilliDelay(t) /* RTOS-safe millisecond delay */
@@ -663,6 +666,7 @@ extern uint8_t Process_Message_Buffer_Index_End;
 extern uint8_t index_input[6] ;
 extern uint8_t index_process[6] ;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t streamBuffer[512];
 
 extern uint16_t myPN;
 extern volatile uint16_t neighbors[NumOfPorts][2];

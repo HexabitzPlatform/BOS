@@ -813,6 +813,7 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
 	if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, dstP, dstM, FORWARD, size, timeout, stored))
 			return result = BOS_ERROR;
 	port = FindRoute(myID,dstM);
+	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
 	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
 	return result;
@@ -835,6 +836,7 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, u
 	if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
 			return result = BOS_ERROR;
 	port = FindRoute(myID,dstM);
+	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
 	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
 	return result;
