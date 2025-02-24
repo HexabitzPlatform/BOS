@@ -1732,12 +1732,12 @@ void DisplayModuleStatus(uint8_t port){
 	sprintf(pcUserMessage,"\n\rDMA Streams Status:\n\r");
 	strcat((char* )pcOutputString,pcUserMessage);
 	for(char i =1; i <= 6; i++){
-		if(hUartDMA[i - 1]->Instance == 0){
+		if(UARTDMAHandler[i - 1]->Instance == 0){
 			sprintf(pcUserMessage,"\n\rStreaming DMA %d is free",i);
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 		else{
-			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(hUartDMA[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
+			sprintf(pcUserMessage,"\n\rStreaming DMA %d is streaming from P%d to P%d",i,GetPort(UARTDMAHandler[i - 1]->Parent),GetPort(dmaStreamDst[i - 1]));
 			strcat((char* )pcOutputString,pcUserMessage);
 		}
 	}
@@ -2288,18 +2288,18 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	SaveEEstreams(0,0,0,0,0,0,0,0,0);
 	
 	// Stop the DMA streams and enable messaging back on these ports
-	if(hUartDMA[port1 - 1]->Instance != 0 && hUartDMA[port2 - 1]->Instance != 0)
+	if(UARTDMAHandler[port1 - 1]->Instance != 0 && UARTDMAHandler[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
-	else if(hUartDMA[port1 - 1]->Instance != 0)
+	else if(UARTDMAHandler[port1 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port1);
 		return BOS_OK;
 	}
-	else if(hUartDMA[port2 - 1]->Instance != 0)
+	else if(UARTDMAHandler[port2 - 1]->Instance != 0)
 	{
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
