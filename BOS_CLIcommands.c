@@ -1550,16 +1550,16 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 					case DBL_CLICKED:
 						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cmd);
 						break;
-					case PRESSED_FOR_X1_SEC:
-					case PRESSED_FOR_X2_SEC:
-					case PRESSED_FOR_X3_SEC:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventPressed,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
-						break;
-					case RELEASED_FOR_Y1_SEC:
-					case RELEASED_FOR_Y2_SEC:
-					case RELEASED_FOR_Y3_SEC:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventReleased,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
-						break;
+//					case PRESSED_FOR_X1_SEC:
+//					case PRESSED_FOR_X2_SEC:
+//					case PRESSED_FOR_X3_SEC:
+//						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventPressed,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
+//						break;
+//					case RELEASED_FOR_Y1_SEC:
+//					case RELEASED_FOR_Y2_SEC:
+//					case RELEASED_FOR_Y3_SEC:
+//						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventReleased,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
+//						break;
 					default:
 						break;
 				}

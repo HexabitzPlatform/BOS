@@ -529,7 +529,8 @@ BOS_Status LoadEEbuttons(void){
 				button[i + 1].releasedY3Sec =(uint8_t )temp16;
 				/* Setup the button and its events */
 				AddPortButton(button[i + 1].type,i + 1);
-				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),((button[i + 1].events & BUTTON_EVENT_DBL_CLICKED) >> 1),button[i + 1].pressedX1Sec,button[i + 1].pressedX2Sec,button[i + 1].pressedX3Sec,button[i + 1].releasedY1Sec,button[i + 1].releasedY2Sec,button[i + 1].releasedY3Sec,BUTTON_EVENT_MODE_CLEAR);
+//				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),((button[i + 1].events & BUTTON_EVENT_DBL_CLICKED) >> 1),button[i + 1].pressedX1Sec,button[i + 1].pressedX2Sec,button[i + 1].pressedX3Sec,button[i + 1].releasedY1Sec,button[i + 1].releasedY2Sec,button[i + 1].releasedY3Sec,BUTTON_EVENT_MODE_CLEAR);
+				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),BUTTON_EVENT_MODE_CLEAR);
 			}
 		}
 	}
@@ -835,7 +836,7 @@ void BOS_Init(void){
 	EE_Init();
 	
 	/* Initialize all configured peripherals */
-	GPIO_Init();
+//	GPIO_Init();
 	DMA_Init();
 	TIM_USEC_Init();
 	CRC_Init();

@@ -419,61 +419,63 @@ BOS_Status ParseSnippetCondition(char *string){
 			if(!strncmp((char* )&string[3],"clicked",7)){
 				snippets[numOfRecordedSnippets].cond.buffer1[1] =CLICKED;
 				if((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
-					SetButtonEvents(port,1,0,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+//					SetButtonEvents(port,1,0,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
 				status =BOS_OK;
 			}
 			else if(!strncmp((char* )&string[3],"double clicked",14)){
 				snippets[numOfRecordedSnippets].cond.buffer1[1] =DBL_CLICKED;
 				if((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-					SetButtonEvents(port,0,1,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+//					SetButtonEvents(port,0,1,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
 				status =BOS_OK;
 			}
-			else if(!strncmp((char* )&string[3],"pressed for ",12)){
-				if(!button[port].pressedX1Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X1_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
-					SetButtonEvents(port,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,0,0,BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else if(!button[port].pressedX2Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X2_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
-					SetButtonEvents(port,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,0,BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else if(!button[port].pressedX3Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X3_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
-					SetButtonEvents(port,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else{
-					status =BOS_ERR_BUTTON_PRESS_EVENT_FULL;
-				}
-			}
-			else if(!strncmp((char* )&string[3],"released for ",13)){
-				if(!button[port].releasedY1Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y1_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
-					SetButtonEvents(port,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else if(!button[port].releasedY2Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y2_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
-					SetButtonEvents(port,0,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else if(!button[port].releasedY3Sec){
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y3_SEC;
-					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
-					SetButtonEvents(port,0,0,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],BUTTON_EVENT_MODE_OR);
-					status =BOS_OK;
-				}
-				else{
-					status =BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
-				}
-			}
+//			else if(!strncmp((char* )&string[3],"pressed for ",12)){
+//				if(!button[port].pressedX1Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X1_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
+//					SetButtonEvents(port,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else if(!button[port].pressedX2Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X2_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
+//					SetButtonEvents(port,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,0,BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else if(!button[port].pressedX3Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =PRESSED_FOR_X3_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[15]);
+//					SetButtonEvents(port,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,0,BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else{
+//					status =BOS_ERR_BUTTON_PRESS_EVENT_FULL;
+//				}
+//			}
+//			else if(!strncmp((char* )&string[3],"released for ",13)){
+//				if(!button[port].releasedY1Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y1_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
+//					SetButtonEvents(port,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,0,BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else if(!button[port].releasedY2Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y2_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
+//					SetButtonEvents(port,0,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],0,BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else if(!button[port].releasedY3Sec){
+//					snippets[numOfRecordedSnippets].cond.buffer1[1] =RELEASED_FOR_Y3_SEC;
+//					snippets[numOfRecordedSnippets].cond.buffer1[2] =atoi((char* )&string[16]);
+//					SetButtonEvents(port,0,0,0,0,0,0,0,snippets[numOfRecordedSnippets].cond.buffer1[2],BUTTON_EVENT_MODE_OR);
+//					status =BOS_OK;
+//				}
+//				else{
+//					status =BOS_ERR_BUTTON_RELEASE_EVENT_FULL;
+//				}
+//			}
 			
 			++numOfRecordedSnippets;		// Record a successful Snippet			
 		}
