@@ -836,7 +836,7 @@ void BOS_Init(void){
 	EE_Init();
 	
 	/* Initialize all configured peripherals */
-//	GPIO_Init();
+	GPIO_Init();
 	DMA_Init();
 	TIM_USEC_Init();
 	CRC_Init();
