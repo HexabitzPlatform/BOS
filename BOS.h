@@ -7,12 +7,11 @@
 
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* Define to prevent recursive inclusion************************************/
 #ifndef BOS_H
 #define BOS_H
 
-/* Includes ------------------------------------------------------------------*/
-
+/* Includes ****************************************************************/
 #include "BOS_MsgCodes.h" 
 #include <stdbool.h>
 
@@ -31,15 +30,16 @@
 #define _firmTime			__TIME__
 
 
-/* *************************************************************************/
+/***************************************************************************/
 /* Enumerations Definitions ************************************************/
-/* *************************************************************************/
+/***************************************************************************/
 /* Available ports on the module */
 enum PortNames_e {
-	PC,     /* Port for the controller (PC) */
+	PC,       /* Port for the controller (PC) */
 	P1, P2, P3, P4, P5, P6, P7, P8, P9, P10,  /* General ports */
-	PUSB,   /* USB port */
-	P_RS485 /* RS485 communication port */
+	PUSB,     /* USB port */
+	P_RS485,  /* RS485 communication port */
+	P_VIRTUAL /* Virtual port for transfer stream data from source module by specific port to specific memory address in destination module */
 };
 
 /* Button names on the module */
@@ -406,6 +406,9 @@ typedef struct {
 #define MSG_RX_BUF_SIZE                      192 /* 1 Mbps UART at 0.5 KHz parsing rate */
 #define MSG_TX_BUF_SIZE                      250 /* 2 Mbps UART at 1 KHz parsing rate */
 
+/* Stream Buffer Sizes */
+#define STREAM_BUF_SIZE                      512
+
 /* Delay Macros */
 #define Delay_us(t)                          StartMicroDelay(t) /* RTOS-safe microsecond delay */
 #define Delay_ms_no_rtos(t)                  StartMilliDelay(t) /* RTOS-safe millisecond delay */
@@ -638,6 +641,7 @@ extern uint8_t Read_In_CLI_Task_Flag;
 extern uint8_t index_input[6] ;
 extern uint8_t index_process[6] ;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t streamBuffer[512];
 
 extern uint16_t myPN;
 extern uint16_t neighbors[NumOfPorts][2];
@@ -762,6 +766,12 @@ extern BOS_Status SendMessageToGroup(char *group, uint16_t code, uint16_t number
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status ReadDataFromSensorModule(uint8_t disModuleID, uint16_t Code, uint32_t *pDataReceived, uint16_t timeout);
+
+/* ============================ DMA Stream APIs ============================ */
+extern BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored);
+extern BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_t timeout, bool stored);
+extern BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored);
+extern BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored);
 
  /* ========================= Data Streaming APIs ========================== */
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored);
