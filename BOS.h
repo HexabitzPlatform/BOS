@@ -641,7 +641,7 @@ extern uint8_t Read_In_CLI_Task_Flag;
 extern uint8_t index_input[6] ;
 extern uint8_t index_process[6] ;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern uint8_t streamBuffer[512];
+extern uint8_t streamBuffer[STREAM_BUF_SIZE];
 
 extern uint16_t myPN;
 extern uint16_t neighbors[NumOfPorts][2];
