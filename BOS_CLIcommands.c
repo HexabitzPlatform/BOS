@@ -956,7 +956,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	portBASE_TYPE xParameterStringLength4 =0, xParameterStringLength5 =0;
 	uint16_t temp16 =0;
 	uint32_t temp2 =0;
-	uint8_t extraMessage =0, temp81, temp82, temp83, temp84;
+	uint8_t extraMessage =0, temp81 =0, temp82 =0, temp83 =0, temp84 =0;
 	
 	static const int8_t *pcMessageOK =(int8_t* )"%s was set to %s\n\r";
 	static const int8_t *pcMessageWrongParam =(int8_t* )"Wrong parameter!\n\r";
