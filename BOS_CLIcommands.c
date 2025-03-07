@@ -1090,7 +1090,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(BOS.date.month,BOS.date.day,BOS.date.year,BOS.date.weekday,temp83,temp82,temp81,temp84,BOS.daylightsaving);
+				result =BOS_CalendarConfig(BOS.date.month,BOS.date.day,BOS.date.year,BOS.date.weekday,temp83,temp82,temp81,temp84);
 			}
 		}
 	}
@@ -1151,7 +1151,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.time.seconds,BOS.time.minutes,BOS.time.hours,BOS.time.ampm,BOS.daylightsaving);
+				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.time.seconds,BOS.time.minutes,BOS.time.hours,BOS.time.ampm);
 			}
 		}
 	}

@@ -135,10 +135,10 @@ enum RGBLedMode {
 };
 
 /* RTC time periods (AM/PM) */
-enum TimePeriod_e {
+typedef enum{
 	RTC_AM = 1, /* AM (Before Noon) */
 	RTC_PM      /* PM (After Noon) */
-};
+}TimePeriod_e;
 
 /* Daylight saving adjustments */
 enum Daylight_e {
@@ -148,14 +148,14 @@ enum Daylight_e {
 };
 
 /* Months of the year */
-enum Months_e {
+typedef enum{
 	JANUARY =1, FEBRUARY, MARCH, APRIL, MAY, JUNE, JULY, AUGUST, SEPTEMBER, OCTOBER, NOVEMBER, DECEMBER
-};
+} Months_e;
 
 /* Days of the week */
-enum Weekdays_e {
+typedef enum{
 	MONDAY =1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
-};
+} Weekdays_e;
 
 /***************************************************************************/
 /* Typedef Definitions *****************************************************/
@@ -791,7 +791,7 @@ extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 //extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
 
  /* ====================== Date & Time Handling APIs ====================== */
-extern BOS_Status BOS_CalendarConfig(uint8_t month, uint8_t day, uint16_t year, uint8_t weekday, uint8_t seconds, uint8_t minutes, uint8_t hours, uint8_t AMPM, int8_t daylightsaving);
+extern BOS_Status BOS_CalendarConfig(Months_e month, uint8_t monthDay, uint16_t year, Weekdays_e weekDay, uint8_t seconds, uint8_t minutes, uint8_t hours, TimePeriod_e AMPM);
 extern void GetTimeDate(void);
 extern char* GetDateString(void);
 extern char* GetTimeString(void);
