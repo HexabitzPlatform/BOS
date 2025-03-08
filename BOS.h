@@ -92,20 +92,20 @@ enum DMAStreamDirection_e {
 };
 
 /* Button types */
-enum ButtonType_e {
+typedef enum  {
 	NONE = 0,      /* No button */
 	MOMENTARY_NO,  /* Momentary button, normally open */
 	MOMENTARY_NC,  /* Momentary button, normally closed */
 	ONOFF_NO,      /* On/Off button, normally open */
 	ONOFF_NC       /* On/Off button, normally closed */
-};
+}ButtonType_e;
 
 /* Button states */
-enum ButtonState_e {
-	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, PRESSED, RELEASED,
-	PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC, PRESSED_FOR_X3_SEC,
-	RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC
-};
+typedef enum  {
+	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED/*, PRESSED*/, RELEASED
+//	,PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC, PRESSED_FOR_X3_SEC,
+//	RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC
+}ButtonState_e;
 
 /* Boot statuses */
 enum BootStatus_e {
@@ -777,10 +777,12 @@ extern BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t 
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored);
 
  /* ========================= Button Handling APIs ========================= */
-extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
-extern BOS_Status RemovePortButton(uint8_t port);
-extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
-
+// extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
+ extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
+ extern BOS_Status AddButton(uint8_t port, ButtonType_e buttonType, ButtonState_e buttonState);
+ extern BOS_Status RemovePortButton(uint8_t port);
+// extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
+ extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
  /* ===================== Remote Variable Handling APIs ==================== */
 extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
