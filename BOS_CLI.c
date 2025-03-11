@@ -9,14 +9,11 @@
 
 #include "BOS.h"
 
-/* Internal Variables --------------------------------------------------------*/
-snippet_t snippets[MAX_SNIPPETS];		// Buffer to hold CLI Snippets
-//uint8_t numOfRecordedSnippets =0;
-
+/* Local Variables *********************************************************/
 static char *pcWelcomeMessage ="\n\r\n\r====================================================	\
      \n\r====================================================	\
      \n\r||            Welcome to BitzOS CLI!              ||	\
-	 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2024.        ||	\
+	 \n\r||       (C) COPYRIGHT HEXABITZ 2017-2025.        ||	\
      \n\r||                                                ||	\
 	 \n\r||      Please check the project website at       ||	\
 	 \n\r||             http://hexabitz.com/               ||	\
@@ -28,153 +25,127 @@ static char *pcWelcomeMessage ="\n\r\n\r========================================
 static char *pcNewLine ="\r\n";
 static char *pcEndOfCommandOutputString ="\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] ={0};
-
-/* Exported Variables --------------------------------------------------------*/
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 uint16_t timedoutMsg = 0;
-//extern uint8_t UARTRxBufIndex[NumOfPorts];
+//uint8_t numOfRecordedSnippets =0;
+snippet_t snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
-/* Internal functions ---------------------------------------------------------*/
+/* Exported variables ******************************************************/
+extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
+/* Global function prototypes **********************************************/
+bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
+
+/* Private function prototypes *********************************************/
 BOS_Status AddSnippet(uint8_t code,char *string);
 BOS_Status ParseSnippetCondition(char *string);
-bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
 bool CheckSnippetCondition(uint8_t index);
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString);
 
-/* BOS exported internal functions */
+/* BOS exported functions **************************************************/
 extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
 extern uint8_t SaveSnippetsToRO(void);
-extern char Processor_type(uint8_t module_name);
+//extern char Processor_type(uint8_t module_name);
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
 
 void prvCLITask(void *pvParameters){
 	char cRxedChar ='\0';
-	int8_t cInputIndex =0, *pcOutputString;
-	static int8_t cInputString[cmdMAX_INPUT_SIZE], cLastInputString[cmdMAX_INPUT_SIZE];
+	int8_t cInputIndex =0;
+	int8_t *pcOutputString;
+	static int8_t cInputString[cmdMAX_INPUT_SIZE];
+	static int8_t cLastInputString[cmdMAX_INPUT_SIZE];
 	uint16_t chr =0;
-	
+
 	(void )pvParameters;
-	
-	/* Wait indefinitly until a '\r' is received on one of the ports */
+
+	/* Wait indefinitely until a '\r' is received on one of the ports */
 	ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
-	
 
-	/* Note: DMA is not being used on transmit functions because it caused output errors. Maybe due to high baudrate. */
-
-	/* Obtain the address of the output buffer.  Note there is no mutual
-	 exclusion on this buffer as it is assumed only one command console
-	 interface will be used at any one time. */
+	/* Obtain the address of the output buffer */
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
-	
 
-	/* Set baudrate back to default for all other ports */
+	/* Restore baud rate to the default for all ports except the PC communication port */
 	if(BOS.clibaudrate != DEF_ARRAY_BAUDRATE){
 		for(uint8_t port =1; port <= NumOfPorts; port++){
 			if(port != PcPort)
 				UpdateBaudrate(port,DEF_ARRAY_BAUDRATE);
 		}
 	}
-	
-	/* Send the welcome message. */
+
+	/* Send the welcome message */
 	sprintf(pcWelcomePortMessage,"Connected to module %d (%s), port P%d.\n\n\r>",myID,modulePNstring[myPN],PcPort);
 	writePxITMutex(PcPort,pcWelcomeMessage,strlen(pcWelcomeMessage),10);
 	writePxITMutex(PcPort,pcWelcomePortMessage,strlen(pcWelcomePortMessage),10);
 
 	for(;;){
 
-		
-		//Reading only one byte at a time using CLI Flags:
-		if(Read_In_CLI_Task_Flag == 1)
-			{
-//			cRxedChar = CLI_Data;
-//			cRxedChar = Rx_Data[PcPort - 1];
-//			Rx_Data[PcPort - 1] = 0;
-//			CLI_Data = 0;
-//			Read_In_CLI_Task_Flag = 0;
+		/* Check if a new character has been received.
+		 * Reading only one byte at a time using CLI Flags. */
+		if(Read_In_CLI_Task_Flag == 1){
+			cRxedChar =CLI_Data;
+			CLI_Data =0;
 
-			/*  */
-			if(Processor_type(myPN)=='G')
-			{
-				cRxedChar = CLI_Data;
-				CLI_Data = 0;
-			}
-			else
-			{
-				cRxedChar = Rx_Data[PcPort - 1];
-				Rx_Data[PcPort - 1] = 0;
-			}
+			/* Clear the flag to allow new input */
+			Read_In_CLI_Task_Flag =0;
 
-			Read_In_CLI_Task_Flag = 0;
-
-			/* Echo the character back. */
+			/* Echo the received character back to the terminal */
 			writePxITMutex(PcPort,&cRxedChar,1,10);
 
-			if(cRxedChar == '\r'){
-				/* The input command string is complete. Ensure the previous
-				 UART transmission has finished before sending any more data.
-				 This task will be held in the Blocked state while the Tx completes,
-				 if it has not already done so, so no CPU time will be wasted by
-				 polling. */
-				writePxITMutex(PcPort,pcNewLine,strlen(pcNewLine),10);
+			switch(cRxedChar){
+				/* If the Enter key is pressed, process the command */
+				case '\r': /* Enter key */
+					writePxITMutex(PcPort,pcNewLine,strlen(pcNewLine),10);
 
-				/* See if the command is empty, indicating that the last command is
-				 to be executed again. */
-				if(cInputIndex == 0){
-					strcpy((char* )cInputString,(char* )cLastInputString);
-				}
+					/* Repeat last command if input is empty */
+					if(cInputIndex == 0){
+						strcpy((char* )cInputString,(char* )cLastInputString);
+					}
 
-				/* Pass the received command to the command interpreter.  The
-				 command interpreter is called repeatedly until it returns
-				 pdFALSE as it might generate more than one string. */
-				CLI_CommandParser(PcPort,true,cInputString,pcOutputString);
+					/* Parse the user input and execute the command */
+					CLI_CommandParser(PcPort,true,cInputString,pcOutputString);
 
-				/* All the strings generated by the input command have been sent.
-				 Clear the input string ready to receive the next command.  Remember
-				 the command that was just processed first in case it is to be
-				 processed again. */
-				strcpy((char* )cLastInputString,(char* )cInputString);
-				cInputIndex =0;
-				memset(cInputString,0x00,cmdMAX_INPUT_SIZE);
+					/* Store last command for potential reuse */
+					strcpy((char* )cLastInputString,(char* )cInputString);
 
-			}
-			else{
-				if(cRxedChar == '\n'){
-					/* Ignore the character. */
-				}
-				else if(cRxedChar == '\b' || cRxedChar == 127 ){
-					/* Backspace was pressed.  Erase the last character in the
-					 string - if any. */
+					cInputIndex =0;
+					memset(cInputString,0x00,cmdMAX_INPUT_SIZE);
+					break;
+
+					/* Ignore newline characters (in case input comes with \r\n) */
+				case '\n':
+					break;
+
+					/* Handle backspace (user wants to delete a character)
+					 * 127: ASCII code for Delete key */
+				case '\b':
+				case 127:
 					if(cInputIndex > 0){
 						cInputIndex--;
 						cInputString[cInputIndex] ='\0';
 					}
-				}
-				else{
-					/* A character was entered.  Add it to the string
-					 entered so far.  When a \r is entered the complete
-					 string will be passed to the command interpreter. */
-					if((cRxedChar >= ' ') && (cRxedChar <= '~')){
+					break;
+
+					/* Accept only printable characters (ASCII values between 32 and 126) */
+				default:
+					if(isprint((unsigned char )cRxedChar)){
 						if(cInputIndex < cmdMAX_INPUT_SIZE){
 							cInputString[cInputIndex] =cRxedChar;
 							cInputIndex++;
 						}
 					}
-				}
+					break;
 			}
-
 		}
-
 		taskYIELD();
 	}
 }
-/*-----------------------------------------------------------*/
 
-/* Hexabitz CLI command parser
- */
+/***************************************************************************/
+/* Hexabitz CLI command parser */
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString){
 	static uint8_t recordSnippet, group;
 	portBASE_TYPE xReturned;
@@ -326,20 +297,16 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 	
 }
 
-/*-----------------------------------------------------------*/
-
-/* Convert a string to lower case
- */
+/***************************************************************************/
+/* Convert a string to lower case */
 void StringToLowerCase(char *string){
 	for(int i =0; string[i]; i++){
 		string[i] =tolower(string[i]);
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* Add a set of Commands to Command Snippets and activate
- */
+/***************************************************************************/
+/* Add a set of Commands to Command Snippets and activate */
 BOS_Status AddSnippet(uint8_t code,char *string){
 	/* Check for codes */
 	switch(code){
@@ -384,10 +351,8 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* Parse Snippet conditions into the internal buffer
- */
+/***************************************************************************/
+/* Parse Snippet conditions into the internal buffer */
 BOS_Status ParseSnippetCondition(char *string){
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 	BOS_Status status =BOS_OK;
@@ -542,45 +507,10 @@ BOS_Status ParseSnippetCondition(char *string){
 	return status;
 }
 
-/*-----------------------------------------------------------*/
 
-/* Parse Snippet commands into the internal buffer
- */
-bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
-	static char *ptrStart, *ptrEnd;
-	
-	if(snippets[numOfRecordedSnippets - 1].cmd == NULL)
-		return false;
-	
-	// Initialize the start pointer to snippet buffer address
-	if(!ptrStart)
-		ptrStart =snippetBuffer;
-	
-	// Did we already reach end of Snippet buffer?
-	if(*ptrStart == 0x00){
-		ptrStart =0;		// Initialize the start pointer for next Snippet
-		cliBuffer = NULL;
-		return false;
-	}
-	
-	// Search the buffer for first occurance of 0x13 (ENTER key)
-	ptrEnd =strchr(ptrStart,0x13);
-	if(ptrEnd != NULL){
-		strncpy((char* )cliBuffer,ptrStart,ptrEnd - ptrStart);
-		ptrStart =ptrEnd + 1;
-	}
-	else{
-		strcpy((char* )cliBuffer,ptrStart);
-		ptrStart +=strlen((const char* )cliBuffer);
-	}
-	
-	return true;
-}
 
-/*-----------------------------------------------------------*/
-
-/* Check if Snippet conditional is true or false
- */
+/***************************************************************************/
+/* Check if Snippet conditional is true or false */
 bool CheckSnippetCondition(uint8_t index){
 	uint8_t temp8;
 	float flt1, flt2;
@@ -644,10 +574,8 @@ bool CheckSnippetCondition(uint8_t index){
 	return false;
 }
 
-/*-----------------------------------------------------------*/
-
-/* Execute activated Command Snippets
- */
+/***************************************************************************/
+/* Execute activated Command Snippets */
 BOS_Status ExecuteSnippet(void){
 	BOS_Status result =BOS_OK;
 	uint16_t s =0;
@@ -684,4 +612,38 @@ BOS_Status ExecuteSnippet(void){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+/****************************** Global Functions ***************************/
+/***************************************************************************/
+/* Parse Snippet commands into the internal buffer */
+bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
+	static char *ptrStart, *ptrEnd;
+
+	if(snippets[numOfRecordedSnippets - 1].cmd == NULL)
+		return false;
+
+	// Initialize the start pointer to snippet buffer address
+	if(!ptrStart)
+		ptrStart =snippetBuffer;
+
+	// Did we already reach end of Snippet buffer?
+	if(*ptrStart == 0x00){
+		ptrStart =0;		// Initialize the start pointer for next Snippet
+		cliBuffer = NULL;
+		return false;
+	}
+
+	// Search the buffer for first occurance of 0x13 (ENTER key)
+	ptrEnd =strchr(ptrStart,0x13);
+	if(ptrEnd != NULL){
+		strncpy((char* )cliBuffer,ptrStart,ptrEnd - ptrStart);
+		ptrStart =ptrEnd + 1;
+	}
+	else{
+		strcpy((char* )cliBuffer,ptrStart);
+		ptrStart +=strlen((const char* )cliBuffer);
+	}
+
+	return true;
+}
+/***************************************************************************/
