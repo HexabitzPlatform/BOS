@@ -25,6 +25,7 @@ volatile uint8_t RemoteResponseFlag;
 volatile uint8_t numOfElement;
 volatile uint32_t RemoteResponseBuffer[4];
 
+extern uint8_t StreamCplt;
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
@@ -158,11 +159,16 @@ void StreamTimerCallback(TimerHandle_t xTimerStream){
 	if(direction == FORWARD)
 		SwitchStreamDMAToMsg(srcP);
 	else if(direction == BACKWARD)
+	{
 		SwitchStreamDMAToMsg(dstP);
+		StreamCplt = 1;
+	}
+
 	else if(direction == BIDIRECTIONAL)
 	{
 		SwitchStreamDMAToMsg(srcP);
 		SwitchStreamDMAToMsg(dstP);
+		StreamCplt = 1;
 	}
 }
 
@@ -773,8 +779,15 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored)
 {
 	BOS_Status result = BOS_OK;
-	if(BOS_OK != StartScastDMAStream(srcP, srcM, dstP, dstM, direction, size, timeout, stored))
-		return result = BOS_ERROR;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1)
+	{
+		if(BOS_OK != StartScastDMAStream(srcP, srcM, dstP, dstM, direction, size, timeout, stored))
+			return result = BOS_ERROR;
+		StreamCplt = 0;
+	}
+
 	return result;
 }
 
@@ -792,8 +805,15 @@ BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_
 {
 	BOS_Status result = BOS_OK;
 	uint8_t port;
-	if(BOS_OK != StartScastDMAStream(srcP, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
-			return result = BOS_ERROR;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1)
+	{
+		if(BOS_OK != StartScastDMAStream(srcP, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
+				return result = BOS_ERROR;
+		StreamCplt = 0;
+	}
+
 	return result;
 }
 
@@ -812,12 +832,19 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
 {
 	BOS_Status result = BOS_OK;
 	uint8_t port;
-	if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, dstP, dstM, FORWARD, size, timeout, stored))
-			return result = BOS_ERROR;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1)
+	{
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, dstP, dstM, FORWARD, size, timeout, stored))
+				return result = BOS_ERROR;
+		StreamCplt = 0;
+	}
 	port = FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
 	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
+
 	return result;
 }
 
@@ -835,12 +862,19 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, u
 {
 	BOS_Status result = BOS_OK;
 	uint8_t port;
-	if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
-			return result = BOS_ERROR;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1)
+	{
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
+				return result = BOS_ERROR;
+		StreamCplt = 0;
+	}
 	port = FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
 	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
+
 	return result;
 }
 

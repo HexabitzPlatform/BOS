@@ -34,6 +34,8 @@ uint32_t dmaStreamCount[NumOfPorts] ={0};
 uint32_t dmaStreamTotal[NumOfPorts] ={0};
 bool MsgDMAStopped[NumOfPorts] ={0};
 
+extern uint16_t dstP[6];
+uint8_t StreamCplt;
 //extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 
 /* Private variables ---------------------------------------------------------*/
@@ -76,7 +78,7 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 
 /*-----------------------------------------------------------*/
 
-extern uint16_t dstP[6];
+
 /* DMA interrupt service routine 
  */
 void DMA_IRQHandler(uint8_t port){
@@ -93,11 +95,16 @@ void DMA_IRQHandler(uint8_t port){
 			uint8_t direction = dstP[port-1]>>8;
 			uint8_t dst = (uint8_t) dstP[port-1];
 			if((direction == FORWARD) || (direction == BACKWARD))
+			{
 				SwitchStreamDMAToMsg(port);
+				StreamCplt = 1;
+			}
+
 			else
 			{
 				SwitchStreamDMAToMsg(port);
 				SwitchStreamDMAToMsg(dst);
+				StreamCplt = 1;
 			}
 
 
