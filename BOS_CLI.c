@@ -145,23 +145,54 @@ void prvCLITask(void *pvParameters){
 }
 
 /***************************************************************************/
+bool ProcessConditionalCommand(int8_t *cInputString, int8_t *pcOutputString, uint8_t *recordSnippet) {
+    if (!(*recordSnippet) && !strncmp((char *)cInputString, "if ", 3)) {
+        if (AddSnippet(SNIPPET_CONDITION, (char *)(cInputString + 3)) != BOS_OK) {
+            sprintf((char *)pcOutputString, "\nCannot store more Command Snippets. Delete existing ones and try again.\n\r");
+            *recordSnippet = 0;
+        }
+        else {
+            *recordSnippet = SNIPPET_COMMANDS;
+            pcOutputString[0] = '\r';
+        }
+        return true;
+    }
+    else if (*recordSnippet && !strncmp((char *)cInputString, "end if", 6)) {
+        *recordSnippet = 0;
+        AddSnippet(SNIPPET_ACTIVATE, "");
+        sprintf((char *)pcOutputString, "\nConditional statement accepted and added to Command Snippets.\n\r");
+        return true;
+    }
+    return false;
+}
+
+
+/***************************************************************************/
+bool HandleSnippetRecording(int8_t *cInputString, int8_t *pcOutputString, uint8_t *recordSnippet) {
+    if (*recordSnippet == SNIPPET_COMMANDS) {
+        if (AddSnippet(SNIPPET_COMMANDS, (char *)cInputString) != BOS_OK) {
+            sprintf((char *)pcOutputString, "\nCannot store more Command Snippets. Delete existing ones and try again.\n\r");
+        }
+        else {
+            pcOutputString[0] = '\r';
+        }
+        return true;
+    }
+    return false;
+}
+
+/***************************************************************************/
 /* Hexabitz CLI command parser */
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString){
-	static uint8_t recordSnippet, group;
 	portBASE_TYPE xReturned;
-	char *loc =0;
-	int16_t id =0;
 	char idString[MaxLengthOfAlias] ={0};
+	char *loc =0;
+	static uint8_t recordSnippet;
+	static uint8_t group;
+	int16_t id =0;
 	
-	/* Pass the received command to the command interpreter.  The
-	 command interpreter is called repeatedly until it returns
-	 pdFALSE as it might generate more than one string. */
+	/* Pass the received command to the command interpreter repeatedly until it returns pdFALSE */
 	do{
-		/* Once again, just check to ensure the UART has completed
-		 sending whatever it was sending last.  This task will be held
-		 in the Blocked state while the Tx completes, if it has not
-		 already done so, so no CPU time	is wasted polling. */
-
 		/* Convert input string to lower case */
 		StringToLowerCase((char* )cInputString);
 		
@@ -200,42 +231,44 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 		}
 		/* Parse a normal Command */
 		else{
+
 			/* Check if command contains a dot and it's not "BOS." or a decimal number */
 			loc =strchr((char* )cInputString,'.');
+
 			if(loc != NULL && strncmp((char* )loc - 3,"bos",3) && !isdigit(*(loc + 1))){
+
 				/* Extract module ID/alias or group alias */
 				strncpy(idString,(char* )cInputString,(size_t )(loc - (char* )cInputString));
 				id =GetID(idString);
+
 				if(id == myID){
 					/* Extract and process the command */
 					xReturned =FreeRTOS_CLIProcessCommand((const signed char* )(loc + 1),pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
 				}
+
 				else if(id == BOS_ERR_WrongName){
 					sprintf((char* )pcOutputString,"Wrong module name! Please try again.\n\r");
 					xReturned = pdFALSE;
 				}
+
 				else if(id == BOS_ERR_WrongID){
 					sprintf((char* )pcOutputString,"Wrong module ID! Please try again.\n\r");
 					xReturned = pdFALSE;
 				}
-				else if(id == BOS_BROADCAST){
-					/* Check if command is broadcastable */
 
-					/* Broadcast the command */
+				/* Handle broadcast */
+				else if(id == BOS_BROADCAST){
 					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
 					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,BOS_BROADCAST,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
 					/* Execute locally */
 					xReturned =FreeRTOS_CLIProcessCommand((const signed char* )(loc + 1),pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
 					strcat((char* )pcOutputString,"Command broadcasted to all\n\r");
-					/* Todo: check module response if needed */
-					//sprintf( ( char * ) pcOutputString, "Module %d is not reachable.\n\r", m);	
 				}
+
+				/* Handle multicast */
 				else if((uint8_t )id == BOS_MULTICAST){
 					group =id >> 8;
-					/* Todo: Check if command is broadcastable */
-
-					/* Multicast the command */
 					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
 					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,group,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
@@ -244,9 +277,12 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						xReturned =FreeRTOS_CLIProcessCommand((const signed char* )(loc + 1),pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
 					sprintf((char* )pcOutputString,"%sMulticast Command forwarded to group %s\n\r",pcOutputString,idString);
 				}
+
+				/* Handle forwarding commands */
+				/* Special commands that convert into custom a Message */
 				else{
-					/* Special commands that convert into custom a Message */
-					if(!strncmp((char* )loc + 1,"update",6)){			// remote update
+					/* remote update */
+					if(!strncmp((char* )loc + 1,"update",6)){
 						OptionByte.Response = BOS_RESPONSE_NONE;
 						SendMessageToModule(id,CODE_UPDATE,0);
 						osDelay(100);
@@ -258,12 +294,13 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 						SendMessageToModule(id,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString) - 1);
 						sprintf((char* )pcOutputString,"Command forwarded to Module %d\n\r",id);
-						
+
 						if((strlen((char* )pcOutputString) > 0) && enableOutput)
 							writePxMutex(port,(char* )pcOutputString,strlen((char* )pcOutputString),cmd50ms,1);
+
 						memset(pcOutputString,0x00,strlen((char* )pcOutputString));
 					}
-					
+
 					/* Wait for response if needed */
 					if(OptionByte.Response == BOS_RESPONSE_ALL){
 						ulTaskNotifyTake(pdTRUE,1000);		//cmd500ms
@@ -275,6 +312,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 					}
 					xReturned = pdFALSE;
 				}
+
 			}
 			else{
 				/* Process the command locally */
@@ -285,6 +323,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 		/* Write the generated string to the UART. */
 		if(strlen((char* )pcOutputString) > 0 && enableOutput)
 			writePxMutex(port,(char* )pcOutputString,strlen((char* )pcOutputString),cmd50ms,HAL_MAX_DELAY);
+
 		memset(pcOutputString,0x00,strlen((char* )pcOutputString));
 		
 	} while(xReturned != pdFALSE);
