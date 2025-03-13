@@ -11,7 +11,6 @@
 /* Includes ****************************************************************/
 #include "BOS.h"
 
-
 /***************************************************************************/
 /* Private and global variables ********************************************/
 /***************************************************************************/
@@ -831,201 +830,197 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_READ_REMOTE:
-						/* request for a memory address */
-						if(cMessage[port - 1][shift] == REMOTE_MEMORY_ADD)
+						if(cMessage[port - 1][shift] == REMOTE_MEMORY_ADD) // request for a memory address
 						{
-							/* Get requested address */
+// Get requested address
 							temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 24) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][5 + shift];
-							
-							/* Get variable according to requested format */
-							switch(cMessage[port - 1][1 + shift])
+// Get variable according to requested format
+							switch(cMessage[port - 1][1 + shift]) // requested format
 							{
 								case FMT_BOOL:
 								case FMT_UINT8:
 									messageParams[0] =*(__IO uint8_t* )temp32;
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,1);
 									break;
-
 								case FMT_INT8:
 									messageParams[0] =*(__IO int8_t* )temp32;
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,1);
 									break;
-
 								case FMT_UINT16:
 									messageParams[0] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
 									messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,2);
 									break;
-
 								case FMT_INT16:
 									messageParams[0] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
 									messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,2);
 									break;
-
 								case FMT_UINT32:
 									messageParams[0] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
 									messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
 									messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
 									messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,4);
 									break;
-
 								case FMT_INT32:
 									messageParams[0] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
 									messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
 									messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
 									messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,4);
 									break;
-
 								case FMT_FLOAT:
 									messageParams[0] =*(__IO uint8_t* )(temp32 + 0);
 									messageParams[1] =*(__IO uint8_t* )(temp32 + 1);
 									messageParams[2] =*(__IO uint8_t* )(temp32 + 2);
 									messageParams[3] =*(__IO uint8_t* )(temp32 + 3);
-									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,8);
-									break; /* You cannot bitwise floats */
-
+									SendMessageToModule(src,
+									CODE_READ_REMOTE_RESPONSE,8);
+									break; // You cannot bitwise floats
 								default:
 									break;
 							}
 						}
-						/* request for a Module param */
-						else if(cMessage[port - 1][shift] == REMOTE_MODULE_PARAM)
+						else if(cMessage[port - 1][shift] == REMOTE_MODULE_PARAM) // request for a Module param
 						{
-							/* adding string termination */
-							cMessage[port - 1][messageLength[port - 1] - 1] =0;
-							temp =IsModuleParameter((char* )&cMessage[port - 1][1 + shift]);
-							/* Extracting module parameter */
-							if(temp == 0){ /* Parameter does not exist */
-								SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
+							cMessage[port - 1][messageLength[port - 1] - 1] =0; // adding string termination
+							temp =IsModuleParameter((char* )&cMessage[port - 1][1 + shift]); // extrating module parameter
+							if(temp == 0){ // Parameter does not exist
+								SendMessageToModule(src,
+								CODE_READ_REMOTE_RESPONSE,1);
 							}
 							else{
-								/* Parameter exists. Get its pointer */
+// Parameter exists. Get its pointer
 								temp32 =(uint32_t )modParam[temp - 1].paramPtr;
 								messageParams[0] =modParam[temp - 1].paramFormat;
-								/* Send parameter according to its format */
-								switch(messageParams[0]) /* requested format */
+// Send parameter according to its format
+								switch(messageParams[0]) // requested format
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
 										messageParams[1] =*(__IO uint8_t* )temp32;
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,2);
 										break;
-
 									case FMT_INT8:
 										messageParams[1] =*(__IO int8_t* )temp32;
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,2);
 										break;
-
 									case FMT_UINT16:
 										messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,3);
 										break;
-
 									case FMT_INT16:
 										messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,3);
 										break;
-
 									case FMT_UINT32:
 										messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
 										messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
 										messageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,5);
 										break;
-
 									case FMT_INT32:
 										messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
 										messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
 										messageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,5);
 										break;
-
 									case FMT_FLOAT:
 										messageParams[1] =*(__IO uint8_t* )(temp32 + 0);
 										messageParams[2] =*(__IO uint8_t* )(temp32 + 1);
 										messageParams[3] =*(__IO uint8_t* )(temp32 + 2);
-										messageParams[4] =*(__IO uint8_t* )(temp32 + 3); /* You cannot bitwise floats */
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
+										messageParams[4] =*(__IO uint8_t* )(temp32 + 3); // You cannot bitwise floats
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,9);
 										break;
-
 									default:
 										break;
 								}
 							}
 						}
-						/* request for a BOS var */
-						else if(cMessage[port - 1][shift] >= REMOTE_BOS_VAR){
-							/* send variable format (lower 4 bits) */
-							messageParams[0] =BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F;
-							/* Variable does not exist */
-							if(messageParams[0] == 0){
-								SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
+						else if(cMessage[port - 1][shift] >= REMOTE_BOS_VAR) // request for a BOS var
+						{
+							messageParams[0] =BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F; // send variable format (lower 4 bits)
+							if(messageParams[0] == 0){ // Variable does not exist
+								SendMessageToModule(src,
+								CODE_READ_REMOTE_RESPONSE,1);
 							}
 							else{
-								/* Variable exists. Get its memory address */
+// Variable exists. Get its memory address
 								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE;
-								/* Send variable according to its format */
-								switch(messageParams[0]) /* requested format */
+// Send variable according to its format
+								switch(messageParams[0]) // requested format
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
 										messageParams[1] =*(__IO uint8_t* )temp32;
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,2);
 										break;
-
 									case FMT_INT8:
 										messageParams[1] =*(__IO int8_t* )temp32;
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,2);
 										break;
-
 									case FMT_UINT16:
 										messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,3);
 										break;
-
 									case FMT_INT16:
 										messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,3);
 										break;
-
 									case FMT_UINT32:
 										messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
 										messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
 										messageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,5);
 										break;
-
 									case FMT_INT32:
 										messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
 										messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
 										messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
 										messageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,5);
 										break;
-
 									case FMT_FLOAT:
 										messageParams[1] =*(__IO uint8_t* )(temp32 + 0);
 										messageParams[2] =*(__IO uint8_t* )(temp32 + 1);
 										messageParams[3] =*(__IO uint8_t* )(temp32 + 2);
-										messageParams[4] =*(__IO uint8_t* )(temp32 + 3);
-										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
+										messageParams[4] =*(__IO uint8_t* )(temp32 + 3); // You cannot bitwise floats
+										SendMessageToModule(src,
+										CODE_READ_REMOTE_RESPONSE,9);
 										break;
-
 									default:
 										break;
 								}
 							}
 						}
+
 						break;
 
 					case CODE_READ_REMOTE_RESPONSE:
@@ -1144,145 +1139,255 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_WRITE_REMOTE:
+					case CODE_WRITE_REMOTE_FORCE:
 
-						/* Initialize response */
-						responseStatus =BOS_OK;
+						responseStatus =BOS_OK; // Initialize response
+						if(cMessage[port - 1][shift]) // request for a BOS var
+						{
+// Check variable index is within the limit of MAX_BOS_VARS
+							if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
+								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE+0x10000; // Get var memory addres
+// Modify the variable or create a new one if it does not exist
+								switch(cMessage[port - 1][1 + shift]) // requested format
+								{
+									case FMT_BOOL:
+									case FMT_UINT8:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(uint8_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
+										}
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO uint8_t* )temp32 =cMessage[port - 1][2 + shift];
+										break;
 
-						/* Check variable index is within the limit of MAX_BOS_VARS */
-						if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
-							temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE + 0x10000; // Get variable memory address
+									case FMT_INT8:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(int8_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
+										}
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO int8_t* )temp32 =(int8_t )cMessage[port - 1][2 + shift];
+										break;
 
-							/* Modify the variable or create a new one if it does not exist */
-							switch(cMessage[port - 1][1 + shift]) /* requested format */
-							{
-								case FMT_BOOL:
-								case FMT_UINT8:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(uint8_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+									case FMT_UINT16:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(uint16_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
 										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO uint8_t* )temp32 =cMessage[port - 1][2 + shift];
-									break;
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][2 + shift] << 0) + ((uint16_t )cMessage[port - 1][3 + shift] << 8);
+										break;
 
-								case FMT_INT8:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(int8_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+									case FMT_INT16:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(int16_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
 										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO int8_t* )temp32 =(int8_t )cMessage[port - 1][2 + shift];
-									break;
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][2 + shift] << 0) + ((int16_t )cMessage[port - 1][3 + shift] << 8);
+										break;
 
-								case FMT_UINT16:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(uint16_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) +
-												cMessage[port - 1][1 + shift];
+									case FMT_UINT32:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(uint32_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
 										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][2 + shift] << 0) +
-										((uint16_t )cMessage[port - 1][3 + shift] << 8);
-									break;
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
+										break;
 
-								case FMT_INT16:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(int16_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) +
-												cMessage[port - 1][1 + shift];
+									case FMT_INT32:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(int32_t)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
 										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][2 + shift] << 0) +
-										((int16_t )cMessage[port - 1][3 + shift] << 8);
-									break;
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+											*(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][2 + shift] << 0) + ((int32_t )cMessage[port - 1][3 + shift] << 8) + ((int32_t )cMessage[port - 1][4 + shift] << 16) + ((int32_t )cMessage[port - 1][5 + shift] << 24);
+										break;
 
-								case FMT_UINT32:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(uint32_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+									case FMT_FLOAT:
+										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
+											temp32 =(uint32_t )malloc(sizeof(float)); // Create a new one
+											if(temp32 != 0){
+												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+											}
+											else{ // Cannot alocate memory
+												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											}
 										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL){ // Write remote value
+											remoteBuffer =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
+											*(float* )temp32 =*(float* )&remoteBuffer;
 										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 0) +
-										((uint32_t )cMessage[port - 1][3 + shift] << 8) +
-										((uint32_t )cMessage[port - 1][4 + shift] << 16) +
-										((uint32_t )cMessage[port - 1][5 + shift] << 24);
-									break;
+										break;
 
-								case FMT_INT32:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(int32_t)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) +
-												cMessage[port - 1][1 + shift];
-										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) /* Write remote value */
-										*(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][2 + shift] << 0) +
-										((int32_t )cMessage[port - 1][3 + shift] << 8) +
-										((int32_t )cMessage[port - 1][4 + shift] << 16) +
-										((int32_t )cMessage[port - 1][5 + shift] << 24);
-									break;
+									default:
+										break;
+								}
 
-								case FMT_FLOAT:
-									if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ /* Variable does not exist */
-										temp32 =(uint32_t )malloc(sizeof(float)); /* Create a new one */
-										if(temp32 != 0){
-											BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) +
-												cMessage[port - 1][1 + shift];
-										}
-										else{ /* Cannot alocate memory */
-											responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
-										}
-									}
-									if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL){ /* Write remote value */
-										remoteBuffer =((uint32_t )cMessage[port - 1][2 + shift] << 0) +
-											((uint32_t )cMessage[port - 1][3 + shift] << 8) +
-											((uint32_t )cMessage[port - 1][4 + shift] << 16) +
-											((uint32_t )cMessage[port - 1][5 + shift] << 24);
-										*(float* )temp32 =*(float* )&remoteBuffer;
-									}
-									break;
-
-								default:
-									break;
+								/* Update local format if needed - Todo give local warning later */
+								if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) != cMessage[port - 1][1 + shift]){
+									BOS_var_reg[cMessage[port - 1][shift] - 1] &=(0xFFF0 + cMessage[port - 1][1 + shift]);
+									responseStatus =BOS_ERR_LOCAL_FORMAT_UPDATED;
+								}
 							}
-
-							/* Update local format if needed - Todo give local warning later */
-							if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) != cMessage[port - 1][1 + shift]){
-								BOS_var_reg[cMessage[port - 1][shift] - 1] &=(0xFFF0 + cMessage[port - 1][1 + shift]);
-								responseStatus =BOS_ERR_LOCAL_FORMAT_UPDATED;
+							else{
+								responseStatus =BOS_ERR_REMOTE_WRITE_INDEX; // BOS var index out of range
 							}
 						}
-						else{
-							responseStatus =BOS_ERR_REMOTE_WRITE_INDEX; /* BOS var index out of range */
+						else // request for a memory address
+						{
+							// Get the requested address
+							temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 24) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][5 + shift];
+							// Write data to Flash or SRAM based on requested format
+							if(temp32 >= SRAM_BASE && temp32 < (SRAM_BASE + SRAM_SIZE_MAX)) // SRAM
+							{
+								switch(cMessage[port - 1][1 + shift]) // Requested format
+								{
+									case FMT_BOOL:
+									case FMT_UINT8:
+										*(__IO uint8_t* )temp32 =cMessage[port - 1][6 + shift];
+										break;
+									case FMT_INT8:
+										*(__IO int8_t* )temp32 =(int8_t )cMessage[port - 1][6 + shift];
+										break;
+									case FMT_UINT16:
+										*(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
+										break;
+									case FMT_INT16:
+										*(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][6 + shift] << 0) + ((int16_t )cMessage[port - 1][7 + shift] << 8);
+										break;
+									case FMT_UINT32:
+										*(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+										break;
+									case FMT_INT32:
+										*(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][6 + shift] << 0) + ((int32_t )cMessage[port - 1][7 + shift] << 8) + ((int32_t )cMessage[port - 1][8 + shift] << 16) + ((int32_t )cMessage[port - 1][9 + shift] << 24);
+										break;
+									case FMT_FLOAT:
+										remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+										*(float* )temp32 =*(float* )&remoteBuffer;
+										break;
+									default:
+										break;
+								}
+							}
+							else if(temp32 >= FLASH_BASE && temp32 < (FLASH_BASE + FLASH_SIZE)) // Flash
+							{
+								HAL_FLASH_Unlock();
+								/* Erase page if force write is requested */
+								if(code == CODE_WRITE_REMOTE_FORCE){
+									EraseSector(temp32);
+								}
+								/* Write new value */
+								if(responseStatus == BOS_OK){
+									switch(cMessage[port - 1][1 + shift]) // Requested format
+									{
+										case FMT_BOOL:
+										case FMT_UINT8:
+										case FMT_INT8:
+											if(*(__IO uint16_t* )temp32 != 0xFFFF){
+												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+												break;
+											}
+											else{
+												remoteBuffer =cMessage[port - 1][6 + shift];
+												// TOCHECKLATER
+												// available values in G0 MCU:
+												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+												#ifndef STM32G0B1xx
+												status =HAL_FLASH_Program(
+												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+												#endif
+												break;
+											}
+										case FMT_UINT16:
+										case FMT_INT16:
+											if(*(__IO uint16_t* )temp32 != 0xFFFF){
+												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+												break;
+											}
+											else{
+												remoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
+												// TOCHECKLATER
+												// available values in G0 MCU:
+												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+												#ifndef STM32G0B1xx
+												status =HAL_FLASH_Program(
+												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+												#endif
+												break;
+											}
+										case FMT_UINT32:
+										case FMT_INT32:
+											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
+												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+												break;
+											}
+											else{
+												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
+												// TOCHECKLATER
+												// available values in G0 MCU:
+												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+												#ifndef STM32G0B1xx
+												status =HAL_FLASH_Program(
+												FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
+												#endif
+												break;
+											}
+										case FMT_FLOAT:
+											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
+												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+												break;
+											}
+											else{
+												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+												status =HAL_FLASH_Program(
+												FLASH_TYPEPROGRAM_DOUBLEWORD,temp32,remoteBuffer);
+												break;
+											}
+										default:
+											break;
+									}
+								}
+								HAL_FLASH_Lock();
+								if(status != HAL_OK)
+									responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+							}
+							else
+								responseStatus =BOS_ERR_REMOTE_WRITE_ADDRESS;
 						}
 
 						/* Send confirmation back */
