@@ -1434,8 +1434,8 @@ static portBASE_TYPE uuidCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	/* Respond to the command */
 	sprintf((char* )pcWriteBuffer,"%s",(char* )pcMessageUUID);
 	for(uint8_t i =0; i < 3; i++){
-#if defined  (STM32F0)
-		sprintf((char* )pcWriteBuffer,"%s%08X",(char* )pcWriteBuffer,*(uint32_t* )(MCU_F0_UUID_BASE + i * 4));
+#if defined  (STM32G0)
+		sprintf((char* )pcWriteBuffer,"%s%08X",(char* )pcWriteBuffer,*(uint32_t* )(MCU_G0_UUID_BASE + i * 4));
 #endif
 	}
 	strcat((char* )pcWriteBuffer,"\r\n");

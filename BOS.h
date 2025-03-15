@@ -425,7 +425,7 @@ typedef struct {
 #define SWCLK_PORT                           GPIOA
 
 /* MCU Unique Identifiers */
-#define MCU_F0_UUID_BASE                     0x1FFFF7AC
+#define MCU_G0_UUID_BASE                     0x1FFF7590UL
 #define MCU_F0_FLASH_SIZE_BASE               0x1FFFF7CC
 
 /* Interrupt Priorities */
