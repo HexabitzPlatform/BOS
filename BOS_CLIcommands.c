@@ -1447,45 +1447,46 @@ static portBASE_TYPE uuidCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 
 /*-----------------------------------------------------------*/
 
-static portBASE_TYPE idcodeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-	static const int8_t *pcMessageDEVID =(int8_t* )"MCU DEV_ID is %s\n\r";
-	static const int8_t *pcMessageREVID =(int8_t* )"%sMCU REV_ID is %d.0\n\r";
-	uint16_t dev =0;
-	
-	/* Remove compile time warnings about unused parameters, and check the
-	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-	 write buffer length is adequate, so does not check for buffer overflows. */
-	(void )xWriteBufferLen;
-	configASSERT(pcWriteBuffer);
-	
-	/* Respond to the command */
-	dev =HAL_GetDEVID();
-	switch(dev){
-		case 0x444:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F03x");
-			break;
-		case 0x445:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F04x");
-			break;
-		case 0x440:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F05x");
-			break;
-		case 0x448:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F07x");
-			break;
-		case 0x442:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F09x");
-			break;
-		default:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"UNKNOWN");
-			break;
-	}
-	sprintf((char* )pcWriteBuffer,(char* )pcMessageREVID,(char* )pcWriteBuffer,HAL_GetREVID() >> 12);
-	
-	/* There is no more data to return after this single string, so return
-	 pdFALSE. */
-	return pdFALSE;
+static portBASE_TYPE idcodeCommand(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString) {
+    static const int8_t *pcMessageDEVID = (int8_t*) "MCU DEV_ID is %s\n\r";
+    static const int8_t *pcMessageREVID = (int8_t*) "%sMCU REV_ID is %d.0\n\r";
+    uint16_t dev = 0;
+
+    (void)xWriteBufferLen;
+    configASSERT(pcWriteBuffer);
+
+    dev = HAL_GetDEVID();
+
+    switch(dev) {
+        case 0x444:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32F03x");
+            break;
+        case 0x445:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32F04x");
+            break;
+        case 0x440:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32F05x");
+            break;
+        case 0x448:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32F07x");
+            break;
+        case 0x442:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32F09x");
+            break;
+        case 0x467:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32G0B1");
+            break;
+        default:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "UNKNOWN");
+            break;
+    }
+
+    sprintf((char*)pcWriteBuffer, (char*)pcMessageREVID, (char*)pcWriteBuffer, HAL_GetREVID() >> 12);
+
+    return pdFALSE;
 }
+
+
 
 /*-----------------------------------------------------------*/
 
