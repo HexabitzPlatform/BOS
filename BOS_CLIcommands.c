@@ -1500,7 +1500,7 @@ static portBASE_TYPE flashsizeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the command */
-	sprintf((char* )pcWriteBuffer,(char* )pcMessageFLASH,(*(uint32_t* )(MCU_F0_FLASH_SIZE_BASE)) & 0x0000FFFF);
+	sprintf((char* )pcWriteBuffer,(char* )pcMessageFLASH,(*(uint32_t* )(MCU_G0_FLASH_SIZE_BASE)) & 0x0000FFFF);
 	
 	/* There is no more data to return after this single string, so return
 	 pdFALSE. */

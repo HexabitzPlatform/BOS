@@ -426,7 +426,7 @@ typedef struct {
 
 /* MCU Unique Identifiers */
 #define MCU_G0_UUID_BASE                     0x1FFF7590UL
-#define MCU_F0_FLASH_SIZE_BASE               0x1FFFF7CC
+#define MCU_G0_FLASH_SIZE_BASE               0x1FFF75E0UL
 
 /* Interrupt Priorities */
 #define MSG_DMA_INT_PRIORITY                 0 /* Highest priority */
