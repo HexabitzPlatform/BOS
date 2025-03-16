@@ -964,7 +964,7 @@ void PxMessagingTask(void *argument){
 							}
 							else{
 // Variable exists. Get its memory address
-								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE;
+								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE + 0x10000;
 // Send variable according to its format
 								switch(messageParams[0]) // requested format
 								{
@@ -1084,7 +1084,7 @@ void PxMessagingTask(void *argument){
 						else if(remoteBuffer == REMOTE_MEMORY_ADD) /* We requested a memory location */
 						{
 							/* Read variable according to requested format */
-							switch(remoteBuffer) /* Requested format */
+							switch(requestFormat) /* Requested format */
 							{/* Note that cMessage[port-1][shift] can be unaligned.
 							 That's why we cannot use simple memory access */
 								case FMT_BOOL:
@@ -1139,7 +1139,7 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_WRITE_REMOTE:
-					case CODE_WRITE_REMOTE_FORCE:
+//					case CODE_WRITE_REMOTE_FORCE:
 
 						responseStatus =BOS_OK; // Initialize response
 						if(cMessage[port - 1][shift]) // request for a BOS var
@@ -1301,91 +1301,91 @@ void PxMessagingTask(void *argument){
 										break;
 								}
 							}
-							else if(temp32 >= FLASH_BASE && temp32 < (FLASH_BASE + FLASH_SIZE)) // Flash
-							{
-								HAL_FLASH_Unlock();
-								/* Erase page if force write is requested */
-								if(code == CODE_WRITE_REMOTE_FORCE){
-									EraseSector(temp32);
-								}
-								/* Write new value */
-								if(responseStatus == BOS_OK){
-									switch(cMessage[port - 1][1 + shift]) // Requested format
-									{
-										case FMT_BOOL:
-										case FMT_UINT8:
-										case FMT_INT8:
-											if(*(__IO uint16_t* )temp32 != 0xFFFF){
-												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
-												break;
-											}
-											else{
-												remoteBuffer =cMessage[port - 1][6 + shift];
-												// TOCHECKLATER
-												// available values in G0 MCU:
-												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
-												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
-												#ifndef STM32G0B1xx
-												status =HAL_FLASH_Program(
-												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
-												#endif
-												break;
-											}
-										case FMT_UINT16:
-										case FMT_INT16:
-											if(*(__IO uint16_t* )temp32 != 0xFFFF){
-												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
-												break;
-											}
-											else{
-												remoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
-												// TOCHECKLATER
-												// available values in G0 MCU:
-												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
-												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
-												#ifndef STM32G0B1xx
-												status =HAL_FLASH_Program(
-												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
-												#endif
-												break;
-											}
-										case FMT_UINT32:
-										case FMT_INT32:
-											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
-												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
-												break;
-											}
-											else{
-												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
-												// TOCHECKLATER
-												// available values in G0 MCU:
-												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
-												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
-												#ifndef STM32G0B1xx
-												status =HAL_FLASH_Program(
-												FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
-												#endif
-												break;
-											}
-										case FMT_FLOAT:
-											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
-												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
-												break;
-											}
-											else{
-												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
-												status =HAL_FLASH_Program(
-												FLASH_TYPEPROGRAM_DOUBLEWORD,temp32,remoteBuffer);
-												break;
-											}
-										default:
-											break;
-									}
-								}
-								HAL_FLASH_Lock();
-								if(status != HAL_OK)
-									responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
-							}
+//							else if(temp32 >= FLASH_BASE && temp32 < (FLASH_BASE + FLASH_SIZE)) // Flash
+//							{
+//								HAL_FLASH_Unlock();
+////								/* Erase page if force write is requested */
+////								if(code == CODE_WRITE_REMOTE_FORCE){
+////									EraseSector(PAGE(temp32));
+////								}
+//								/* Write new value */
+//								if(responseStatus == BOS_OK){
+//									switch(cMessage[port - 1][1 + shift]) // Requested format
+//									{
+//										case FMT_BOOL:
+//										case FMT_UINT8:
+//										case FMT_INT8:
+//											if(*(__IO uint16_t* )temp32 != 0xFFFF){
+//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												break;
+//											}
+//											else{
+//												remoteBuffer =cMessage[port - 1][6 + shift];
+//												// TOCHECKLATER
+//												// available values in G0 MCU:
+//												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+//												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+//												#ifndef STM32G0B1xx
+//												status =HAL_FLASH_Program(
+//												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+//												#endif
+//												break;
+//											}
+//										case FMT_UINT16:
+//										case FMT_INT16:
+//											if(*(__IO uint16_t* )temp32 != 0xFFFF){
+//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												break;
+//											}
+//											else{
+//												remoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
+//												// TOCHECKLATER
+//												// available values in G0 MCU:
+//												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+//												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+//												#ifndef STM32G0B1xx
+//												status =HAL_FLASH_Program(
+//												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+//												#endif
+//												break;
+//											}
+//										case FMT_UINT32:
+//										case FMT_INT32:
+//											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
+//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												break;
+//											}
+//											else{
+//												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
+//												// TOCHECKLATER
+//												// available values in G0 MCU:
+//												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
+//												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
+//												#ifndef STM32G0B1xx
+//												status =HAL_FLASH_Program(
+//												FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
+//												#endif
+//												break;
+//											}
+//										case FMT_FLOAT:
+//											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
+//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												break;
+//											}
+//											else{
+//												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+//												status =HAL_FLASH_Program(
+//												FLASH_TYPEPROGRAM_DOUBLEWORD,temp32,remoteBuffer);
+//												break;
+//											}
+//										default:
+//											break;
+//									}
+//								}
+//								HAL_FLASH_Lock();
+//								if(status != HAL_OK)
+//									responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//							}
 							else
 								responseStatus =BOS_ERR_REMOTE_WRITE_ADDRESS;
 						}
