@@ -652,6 +652,7 @@ extern uint32_t BOS_var_reg[MAX_BOS_VARS];
 extern volatile uint32_t* index_dma[6];
 
 extern uint64_t remoteBuffer;
+extern uint8_t requestFormat;
 
 extern snippet_t snippets[MAX_SNIPPETS];
 extern button_t button[NumOfPorts + 1];
@@ -784,11 +785,11 @@ extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, 
 // extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
  extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
  /* ===================== Remote Variable Handling APIs ==================== */
-extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteAddress, varFormat_t *remoteFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteAddress, varFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, varFormat_t *remoteFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteVarAddress, varFormat_t requestedFormat, uint32_t timeout);
 extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString, varFormat_t *remoteFormat, uint32_t timeout);
-extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t BOSVarAddress, varFormat_t format, uint32_t timeout);
-extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout);
+extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t remoteVarAddress, varFormat_t format, uint32_t timeout);
+//extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout);
 extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
 //extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1, float var2, float var3);
 //extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);

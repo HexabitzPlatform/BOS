@@ -69,7 +69,7 @@ uint32_t BOS_var_reg[MAX_BOS_VARS];
 volatile uint32_t* index_dma[6] ;
 
 uint64_t remoteBuffer =0;
-
+uint8_t requestFormat = 0;
 /*Output_Port_Array[__N]:
 This array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
@@ -154,7 +154,7 @@ extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t time
 void EE_FormatForFactoryReset(void);
 uint8_t IsModuleParameter(char *name);
 BOS_Status ClearEEportsDir(void);
-BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force);
+BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout/*,uint8_t force*/);
 
 /* Find Route related APIs ****************************************************/
 uint8_t minArr(uint8_t *arr,uint8_t *Q);
@@ -1791,15 +1791,16 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 }
 
 /***************************************************************************/
-/* --- Write a value to a remote module.
- module: Remote module ID.
- localAddress: Local memory address (RAM or Flash).
- remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
- format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
- timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
- force: Put 1 to force full-page erase before writing to Flash.
+/* @breif: Write a value to a remote module.
+ * @Note: in the destination call AddBOSvar(varFormat_t format,uint32_t address) to assign an index to a new BOS variable.
+ * @param1: module: Remote module ID.
+ * @param2: localVarAddress: Local memory address (RAM).
+ * @param3: remoteVarAddress: Remote memory address (RAM). Write either BOS variables from 1 to MAX_BOS_VARS or a virtual RAM address.
+ * @param4: format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL).
+ * @param5: timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+ * @retval: BOS_Status.
  */
-BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout,uint8_t force){
+BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout/*,uint8_t force*/){
 
 //	uint8_t response;
 	uint16_t code;
@@ -1811,60 +1812,60 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 //	else
 //		OptionByte.Response = BOS_RESPONSE_NONE;
 
-	/* Check if a force write is needed */
-	if(force)
-		code = CODE_WRITE_REMOTE_FORCE;
-	else
+//	/* Check if a force write is needed */
+//	if(force)
+//		code = CODE_WRITE_REMOTE_FORCE;
+//	else
 		code = CODE_WRITE_REMOTE;
 
 	/* Writing to a BOS var */
-	if(remoteAddress < FLASH_BASE){
-		messageParams[0] =remoteAddress;			// Send BOS variable index
+	if(remoteVarAddress < FLASH_BASE){
+		messageParams[0] =remoteVarAddress;			// Send BOS variable index
 		messageParams[1] =format;						// Send local format
 		/* Send variable value based on local format */
 		switch(format){
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[2] =*(__IO uint8_t* )localAddress;
+				messageParams[2] =*(__IO uint8_t* )localVarAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
 			case FMT_INT8:
-				messageParams[2] =*(__IO int8_t* )localAddress;
+				messageParams[2] =*(__IO int8_t* )localVarAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
 			case FMT_UINT16:
-				messageParams[2] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 8);
+				messageParams[2] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
+				messageParams[3] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
 			case FMT_INT16:
-				messageParams[2] =(uint8_t )((*(__IO int16_t* )localAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO int16_t* )localAddress) >> 8);
+				messageParams[2] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
+				messageParams[3] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
 			case FMT_UINT32:
-				messageParams[2] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 8);
-				messageParams[4] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 16);
-				messageParams[5] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 24);
+				messageParams[2] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
+				messageParams[3] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
+				messageParams[4] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
+				messageParams[5] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
 			case FMT_INT32:
-				messageParams[2] =(uint8_t )((*(__IO int32_t* )localAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO int32_t* )localAddress) >> 8);
-				messageParams[4] =(uint8_t )((*(__IO int32_t* )localAddress) >> 16);
-				messageParams[5] =(uint8_t )((*(__IO int32_t* )localAddress) >> 24);
+				messageParams[2] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
+				messageParams[3] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
+				messageParams[4] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
+				messageParams[5] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
 			case FMT_FLOAT:
-				messageParams[2] =*(__IO uint8_t* )(localAddress + 0);
-				messageParams[3] =*(__IO uint8_t* )(localAddress + 1);
-				messageParams[4] =*(__IO uint8_t* )(localAddress + 2);
-				messageParams[5] =*(__IO uint8_t* )(localAddress + 3);
-				messageParams[6] =*(__IO uint8_t* )(localAddress + 4);
-				messageParams[7] =*(__IO uint8_t* )(localAddress + 5);
-				messageParams[8] =*(__IO uint8_t* )(localAddress + 6);
-				messageParams[9] =*(__IO uint8_t* )(localAddress + 7); // You cannot bitwise floats
+				messageParams[2] =*(__IO uint8_t* )(localVarAddress + 0);
+				messageParams[3] =*(__IO uint8_t* )(localVarAddress + 1);
+				messageParams[4] =*(__IO uint8_t* )(localVarAddress + 2);
+				messageParams[5] =*(__IO uint8_t* )(localVarAddress + 3);
+				messageParams[6] =*(__IO uint8_t* )(localVarAddress + 4);
+				messageParams[7] =*(__IO uint8_t* )(localVarAddress + 5);
+				messageParams[8] =*(__IO uint8_t* )(localVarAddress + 6);
+				messageParams[9] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
 				SendMessageToModule(module,CODE_WRITE_REMOTE,10);
 				break;
 			default:
@@ -1875,54 +1876,54 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 	else{
 		messageParams[0] =0;
 		messageParams[1] =format;							// Local format
-		messageParams[2] =(uint8_t )(remoteAddress >> 24);
-		messageParams[3] =(uint8_t )(remoteAddress >> 16); // Remote address
-		messageParams[4] =(uint8_t )(remoteAddress >> 8);
-		messageParams[5] =(uint8_t )remoteAddress;
+		messageParams[2] =(uint8_t )(remoteVarAddress >> 24);
+		messageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
+		messageParams[4] =(uint8_t )(remoteVarAddress >> 8);
+		messageParams[5] =(uint8_t )remoteVarAddress;
 		/* Send variable value based on local format */
 		switch(format){
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[6] =*(__IO uint8_t* )localAddress;
+				messageParams[6] =*(__IO uint8_t* )localVarAddress;
 				SendMessageToModule(module,code,7);
 				break;
 			case FMT_INT8:
-				messageParams[6] =*(__IO int8_t* )localAddress;
+				messageParams[6] =*(__IO int8_t* )localVarAddress;
 				SendMessageToModule(module,code,7);
 				break;
 			case FMT_UINT16:
-				messageParams[6] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint16_t* )localAddress) >> 8);
+				messageParams[6] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
+				messageParams[7] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,code,8);
 				break;
 			case FMT_INT16:
-				messageParams[6] =(uint8_t )((*(__IO int16_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int16_t* )localAddress) >> 8);
+				messageParams[6] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
+				messageParams[7] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,code,8);
 				break;
 			case FMT_UINT32:
-				messageParams[6] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO uint32_t* )localAddress) >> 24);
+				messageParams[6] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
+				messageParams[7] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
+				messageParams[8] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
+				messageParams[9] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,code,10);
 				break;
 			case FMT_INT32:
-				messageParams[6] =(uint8_t )((*(__IO int32_t* )localAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int32_t* )localAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO int32_t* )localAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO int32_t* )localAddress) >> 24);
+				messageParams[6] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
+				messageParams[7] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
+				messageParams[8] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
+				messageParams[9] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,code,10);
 				break;
 			case FMT_FLOAT:
-				messageParams[6] =*(__IO uint8_t* )(localAddress + 0);
-				messageParams[7] =*(__IO uint8_t* )(localAddress + 1);
-				messageParams[8] =*(__IO uint8_t* )(localAddress + 2);
-				messageParams[9] =*(__IO uint8_t* )(localAddress + 3);
-				messageParams[10] =*(__IO uint8_t* )(localAddress + 4);
-				messageParams[11] =*(__IO uint8_t* )(localAddress + 5);
-				messageParams[12] =*(__IO uint8_t* )(localAddress + 6);
-				messageParams[13] =*(__IO uint8_t* )(localAddress + 7); // You cannot bitwise floats
+				messageParams[6] =*(__IO uint8_t* )(localVarAddress + 0);
+				messageParams[7] =*(__IO uint8_t* )(localVarAddress + 1);
+				messageParams[8] =*(__IO uint8_t* )(localVarAddress + 2);
+				messageParams[9] =*(__IO uint8_t* )(localVarAddress + 3);
+				messageParams[10] =*(__IO uint8_t* )(localVarAddress + 4);
+				messageParams[11] =*(__IO uint8_t* )(localVarAddress + 5);
+				messageParams[12] =*(__IO uint8_t* )(localVarAddress + 6);
+				messageParams[13] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
 				SendMessageToModule(module,code,14);
 				break;
 			default:
@@ -1943,33 +1944,32 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localAddress,uint32_t remoteAdd
 	return BOS_OK;
 }
 
-/***************************************************************************/
-/* --- Write a value to a remote module and force full-page erase when writing to Flash.
- module: Remote module ID.
- localAddress: Local memory address (RAM or Flash).
- remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
- format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
- timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
- */
-BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout){
-	return WriteToRemote(module,localAddress,remoteAddress,format,timeout,1);
-}
+///***************************************************************************/
+///* --- Write a value to a remote module and force full-page erase when writing to Flash.
+// module: Remote module ID.
+// localAddress: Local memory address (RAM or Flash).
+// remoteAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
+// format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+// timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+// */
+//BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout){
+//	return WriteToRemote(module,localAddress,remoteAddress,format,timeout,1);
+//}
 
 /***************************************************************************/
-/* Read a variable from a remote module.
- This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
- If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
- module: Remote module ID.
- remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
- remoteFormat (output): Pointer to format of remote BOS variable.
- timeout: Read timeout in msec.
+/* @breif: Read a variable from a remote module.
+ * @param1: module: Remote module ID.
+ * @param2: remoteVarAddress: Remote value memory address (RAM). Use the 1 to MAX_BOS_VARS to read BOS variables with unknown addresses.
+ * @param3: remoteFormat (output): Pointer to format (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL).
+ * @param4: timeout: Read timeout in msec.
+ * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
-uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteAddress,varFormat_t *remoteFormat,uint32_t timeout){
+uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,varFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
 	remoteBuffer = REMOTE_BOS_VAR;
 	
 	/* Send the Message */
-	messageParams[0] =remoteAddress + REMOTE_BOS_VAR; // Send BOS variable index
+	messageParams[0] =remoteVarAddress + REMOTE_BOS_VAR; // Send BOS variable index
 	SendMessageToModule(module,CODE_READ_REMOTE,1);
 	
 	/* Wait until read is complete */
@@ -1989,27 +1989,26 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteAddress,varFormat_t *remot
 }
 
 /***************************************************************************/
-/* Read a memory address from a remote module.
- This API returns a pointer to the remote value. Cast this pointer to match the appropriate format.
- If the returned value is NULL, then remote variable does not exist or remote module is not responsive.
- module: Remote module ID.
- remoteAddress: Remote value memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS variables.
- requestedFormat (input): Requested format of remote memory location (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
- timeout: Read timeout in msec.
+/* @breif: Read a memory address from a remote module.
+ * @param1: module: Remote module ID.
+ * @param1: remoteVarAddress: Remote variable memory address (RAM).
+ * @param1: requestedFormat (input): Requested format of remote memory location (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+ * @param1: timeout: Read timeout in msec.
+ * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
-uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteAddress,varFormat_t requestedFormat,uint32_t timeout){
+uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,varFormat_t requestedFormat,uint32_t timeout){
 	/* Reset local buffer */
 	remoteBuffer = REMOTE_MEMORY_ADD;
 	
 	/* Send the Message */
 	messageParams[0] = REMOTE_MEMORY_ADD;
 	messageParams[1] =requestedFormat;						// Requested format
-	messageParams[2] =(uint8_t )(remoteAddress >> 24);
-	messageParams[3] =(uint8_t )(remoteAddress >> 16); // Remote address
-	messageParams[4] =(uint8_t )(remoteAddress >> 8);
-	messageParams[5] =(uint8_t )remoteAddress;
+	messageParams[2] =(uint8_t )(remoteVarAddress >> 24);
+	messageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
+	messageParams[4] =(uint8_t )(remoteVarAddress >> 8);
+	messageParams[5] =(uint8_t )remoteVarAddress;
+	requestFormat =requestedFormat;	// Set a flag that we requested a memory location
 	SendMessageToModule(module,CODE_READ_REMOTE,6);
-	remoteBuffer =requestedFormat;	// Set a flag that we requested a memory location
 	
 	/* Wait until read is complete */
 	uint32_t t0 =HAL_GetTick();
@@ -2017,20 +2016,21 @@ uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteAddress,varFormat_t req
 	};
 	
 	/* Return the read value address */
-	if(responseStatus == BOS_OK)
+//	if(responseStatus == BOS_OK)
 		return ((uint32_t* )&remoteBuffer);
-	else
-		return NULL;
+//	else
+//		return NULL;
 }
 
 /***************************************************************************/
-/* Read a parameter from a remote module.
+/* @breif: Read a parameter from a remote module.
  This API returns a pointer to the remote parameter. Cast this pointer to match the appropriate format.
  If the returned parameter is NULL, then remote parameter does not exist or remote module is not responsive.
- module: Remote module ID.
- paramString: Remote parameter string address (RAM or Flash). Use the 1 to MAX_BOS_VARS to read BOS parameters with unknown addresses.
- remoteFormat (output): Pointer to format of remote BOS variable.
- timeout: Read timeout in msec.
+ * @param1: module: Remote module ID.
+ * @param2: paramString: Remote parameter string address (RAM). Write either BOS variables from 1 to MAX_BOS_VARS or a virtual RAM address.
+ * @param3: remoteFormat (output): Pointer to format (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL).
+ * @param4: timeout: Read timeout in msec.
+ * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
 uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
@@ -2058,20 +2058,25 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFo
 }
 
 /***************************************************************************/
-/* Write a value to a remote module.
- dstModuleID: Remote module ID.
- localVarAddress: Local memory address (RAM or Flash).
- BOSVarAddress: Remote memory address (RAM or Flash). Use the 1 to MAX_BOS_VARS to write BOS variables.
- format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
- timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+/* @breif:  Write a value to a remote module.
+ * @Note:   in the destination call AddBOSvar(varFormat_t format,uint32_t address) to assign an index to a new BOS variable.
+ * @param1: dstModuleID: Remote module ID.
+ * @param2: localVarAddress: Local memory address (RAM).
+ * @param3: remoteVarAddress: Remote memory address (RAM). Write either BOS variables from 1 to MAX_BOS_VARS or a virtual RAM address.
+ * @param4: format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+ * @param5: timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
+ * @retval: BOS_Status.
  */
-BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t BOSVarAddress,varFormat_t format,uint32_t timeout){
-	return WriteToRemote(dstModuleID,localVarAddress,BOSVarAddress,format,timeout,0);
+BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout){
+	return WriteToRemote(dstModuleID,localVarAddress,remoteVarAddress,format,timeout/*,0*/);
 }
 
 /***************************************************************************/
-/* Assign an index to a new BOS variable.
- * BOS variables must be global or static to ensure we don't refernce a stack address.
+/* @breif: Assign an index to a new BOS variable.
+ * @Note: BOS variables must be global or static to ensure we don't reference a stack address.
+ * @param1: format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
+ * @param2: address: Local memory address (RAM).
+ * @retval: a new index to BOS variable.
  */
 uint8_t AddBOSvar(varFormat_t format,uint32_t address){
 	for(uint8_t v =0; v < MAX_BOS_VARS; v++){
