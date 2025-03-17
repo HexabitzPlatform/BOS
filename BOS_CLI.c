@@ -639,7 +639,7 @@ BOS_Status ExecuteSnippet(void){
 					/* Pass the received command to the command interpreter.  The
 					 command interpreter is called repeatedly until it returns
 					 pdFALSE as it might generate more than one string. */
-					CLI_CommandParser(PcPort,false,cInputString,pcOutputString);
+					CLI_CommandParser(PcPort,true,cInputString,pcOutputString);
 					
 					/* Clear output buffer since we do not need it. Input buffer is cleared in  CLI_CommandParser */
 					memset(pcOutputString,0x00,strlen((char* )pcOutputString));
