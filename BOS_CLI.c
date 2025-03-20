@@ -383,113 +383,113 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 /***************************************************************************/
 /* Parse Snippet conditions into the internal buffer */
 BOS_Status ParseSnippetCondition(char *string){
-
 	BOS_Status status =BOS_OK;
+	char *firstPart = NULL;
+	char *secondPart = NULL;
+	char *thirdPart = NULL;
 	uint8_t port =0;
+	uint8_t modPar1 =0;
+	uint8_t modPar2 =0;
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 
-	// A. Verify first there's still memory left to store Snippets	
-	if(numOfRecordedSnippets == MAX_SNIPPETS){
+	/* Ensure there is available memory for storing snippets */
+	if(numOfRecordedSnippets >= MAX_SNIPPETS){
 		return BOS_ERR_SNIP_MEM_FULL;
 	}
-	// Initialize the next empty location
-	else{
-		snippets[numOfRecordedSnippets].cond.conditionType =0;
-		snippets[numOfRecordedSnippets].cond.mathOperator =0;
-		memset(snippets[numOfRecordedSnippets].cond.buffer1,0,4);
-	}
+
+	/* Initialize snippet structure */
+	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets];
+	memset(&currentSnippet->cond,0,sizeof(snippetConditions_t));
 	
-	// B. Parse Snippets based on their condition type 
-	
-	// #1: Button event: condition starts with "bx." 
+	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
+	/* Check if the condition starts with "bx." (Button event) */
 	if(string[0] == 'b' && string[2] == '.'){
-		if(string[1] >= '0' && string[1] <= (NumOfPorts + '0'))		// Valid port number
-		{
+		if(string[1] >= '0' && (string[1] - '0') < NumOfPorts){
+			/* Extract the button port */
 			port =string[1] - '0';
-			snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_BUTTON_EVENT;
-			snippets[numOfRecordedSnippets].cond.mathOperator =0;			// No math operations
-			snippets[numOfRecordedSnippets].cond.buffer1[0] =port;		// Store button port number
-			
-			/* Store button event and event parameter if needed */
-			if(!strncmp((char* )&string[3],"clicked",7)){
-				snippets[numOfRecordedSnippets].cond.buffer1[1] =CLICKED;
-				if((button[port].events & BUTTON_EVENT_CLICKED) != BUTTON_EVENT_CLICKED)		// Enable the event
-//					SetButtonEvents(port,1,0,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
+			currentSnippet->cond.conditionType = SNIP_COND_BUTTON_EVENT;
+			currentSnippet->cond.buffer1[0] =port; /* Store button port number */
+
+			/* Store button event type */
+			if(!strncmp(&string[3],"clicked",7)){
+				currentSnippet->cond.buffer1[1] =CLICKED;
+				if(!(button[port].events & BUTTON_EVENT_CLICKED)){
 					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
-				status =BOS_OK;
-			}
-			else if(!strncmp((char* )&string[3],"double clicked",14)){
-				snippets[numOfRecordedSnippets].cond.buffer1[1] =DBL_CLICKED;
-				if((button[port].events & BUTTON_EVENT_DBL_CLICKED) != BUTTON_EVENT_DBL_CLICKED)
-//					SetButtonEvents(port,0,1,0,0,0,0,0,0,BUTTON_EVENT_MODE_OR);
-					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
-				status =BOS_OK;
-			}
-			
-			++numOfRecordedSnippets;		// Record a successful Snippet			
-		}
-	}
-	// Module-related conditions (local only for now)
-	else{
-		strcpy((char* )cInputString,string);
-		
-		// This is probably a three part condition, extract them out
-		char *firstPart, *secondPart, *thirdPart;
-		uint8_t modPar1 =0, modPar2 =0;
-		firstPart =strtok((char* )cInputString," ");
-		secondPart =strtok( NULL," ");
-		thirdPart =strtok( NULL," ");
-		
-		// Check if first part is module parameter or event
-		if(firstPart == NULL){
-			return BOS_ERR_WrongParam;
-		}
-		else{
-			modPar1 =IsModuleParameter(firstPart);
-			// Found a module parameter and no more strings
-			if(modPar1 && secondPart == NULL && thirdPart == NULL){
-				// #2: Module event
-				snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_EVENT;
-				snippets[numOfRecordedSnippets].cond.buffer1[1] =modPar1;		// Leaving first buffer byte for remote module ID
-				
-				++numOfRecordedSnippets;		// Record a successful Snippet	
-				return BOS_OK;
-			}
-			else if(secondPart != NULL && thirdPart != NULL){
-				modPar2 =IsModuleParameter(thirdPart);
-				if(modPar2) 		// Found a module parameter
-				{
-					// #4: Module parameter and parameter
-					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_PARAM;
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =modPar1;		// Leaving first buffer byte for remote module ID
-					snippets[numOfRecordedSnippets].cond.buffer2[1] =modPar2;		// Leaving first buffer byte for remote module ID
 				}
-				else{
-					// #3: Module parameter and constant	
-					snippets[numOfRecordedSnippets].cond.conditionType = SNIP_COND_MODULE_PARAM_CONST;
-					snippets[numOfRecordedSnippets].cond.buffer1[1] =modPar1;		// Leaving first buffer byte for remote module ID
-					// Extract the constant
-					float constant =atof(thirdPart);
-					memcpy(snippets[numOfRecordedSnippets].cond.buffer2,&constant,sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
+			}
+			else if(!strncmp(&string[3],"double clicked",14)){
+				currentSnippet->cond.buffer1[1] =DBL_CLICKED;
+				if(!(button[port].events & BUTTON_EVENT_DBL_CLICKED)){
+					SetButtonEvents(port,DBL_CLICKED,BUTTON_EVENT_MODE_OR);
 				}
-				// Extract the math operator
-				snippets[numOfRecordedSnippets].cond.mathOperator =IsMathOperator(secondPart);
-				if(!snippets[numOfRecordedSnippets].cond.mathOperator)
-					return BOS_ERR_WrongParam;
-				
-				++numOfRecordedSnippets;		// Record a successful Snippet
-				return BOS_OK;
 			}
 			else{
 				return BOS_ERR_WrongParam;
 			}
+			
+			/* Record snippet */
+			numOfRecordedSnippets++;
+
+			return BOS_OK;
 		}
 	}
-	
-	/* Note: after exiting this function, numOfRecordedSnippets refers to the next empty Snippet.
-	 * Subtract by one to reference the last Snippet. */
+	/************** CONDITION TYPE #2 & #3 & #4: Module-related ************/
 
-	return status;
+	/* Copy string into a local buffer for tokenization */
+	strncpy((char* )cInputString,string,cmdMAX_INPUT_SIZE - 1);
+	cInputString[cmdMAX_INPUT_SIZE - 1] ='\0'; /* Ensure null termination */
+
+	/* Tokenize the condition into three parts */
+	firstPart =strtok((char* )cInputString," ");
+	secondPart =strtok( NULL," ");
+	thirdPart =strtok( NULL," ");
+
+	/* Check if the first part is a valid module parameter or event */
+	if(firstPart == NULL){
+		return BOS_ERR_WrongParam;
+	}
+
+	modPar1 =IsModuleParameter(firstPart);
+
+	/******************* CONDITION TYPE #2: MODULE EVENT *******************/
+	if(modPar1 && secondPart == NULL && thirdPart == NULL){
+		currentSnippet->cond.conditionType = SNIP_COND_MODULE_EVENT;
+		currentSnippet->cond.buffer1[1] =modPar1;
+		numOfRecordedSnippets++; /* Record snippet */
+		return BOS_OK;
+	}
+
+	/********** CONDITION TYPE #3 & #4: MODULE PARAMETER CHECK  ************/
+	if(secondPart != NULL && thirdPart != NULL){
+		modPar2 =IsModuleParameter(thirdPart);
+		
+		if(modPar2){
+			/* CONDITION TYPE #4: Module parameter compared to another parameter */
+			currentSnippet->cond.conditionType = SNIP_COND_MODULE_PARAM_PARAM;
+			currentSnippet->cond.buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->cond.buffer2[1] =modPar2; /* Leaving first buffer byte for remote module ID */
+		}
+		else{
+			/* CONDITION TYPE #3: Module parameter compared to a constant */
+			currentSnippet->cond.conditionType = SNIP_COND_MODULE_PARAM_CONST;
+			currentSnippet->cond.buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+
+			/* Extract the constant */
+			float constant =atof(thirdPart);
+			memcpy(currentSnippet->cond.buffer2,&constant,sizeof(float));
+
+		}
+
+		/* Validate and store the math operator */
+		currentSnippet->cond.mathOperator =IsMathOperator(secondPart);
+		if(!currentSnippet->cond.mathOperator)
+			return BOS_ERR_WrongParam;
+
+		numOfRecordedSnippets++; /* Record snippet */
+		return BOS_OK;
+	}
+	return BOS_ERR_WrongParam;
+
 }
 
 /***************************************************************************/
