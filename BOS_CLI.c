@@ -561,28 +561,27 @@ bool CheckSnippetCondition(uint8_t index){
 /* Execute activated Command Snippets */
 BOS_Status ExecuteSnippet(void){
 	BOS_Status result =BOS_OK;
-	uint16_t s =0;
-	int8_t *pcOutputString;
+	uint16_t snippetIndex = 0;
+	int8_t *pcOutputString =NULL;
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 	
-	/* Must get this address even if output is not used otherwise memory will corrupt */
-	/* Obtain the address of the output buffer.  Note there is no mutual
-	 exclusion on this buffer as it is assumed only one command console
-	 interface will be used at any one time. */
+	/* Get the output buffer address.
+	 * Note: No mutual exclusion is applied because it is assumed that
+	 * only one command console interface will be active at a time. */
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 	
-	/* Go through activated Snippets */
-	for(s =0; s < numOfRecordedSnippets; s++){
-		if(snippets[s].state)								// Check for activated Snippets
-		{
-			if(CheckSnippetCondition(s))				// Process Snippet condition
-			{
-				OptionByte.Response = BOS_RESPONSE_MSG;		// Disable CLI response
-				// Loop over all recorded Snippet commands
-				while(ParseSnippetCommand(snippets[s].cmd,(int8_t* )&cInputString) != false){
-					/* Pass the received command to the command interpreter.  The
-					 command interpreter is called repeatedly until it returns
-					 pdFALSE as it might generate more than one string. */
+	/* Loop through all recorded snippets */
+	for(snippetIndex =0; snippetIndex < numOfRecordedSnippets; snippetIndex++){
+		/* Process only active snippets */
+		if(snippets[snippetIndex].state){
+			/* Process Snippet condition */
+			if(CheckSnippetCondition(snippetIndex)){
+				/* Disable CLI response to prevent unnecessary output */
+				OptionByte.Response = BOS_RESPONSE_MSG;
+
+				/* Loop over all recorded commands within the snippet */
+				while(ParseSnippetCommand(snippets[snippetIndex].cmd,(int8_t* )&cInputString) != false){
+					/* Pass the parsed command to the CLI command parser */
 					CLI_CommandParser(PcPort,false,cInputString,pcOutputString);
 					
 					/* Clear output buffer since we do not need it. Input buffer is cleared in  CLI_CommandParser */
