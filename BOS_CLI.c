@@ -599,30 +599,41 @@ BOS_Status ExecuteSnippet(void){
 /***************************************************************************/
 /* Parse Snippet commands into the internal buffer */
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
-	static char *ptrStart, *ptrEnd;
+	static char *ptrStart = NULL;
+	static char *ptrEnd = NULL;
 
+	/* Return false if the snippet command buffer is NULL */
 	if(snippets[numOfRecordedSnippets - 1].cmd == NULL)
 		return false;
 
-	// Initialize the start pointer to snippet buffer address
-	if(!ptrStart)
+	/* Initialize ptrStart if it's the first call */
+	if(ptrStart == NULL)
 		ptrStart =snippetBuffer;
 
-	// Did we already reach end of Snippet buffer?
-	if(*ptrStart == 0x00){
-		ptrStart =0;		// Initialize the start pointer for next Snippet
-		cliBuffer = NULL;
+	/* Check if we reached the end of the snippet buffer */
+	if(*ptrStart == '\0'){
+		ptrStart = NULL; /* Reset pointer for the next snippet */
 		return false;
 	}
 
-	// Search the buffer for first occurance of 0x13 (ENTER key)
+	/* Search for the first occurrence of the ENTER key (0x13) */
 	ptrEnd =strchr(ptrStart,0x13);
+
 	if(ptrEnd != NULL){
+		/* Copy the command from ptrStart to cliBuffer, ensuring safe copy */
 		strncpy((char* )cliBuffer,ptrStart,ptrEnd - ptrStart);
+		cliBuffer[ptrEnd - ptrStart] ='\0'; /* Null-terminate the string */
+
+		/* Move ptrStart to the next command */
 		ptrStart =ptrEnd + 1;
+		;
 	}
 	else{
-		strcpy((char* )cliBuffer,ptrStart);
+		/* If no ENTER key is found, copy the remaining string */
+		strncpy((char* )cliBuffer,ptrStart,cmdMAX_INPUT_SIZE - 1);
+		cliBuffer[cmdMAX_INPUT_SIZE - 1] ='\0'; /* Ensure null termination */
+
+		/* Move ptrStart to the end of the buffer */
 		ptrStart +=strlen((const char* )cliBuffer);
 	}
 
