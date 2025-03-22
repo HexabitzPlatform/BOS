@@ -46,7 +46,7 @@
 #define	CODE_READ_REMOTE_RESPONSE  	   		  31
 #define	CODE_WRITE_REMOTE  					  32
 #define	CODE_WRITE_REMOTE_RESPONSE            33
-#define	CODE_WRITE_REMOTE_FORCE				  34
+//#define	CODE_WRITE_REMOTE_FORCE				  34
 #define	CODE_PORT_FORWARD     				  35
 #define	CODE_READ_REMOTE_ModBus_RESPONSE  	  36
 #define CODE_READ_ADC_VALUE					  40
