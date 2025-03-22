@@ -495,28 +495,36 @@ BOS_Status ParseSnippetCondition(char *string){
 /***************************************************************************/
 /* Check if Snippet conditional is true or false */
 bool CheckSnippetCondition(uint8_t index){
-	uint8_t temp8;
-	float flt1, flt2;
+	uint8_t temp8 =0;
+	float flt1 =0.0f;
+	float flt2 =0.0f;
 	
-	/* Check conditions based on Snippet tupe */
-
+	/* Check conditions based on Snippet type */
 	switch(snippets[index].cond.conditionType){
+
+		/* Button Event */
 		case SNIP_COND_BUTTON_EVENT:
-			temp8 =snippets[index].cond.buffer1[0]; 	// Button port
+			temp8 =snippets[index].cond.buffer1[0]; /* Get button port */
 			/* Check if button state matches Snippet button event */
 			if(snippets[index].cond.buffer1[1] == button[temp8].state)
 				return true;
 			else
 				return false;
 			
+		/* Module Event */
 		case SNIP_COND_MODULE_EVENT:
+			// TODO: Implement event checking logic
 			break;
 			
+		/* Module Parameter Compared to Constant */
 		case SNIP_COND_MODULE_PARAM_CONST:
-			// Get the constant and module parameter values. 
+			/* Get the module parameter value */
 			flt1 =*(float* )modParam[snippets[index].cond.buffer1[1] - 1].paramPtr;
-			memcpy((uint8_t* )&flt2,&snippets[index].cond.buffer2,sizeof(float));		// This buffer can be misaligned and cause hardfault on F0
-			// Compare them mathematically
+
+			/* This buffer can be misaligned and cause hardfault */
+			memcpy((uint8_t* )&flt2,&snippets[index].cond.buffer2,sizeof(float));
+
+			/* Perform mathematical comparison */
 			switch(snippets[index].cond.mathOperator){
 				case MATH_EQUAL:
 					if(flt1 == flt2)
@@ -548,6 +556,7 @@ bool CheckSnippetCondition(uint8_t index){
 			break;
 			
 		case SNIP_COND_MODULE_PARAM_PARAM:
+            // TODO: Implement parameter-to-parameter comparison
 			break;
 			
 		default:
@@ -561,7 +570,7 @@ bool CheckSnippetCondition(uint8_t index){
 /* Execute activated Command Snippets */
 BOS_Status ExecuteSnippet(void){
 	BOS_Status result =BOS_OK;
-	uint16_t snippetIndex = 0;
+	uint16_t snippetIndex =0;
 	int8_t *pcOutputString =NULL;
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 	
