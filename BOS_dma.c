@@ -34,8 +34,8 @@ uint32_t dmaStreamCount[NumOfPorts] ={0};
 uint32_t dmaStreamTotal[NumOfPorts] ={0};
 bool MsgDMAStopped[NumOfPorts] ={0};
 
-extern uint16_t dstP[6];
-uint8_t StreamCplt = 1;
+extern uint16_t dstP[NumOfPorts];
+extern uint8_t StreamCplt;
 //extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 
 /* Private variables ---------------------------------------------------------*/

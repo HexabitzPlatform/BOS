@@ -12,8 +12,8 @@
 
 /* Private and global variables ********************************************/
 uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
-uint8_t StreamCplt =0;
-uint16_t dstP[6] ={0};
+uint8_t StreamCplt =1;
+uint16_t dstP[NumOfPorts] ={0};
 uint32_t ports =0;
 
 volatile uint8_t RemoteResponseFlag;
@@ -65,27 +65,25 @@ void NotifyMessagingTask(uint8_t port);
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst){
 	TimerHandle_t xTimerStream = NULL;
 	
-	/* Sanity check */
-	if(src == dst){							// Streaming inside destination module. Lock this port to streaming but no need to setup DMA
+	/* Sanity check to prevent invalid streaming requests */
+	/* Prevent streaming within the same module */
+	if(src == dst){
 		portStatus[src] =STREAM;
 		return BOS_ERR_WrongParam;
 	}
-	else if(src == 0 || dst == 0) 			// Streaming outside source module or inside destination module without defining ports. Do not lock the port and do not setup DMA
+	/* Ensure valid source and destination */
+	if(src == 0 || dst == 0){
 		return BOS_ERR_WrongParam;
+	}
 	
 	/* Start DMA streams */
 	if(direction == FORWARD){
-		/*
-		 * if was destination port number is virtual port this mean we want to receive data
-		 * from source module(port,memory) to memory in the destination module
-		 */
-		if(dst == P_VIRTUAL)
-		{
+		/* Virtual port: Source -> Destination memory */
+		if(dst == P_VIRTUAL){
 			if(StartDMAstream(GetUart(src),GetUart(dst),count) == BOS_ERR_PORT_BUSY)
 				return BOS_ERR_PORT_BUSY;
 		}
-		else
-		{
+		else{
 			if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
 				return BOS_ERR_PORT_BUSY;
 		}
@@ -93,6 +91,7 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&src,StreamTimerCallback);
 		dmaStreamTotal[src - 1] =count;
 	}
+
 	else if(direction == BACKWARD){
 		if(StartDMAstream(GetUart(dst),GetUart(src),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
@@ -100,14 +99,17 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
 		dmaStreamTotal[dst - 1] =count;
 	}
+
 	else if(direction == BIDIRECTIONAL){
 		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
+
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&src,StreamTimerCallback);
 		dmaStreamTotal[src - 1] =count;
 		if(StartDMAstream(GetUart(dst),GetUart(src),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
+
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
 		dmaStreamTotal[dst - 1] =count;
@@ -115,18 +117,19 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	else
 		return BOS_ERR_WrongParam;
 	
+	/* Store port mapping for active DMA streams */
 	if(direction == FORWARD)
-		dstP[src-1] = (direction << 8) + dst;
+		dstP[src - 1] =(direction << 8) + dst;
 	else if(direction == BACKWARD)
-		dstP[dst-1] = (direction << 8) + src;
-	else if(direction == BIDIRECTIONAL)
-	{
-		dstP[src-1] = (direction << 8) + dst;
-		dstP[dst-1] = (direction << 8) + src;
+		dstP[dst - 1] =(direction << 8) + src;
+	else if(direction == BIDIRECTIONAL){
+		dstP[src - 1] =(direction << 8) + dst;
+		dstP[dst - 1] =(direction << 8) + src;
 	}
 
-	ports = (direction << 16) + (dst << 8) + src;
-	/* Start the timeout timer */
+	ports =(direction << 16) + (dst << 8) + src;
+
+	/* Start timeout timers if they were created successfully */
 	if(xTimerStream != NULL)
 		xTimerStart(xTimerStream,portMAX_DELAY);
 	
@@ -136,38 +139,44 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 /***************************************************************************/
 /* DMA stream timer callback */
 void StreamTimerCallback(TimerHandle_t xTimerStream){
-//	uint32_t *tid =0;
-	uint8_t srcP = 0;
-	uint8_t dstP = 0;
-	uint8_t direction = 0;
-//	tid = (uint32_t *)pvTimerGetTimerID(xTimerStream);
-//	port = *tid;
-//	StopStreamDMA(tid);
-//	StopDMA(tid);
-	direction = ports >> 16;
-	dstP = ports >> 8;
-	srcP = (uint8_t)ports;
-	if(direction == FORWARD)
-		SwitchStreamDMAToMsg(srcP);
-	else if(direction == BACKWARD)
-	{
-		SwitchStreamDMAToMsg(dstP);
-		StreamCplt = 1;
-	}
+	uint8_t srcP =0;
+	uint8_t dstP =0;
+	uint8_t direction =0;
 
-	else if(direction == BIDIRECTIONAL)
-	{
-		SwitchStreamDMAToMsg(srcP);
-		SwitchStreamDMAToMsg(dstP);
-		StreamCplt = 1;
-	}
+	/* Extract direction, destination, and source from 'ports' */
+	direction =ports >> 16;
+	dstP =ports >> 8;
+	srcP =(uint8_t )ports;
+
+    /* Process timeout based on the streaming direction */
+    switch (direction) {
+        case FORWARD:
+            SwitchStreamDMAToMsg(srcP);
+            break;
+
+        case BACKWARD:
+            SwitchStreamDMAToMsg(dstP);
+            StreamCplt = 1;  /* Mark stream as complete */
+            break;
+
+        case BIDIRECTIONAL:
+            SwitchStreamDMAToMsg(srcP);
+            SwitchStreamDMAToMsg(dstP);
+            StreamCplt = 1;  /* Mark stream as complete */
+            break;
+
+        default:
+            /* Handle invalid direction */
+            break;
+    }
 }
 
 /***************************************************************************/
 /* Forward a received message to its destination */
 BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	BOS_Status result =BOS_OK;
-	uint8_t port, dst;
+	uint8_t port =0;
+	uint8_t dst =0;
 	
 	/* Single-cast. Do not add broadcast ID */
 	AddBcastPayload = false;
@@ -175,17 +184,15 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	dst =cMessage[incomingPort - 1][0];
 	
 	/* Find best output port for destination module */
-	//port =FindRoute(myID,dst);
-
-	//Replace FindRoute() with Output_Port_Array
-	#ifdef __N
-		port = Output_Port_Array[dst - 1];
-	#else
-		port =FindRoute(myID,dst);
-	#endif
+#ifdef __N
+	port = Output_Port_Array[dst - 1];
+#else
+	port =FindRoute(myID,dst);
+#endif
 	
-	/* Forward the message. Set src and code to 0 to inform the API to copy the exact message received on incomingPort 
-	 which is passed thru numberOfParams and to use port as output port */
+	/* Forward the message.
+	 * Set src and code to 0 to inform the API to copy the exact message received on
+	 * incomingPort which is passed thru numberOfParams and to use port as output port */
 	SendMessageFromPort(port,0,dst,0,incomingPort);
 	
 	return result;
@@ -200,8 +207,11 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	AddBcastPayload = false;
 	dstGroupID =dstGroup;
 	
-	/* Forward the message with a broadcast flag. Set src and code to 0 to inform the API to copy the exact message received on 
-	 incomingPort which is passed thru numberOfParams. Src will be updated with original source inside the function */
+	/* Forward the message with a broadcast flag.
+	 * Set src and code to 0 to inform the API to copy the exact message received on
+	 * incomingPort which is passed thru numberOfParams.
+	 * Src will be updated with original source inside the function. */
+
 	if(dstGroup == BOS_BROADCAST)
 		SendMessageFromPort(0,0,BOS_BROADCAST,0,incomingPort);
 	else
@@ -216,38 +226,32 @@ void NotifyMessagingTask(uint8_t port){
 	switch(port){
 #ifdef _P1
 		case P1:
-			xTaskNotifyGive(P1MsgTaskHandle)
-			;
+			xTaskNotifyGive(P1MsgTaskHandle);
 			break;
 #endif
 #ifdef _P2
 		case P2:
-			xTaskNotifyGive(P2MsgTaskHandle)
-			;
+			xTaskNotifyGive(P2MsgTaskHandle);
 			break;
 #endif
 #ifdef _P3
 		case P3:
-			xTaskNotifyGive(P3MsgTaskHandle)
-			;
+			xTaskNotifyGive(P3MsgTaskHandle);
 			break;
 #endif
 #ifdef _P4
 		case P4:
-			xTaskNotifyGive(P4MsgTaskHandle)
-			;
+			xTaskNotifyGive(P4MsgTaskHandle);
 			break;
 #endif
 #ifdef _P5
 		case P5:
-			xTaskNotifyGive(P5MsgTaskHandle)
-			;
+			xTaskNotifyGive(P5MsgTaskHandle);
 			break;
 #endif
 #ifdef _P6
 		case P6:
-			xTaskNotifyGive(P6MsgTaskHandle)
-			;
+			xTaskNotifyGive(P6MsgTaskHandle);
 			break;
 #endif
 		default:
@@ -276,40 +280,39 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 
 /***************************************************************************/
 /* Read message codes data from a remote sensor "input" module */
-BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
- {
-	BOS_Status result = BOS_OK;
-	uint8_t dataIndex = 0;
-	uint32_t tickstart = HAL_GetTick();
+BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout){
+	BOS_Status result =BOS_OK;
+	uint8_t dataIndex =0;
+	uint32_t tickstart =HAL_GetTick();
 
 	/* Sending a message to the module */
-	messageParams[0] = myID;        // source module ID
-	SendMessageToModule(disModuleID, Code, 1);
+	messageParams[0] =myID; /* source module ID */
+	SendMessageToModule(disModuleID,Code,1);
 
 	/* timeout loop */
-	while (0 == RemoteResponseFlag) {
-		if ((HAL_GetTick() - tickstart) > timeout)
-			return result = BOS_ERR_TIMEOUT;
+	while(0 == RemoteResponseFlag){
+		if((HAL_GetTick() - tickstart) > timeout)
+			return BOS_ERR_TIMEOUT;
 	}
 
-	if (RemoteResponseFlag) {
-		RemoteResponseFlag = 0;
-		tickstart = HAL_GetTick();
-		for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
-			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
+	if(RemoteResponseFlag){
+		RemoteResponseFlag =0;
+		tickstart =HAL_GetTick();
+		for(dataIndex =0; dataIndex < numOfElement; dataIndex++)
+			pDataReceived[dataIndex] =RemoteResponseBuffer[dataIndex];
 
 		/* NULL DATA */
-		if ((0 == RemoteResponseBuffer[0]) && (0 ==RemoteResponseBuffer[1])
-				&& (0 == RemoteResponseBuffer[2]) && (0 == RemoteResponseBuffer[3]))
-			return result = BOS_ERROR;
+		if((0 == RemoteResponseBuffer[0]) && (0 == RemoteResponseBuffer[1]) && (0 == RemoteResponseBuffer[2]) && (0 == RemoteResponseBuffer[3]))
+			return BOS_ERROR;
 
-		for (size_t i = 0; i < sizeof(RemoteResponseBuffer) / sizeof(RemoteResponseBuffer[0]); i++) {
-		    RemoteResponseBuffer[i] = 0x00;
+		for(size_t i =0; i < sizeof(RemoteResponseBuffer) / sizeof(RemoteResponseBuffer[0]); i++){
+			RemoteResponseBuffer[i] =0x00;
 		}
 
-		return result = BOS_OK;
-	} else
-		return result = BOS_ERROR;
+		return BOS_OK;
+	}
+	else
+		return BOS_ERROR;
 
 }
 
@@ -341,17 +344,15 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
 	
-	/* Singlecast message */
+	/* Single-cast message */
 	if(dst != BOS_BROADCAST){
-		/* Find best output port for destination module */
-//		port =FindRoute(myID,dst);
 
-		//Replace FindRoute() with Output_Port_Array
-		#ifdef __N
-				port = Output_Port_Array[dst - 1];
-		#else
-				port =FindRoute(myID,dst);
-		#endif
+		/* Find best output port for destination module */
+#ifdef __N
+	    port = Output_Port_Array[dst - 1];
+#else
+		port =FindRoute(myID,dst);
+#endif
 		
 		/* Transmit the message from this port */
 		SendMessageFromPort(port,myID,dst,code,numberOfParams);
@@ -379,7 +380,7 @@ BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParamete
 #ifdef __N
 		port = Output_Port_Array[dst - 1];
 #else
-	port =FindRoute(myID,dst);
+	    port =FindRoute(myID,dst);
 #endif
 
 	while(totalNumberOfParams > 0){
@@ -402,8 +403,7 @@ BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParamete
 		}
 
 		/* Send the message */
-//		SendMessageFromPort(port,myID,dst,code,chunkSize);
-		SendMessageToModule(dst, code, chunkSize);
+		SendMessageToModule(dst,code,chunkSize);
 
 	}
 
@@ -667,16 +667,18 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 		messageParams[6] =(uint8_t )(timeout >> 8);
 		messageParams[7] =(uint8_t )timeout;
 		messageParams[8] =direction; /* Stream direction */
-		messageParams[9] =srcP; /* Source port */
-		messageParams[10] =dstM; /* destination module */
-		messageParams[11] =dstP; /* destination port */
-		messageParams[12] =stored; /* EEPROM storage */
+		messageParams[9] =srcP;      /* Source port */
+		messageParams[10] =dstM;     /* destination module */
+		messageParams[11] =dstP;     /* destination port */
+		messageParams[12] =stored;   /* EEPROM storage */
+
+		/* Send the message to the source module */
 		SendMessageToModule(srcM,CODE_DMA_SCAST_STREAM,13);
 		
 		return result;
 	}
 	
-	/* Inform participating modules */
+	/* Inform all participating modules along the route */
 	for(uint8_t i =0; i < sizeof(route); i++){
 		FindRoute(srcM,dstM);
 		/* Message other modules */
@@ -705,20 +707,19 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 			messageParams[6] =(uint8_t )(timeout >> 8);
 			messageParams[7] =(uint8_t )timeout;
 			messageParams[8] =direction; /* Stream direction */
-			messageParams[9] =temp1; /* Source port */
-			messageParams[10] =temp2; /* destination port */
-			messageParams[11] =stored; /* EEPROM storage */
+			messageParams[9] =temp1;     /* Source port */
+			messageParams[10] =temp2;    /* destination port */
+			messageParams[11] =stored;   /* EEPROM storage */
 			FindRoute(srcM,dstM);
+
+			/* Send message to the current route module */
 			SendMessageToModule(route[i],CODE_DMA_CHANNEL,12);
 			osDelay(10);
 		}
 	}
-	/*
-	 * if was source port number is virtual port this mean we want to transfer data
-	 * from memory from source module to port or memory in destination module
-	 */
-	if(srcP != P_VIRTUAL)
-	{
+
+	/* Check if the source port is virtual (indicating memory transfer) */
+	if(srcP != P_VIRTUAL){
 		if(srcM == dstM)
 			port =dstP;
 		else
@@ -727,12 +728,11 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 		/* Setup my own DMA stream */
 		SetupDMAStreams(direction,count,timeout,srcP,port);
 
-		// Store my own streams to EEPROM
+		/* If storage is enabled, save the stream configuration */
 		if(stored){
 			SaveEEstreams(direction,count,timeout,srcP,port,0,0,0,0);
 		}
 	}
-
 	
 	return result;
 }
@@ -750,16 +750,15 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
  * @param8: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored)
-{
-	BOS_Status result = BOS_OK;
+BOS_Status StreamPortToPort(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1)
-	{
-		if(BOS_OK != StartScastDMAStream(srcP, srcM, dstP, dstM, direction, size, timeout, stored))
-			return result = BOS_ERROR;
-		StreamCplt = 0;
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(srcP,srcM,dstP,dstM,direction,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
 	}
 
 	return result;
@@ -775,17 +774,16 @@ BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t ds
  * @param5: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_t timeout, bool stored)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port;
+BOS_Status StreamPortToMemory(uint8_t srcP,uint8_t dstM,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1)
-	{
-		if(BOS_OK != StartScastDMAStream(srcP, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
-				return result = BOS_ERROR;
-		StreamCplt = 0;
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(srcP,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
 	}
 
 	return result;
@@ -802,25 +800,24 @@ BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_
  * @param6: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port;
+BOS_Status StreamMemoryToPort(uint8_t dstP,uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1)
-	{
-		if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, dstP, dstM, FORWARD, size, timeout, stored))
-				return result = BOS_ERROR;
-		StreamCplt = 0;
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dstP,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
 	}
 	if(myID == dstM)
-		port = dstP;
+		port =dstP;
 	else
-		port = FindRoute(myID,dstM);
+		port =FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
-	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
+	HAL_UART_Transmit_IT(GetUart(port),pBuffer,size);
 
 	return result;
 }
@@ -835,22 +832,21 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
  * @param5: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored)
-{
-	BOS_Status result = BOS_OK;
-	uint8_t port;
+BOS_Status StreamMemoryToMemory(uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1)
-	{
-		if(BOS_OK != StartScastDMAStream(P_VIRTUAL, myID, P_VIRTUAL, dstM, FORWARD, size, timeout, stored))
-				return result = BOS_ERROR;
-		StreamCplt = 0;
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
 	}
-	port = FindRoute(myID,dstM);
+	port =FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
-	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
+	HAL_UART_Transmit_IT(GetUart(port),pBuffer,size);
 
 	return result;
 }
