@@ -7,25 +7,25 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS_messaging.h"
 
-/* Private and global variables ----------------------------------------------*/
-//extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed
-//extern char message[MAX_MESSAGE_SIZE];										// Buffer to construct a message to be sent
-//extern uint8_t dstGroupID;
-//extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
-//extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
+/* Private and global variables ********************************************/
 uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
-//extern bool AddBcastPayload;
-BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
-BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
-uint32_t totalnumberoftransmiitedmesg=0;
+uint8_t StreamCplt =0;
+uint16_t dstP[6] ={0};
+uint32_t ports =0;
+
 volatile uint8_t RemoteResponseFlag;
 volatile uint8_t numOfElement;
 volatile uint32_t RemoteResponseBuffer[4];
 
-extern uint8_t StreamCplt;
+#ifndef __N
+uint8_t route[MaxNumOfModules];
+#else
+	 uint8_t route[__N];
+#endif
+
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
 #ifdef _P1
@@ -47,28 +47,21 @@ extern TaskHandle_t P5MsgTaskHandle;
 extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
-#ifndef __N
-uint8_t route[MaxNumOfModules];
-#else
-	 uint8_t route[__N];
-#endif
-
-/* UARTcmd task */
-extern TaskHandle_t xCommandConsoleTaskHandle;
-
-/* Private and Global Function Definitions */
-void StreamTimerCallback(TimerHandle_t xTimerStream);
+/* Exported Functions ******************************************************/
 extern BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src1,uint8_t dst1,uint8_t src2,uint8_t dst2,uint8_t src3,uint8_t dst3);
-void NotifyMessagingTask(uint8_t port);
+
+/* Private function prototypes *********************************************/
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
-/* -----------------------------------------------------------------------
- |												 Private Functions	 														|
- ----------------------------------------------------------------------- 
- */
-uint16_t dstP[6];
-uint32_t ports;
-/* --- Setup DMA streams upon request from another module --- 
- */
+BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
+BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
+void StreamTimerCallback(TimerHandle_t xTimerStream);
+void NotifyMessagingTask(uint8_t port);
+
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
+
+/* Setup DMA streams upon request from another module */
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst){
 	TimerHandle_t xTimerStream = NULL;
 	
@@ -140,10 +133,8 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- DMA stream timer callback --- 
- */
+/***************************************************************************/
+/* DMA stream timer callback */
 void StreamTimerCallback(TimerHandle_t xTimerStream){
 //	uint32_t *tid =0;
 	uint8_t srcP = 0;
@@ -172,10 +163,8 @@ void StreamTimerCallback(TimerHandle_t xTimerStream){
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Forward a received message to its destination 
- */
+/***************************************************************************/
+/* Forward a received message to its destination */
 BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	BOS_Status result =BOS_OK;
 	uint8_t port, dst;
@@ -202,10 +191,8 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a received message to all connected modules - TODO update with new protocol
- */
+/***************************************************************************/
+/* Broadcast a received message to all connected modules */
 BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	BOS_Status result =BOS_OK;
 	
@@ -223,10 +210,8 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Activate Messaging Tasks
- */
+/***************************************************************************/
+/* Activate Messaging Tasks */
 void NotifyMessagingTask(uint8_t port){
 	switch(port){
 #ifdef _P1
@@ -270,10 +255,8 @@ void NotifyMessagingTask(uint8_t port){
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a message to all connected modules
- */
+/***************************************************************************/
+/* Broadcast a message to all connected modules */
 BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t numberOfParams){
 	/* Set a flag to populate broadcast ID and groups */
 	AddBcastPayload = true;
@@ -291,10 +274,8 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Read message codes data from a remote sensor "input" module
- */
+/***************************************************************************/
+/* Read message codes data from a remote sensor "input" module */
 BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
  {
 	BOS_Status result = BOS_OK;
@@ -332,10 +313,8 @@ BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *
 
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
- */
+/***************************************************************************/
+/* Send a message to a group of modules. If current module is part of the group it will be exempted */
 BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
 	uint8_t i =0;
@@ -356,10 +335,8 @@ BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams)
 	return BOS_ERR_WrongGroup;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Send a message to another module 
- */
+/***************************************************************************/
+/* Send a message to another module */
 BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
@@ -390,8 +367,7 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 /* Send large data (over 46 Bytes) to module */
 BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParameters,uint16_t numberOfParams){
 	uint16_t totalNumberOfParams =numberOfParams;
@@ -434,8 +410,7 @@ BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParamete
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 /* --- Send a message from a specific port 
  Note: The messageParams buffer does not get erased here to enable reuse for other transmissions.
  Make sure you manually erase the buffer when you're done with it. 
@@ -672,11 +647,10 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Start a single-cast DMA stream across the array. Transfer ends after (count) bytes are transferred 
- or timeout (ms), whichever comes first. If stored = true, the stream is stored in emulated eeprom --- 
- */
+/***************************************************************************/
+/* Start a single-cast DMA stream across the array.
+ * Transfer ends after (count) bytes are transferred or timeout (ms),
+ * whichever comes first. If stored = true, the stream is stored in emulated eeprom */
 BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0, temp1 =0, temp2 =0;
@@ -763,7 +737,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 	return result;
 }
 
-/*********************************************************************************************************************/
+/***************************************************************************/
 /*
  * @brief: Transferring stream data from port in the source module to port in the destination module and vice versa.
  * @param1: source port number.
@@ -791,7 +765,7 @@ BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t ds
 	return result;
 }
 
-/*********************************************************************************************************************/
+/***************************************************************************/
 /*
  * @brief: Transferring stream data from port in the source module to RAM memory in the destination module.
  * @param1: source port number.
@@ -817,7 +791,7 @@ BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, uint32_
 	return result;
 }
 
-/*********************************************************************************************************************/
+/***************************************************************************/
 /*
  * @brief: Transferring stream data from RAM memory in the source module to port in the destination module.
  * @param1: destination port number.
@@ -848,7 +822,7 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
 	return result;
 }
 
-/*********************************************************************************************************************/
+/***************************************************************************/
 /*
  * @brief: Transferring stream data from RAM memory in the source module to RAM memory in the destination module.
  * @param1: destination module id.
@@ -878,4 +852,5 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, u
 	return result;
 }
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************************************************************************/
+/************************ (C) COPYRIGHT HEXABITZ ***** END OF FILE *********/
