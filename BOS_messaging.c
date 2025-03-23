@@ -814,7 +814,10 @@ BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint
 				return result = BOS_ERROR;
 		StreamCplt = 0;
 	}
-	port = FindRoute(myID,dstM);
+	if(myID == dstM)
+		port = dstP;
+	else
+		port = FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
 	HAL_UART_Transmit_IT(GetUart(port), pBuffer, size);
