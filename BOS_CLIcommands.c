@@ -43,7 +43,7 @@ static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE statusCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
-static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
+//static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE removebuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
