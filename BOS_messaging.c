@@ -852,4 +852,4 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint
 }
 
 /***************************************************************************/
-/************************ (C) COPYRIGHT HEXABITZ ***** END OF FILE *********/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

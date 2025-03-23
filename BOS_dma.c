@@ -5,7 +5,7 @@
  File Name     : BOS_dma.c
  Description   : Source code for BOS communication/backend DMAs.
 
- Required MCU resources :
+ Required MCU resources:
 
  >> At least n UART RX DMA channels where n is number of module ports (up to number of available UARTs).
  >> At least one UART TX DMA channel.
@@ -13,38 +13,24 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS.h"
 #include "BOS_DMA.h"
 
-/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports
- *
- * Access each port Byte:
- * Rx_Data[GetPort(huart) - 1];
- */
-uint8_t Rx_Data[NumOfPorts] = {0};
-
-/* Exported variables ---------------------------------------------------------*/
-
+/* Private variables *******************************************************/
 uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] ={0};
-//uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
-//uint8_t UARTRxBufIndex[NumOfPorts] ={0};
 UART_HandleTypeDef *dmaStreamDst[NumOfPorts] ={0};
 uint32_t dmaStreamCount[NumOfPorts] ={0};
 uint32_t dmaStreamTotal[NumOfPorts] ={0};
 bool MsgDMAStopped[NumOfPorts] ={0};
+/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports */
+uint8_t Rx_Data[NumOfPorts] = {0};
 
+/* Exported variables ******************************************************/
 extern uint16_t dstP[NumOfPorts];
 extern uint8_t StreamCplt;
-//extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 
-/* Private variables ---------------------------------------------------------*/
-
-
-/*-----------------------------------------------------------*/
-
-/* Setup and start a streaming DMA (port-to-port) 
- */
+/* Setup and start a streaming DMA (port-to-port) */
 BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num){
 	uint8_t srcPort =GetPort(huartSrc);
 	
@@ -76,11 +62,8 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-
-/* DMA interrupt service routine 
- */
+/***************************************************************************/
+/* DMA interrupt service routine */
 void DMA_IRQHandler(uint8_t port){
 
 	if(portStatus[port] != STREAM){
@@ -90,32 +73,27 @@ void DMA_IRQHandler(uint8_t port){
 		HAL_DMA_IRQHandler(UARTDMAHandler[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
-		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t) dstP[port-1] == P_VIRTUAL)){
+		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t )dstP[port - 1] == P_VIRTUAL)){
 
-			uint8_t direction = dstP[port-1]>>8;
-			uint8_t dst = (uint8_t) dstP[port-1];
-			if((direction == FORWARD) || (direction == BACKWARD))
-			{
+			uint8_t direction =dstP[port - 1] >> 8;
+			uint8_t dst =(uint8_t )dstP[port - 1];
+			if((direction == FORWARD) || (direction == BACKWARD)){
 				SwitchStreamDMAToMsg(port);
-				StreamCplt = 1;
+				StreamCplt =1;
 			}
 
-			else
-			{
+			else{
 				SwitchStreamDMAToMsg(port);
 				SwitchStreamDMAToMsg(dst);
-				StreamCplt = 1;
+				StreamCplt =1;
 			}
-
 
 		}
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup
- */
+/***************************************************************************/
+/* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup */
 void ResetUartORE(void){
 #if defined(_Usart1)
 	__HAL_UART_CLEAR_OREFLAG(&huart1);
@@ -137,6 +115,5 @@ void ResetUartORE(void){
 #endif
 }
 
-/*-----------------------------------------------------------*/
-
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/
