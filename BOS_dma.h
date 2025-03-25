@@ -14,12 +14,6 @@
 /* Includes ****************************************************************/
 #include "BOS.h"
 
-/* External definitions ****************************************************/
-/* Messaging backend priority */
-#define MSG_DMA_PRIORITY 					DMA_PRIORITY_HIGH
-#define STREAM_DMA_PRIORITY 				DMA_PRIORITY_MEDIUM
-#define FRONTEND_DMA_PRIORITY 				DMA_PRIORITY_LOW
-
 /* Exported variables ******************************************************/
 extern UART_HandleTypeDef *dmaStreamDst[NumOfPorts];
 extern uint32_t dmaStreamCount[NumOfPorts];
@@ -34,4 +28,4 @@ extern void ResetUartORE(void);
 
 #endif /* BOS_DMA_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

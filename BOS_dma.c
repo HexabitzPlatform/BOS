@@ -34,29 +34,27 @@ extern uint8_t StreamCplt;
 BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num){
 	uint8_t srcPort =GetPort(huartSrc);
 	
-	// 1. Check if single- or multi-cast
-	// 1.a. If single-cast, switch the DMA channel to streaming if it's available
-	if(portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI)		// This port is not streaming so it's single-cast
-	{
+	/* switch the DMA channel to streaming if it's available */
+	if(portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI){
 		SwitchMsgDMAToStream(srcPort);
 	}
-	// 1.b. If multi-cast, do some stuff - TODO
 	else if(portStatus[srcPort] == STREAM){
-		return BOS_ERR_PORT_BUSY;		// Multi-casting not implemented right now
+		return BOS_ERR_PORT_BUSY;
 	}
 	else
 		return BOS_ERR_PORT_BUSY;
 
-	// 2. Setup streaming destination
+	/* Setup the streaming destination */
 	dmaStreamDst[srcPort - 1] =huartDst;
 	
-	// 3. Lock the ports 
+	/* Lock the source port by marking it as STREAM
+	 * This prevents other tasks from using it while streaming is active */
 	portStatus[srcPort] =STREAM;
 	
-	// 4. Initialize stream counter 
+	/* Initialize the DMA stream counter */
 	dmaStreamCount[srcPort - 1] =0;
 	
-	// 5. Setup and start the DMA stream
+	/* Setup and start the actual DMA stream */
 	DMA_STREAM_Setup(huartSrc,huartDst,num);
 	
 	return BOS_OK;
@@ -87,7 +85,6 @@ void DMA_IRQHandler(uint8_t port){
 				SwitchStreamDMAToMsg(dst);
 				StreamCplt =1;
 			}
-
 		}
 	}
 }
