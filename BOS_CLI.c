@@ -34,7 +34,7 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 
 /* Global function prototypes **********************************************/
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
-
+Module_Status GetModuleParameter(uint8_t paramIndex, float *value) ;
 /* Private function prototypes *********************************************/
 BOS_Status AddSnippet(uint8_t code,char *string);
 BOS_Status ParseSnippetCondition(char *string);
@@ -320,11 +320,6 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	/* Reference to the last recorded snippet */
 	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets - 1];
 
-	/* Ensure there is at least one snippet recorded */
-	if(numOfRecordedSnippets == 0){
-		return BOS_ERROR;
-	}
-
 	/* Check for codes */
 	switch(code){
 		case SNIPPET_ACTIVATE:
@@ -519,8 +514,7 @@ bool CheckSnippetCondition(uint8_t index){
 		/* Module Parameter Compared to Constant */
 		case SNIP_COND_MODULE_PARAM_CONST:
 			/* Get the module parameter value */
-			flt1 =*(float* )modParam[snippets[index].cond.buffer1[1] - 1].paramPtr;
-
+			GetModuleParameter(snippets[index].cond.buffer1[1] , &flt1);
 			/* This buffer can be misaligned and cause hardfault */
 			memcpy((uint8_t* )&flt2,&snippets[index].cond.buffer2,sizeof(float));
 
