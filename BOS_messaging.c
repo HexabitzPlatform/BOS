@@ -429,16 +429,19 @@ BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParamete
  */
 BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
-	uint8_t length =0, shift =0;
-	static uint16_t totalNumberOfParams =0;
-	static uint16_t ptrShift =0,pp=0;
-	bool extendOptions = false, extendCode = false;
 	UBaseType_t TaskPriority;
-	static uint8_t LongMessageFlag = 0;
-	
-	/* Sanity check broadcast/multi-cast and not allowed cases */
+	bool extendCode = false;
+	bool extendOptions = false;
+	uint8_t shift =0;
+	uint8_t length =0;
+	uint8_t groupMembers =0;
+	static uint8_t LongMessageFlag =0;
+	static uint16_t totalNumberOfParams =0;
+	static uint16_t ptrShift =0, pp =0;
+
+	/* Sanity check for invalid broadcast/multi-cast cases */
 	if((port == 0 && dst == 0) ||																												// cases 3 & 4
-	(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 										// cases 1 & 2
+	(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 				// cases 1 & 2
 	(port != 0 && src != 0 && dst == 0)){																						// case 7
 		return BOS_ERR_WrongParam;
 	}
@@ -447,17 +450,21 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	TaskPriority =uxTaskPriorityGet( NULL);
 	vTaskPrioritySet( NULL,osPriorityHigh - osPriorityIdle);
 	
-	/* HZ Delimiter */
+	/***************************************************************************/
+	/* Start constructing the message buffer ***********************************/
+	/***************************************************************************/
+
+	/* Add the HZ Delimiter to mark the start of the message */
 	message[0] ='H';
 	message[1] ='Z';
 	
-	/* Should I copy message buffer from another port or construct from scratch? */
+	/* If copying from an incoming message (e.g., broadcast or received message) */
 	if((port == 0 && src == 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST)) || code == 0)					// case 2 and part of case 6
 	{
-		/* Get message length from the incoming port */
+		/* Retrieve message length from received buffer */
 		length =messageLength[numberOfParams - 1];
 		
-		/* Copy message buffer from the incoming port as is */
+		/* Copy message buffer from the received message */
 		memcpy(&message[3],&cMessage[numberOfParams - 1][0],(size_t )length);
 	}
 	/* Construct message from scratch - case 5 */
@@ -481,20 +488,16 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		message[3] =dst;
 		message[4] =src;
 
-		/* Long Message (8th-MSB) : Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-//		message[5] = (LongMessageFlag << 7) | (BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4)
-//				| (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
-
 		/* Options */
-	    /* Set the options bits */
-	    OptionByte.Trace = UserOptionByte.Trace;
-	    OptionByte.Acknowledgment = UserOptionByte.Acknowledgment;
-	    OptionByte.Reserved = 0;
-	    OptionByte.Response = UserOptionByte.Response;
+		/* Set the options bits */
+//	    OptionByte.Trace = UserOptionByte.Trace;
+//	    OptionByte.Acknowledgment = UserOptionByte.Acknowledgment;
+//	    OptionByte.Reserved = 0;
+//	    OptionByte.Response = UserOptionByte.Response;
 //	    OptionByte.LongMessage = LongMessageFlag;
 
-	    /* Assign the byte value to var1 by type-casting */
-	    message[5] = *(uint8_t*)&OptionByte;
+		/* Assign the byte value */
+		message[5] =*(uint8_t* )&OptionByte;
 
 		/* Code - LSB first */
 		message[6 + shift] =(uint8_t )code;
@@ -504,7 +507,6 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 			message[6 + shift] =(uint8_t )(code >> 8);
 		}
 		
-
 		/* Parameters */
 		if(numberOfParams <= MAX_PARAMS_PER_MESSAGE){
 			memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
@@ -541,12 +543,11 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 //		}
 		
 		/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
-		/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
-
+		/* TODO - handle the edge case of brodcast/multi-cast long message.
+		 * bcastID should go into each message but the groups only in the last one */
 		if(AddBcastPayload == true){
-			uint8_t groupMembers =0;
-			
-			/* Add group members if it's a multicast */
+
+			/* If it's a multi-cast, add group members */
 			if(dstGroupID < BOS_BROADCAST){
 				/* Extract and add group member IDs to the Message */
 				for(uint16_t i =1; i <= N; i++)						// N modules
@@ -584,39 +585,39 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	/* Copy message length */
 	message[2] =length;
 	
-	/* End of message - Calculate CRC8 */
+	/* Compute and append CRC */
 	memcpy(crcBuffer,&message[0],length + 3);
-	
-	/* crc calculation function added for test */
 	message[length + 3] =CalculateCRC8(crcBuffer,(length + 3));
-	/* end of crc calculation function addition */
-
 	memset(crcBuffer,0,sizeof(crcBuffer));
 	
+	/* Send Single-cast Message */
 	if(dst != BOS_BROADCAST && dst != BOS_MULTICAST){
-		/* Transmit the message - single-cast */
+//		writePxITMutex(port,message,length + 4,cmd50ms);
+		Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 
-		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
-			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-//			writePxITMutex(port, message, length + 4, cmd50ms);
-		}
-		else{
-
-//			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
-				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-////				osDelay(200);
+//		if(code == MSG_Acknowledgment_Accepted || code == MSG_rejected){
+////			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			writePxITMutex(port,message,length + 4,cmd50ms);
+//		}
+//		else{
+//			for(uint8_t Number_of_attempt =0; Number_of_attempt < 3; Number_of_attempt++){
+////				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//				writePxITMutex(port,message,length + 4,cmd50ms);
 //				if(ACK_FLAG == true)
 //					break;
 //				if(rejected_FLAG == true)
 //					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 //			}
-		}
-		ACK_FLAG =false; rejected_FLAG=false;
+//		}
+//		ACK_FLAG =false;
+//		rejected_FLAG =false;
 	}
 
-	/* Transmit the message - multi-cast or broadcast */
 	else{
-		if(code == 0 && src == 0){					// Forwarded broadcast or multicast. Update with original source.
+		/* Broadcast or multicast handling */
+
+		/* Update original source ID */
+		if(code == 0 && src == 0){
 			src =message[4];
 		}
 		
@@ -628,20 +629,22 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
 				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
-//				writePxITMutex(p, message, length + 4, cmd50ms);
-//				osDelay(200);
-				if(rejected_FLAG == true)
+//				writePxITMutex(p,message,length + 4,cmd50ms);
+				if(rejected_FLAG == true){
 					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//					writePxITMutex(port,message,length + 4,cmd50ms);
+				}
 			}
 //			rejected_FLAG=false;
 			Delay_us(10);
 		}
 	}
 	
-	/* Put the priority of current running task back to its default state */
+	/* Restore the original task priority */
 	vTaskPrioritySet( NULL,TaskPriority);
 	
-	/* Reset responseStatus in case response is expected - TODO should be tailored for each port */
+	/* Reset responseStatus in case response is expected
+	 * TODO should be tailored for each port */
 	responseStatus =BOS_ERR_NoResponse;
 	
 	return result;
