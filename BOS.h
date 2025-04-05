@@ -291,7 +291,7 @@ typedef struct {
 
 /* Snippet properties */
 typedef struct {
-	SnippetConditions_t cond; /* Snippet conditionals */
+	SnippetConditions_t Condition; /* Snippet conditionals */
 	char *CMD;     /* Command string */
 	uint8_t State; /* Snippet state */
 } Snippet_t;

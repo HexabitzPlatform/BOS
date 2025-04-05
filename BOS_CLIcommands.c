@@ -1498,20 +1498,20 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	/* Go through all stored Snippets */
 	uint8_t count =1;
 	for(uint8_t s =0; s < numOfRecordedSnippets; s++){
-		if(Snippets[s].cond.ConditionType)
+		if(Snippets[s].Condition.ConditionType)
 			sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipStart,count,status[Snippets[s].State]);
 		
 		// Parse conditions
-		switch(Snippets[s].cond.ConditionType){
+		switch(Snippets[s].Condition.ConditionType){
 			case SNIP_COND_BUTTON_EVENT:
 
-				switch(Snippets[s].cond.Buffer1[1]){
+				switch(Snippets[s].Condition.Buffer1[1]){
 					case CLICKED:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventClicked,(char* )pcWriteBuffer,Snippets[s].cond.Buffer1[0],Snippets[s].CMD);
+						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventClicked,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
 						break;
 
 					case DBL_CLICKED:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,Snippets[s].cond.Buffer1[0],Snippets[s].CMD);
+						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
 						break;
 
 					default:
@@ -1522,8 +1522,8 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 				
 			case SNIP_COND_MODULE_PARAM_CONST:
 				// Get the module parameter, math operator and constant values.
-				memcpy((uint8_t* )&flt1,&Snippets[s].cond.Buffer2,sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,ModuleParam[Snippets[s].cond.Buffer1[1] - 1].ParamName,mathStr[Snippets[s].cond.MathOperator - 1],flt1);
+				memcpy((uint8_t* )&flt1,&Snippets[s].Condition.Buffer2,sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
+				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,ModuleParam[Snippets[s].Condition.Buffer1[1] - 1].ParamName,mathStr[Snippets[s].Condition.MathOperator - 1],flt1);
 				break;
 				
 			default:
@@ -1643,16 +1643,16 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	
 	if(result == BOS_OK){
 		// Delete the Snippet
-		Snippets[index - 1].cond.ConditionType =0;
-		Snippets[index - 1].cond.MathOperator =0;
-		memset(Snippets[index - 1].cond.Buffer1,0,4);
+		Snippets[index - 1].Condition.ConditionType =0;
+		Snippets[index - 1].Condition.MathOperator =0;
+		memset(Snippets[index - 1].Condition.Buffer1,0,4);
 		Snippets[index - 1].State = false;
 		free(Snippets[index - 1].CMD);
 		Snippets[index - 1].CMD = NULL;
 		
 		// Reorder remaining Snippets to avoid empty indices
 		for(uint8_t s =index; s < numOfRecordedSnippets; s++){
-			if(Snippets[s].cond.ConditionType){
+			if(Snippets[s].Condition.ConditionType){
 				memcpy(&Snippets[s - 1],&Snippets[s],sizeof(Snippet_t));
 				memset(&Snippets[s],0,sizeof(Snippet_t));
 			}

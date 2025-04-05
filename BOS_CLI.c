@@ -394,7 +394,7 @@ BOS_Status ParseSnippetCondition(char *string){
 
 	/* Initialize snippet structure */
 	Snippet_t *currentSnippet =&Snippets[numOfRecordedSnippets];
-	memset(&currentSnippet->cond,0,sizeof(SnippetConditions_t));
+	memset(&currentSnippet->Condition,0,sizeof(SnippetConditions_t));
 	
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
 	/* Check if the condition starts with "bx." (Button event) */
@@ -402,18 +402,18 @@ BOS_Status ParseSnippetCondition(char *string){
 		if(string[1] >= '0' && (string[1] - '0') < NumOfPorts){
 			/* Extract the button port */
 			port =string[1] - '0';
-			currentSnippet->cond.ConditionType = SNIP_COND_BUTTON_EVENT;
-			currentSnippet->cond.Buffer1[0] =port; /* Store button port number */
+			currentSnippet->Condition.ConditionType = SNIP_COND_BUTTON_EVENT;
+			currentSnippet->Condition.Buffer1[0] =port; /* Store button port number */
 
 			/* Store button event type */
 			if(!strncmp(&string[3],"clicked",7)){
-				currentSnippet->cond.Buffer1[1] =CLICKED;
+				currentSnippet->Condition.Buffer1[1] =CLICKED;
 				if(!(Button[port].Event & BUTTON_EVENT_CLICKED)){
 					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
 			else if(!strncmp(&string[3],"double clicked",14)){
-				currentSnippet->cond.Buffer1[1] =DBL_CLICKED;
+				currentSnippet->Condition.Buffer1[1] =DBL_CLICKED;
 				if(!(Button[port].Event & BUTTON_EVENT_DBL_CLICKED)){
 					SetButtonEvents(port,DBL_CLICKED,BUTTON_EVENT_MODE_OR);
 				}
@@ -448,8 +448,8 @@ BOS_Status ParseSnippetCondition(char *string){
 
 	/******************* CONDITION TYPE #2: MODULE EVENT *******************/
 	if(modPar1 && secondPart == NULL && thirdPart == NULL){
-		currentSnippet->cond.ConditionType = SNIP_COND_MODULE_EVENT;
-		currentSnippet->cond.Buffer1[1] =modPar1;
+		currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_EVENT;
+		currentSnippet->Condition.Buffer1[1] =modPar1;
 		numOfRecordedSnippets++; /* Record snippet */
 		return BOS_OK;
 	}
@@ -460,24 +460,24 @@ BOS_Status ParseSnippetCondition(char *string){
 		
 		if(modPar2){
 			/* CONDITION TYPE #4: Module parameter compared to another parameter */
-			currentSnippet->cond.ConditionType = SNIP_COND_MODULE_PARAM_PARAM;
-			currentSnippet->cond.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
-			currentSnippet->cond.Buffer2[1] =modPar2; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_PARAM_PARAM;
+			currentSnippet->Condition.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.Buffer2[1] =modPar2; /* Leaving first buffer byte for remote module ID */
 		}
 		else{
 			/* CONDITION TYPE #3: Module parameter compared to a constant */
-			currentSnippet->cond.ConditionType = SNIP_COND_MODULE_PARAM_CONST;
-			currentSnippet->cond.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_PARAM_CONST;
+			currentSnippet->Condition.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
 
 			/* Extract the constant */
 			float constant =atof(thirdPart);
-			memcpy(currentSnippet->cond.Buffer2,&constant,sizeof(float));
+			memcpy(currentSnippet->Condition.Buffer2,&constant,sizeof(float));
 
 		}
 
 		/* Validate and store the math operator */
-		currentSnippet->cond.MathOperator =IsMathOperator(secondPart);
-		if(!currentSnippet->cond.MathOperator)
+		currentSnippet->Condition.MathOperator =IsMathOperator(secondPart);
+		if(!currentSnippet->Condition.MathOperator)
 			return BOS_ERR_WrongParam;
 
 		numOfRecordedSnippets++; /* Record snippet */
@@ -495,13 +495,13 @@ bool CheckSnippetCondition(uint8_t index){
 	float flt2 =0.0f;
 	
 	/* Check conditions based on Snippet type */
-	switch(Snippets[index].cond.ConditionType){
+	switch(Snippets[index].Condition.ConditionType){
 
 		/* Button Event */
 		case SNIP_COND_BUTTON_EVENT:
-			temp8 =Snippets[index].cond.Buffer1[0]; /* Get button port */
+			temp8 =Snippets[index].Condition.Buffer1[0]; /* Get button port */
 			/* Check if button state matches Snippet button event */
-			if(Snippets[index].cond.Buffer1[1] == Button[temp8].State)
+			if(Snippets[index].Condition.Buffer1[1] == Button[temp8].State)
 				return true;
 			else
 				return false;
@@ -514,12 +514,12 @@ bool CheckSnippetCondition(uint8_t index){
 		/* Module Parameter Compared to Constant */
 		case SNIP_COND_MODULE_PARAM_CONST:
 			/* Get the module parameter value */
-			GetModuleParameter(Snippets[index].cond.Buffer1[1] , &flt1);
+			GetModuleParameter(Snippets[index].Condition.Buffer1[1] , &flt1);
 			/* This buffer can be misaligned and cause hardfault */
-			memcpy((uint8_t* )&flt2,&Snippets[index].cond.Buffer2,sizeof(float));
+			memcpy((uint8_t* )&flt2,&Snippets[index].Condition.Buffer2,sizeof(float));
 
 			/* Perform mathematical comparison */
-			switch(Snippets[index].cond.MathOperator){
+			switch(Snippets[index].Condition.MathOperator){
 				case MATH_EQUAL:
 					if(flt1 == flt2)
 						return true;
