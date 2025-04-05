@@ -226,20 +226,14 @@ typedef struct {
 	uint16_t SingleClickTime;  /* Maximum time for a single click */
 	uint8_t minInterClickTime; /* Minimum time between consecutive clicks */
 	uint8_t maxInterClickTime; /* Maximum time between consecutive clicks */
-} buttonsConfig_t;
+} ButtonsConfig_t;
 
 /* Button properties */
 typedef struct {
-	uint8_t state;         /* Current button state */
-	uint8_t type;          /* Type of button */
-	uint8_t pressedX1Sec;  /* Button pressed for X1 seconds */
-	uint8_t pressedX2Sec;  /* Button pressed for X2 seconds */
-	uint8_t pressedX3Sec;  /* Button pressed for X3 seconds */
-	uint8_t releasedY1Sec; /* Button released for Y1 seconds */
-	uint8_t releasedY2Sec; /* Button released for Y2 seconds */
-	uint8_t releasedY3Sec; /* Button released for Y3 seconds */
-	uint8_t events;        /* Event status */
-} button_t;
+	uint8_t State; /* Current button state */
+	uint8_t Type;  /* Type of button */
+	uint8_t Event; /* Event status */
+} Button_t;
 
 /* Time representation */
 typedef struct {
@@ -260,7 +254,7 @@ typedef struct {
 
 /* BOS system configuration structure */
 typedef struct {
-	buttonsConfig_t buttons; /* Button configuration */
+	ButtonsConfig_t buttons; /* Button configuration */
 	uint32_t clibaudrate;    /* CLI baud rate */
 	uint8_t daylightsaving;  /* Daylight saving mode */
 	uint8_t hourformat;      /* Hour format (12h/24h) */
@@ -653,7 +647,7 @@ extern uint64_t remoteBuffer;
 extern uint8_t requestFormat;
 
 extern snippet_t snippets[MAX_SNIPPETS];
-extern button_t button[NumOfPorts + 1];
+extern Button_t Button[NumOfPorts + 1];
 extern BOS_t BOS;
 extern BOS_Status responseStatus;
 extern BOSOptionByte_t OptionByte;

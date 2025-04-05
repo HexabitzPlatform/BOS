@@ -408,13 +408,13 @@ BOS_Status ParseSnippetCondition(char *string){
 			/* Store button event type */
 			if(!strncmp(&string[3],"clicked",7)){
 				currentSnippet->cond.buffer1[1] =CLICKED;
-				if(!(button[port].events & BUTTON_EVENT_CLICKED)){
+				if(!(Button[port].Event & BUTTON_EVENT_CLICKED)){
 					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
 			else if(!strncmp(&string[3],"double clicked",14)){
 				currentSnippet->cond.buffer1[1] =DBL_CLICKED;
-				if(!(button[port].events & BUTTON_EVENT_DBL_CLICKED)){
+				if(!(Button[port].Event & BUTTON_EVENT_DBL_CLICKED)){
 					SetButtonEvents(port,DBL_CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
@@ -501,7 +501,7 @@ bool CheckSnippetCondition(uint8_t index){
 		case SNIP_COND_BUTTON_EVENT:
 			temp8 =snippets[index].cond.buffer1[0]; /* Get button port */
 			/* Check if button state matches Snippet button event */
-			if(snippets[index].cond.buffer1[1] == button[temp8].state)
+			if(snippets[index].cond.buffer1[1] == Button[temp8].State)
 				return true;
 			else
 				return false;

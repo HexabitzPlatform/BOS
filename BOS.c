@@ -517,21 +517,21 @@ BOS_Status LoadEEbuttons(void){
 			temp8 =(uint8_t )(temp16 >> 8);
 			if(((temp8 >> 4) == i + 1) && ((temp8 & 0x0F) != NONE))									// This is same port and button type is not none
 			{
-				button[i + 1].type =temp8 & 0x0F;
-				button[i + 1].events =(uint8_t )temp16;
+				Button[i + 1].Type =temp8 & 0x0F;
+				Button[i + 1].Event =(uint8_t )temp16;
 				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 1,&temp16);
-				button[i + 1].pressedX1Sec =(uint8_t )(temp16 >> 8);
-				button[i + 1].releasedY1Sec =(uint8_t )temp16;
+//				button[i + 1].pressedX1Sec =(uint8_t )(temp16 >> 8);
+//				button[i + 1].releasedY1Sec =(uint8_t )temp16;
 				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 2,&temp16);
-				button[i + 1].pressedX2Sec =(uint8_t )(temp16 >> 8);
-				button[i + 1].releasedY2Sec =(uint8_t )temp16;
+//				button[i + 1].pressedX2Sec =(uint8_t )(temp16 >> 8);
+//				button[i + 1].releasedY2Sec =(uint8_t )temp16;
 				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 3,&temp16);
-				button[i + 1].pressedX3Sec =(uint8_t )(temp16 >> 8);
-				button[i + 1].releasedY3Sec =(uint8_t )temp16;
+//				button[i + 1].pressedX3Sec =(uint8_t )(temp16 >> 8);
+//				button[i + 1].releasedY3Sec =(uint8_t )temp16;
 				/* Setup the button and its events */
-				AddPortButton(button[i + 1].type,i + 1);
+				AddPortButton(Button[i + 1].Type,i + 1);
 //				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),((button[i + 1].events & BUTTON_EVENT_DBL_CLICKED) >> 1),button[i + 1].pressedX1Sec,button[i + 1].pressedX2Sec,button[i + 1].pressedX3Sec,button[i + 1].releasedY1Sec,button[i + 1].releasedY2Sec,button[i + 1].releasedY3Sec,BUTTON_EVENT_MODE_CLEAR);
-				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),BUTTON_EVENT_MODE_CLEAR);
+				SetButtonEvents(i + 1,(Button[i + 1].Event & BUTTON_EVENT_CLICKED),BUTTON_EVENT_MODE_CLEAR);
 			}
 		}
 	}
