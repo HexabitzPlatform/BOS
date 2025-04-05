@@ -170,7 +170,7 @@ typedef enum {
 	FMT_INT32,      /* Signed 32-bit integer */
 	FMT_FLOAT,      /* Floating-point number */
 	FMT_BOOL        /* Boolean value (true/false) */
-} varFormat_t;
+} VariableFormat_t;
 
 /* BOS system status and error codes */
 typedef enum {
@@ -277,7 +277,7 @@ typedef struct {
 /* Module parameters */
 typedef struct {
 	void *paramPtr;          /* Pointer to parameter data */
-	varFormat_t paramFormat; /* Format of the parameter */
+	VariableFormat_t paramFormat; /* Format of the parameter */
 	char *paramName;         /* Name of the parameter */
 } module_param_t;
 
@@ -777,12 +777,12 @@ extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, 
 // extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
  extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
  /* ===================== Remote Variable Handling APIs ==================== */
-extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, varFormat_t *remoteFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteVarAddress, varFormat_t requestedFormat, uint32_t timeout);
-extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString, varFormat_t *remoteFormat, uint32_t timeout);
-extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t remoteVarAddress, varFormat_t format, uint32_t timeout);
-//extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout);
-extern uint8_t AddBOSvar(varFormat_t format, uint32_t address);
+extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t *remoteFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t requestedFormat, uint32_t timeout);
+extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString, VariableFormat_t *remoteFormat, uint32_t timeout);
+extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t remoteVarAddress, VariableFormat_t format, uint32_t timeout);
+//extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,VariableFormat_t format,uint32_t timeout);
+extern uint8_t AddBOSvar(VariableFormat_t format, uint32_t address);
 //extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1, float var2, float var3);
 //extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
 

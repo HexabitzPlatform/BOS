@@ -112,7 +112,7 @@ uint8_t myID =0;
 BOS_t BOS;
 BOSOptionByte_t OptionByte ={0};
 BOS_Status responseStatus =BOS_OK;
-varFormat_t remoteVarFormat =FMT_UINT8;
+VariableFormat_t remoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
 BOS_t BOS_default ={.cliBaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
 	.Buttons.SingleClickTime = DEF_BUTTON_CLICK,.Buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
@@ -154,7 +154,7 @@ extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t time
 void EE_FormatForFactoryReset(void);
 uint8_t IsModuleParameter(char *name);
 BOS_Status ClearEEportsDir(void);
-BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout/*,uint8_t force*/);
+BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,VariableFormat_t format,uint32_t timeout/*,uint8_t force*/);
 
 /* Find Route related APIs ****************************************************/
 uint8_t minArr(uint8_t *arr,uint8_t *Q);
@@ -1792,7 +1792,7 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 
 /***************************************************************************/
 /* @breif: Write a value to a remote module.
- * @Note: in the destination call AddBOSvar(varFormat_t format,uint32_t address) to assign an index to a new BOS variable.
+ * @Note: in the destination call AddBOSvar(VariableFormat_t format,uint32_t address) to assign an index to a new BOS variable.
  * @param1: module: Remote module ID.
  * @param2: localVarAddress: Local memory address (RAM).
  * @param3: remoteVarAddress: Remote memory address (RAM). Write either BOS variables from 1 to MAX_BOS_VARS or a virtual RAM address.
@@ -1800,7 +1800,7 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
  * @param5: timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
  * @retval: BOS_Status.
  */
-BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout/*,uint8_t force*/){
+BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remoteVarAddress,VariableFormat_t format,uint32_t timeout/*,uint8_t force*/){
 
 //	uint8_t response;
 	uint16_t code;
@@ -1952,7 +1952,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
 // format: Local format sent to remote module (FMT_UINT8, FMT_INT8, FMT_UINT16, FMT_INT16, FMT_UINT32, FMT_INT32, FMT_FLOAT, FMT_BOOL)
 // timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
 // */
-//BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,varFormat_t format,uint32_t timeout){
+//BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,VariableFormat_t format,uint32_t timeout){
 //	return WriteToRemote(module,localAddress,remoteAddress,format,timeout,1);
 //}
 
@@ -1964,7 +1964,7 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
  * @param4: timeout: Read timeout in msec.
  * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
-uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,varFormat_t *remoteFormat,uint32_t timeout){
+uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,VariableFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
 	remoteBuffer = REMOTE_BOS_VAR;
 	
@@ -1996,7 +1996,7 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,varFormat_t *re
  * @param1: timeout: Read timeout in msec.
  * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
-uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,varFormat_t requestedFormat,uint32_t timeout){
+uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,VariableFormat_t requestedFormat,uint32_t timeout){
 	/* Reset local buffer */
 	remoteBuffer = REMOTE_MEMORY_ADD;
 	
@@ -2032,7 +2032,7 @@ uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,varFormat_t 
  * @param4: timeout: Read timeout in msec.
  * @retval: pointer to the remote value. Cast this pointer to match the appropriate format.
  */
-uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFormat,uint32_t timeout){
+uint32_t* ReadRemoteParam(uint8_t module,char *paramString,VariableFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
 	remoteBuffer = REMOTE_MODULE_PARAM;
 	
@@ -2059,7 +2059,7 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFo
 
 /***************************************************************************/
 /* @breif:  Write a value to a remote module.
- * @Note:   in the destination call AddBOSvar(varFormat_t format,uint32_t address) to assign an index to a new BOS variable.
+ * @Note:   in the destination call AddBOSvar(VariableFormat_t format,uint32_t address) to assign an index to a new BOS variable.
  * @param1: dstModuleID: Remote module ID.
  * @param2: localVarAddress: Local memory address (RAM).
  * @param3: remoteVarAddress: Remote memory address (RAM). Write either BOS variables from 1 to MAX_BOS_VARS or a virtual RAM address.
@@ -2067,7 +2067,7 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,varFormat_t *remoteFo
  * @param5: timeout: Write confirmation timeout in msec. Use 0 to disable confirmation.
  * @retval: BOS_Status.
  */
-BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t remoteVarAddress,varFormat_t format,uint32_t timeout){
+BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t remoteVarAddress,VariableFormat_t format,uint32_t timeout){
 	return WriteToRemote(dstModuleID,localVarAddress,remoteVarAddress,format,timeout/*,0*/);
 }
 
@@ -2078,7 +2078,7 @@ BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t rem
  * @param2: address: Local memory address (RAM).
  * @retval: a new index to BOS variable.
  */
-uint8_t AddBOSvar(varFormat_t format,uint32_t address){
+uint8_t AddBOSvar(VariableFormat_t format,uint32_t address){
 	for(uint8_t v =0; v < MAX_BOS_VARS; v++){
 		if((BOS_var_reg[v] & 0x000F) == 0)		// Index not assigned yet
 		{

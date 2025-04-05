@@ -62,7 +62,7 @@ extern volatile uint8_t RemoteResponseFlag;
 extern volatile uint8_t numOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
 //extern uint8_t UARTRxBufIndex[NumOfPorts];
-extern varFormat_t remoteVarFormat;
+extern VariableFormat_t remoteVarFormat;
 
 /* Exported Messaging tasks handles ****************************************/
 extern TaskHandle_t UserTaskHandle;
@@ -1028,7 +1028,7 @@ void PxMessagingTask(void *argument){
 						if(remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)
 						{
 							/* Read variable according to its format */
-							remoteVarFormat =(varFormat_t )cMessage[port - 1][shift];
+							remoteVarFormat =(VariableFormat_t )cMessage[port - 1][shift];
 							switch(cMessage[port - 1][shift]) /* Remote format */
 							{/* Note that cMessage[port-1][5+shift] can be unaligned.
 								That's why we cannot use simple memory access */
