@@ -114,8 +114,8 @@ BOSOptionByte_t OptionByte ={0};
 BOS_Status responseStatus =BOS_OK;
 varFormat_t remoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.debounce =DEF_BUTTON_DEBOUNCE,
-	.buttons.singleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
+BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.Debounce =DEF_BUTTON_DEBOUNCE,
+	.buttons.SingleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
 	.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24,
 	.disableCLI = false};
 
@@ -444,16 +444,16 @@ BOS_Status LoadEEparams(void){
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
 	if(!status1)
-		BOS.buttons.debounce =temp1;
+		BOS.buttons.Debounce =temp1;
 	else
-		BOS.buttons.debounce =BOS_default.buttons.debounce;
+		BOS.buttons.Debounce =BOS_default.buttons.Debounce;
 	
 	/* Read Button single click time */
 	status1 =EE_ReadVariable(_EE_PARAMS_SINGLE_CLICK,&temp1);
 	if(!status1)
-		BOS.buttons.singleClickTime =temp1;
+		BOS.buttons.SingleClickTime =temp1;
 	else
-		BOS.buttons.singleClickTime =BOS_default.buttons.singleClickTime;
+		BOS.buttons.SingleClickTime =BOS_default.buttons.SingleClickTime;
 	
 	/* Read Button double click time (min and max inter-click) */
 	status1 =EE_ReadVariable(_EE_PARAMS_DBL_CLICK,&temp1);
@@ -683,10 +683,10 @@ BOS_Status SaveEEparams(void){
 //	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
 
 	/* Save Button debounce */
-	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.debounce);
+	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.Debounce);
 	
 	/* Save Button single click time */
-	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,BOS.buttons.singleClickTime);
+	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,BOS.buttons.SingleClickTime);
 	
 	/* Save Button double click time (min and max inter-click) */
 	EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.daylightsaving);

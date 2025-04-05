@@ -100,13 +100,6 @@ typedef enum  {
 	ONOFF_NC       /* On/Off button, normally closed */
 }ButtonType_e;
 
-/* Button states */
-typedef enum  {
-	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED/*, PRESSED*/, RELEASED
-//	,PRESSED_FOR_X1_SEC, PRESSED_FOR_X2_SEC, PRESSED_FOR_X3_SEC,
-//	RELEASED_FOR_Y1_SEC, RELEASED_FOR_Y2_SEC, RELEASED_FOR_Y3_SEC
-}ButtonState_e;
-
 /* Boot statuses */
 enum BootStatus_e {
 	POWER_ON_BOOT, /* Booting from power-on */
@@ -115,7 +108,7 @@ enum BootStatus_e {
 
 /* Basic colors */
 enum BasicColors {
-	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN,AQUA,PURPLE,LIGHTBLUE,ORANGE,INDIGO,
+	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN, AQUA, PURPLE, LIGHTBLUE, ORANGE, INDIGO,
 };
 
 /* RGB LED operating modes */
@@ -134,18 +127,23 @@ enum RGBLedMode {
 	RGB_DIM_DOWN_UP_WAIT  /* Brightness down-up with wait */
 };
 
-/* RTC time periods (AM/PM) */
-typedef enum{
-	RTC_AM = 1, /* AM (Before Noon) */
-	RTC_PM      /* PM (After Noon) */
-}TimePeriod_e;
-
 /* Daylight saving adjustments */
 enum Daylight_e {
 	DAYLIGHT_SUB1H = -1, /* Subtract 1 hour for daylight saving */
 	DAYLIGHT_NONE = 0,   /* No daylight saving adjustment */
 	DAYLIGHT_ADD1H = 1   /* Add 1 hour for daylight saving */
 };
+
+/***************************************************************************/
+/* Typedef Definitions *****************************************************/
+/***************************************************************************/
+
+/* Typedef Enumeration Definitions *****************************************/
+/* RTC time periods (AM/PM) */
+typedef enum {
+	RTC_AM =1, /* AM (Before Noon) */
+	RTC_PM     /* PM (After Noon) */
+} TimePeriod_e;
 
 /* Months of the year */
 typedef enum{
@@ -157,11 +155,11 @@ typedef enum{
 	MONDAY =1, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
 } Weekdays_e;
 
-/***************************************************************************/
-/* Typedef Definitions *****************************************************/
-/***************************************************************************/
+/* Button states */
+typedef enum {
+	OFF =1, ON, OPEN, CLOSED, CLICKED, DBL_CLICKED, RELEASED
+} ButtonState_e;
 
-/* Typedef Enumeration Definitions *****************************************/
 /* Variable data formats */
 typedef enum {
 	FMT_UINT8 = 1,  /* Unsigned 8-bit integer */
@@ -224,8 +222,8 @@ typedef enum {
 /* Typedef Structure Definitions *******************************************/
 /* Button configuration settings */
 typedef struct {
-	uint16_t debounce;         /* Debounce time in milliseconds */
-	uint16_t singleClickTime;  /* Maximum time for a single click */
+	uint16_t Debounce;         /* Debounce time in milliseconds */
+	uint16_t SingleClickTime;  /* Maximum time for a single click */
 	uint8_t minInterClickTime; /* Minimum time between consecutive clicks */
 	uint8_t maxInterClickTime; /* Maximum time between consecutive clicks */
 } buttonsConfig_t;
