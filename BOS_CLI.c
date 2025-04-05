@@ -69,7 +69,7 @@ void prvCLITask(void *pvParameters){
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 
 	/* Restore baud rate to the default for all ports except the PC communication port */
-	if(BOS.clibaudrate != DEF_ARRAY_BAUDRATE){
+	if(BOS.cliBaudrate != DEF_ARRAY_BAUDRATE){
 		for(uint8_t port =1; port <= NumOfPorts; port++){
 			if(port != PcPort)
 				UpdateBaudrate(port,DEF_ARRAY_BAUDRATE);

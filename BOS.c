@@ -114,10 +114,10 @@ BOSOptionByte_t OptionByte ={0};
 BOS_Status responseStatus =BOS_OK;
 varFormat_t remoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
+BOS_t BOS_default ={.cliBaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
 	.Buttons.SingleClickTime = DEF_BUTTON_CLICK,.Buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
-	.Buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24,
-	.disableCLI = false};
+	.Buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.DaylightSaving =DAYLIGHT_NONE, .HourFormat =24,
+	.DisableCLI = false};
 
 /* Exported internally: CLI command list ***********************************/
 typedef struct xCOMMAND_INPUT_LIST {
@@ -470,33 +470,33 @@ BOS_Status LoadEEparams(void){
 	status1 =EE_ReadVariable(_EE_CLI_BAUD,&temp1);
 	status2 =EE_ReadVariable(_EE_CLI_BAUD + 1,&temp2);
 	if(!status1 && !status2){
-		BOS.clibaudrate =(uint32_t )temp1 | (((uint32_t )temp2) << 16);
+		BOS.cliBaudrate =(uint32_t )temp1 | (((uint32_t )temp2) << 16);
 	}
 	else if(CLI_LOW_Baudrate_Flag)
-		BOS.clibaudrate = CLI_BAUDRATE_1;
+		BOS.cliBaudrate = CLI_BAUDRATE_1;
 	else
-		BOS.clibaudrate =BOS_default.clibaudrate;
+		BOS.cliBaudrate =BOS_default.cliBaudrate;
 	
 	/* Read RTC hourformat and daylightsaving */
 	status1 =EE_ReadVariable(_EE_PARAMS_RTC,&temp1);
 	if(!status1){
-		BOS.daylightsaving =(int8_t )temp1;
-		BOS.hourformat =(uint8_t )(temp1 >> 8);
+		BOS.DaylightSaving =(int8_t )temp1;
+		BOS.HourFormat =(uint8_t )(temp1 >> 8);
 	}
 	else{
-		BOS.hourformat =24;
-		BOS.daylightsaving =DAYLIGHT_NONE;
+		BOS.HourFormat =24;
+		BOS.DaylightSaving =DAYLIGHT_NONE;
 	}
 	
 	/* Read disableCLI */
 	status1 =EE_ReadVariable(_EE_PARAMS_DISABLE_CLI,&temp1);
 	/* Found the variable (EEPROM is not cleared) */
 	if(!status1){
-		BOS.disableCLI =(uint8_t )temp1;
+		BOS.DisableCLI =(uint8_t )temp1;
 		/* Couldn't find the variable, load default config */
 	}
 	else{
-		BOS.disableCLI =BOS_default.disableCLI;
+		BOS.DisableCLI =BOS_default.DisableCLI;
 	}
 	
 	return result;
@@ -689,17 +689,17 @@ BOS_Status SaveEEparams(void){
 	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,BOS.Buttons.SingleClickTime);
 	
 	/* Save Button double click time (min and max inter-click) */
-	EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.daylightsaving);
+	EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.DaylightSaving);
 	
 	/* Save CLI baudrate */
-	EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.clibaudrate);
-	EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.clibaudrate >> 16));
+	EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.cliBaudrate);
+	EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.cliBaudrate >> 16));
 	
 	/* Save RTC hour format and daylight saving */
-	EE_WriteVariable(_EE_PARAMS_RTC,((uint16_t )BOS.hourformat << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC,((uint16_t )BOS.HourFormat << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 	
 	/* Save disableCLI */
-	EE_WriteVariable(_EE_PARAMS_DISABLE_CLI,(uint16_t )BOS.disableCLI);
+	EE_WriteVariable(_EE_PARAMS_DISABLE_CLI,(uint16_t )BOS.DisableCLI);
 	
 	return result;
 }
@@ -860,10 +860,10 @@ void BOS_Init(void){
 		Delay_ms_no_rtos(50);
 		Module_Peripheral_Init();
 		
-		BOS.clibaudrate = CLI_BAUDRATE_1;
+		BOS.cliBaudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
 		for(uint8_t port =1; port <= NumOfPorts; port++){
-			UpdateBaudrate(port,BOS.clibaudrate);
+			UpdateBaudrate(port,BOS.cliBaudrate);
 		}
 	}
 	else{

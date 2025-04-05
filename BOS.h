@@ -255,12 +255,12 @@ typedef struct {
 /* BOS system configuration structure */
 typedef struct {
 	ButtonsConfig_t Buttons; /* Button configuration */
-	uint32_t clibaudrate;    /* CLI baud rate */
-	uint8_t daylightsaving;  /* Daylight saving mode */
-	uint8_t hourformat;      /* Hour format (12h/24h) */
+	uint32_t cliBaudrate;    /* CLI baud rate */
+	uint8_t DaylightSaving;  /* Daylight saving mode */
+	uint8_t HourFormat;      /* Hour format (12h/24h) */
 	Time_t Time;         /* Current system time (not saved) */
 	Data_t Date;         /* Current system date (not saved) */
-	uint8_t disableCLI;      /* Disable command-line interface */
+	uint8_t DisableCLI;      /* Disable command-line interface */
 } BOS_t;
 
 /* BOS message option byte structure */

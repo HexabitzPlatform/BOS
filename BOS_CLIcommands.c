@@ -1011,9 +1011,9 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){
 			temp2 =atoi((const char* )pcParameterString2);
 			if(temp2 <= DEF_CLI_BAUDRATE){
-				BOS.clibaudrate =temp2;
-				EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.clibaudrate);
-				EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.clibaudrate >> 16));
+				BOS.cliBaudrate =temp2;
+				EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.cliBaudrate);
+				EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.cliBaudrate >> 16));
 				extraMessage =1;
 			}
 			else
@@ -1207,7 +1207,7 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.clibaudrate);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.cliBaudrate);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"debounce",xParameterStringLength1 - 4)){
 			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.Debounce);
@@ -1325,9 +1325,9 @@ static portBASE_TYPE timeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	
 	GetTimeDate();
 	/* Respond to the command */
-	if(BOS.hourformat == 24)
+	if(BOS.HourFormat == 24)
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage24,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec);
-	else if(BOS.hourformat == 12){
+	else if(BOS.HourFormat == 12){
 		if(BOS.Time.AMPM == RTC_AM)
 			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec,"AM");
 		else if(BOS.Time.AMPM == RTC_PM)
