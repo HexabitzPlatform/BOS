@@ -555,10 +555,10 @@ BOS_Status LoadROsnippets(void){
 	/* Load Snippets */
 	for(uint8_t s =0; s < MAX_SNIPPETS; s++){
 		// Load conditions starting at RO_MID_ADDRESS
-		for(i =0; i < sizeof(snippet_t); i++)
+		for(i =0; i < sizeof(Snippet_t); i++)
 			snipBuffer[i] =(*(__IO uint8_t* )(currentAdd++));
-		memcpy((uint8_t* )&snippets[s],(uint8_t* )&snipBuffer[1],sizeof(snippet_t));
-		memset(snipBuffer,0,sizeof(snippet_t));
+		memcpy((uint8_t* )&Snippets[s],(uint8_t* )&snipBuffer[1],sizeof(Snippet_t));
+		memset(snipBuffer,0,sizeof(Snippet_t));
 		i =0;
 		// Load commands until you get next 0xFE
 		currentAdd =currentAdd + 20;
@@ -570,15 +570,15 @@ BOS_Status LoadROsnippets(void){
 		if(snipBuffer[i - 1] != 0)
 			++i;	// String termination char was not recorded, then add one
 		// Allocate buffer for the Snippet commands
-		snippets[s].cmd =(char* )malloc(i);
-		if(snippets[s].cmd == NULL){
-			memset(&snippets[s],0,sizeof(snippet_t));
+		Snippets[s].CMD =(char* )malloc(i);
+		if(Snippets[s].CMD == NULL){
+			memset(&Snippets[s],0,sizeof(Snippet_t));
 			free(snipBuffer);
 			return BOS_ERR_SNIP_MEM_FULL;
 		}
 		else{
 			// Copy the command
-			memcpy(snippets[s].cmd,snipBuffer,i);
+			memcpy(Snippets[s].CMD,snipBuffer,i);
 			++numOfRecordedSnippets;		// Record a successful Snippet
 			memset(snipBuffer,0,i);
 		}

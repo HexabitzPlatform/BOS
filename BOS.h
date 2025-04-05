@@ -292,9 +292,9 @@ typedef struct {
 /* Snippet properties */
 typedef struct {
 	SnippetConditions_t cond; /* Snippet conditionals */
-	char *cmd;     /* Command string */
-	uint8_t state; /* Snippet state */
-} snippet_t;
+	char *CMD;     /* Command string */
+	uint8_t State; /* Snippet state */
+} Snippet_t;
 
 /* Receiving default values for H1DR5 module */
 typedef struct {
@@ -327,12 +327,6 @@ typedef struct {
 /* Button Events Definition */
 #define BUTTON_EVENT_CLICKED                 0x01
 #define BUTTON_EVENT_DBL_CLICKED             0x02
-//#define BUTTON_EVENT_PRESSED_FOR_X1_SEC      0x04
-//#define BUTTON_EVENT_PRESSED_FOR_X2_SEC      0x08
-//#define BUTTON_EVENT_PRESSED_FOR_X3_SEC      0x10
-//#define BUTTON_EVENT_RELEASED_FOR_Y1_SEC     0x20
-//#define BUTTON_EVENT_RELEASED_FOR_Y2_SEC     0x40
-//#define BUTTON_EVENT_RELEASED_FOR_Y3_SEC     0x80
 #define BUTTON_EVENT_MODE_CLEAR              0
 #define BUTTON_EVENT_MODE_OR                 1
 
@@ -646,7 +640,7 @@ extern volatile uint32_t* index_dma[6];
 extern uint64_t remoteBuffer;
 extern uint8_t requestFormat;
 
-extern snippet_t snippets[MAX_SNIPPETS];
+extern Snippet_t Snippets[MAX_SNIPPETS];
 extern Button_t Button[NumOfPorts + 1];
 extern BOS_t BOS;
 extern BOS_Status responseStatus;

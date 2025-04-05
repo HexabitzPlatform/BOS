@@ -27,7 +27,7 @@ static char *pcEndOfCommandOutputString ="\r\n[Press ENTER to execute the previo
 char pcWelcomePortMessage[40] ={0};
 uint16_t timedoutMsg = 0;
 //uint8_t numOfRecordedSnippets =0;
-snippet_t snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
+Snippet_t Snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
 /* Exported variables ******************************************************/
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
@@ -318,13 +318,13 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	int currentLength =0;
 
 	/* Reference to the last recorded snippet */
-	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets - 1];
+	Snippet_t *currentSnippet =&Snippets[numOfRecordedSnippets - 1];
 
 	/* Check for codes */
 	switch(code){
 		case SNIPPET_ACTIVATE:
 			/* Activate the last recorded snippet */
-			currentSnippet->state = true;
+			currentSnippet->State = true;
 			/* Save snippet state to read-only memory */
 			SaveSnippetsToRO();
 			break;
@@ -336,35 +336,35 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 			/* Handle adding commands to the snippet */
 		case SNIPPET_COMMANDS:
 			/* Check if a command buffer already exists */
-			if(currentSnippet->cmd != NULL){
+			if(currentSnippet->CMD != NULL){
 				/* Reallocate memory to accommodate the new command */
-				currentLength =strlen(currentSnippet->cmd);
+				currentLength =strlen(currentSnippet->CMD);
 
 				/* Use a temporary pointer to avoid memory leaks in case of allocation failure */
 				/* Add two more bytes for the ENTER key (0x13) and end of string (0x00) */
-				char *temp =(char* )realloc(currentSnippet->cmd,currentLength + strlen(string) + 2);
+				char *temp =(char* )realloc(currentSnippet->CMD,currentLength + strlen(string) + 2);
 
 				if(temp == NULL){
 					return BOS_ERR_SNIP_MEM_FULL;  /* Memory allocation failed */
 				}
 
-				currentSnippet->cmd =temp;
+				currentSnippet->CMD =temp;
 
 				/* Append the new command */
-				*(currentSnippet->cmd + currentLength) =0x13;  /* ENTER key separator (0x13) */
-				strcpy(currentSnippet->cmd + currentLength + 1,string);
+				*(currentSnippet->CMD + currentLength) =0x13;  /* ENTER key separator (0x13) */
+				strcpy(currentSnippet->CMD + currentLength + 1,string);
 			}
 			else{
 				/* Allocate a new buffer for the command */
-				currentSnippet->cmd =(char* )malloc(strlen(string) + 1);
+				currentSnippet->CMD =(char* )malloc(strlen(string) + 1);
 
-				if(currentSnippet->cmd == NULL){
-					memset(currentSnippet,0,sizeof(snippet_t));  /* Reset snippet structure */
+				if(currentSnippet->CMD == NULL){
+					memset(currentSnippet,0,sizeof(Snippet_t));  /* Reset snippet structure */
 					return BOS_ERR_SNIP_MEM_FULL;  /* Memory allocation failed */
 				}
 
 				/* Copy the command into the allocated buffer */
-				strcpy(currentSnippet->cmd,string);
+				strcpy(currentSnippet->CMD,string);
 			}
 			break;
 			
@@ -387,13 +387,13 @@ BOS_Status ParseSnippetCondition(char *string){
 	uint8_t modPar2 =0;
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 
-	/* Ensure there is available memory for storing snippets */
+	/* Ensure there is available memory for storing Snippets */
 	if(numOfRecordedSnippets >= MAX_SNIPPETS){
 		return BOS_ERR_SNIP_MEM_FULL;
 	}
 
 	/* Initialize snippet structure */
-	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets];
+	Snippet_t *currentSnippet =&Snippets[numOfRecordedSnippets];
 	memset(&currentSnippet->cond,0,sizeof(SnippetConditions_t));
 	
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
@@ -495,13 +495,13 @@ bool CheckSnippetCondition(uint8_t index){
 	float flt2 =0.0f;
 	
 	/* Check conditions based on Snippet type */
-	switch(snippets[index].cond.ConditionType){
+	switch(Snippets[index].cond.ConditionType){
 
 		/* Button Event */
 		case SNIP_COND_BUTTON_EVENT:
-			temp8 =snippets[index].cond.Buffer1[0]; /* Get button port */
+			temp8 =Snippets[index].cond.Buffer1[0]; /* Get button port */
 			/* Check if button state matches Snippet button event */
-			if(snippets[index].cond.Buffer1[1] == Button[temp8].State)
+			if(Snippets[index].cond.Buffer1[1] == Button[temp8].State)
 				return true;
 			else
 				return false;
@@ -514,12 +514,12 @@ bool CheckSnippetCondition(uint8_t index){
 		/* Module Parameter Compared to Constant */
 		case SNIP_COND_MODULE_PARAM_CONST:
 			/* Get the module parameter value */
-			GetModuleParameter(snippets[index].cond.Buffer1[1] , &flt1);
+			GetModuleParameter(Snippets[index].cond.Buffer1[1] , &flt1);
 			/* This buffer can be misaligned and cause hardfault */
-			memcpy((uint8_t* )&flt2,&snippets[index].cond.Buffer2,sizeof(float));
+			memcpy((uint8_t* )&flt2,&Snippets[index].cond.Buffer2,sizeof(float));
 
 			/* Perform mathematical comparison */
-			switch(snippets[index].cond.MathOperator){
+			switch(Snippets[index].cond.MathOperator){
 				case MATH_EQUAL:
 					if(flt1 == flt2)
 						return true;
@@ -573,17 +573,17 @@ BOS_Status ExecuteSnippet(void){
 	 * only one command console interface will be active at a time. */
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 	
-	/* Loop through all recorded snippets */
+	/* Loop through all recorded Snippets */
 	for(snippetIndex =0; snippetIndex < numOfRecordedSnippets; snippetIndex++){
-		/* Process only active snippets */
-		if(snippets[snippetIndex].state){
+		/* Process only active Snippets */
+		if(Snippets[snippetIndex].State){
 			/* Process Snippet condition */
 			if(CheckSnippetCondition(snippetIndex)){
 				/* Disable CLI response to prevent unnecessary output */
 				OptionByte.Response = BOS_RESPONSE_MSG;
 
 				/* Loop over all recorded commands within the snippet */
-				while(ParseSnippetCommand(snippets[snippetIndex].cmd,(int8_t* )&cInputString) != false){
+				while(ParseSnippetCommand(Snippets[snippetIndex].CMD,(int8_t* )&cInputString) != false){
 					/* Pass the parsed command to the CLI command parser */
 					CLI_CommandParser(PcPort,false,cInputString,pcOutputString);
 					
@@ -606,7 +606,7 @@ bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
 	static char *ptrEnd = NULL;
 
 	/* Return false if the snippet command buffer is NULL */
-	if(snippets[numOfRecordedSnippets - 1].cmd == NULL)
+	if(Snippets[numOfRecordedSnippets - 1].CMD == NULL)
 		return false;
 
 	/* Initialize ptrStart if it's the first call */
