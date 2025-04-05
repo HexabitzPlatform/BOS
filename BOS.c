@@ -787,7 +787,7 @@ uint8_t IsLowerCLIbaud(void){
  */
 uint8_t IsModuleParameter(char *name){
 	for(uint8_t i =0; i < NUM_MODULE_PARAMS; i++){
-		if(!strcmp(name,(const char* )(modParam[i].paramName)))
+		if(!strcmp(name,(const char* )(ModuleParam[i].ParamName)))
 			return i + 1;
 	}
 	return 0;

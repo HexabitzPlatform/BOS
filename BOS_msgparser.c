@@ -898,8 +898,8 @@ void PxMessagingTask(void *argument){
 							}
 							else{
 // Parameter exists. Get its pointer
-								temp32 =(uint32_t )modParam[temp - 1].paramPtr;
-								messageParams[0] =modParam[temp - 1].paramFormat;
+								temp32 =(uint32_t )ModuleParam[temp - 1].ParamPtr;
+								messageParams[0] =ModuleParam[temp - 1].ParamFormat;
 // Send parameter according to its format
 								switch(messageParams[0]) // requested format
 								{

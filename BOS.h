@@ -276,22 +276,22 @@ typedef struct {
 
 /* Module parameters */
 typedef struct {
-	void *paramPtr;          /* Pointer to parameter data */
-	VariableFormat_t paramFormat; /* Format of the parameter */
-	char *paramName;         /* Name of the parameter */
-} module_param_t;
+	void *ParamPtr;          /* Pointer to parameter data */
+	VariableFormat_t ParamFormat; /* Format of the parameter */
+	char *ParamName;         /* Name of the parameter */
+} ModuleParam_t;
 
 /* Snippet conditionals */
 typedef struct {
-	uint8_t conditionType; /* Type of condition */
-	uint8_t mathOperator;  /* Mathematical operator */
-	uint8_t buffer1[4];    /* First condition buffer */
-	uint8_t buffer2[4];    /* Second condition buffer */
-} snippetConditions_t;
+	uint8_t ConditionType; /* Type of condition */
+	uint8_t MathOperator;  /* Mathematical operator */
+	uint8_t Buffer1[4];    /* First condition buffer */
+	uint8_t Buffer2[4];    /* Second condition buffer */
+} SnippetConditions_t;
 
 /* Snippet properties */
 typedef struct {
-	snippetConditions_t cond; /* Snippet conditionals */
+	SnippetConditions_t cond; /* Snippet conditionals */
 	char *cmd;     /* Command string */
 	uint8_t state; /* Snippet state */
 } snippet_t;
@@ -327,12 +327,12 @@ typedef struct {
 /* Button Events Definition */
 #define BUTTON_EVENT_CLICKED                 0x01
 #define BUTTON_EVENT_DBL_CLICKED             0x02
-#define BUTTON_EVENT_PRESSED_FOR_X1_SEC      0x04
-#define BUTTON_EVENT_PRESSED_FOR_X2_SEC      0x08
-#define BUTTON_EVENT_PRESSED_FOR_X3_SEC      0x10
-#define BUTTON_EVENT_RELEASED_FOR_Y1_SEC     0x20
-#define BUTTON_EVENT_RELEASED_FOR_Y2_SEC     0x40
-#define BUTTON_EVENT_RELEASED_FOR_Y3_SEC     0x80
+//#define BUTTON_EVENT_PRESSED_FOR_X1_SEC      0x04
+//#define BUTTON_EVENT_PRESSED_FOR_X2_SEC      0x08
+//#define BUTTON_EVENT_PRESSED_FOR_X3_SEC      0x10
+//#define BUTTON_EVENT_RELEASED_FOR_Y1_SEC     0x20
+//#define BUTTON_EVENT_RELEASED_FOR_Y2_SEC     0x40
+//#define BUTTON_EVENT_RELEASED_FOR_Y3_SEC     0x80
 #define BUTTON_EVENT_MODE_CLEAR              0
 #define BUTTON_EVENT_MODE_OR                 1
 
@@ -653,7 +653,7 @@ extern BOS_Status responseStatus;
 extern BOSOptionByte_t OptionByte;
 extern BOSOptionByte_t UserOptionByte;
 extern RemoteDataBuffer_t RemoteDataBuffer;
-extern module_param_t modParam[];
+extern ModuleParam_t ModuleParam[];
 
 #ifndef __N
 extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
