@@ -114,9 +114,9 @@ BOSOptionByte_t OptionByte ={0};
 BOS_Status responseStatus =BOS_OK;
 varFormat_t remoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
-BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .buttons.Debounce =DEF_BUTTON_DEBOUNCE,
-	.buttons.SingleClickTime = DEF_BUTTON_CLICK,.buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
-	.buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24,
+BOS_t BOS_default ={.clibaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
+	.Buttons.SingleClickTime = DEF_BUTTON_CLICK,.Buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
+	.Buttons.maxInterClickTime = DEF_BUTTON_MAX_INTER_CLICK,.daylightsaving =DAYLIGHT_NONE, .hourformat =24,
 	.disableCLI = false};
 
 /* Exported internally: CLI command list ***********************************/
@@ -444,26 +444,26 @@ BOS_Status LoadEEparams(void){
 	/* Read Button debounce */
 	status1 =EE_ReadVariable(_EE_PARAMS_DEBOUNCE,&temp1);
 	if(!status1)
-		BOS.buttons.Debounce =temp1;
+		BOS.Buttons.Debounce =temp1;
 	else
-		BOS.buttons.Debounce =BOS_default.buttons.Debounce;
+		BOS.Buttons.Debounce =BOS_default.Buttons.Debounce;
 	
 	/* Read Button single click time */
 	status1 =EE_ReadVariable(_EE_PARAMS_SINGLE_CLICK,&temp1);
 	if(!status1)
-		BOS.buttons.SingleClickTime =temp1;
+		BOS.Buttons.SingleClickTime =temp1;
 	else
-		BOS.buttons.SingleClickTime =BOS_default.buttons.SingleClickTime;
+		BOS.Buttons.SingleClickTime =BOS_default.Buttons.SingleClickTime;
 	
 	/* Read Button double click time (min and max inter-click) */
 	status1 =EE_ReadVariable(_EE_PARAMS_DBL_CLICK,&temp1);
 	if(!status1){
-		BOS.buttons.minInterClickTime =(uint8_t )temp1;
-		BOS.buttons.maxInterClickTime =(uint8_t )(temp1 >> 8);
+		BOS.Buttons.minInterClickTime =(uint8_t )temp1;
+		BOS.Buttons.maxInterClickTime =(uint8_t )(temp1 >> 8);
 	}
 	else{
-		BOS.buttons.minInterClickTime =BOS_default.buttons.minInterClickTime;
-		BOS.buttons.maxInterClickTime =BOS_default.buttons.maxInterClickTime;
+		BOS.Buttons.minInterClickTime =BOS_default.Buttons.minInterClickTime;
+		BOS.Buttons.maxInterClickTime =BOS_default.Buttons.maxInterClickTime;
 	}
 	
 	/* Read CLI baudrate */
@@ -683,20 +683,20 @@ BOS_Status SaveEEparams(void){
 //	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
 
 	/* Save Button debounce */
-	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.buttons.Debounce);
+	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.Buttons.Debounce);
 	
 	/* Save Button single click time */
-	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,BOS.buttons.SingleClickTime);
+	EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,BOS.Buttons.SingleClickTime);
 	
 	/* Save Button double click time (min and max inter-click) */
-	EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.daylightsaving);
+	EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.daylightsaving);
 	
 	/* Save CLI baudrate */
 	EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.clibaudrate);
 	EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.clibaudrate >> 16));
 	
 	/* Save RTC hour format and daylight saving */
-	EE_WriteVariable(_EE_PARAMS_RTC,((uint16_t )BOS.hourformat << 8) | (uint16_t )BOS.buttons.minInterClickTime);
+	EE_WriteVariable(_EE_PARAMS_RTC,((uint16_t )BOS.hourformat << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 	
 	/* Save disableCLI */
 	EE_WriteVariable(_EE_PARAMS_DISABLE_CLI,(uint16_t )BOS.disableCLI);

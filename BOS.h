@@ -254,7 +254,7 @@ typedef struct {
 
 /* BOS system configuration structure */
 typedef struct {
-	ButtonsConfig_t buttons; /* Button configuration */
+	ButtonsConfig_t Buttons; /* Button configuration */
 	uint32_t clibaudrate;    /* CLI baud rate */
 	uint8_t daylightsaving;  /* Daylight saving mode */
 	uint8_t hourformat;      /* Hour format (12h/24h) */

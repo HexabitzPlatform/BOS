@@ -1022,7 +1022,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"debounce",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= USHRT_MAX){
-				BOS.buttons.Debounce =temp16;
+				BOS.Buttons.Debounce =temp16;
 				EE_WriteVariable(_EE_PARAMS_DEBOUNCE,temp16);
 			}
 			else
@@ -1031,7 +1031,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"singleclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= USHRT_MAX){
-				BOS.buttons.SingleClickTime =temp16;
+				BOS.Buttons.SingleClickTime =temp16;
 				EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,temp16);
 			}
 			else
@@ -1040,8 +1040,8 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"mininterclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= UCHAR_MAX){
-				BOS.buttons.minInterClickTime =temp16;
-				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.buttons.minInterClickTime);
+				BOS.Buttons.minInterClickTime =temp16;
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1049,8 +1049,8 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"maxinterclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= UCHAR_MAX){
-				BOS.buttons.maxInterClickTime =temp16;
-				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.buttons.minInterClickTime);
+				BOS.Buttons.maxInterClickTime =temp16;
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1210,16 +1210,16 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.clibaudrate);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"debounce",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.Debounce);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.Debounce);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"singleclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.SingleClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.SingleClickTime);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"mininterclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.minInterClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.minInterClickTime);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"maxinterclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.maxInterClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.maxInterClickTime);
 		}
 		else
 			result =BOS_ERR_WrongParam;
