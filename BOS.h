@@ -237,20 +237,20 @@ typedef struct {
 
 /* Time representation */
 typedef struct {
-	uint16_t msec;   /* Milliseconds */
-	uint8_t seconds; /* Seconds */
-	uint8_t minutes; /* Minutes */
-	uint8_t hours;   /* Hours */
-	uint8_t ampm;    /* AM/PM indicator */
-} BOS_time_t;
+	uint16_t mSec;   /* Milliseconds */
+	uint8_t Seconds; /* Seconds */
+	uint8_t Minutes; /* Minutes */
+	uint8_t Hours;   /* Hours */
+	uint8_t AMPM;    /* AM/PM indicator */
+} Time_t;
 
 /* Date representation */
 typedef struct {
-	uint8_t weekday; /* Day of the week (Monday = 1, Sunday = 7) */
-	uint8_t day;     /* Day of the month */
-	uint8_t month;   /* Month (1 = January, 12 = December) */
-	uint16_t year;   /* Year */
-} BOS_date_t;
+	uint8_t Weekday; /* Day of the week (Monday = 1, Sunday = 7) */
+	uint8_t Day;     /* Day of the month */
+	uint8_t Month;   /* Month (1 = January, 12 = December) */
+	uint16_t Year;   /* Year */
+} Data_t;
 
 /* BOS system configuration structure */
 typedef struct {
@@ -258,8 +258,8 @@ typedef struct {
 	uint32_t clibaudrate;    /* CLI baud rate */
 	uint8_t daylightsaving;  /* Daylight saving mode */
 	uint8_t hourformat;      /* Hour format (12h/24h) */
-	BOS_time_t time;         /* Current system time (not saved) */
-	BOS_date_t date;         /* Current system date (not saved) */
+	Time_t Time;         /* Current system time (not saved) */
+	Data_t Date;         /* Current system date (not saved) */
 	uint8_t disableCLI;      /* Disable command-line interface */
 } BOS_t;
 

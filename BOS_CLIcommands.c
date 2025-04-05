@@ -1081,7 +1081,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(BOS.date.month,BOS.date.day,BOS.date.year,BOS.date.weekday,temp83,temp82,temp81,temp84);
+				result =BOS_CalendarConfig(BOS.Date.Month,BOS.Date.Day,BOS.Date.Year,BOS.Date.Weekday,temp83,temp82,temp81,temp84);
 			}
 		}
 	}
@@ -1142,7 +1142,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.time.seconds,BOS.time.minutes,BOS.time.hours,BOS.time.ampm);
+				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.Time.Seconds,BOS.Time.Minutes,BOS.Time.Hours,BOS.Time.AMPM);
 			}
 		}
 	}
@@ -1326,12 +1326,12 @@ static portBASE_TYPE timeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	GetTimeDate();
 	/* Respond to the command */
 	if(BOS.hourformat == 24)
-		sprintf((char* )pcWriteBuffer,(char* )pcMessage24,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec);
+		sprintf((char* )pcWriteBuffer,(char* )pcMessage24,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec);
 	else if(BOS.hourformat == 12){
-		if(BOS.time.ampm == RTC_AM)
-			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec,"AM");
-		else if(BOS.time.ampm == RTC_PM)
-			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec,"PM");
+		if(BOS.Time.AMPM == RTC_AM)
+			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec,"AM");
+		else if(BOS.Time.AMPM == RTC_PM)
+			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec,"PM");
 	}
 	
 	/* There is no more data to return after this single string, so return

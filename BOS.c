@@ -2180,7 +2180,7 @@ char* GetDateString(void){
 	static const char formatDateStr[] ="%s %02d/%02d/%04d";
 	char *buffer =malloc(30 * sizeof(int8_t));
 	memset(buffer,0x00,30 * sizeof(int8_t));
-	sprintf(buffer,formatDateStr,weekdayString[BOS.date.weekday - 1],BOS.date.month,BOS.date.day,BOS.date.year);
+	sprintf(buffer,formatDateStr,weekdayString[BOS.Date.Weekday - 1],BOS.Date.Month,BOS.Date.Day,BOS.Date.Year);
 	return buffer;
 }
 
@@ -2190,7 +2190,7 @@ char* GetTimeString(void){
 	static const char formatTimeStr[] ="%02d:%02d:%02d";
 	char *buffer =malloc(10 * sizeof(int8_t));
 	memset(buffer,0x00,10 * sizeof(int8_t));
-	sprintf(buffer,formatTimeStr,BOS.time.hours,BOS.time.minutes,BOS.time.seconds);
+	sprintf(buffer,formatTimeStr,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds);
 	return buffer;
 }
 
