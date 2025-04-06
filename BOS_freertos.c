@@ -151,23 +151,23 @@ void StartDefaultTask(void *argument){
 	/* Infinite loop */
 	for(;;){
 		/* Switch indicator LED according to mode */
-		switch(indMode){
+		switch(IndicatorMode){
 			case IND_PING:
 				RTOS_IND_blink(80)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			case IND_TOPOLOGY:
 				RTOS_IND_blink(100)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			case IND_SHORT_BLINK:
 				RTOS_IND_blink(30)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			default:
@@ -195,8 +195,8 @@ void StartDefaultTask(void *argument){
 //		HAL_IWDG_Refresh(&hiwdg);
 
 		/* Reset button state if no delay is needed by this module */
-		if(needToDelayButtonStateReset != true)
-			delayButtonStateReset = false;
+		if(NeedToDelayButtonStateReset != true)
+			DelayButtonStateReset = false;
 		
 		taskYIELD();
 	}

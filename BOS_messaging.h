@@ -11,9 +11,9 @@
 #include "BOS.h"
 
 #ifndef __N
-extern uint8_t route[MaxNumOfModules];
+extern uint8_t Route[MAX_NUM_OF_MODULES];
 #else
-	extern uint8_t route[__N];
+	extern uint8_t Route[__N];
 #endif
 
 /************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/

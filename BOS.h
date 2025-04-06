@@ -69,11 +69,12 @@ enum UartDirection_e {
 /* Different module part numbers */
 enum ModulePartNumbers_e {
 	_H01R0 =1, _P01R0, _H23R0, _H23R1, _H23R3, _H07R3, _H08R6,
-	_P08R6, _H09R0,_H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1,
+	_P08R6, _H09R0, _H09R9, _H1BR6, _H12R0, _H13R7, _H0FR1,
 	_H0FR6, _H0FR7, _H1AR2, _H0AR9, _H1DR1, _H1DR5, _H0BR4,
-	_H18R0, _H26R0, _H15R0, _H10R4, _H2AR3,_H41R6,_H3BR6,
-	_H18R1,_H1FR5,_H3BR2,_H21R2,_H17R1,_H15R8,_H2BR0,_H05R0,
-	_H3BR7,_H2BR1,_H07R8,_H08R7,_H16R6,_P08R7,_H19R0
+	_H18R0, _H26R0, _H15R0, _H10R4, _H2AR3, _H41R6, _H3BR6,
+	_H18R1, _H1FR5, _H3BR2, _H21R2, _H17R1, _H15R8, _H2BR0,
+	_H05R0, _H3BR7, _H2BR1, _H07R8, _H08R7, _H16R6, _P08R7,
+	_H19R0
 };
 
 /* LED indicator modes */
@@ -369,18 +370,20 @@ typedef struct {
 #define MAX_MESSAGE_SIZE                     56 /* Max Number of Bytes in One Message */
 #define MAX_PARAMS_PER_MESSAGE               (MAX_MESSAGE_SIZE - 10) /* Calculated max params per message */
 #define cmdMAX_INPUT_SIZE                    50
-#define MaxNumOfModules                      26 /* Max Number of Modules in one Array */
-#define MaxNumOfGroups                       10
-#define MaxNumOfPorts                        10 /* Max number of ports in one module */
-#define MaxLengthOfAlias                     9
+#define MAX_NUM_OF_MODULES                   26 /* Max Number of Modules in one Array */
+#define MAX_NUM_OF_GROUPS                    10
+#define MAX_NUM_OF_PORTS                     10 /* Max number of ports in one module */
+#define MAX_LENGTH_OF_ALIAS                  9
 #define MAX_BOS_VARS                         30 /* Max number of BOS Variables */
-#define NumOfKeywords                        4
-#define NumOfParamsHelpStrings               7
+#define NUM_OF_KEYWORDS                      4
+#define NUM_OF_PARAMS_HELP_STRINGS           7
+#define PN_NUM_OF_CHARACTERS                 6
+#define PC_USER_MESSAGE_SIZE                 80
 
 /* Default Button Timings */
-#define DEF_BUTTON_DEBOUNCE                  30 /* Button debounce time in ms */
-#define DEF_BUTTON_CLICK                     50 /* Button single click minimum time in ms */
-#define DEF_BUTTON_MIN_INTER_CLICK           5  /* Min inter-click time (ms) for double clicks */
+#define DEF_BUTTON_DEBOUNCE                  30  /* Button debounce time in ms */
+#define DEF_BUTTON_CLICK                     50  /* Button single click minimum time in ms */
+#define DEF_BUTTON_MIN_INTER_CLICK           5   /* Min inter-click time (ms) for double clicks */
 #define DEF_BUTTON_MAX_INTER_CLICK           250 /* Max inter-click time (ms) for double clicks */
 
 /* Default Baud Rates */
@@ -388,11 +391,11 @@ typedef struct {
 #define DEF_CLI_BAUDRATE                     921600 /* Default baud rate for CLI */
 #define CLI_BAUDRATE_1                       115200
 
-/* Message Buffer Sizes */
-#define MSG_RX_BUF_SIZE                      192 /* 1 Mbps UART at 0.5 KHz parsing rate */
-#define MSG_TX_BUF_SIZE                      250 /* 2 Mbps UART at 1 KHz parsing rate */
+/* Message Buffer Size */
+#define MSG_RX_BUF_SIZE                      192
+#define MSG_TX_BUF_SIZE                      250
 
-/* Stream Buffer Sizes */
+/* Stream Buffer Size */
 #define STREAM_BUF_SIZE                      512
 
 /* Delay Macros */
@@ -402,21 +405,11 @@ typedef struct {
 #define Delay_s(t)                           HAL_Delay(1000 * t) /* Non-RTOS safe second delay */
 
 /* Miscellaneous Macros */
-#define InGroup(module, group)               ((groupModules[module - 1] >> group) & 0x0001)
-
-/* Serial Wire Interface (SWI) */
-#define SWDIO_PIN                            GPIO_PIN_13
-#define SWDIO_PORT                           GPIOA
-#define SWCLK_PIN                            GPIO_PIN_14
-#define SWCLK_PORT                           GPIOA
+#define InGroup(module, group)               ((GroupModules[module - 1] >> group) & 0x0001)
 
 /* MCU Unique Identifiers */
 #define MCU_G0_UUID_BASE                     0x1FFF7590UL
 #define MCU_G0_FLASH_SIZE_BASE               0x1FFF75E0UL
-
-/* Interrupt Priorities */
-#define MSG_DMA_INT_PRIORITY                 0 /* Highest priority */
-#define STREAM_DMA_INT_PRIORITY              1
 
 /* Message properties */
 #define MSG_COUNT 		5 /* TODO: messages count should be increased, but there's no enough memory now */
@@ -585,10 +578,10 @@ typedef struct {
 /* External variables ******************************************************/
 /***************************************************************************/
 
-extern bool delayButtonStateReset;
-extern bool needToDelayButtonStateReset;
-extern bool ACK_FLAG;
-extern bool rejected_FLAG;
+extern bool DelayButtonStateReset;
+extern bool NeedToDelayButtonStateReset;
+extern bool ACKMessageFlag;
+extern bool RejectedMessageFlag;
 extern bool AddBcastPayload;
 
 extern const char *pcBootloaderUpdateMessage;
@@ -596,83 +589,78 @@ extern const char *pcRemoteBootloaderUpdateMessage;
 extern char *pcRemoteBootloaderUpdateViaPortMessage;
 extern const char *pcRemoteBootloaderUpdateWarningMessage;
 extern const char *pcParamsHelpString[];
-extern const char modulePNstring[NUM_OF_MODULE_PN][6];
-extern char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1];
-extern char cRxedChar;
-static char pcUserMessage[80];
-extern char message[MAX_MESSAGE_SIZE];
+extern const char ModulePNstring[NUM_OF_MODULE_PN][PN_NUM_OF_CHARACTERS];
+extern char GroupAlias[MAX_NUM_OF_GROUPS][MAX_LENGTH_OF_ALIAS + 1];
+static char pcUserMessage[PC_USER_MESSAGE_SIZE];
+extern char Message[MAX_MESSAGE_SIZE];
 
 extern uint8_t myID;
 extern uint8_t bcastID;
-extern uint8_t indMode;
+extern uint8_t IndicatorMode;
 extern uint8_t N;
-extern uint8_t numOfBosCommands;
-extern uint8_t CLI_Data ;
-extern uint8_t port_DMA;
-extern uint8_t PcPort;
-extern uint8_t bootStatus;
-extern uint8_t BOS_initialized;
+extern uint8_t NumOfBosCommands;
+extern uint8_t cliData ;
+extern uint8_t pcPort;
+extern uint8_t bosInitialized;
 extern uint8_t dstGroupID;
-extern uint8_t routeDist[];
-extern uint8_t routePrev[];
-extern uint8_t route[];
-extern uint8_t numOfRecordedSnippets;
-extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
-extern uint8_t messageLength[NumOfPorts];
+extern uint8_t Route[];
+extern uint8_t NumOfRecordedSnippets;
+extern uint8_t MessageParams[MAX_PARAMS_PER_MESSAGE];
+extern uint8_t MessageLength[NumOfPorts];
 extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
-extern uint8_t portStatus[NumOfPorts + 1];
+extern uint8_t PortStatus[NumOfPorts + 1];
 
 /* Flags for CLI Task */
-extern uint8_t Read_In_CLI_Task_Flag;
-extern uint8_t index_input[6] ;
-extern uint8_t index_process[6] ;
+extern uint8_t cliDataInputFlag;
+extern uint8_t IndexInput[NumOfPorts] ;
+extern uint8_t IndexProcess[NumOfPorts] ;
 extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
-extern uint8_t streamBuffer[STREAM_BUF_SIZE];
+extern uint8_t StreamBuffer[STREAM_BUF_SIZE];
 
 extern uint16_t myPN;
-extern uint16_t neighbors[NumOfPorts][2];
-extern uint16_t neighbors2[NumOfPorts][2];
-extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
+extern uint16_t Neighbors[NumOfPorts][2];
+extern uint16_t Neighbors2[NumOfPorts][2];
+extern uint16_t bcastRoutes[MAX_NUM_OF_MODULES]; /* P1 is LSB */
 
-extern uint32_t BOS_var_reg[MAX_BOS_VARS];
-extern volatile uint32_t* index_dma[6];
+extern uint32_t bosVarRegister[MAX_BOS_VARS];
+extern volatile uint32_t* dmaIndex[NumOfPorts];
 
-extern uint64_t remoteBuffer;
-extern uint8_t requestFormat;
+extern uint64_t RemoteBuffer;
+extern uint8_t RequestFormat;
 
 extern Snippet_t Snippets[MAX_SNIPPETS];
 extern Button_t Button[NumOfPorts + 1];
 extern BOS_t BOS;
-extern BOS_Status responseStatus;
+extern BOS_Status ResponseStatus;
 extern BOSOptionByte_t OptionByte;
 extern BOSOptionByte_t UserOptionByte;
 extern RemoteDataBuffer_t RemoteDataBuffer;
 extern ModuleParam_t ModuleParam[];
 
 #ifndef __N
-extern uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1]; /* Array topology */
-extern uint8_t routeDist[MaxNumOfModules];
-extern uint8_t routePrev[MaxNumOfModules];
-extern char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1]; /* moduleAlias[0] used to store alias for module 0 */
-extern uint8_t broadcastResponse[MaxNumOfModules];
-extern uint16_t groupModules[MaxNumOfModules]; /* Group 0 (LSB) to Group 15 (MSB) */
-extern uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
+extern uint16_t Array[MAX_NUM_OF_MODULES][MAX_NUM_OF_PORTS + 1]; /* Array topology */
+extern uint8_t RouteDist[MAX_NUM_OF_MODULES];
+extern uint8_t RoutePrev[MAX_NUM_OF_MODULES];
+extern char ModuleAlias[MAX_NUM_OF_MODULES + 1][MAX_LENGTH_OF_ALIAS + 1]; /* moduleAlias[0] used to store alias for module 0 */
+extern uint8_t BroadcastResponse[MAX_NUM_OF_MODULES];
+extern uint16_t GroupModules[MAX_NUM_OF_MODULES]; /* Group 0 (LSB) to Group 15 (MSB) */
+extern uint16_t ArrayPortsDir[MAX_NUM_OF_MODULES]; /* Array ports directions */
 #else
-extern	uint8_t routeDist[__N];
-extern	uint8_t routePrev[__N];
-extern	char moduleAlias[__N+1][MaxLengthOfAlias+1];
-extern	uint8_t broadcastResponse[__N];
-extern	uint16_t groupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
-extern uint16_t arrayPortsDir[__N ];
+extern	uint8_t RouteDist[__N];
+extern	uint8_t RoutePrev[__N];
+extern	char ModuleAlias[__N+1][MAX_LENGTH_OF_ALIAS+1];
+extern	uint8_t BroadcastResponse[__N];
+extern	uint16_t GroupModules[__N];									/* Group 0 (LSB) to Group 15 (MSB) */
+extern uint16_t ArrayPortsDir[__N ];
 #endif
 
-/*Output_Port_Array[__N]:
+/*OutputPortArray[__N]:
 This array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
 so we can read these output ports when needed instead of figuring out the correct port every time.
 */
 #ifdef __N
-extern uint8_t Output_Port_Array[__N];
+extern uint8_t OutputPortArray[__N];
 #endif
 
 /* User Data from external ports (USB, Ethernet, BLE ...) ******************/
@@ -680,9 +668,9 @@ extern uint8_t Output_Port_Array[__N];
 #define USER_RX_BUF_SIZE  512
 extern uint8_t UserBufferData[USER_RX_BUF_SIZE];
 extern uint8_t UserData;
-extern uint8_t indexInputUserDataBuffer;
-extern uint8_t indexProcessUserDataBuffer;
-extern volatile uint32_t* DMACountUserDataBuffer;
+extern uint8_t IndexInputUserDataBuffer;
+extern uint8_t IndexProcessUserDataBuffer;
+extern volatile uint32_t* dmaCountUserDataBuffer;
 extern uint8_t GetUserDataCount(void);
 extern BOS_Status GetUserDataByte(uint8_t* pData);
 #endif
@@ -691,39 +679,32 @@ extern BOS_Status GetUserDataByte(uint8_t* pData);
 extern SemaphoreHandle_t PxRxSemaphoreHandle[7];
 extern SemaphoreHandle_t PxTxSemaphoreHandle[7];
 
- /*
-  *New private function [inside SendMessageFromPort() ] for sending BOS Messages.
-  *instead of writePxDMAMutex (the previous function)
-  */
+/***************************************************************************/
+/*************************** BOS General Functions *************************/
+/***************************************************************************/
 
-extern HAL_StatusTypeDef Send_BOS_Message(uint8_t port, uint8_t* buffer, uint16_t n, uint32_t mutexTimeout,uint8_t dst);
-
- /***************************************************************************/
- /*************************** BOS General Functions *************************/
- /***************************************************************************/
-
- /* ======================= System Configuration API ======================= */
+/* ======================= System Configuration API ======================= */
 extern void SystemClock_Config(void);
 
- /* ====================== FreeRTOS Initialization API ====================== */
+/* ====================== FreeRTOS Initialization API ====================== */
 extern void MX_FREERTOS_Init(void);
 
- /* ========================== Indicator LED APIs =========================== */
+/* ========================== Indicator LED APIs =========================== */
 #define IND_toggle()			HAL_GPIO_TogglePin(_IND_LED_PORT,_IND_LED_PIN)
 #define IND_ON()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_SET)
 #define IND_OFF()				HAL_GPIO_WritePin(_IND_LED_PORT,_IND_LED_PIN,GPIO_PIN_RESET)
 #define IND_blink(t)			IND_ON();	HAL_Delay(t); IND_OFF()	/* Use after starting the scheduler */
 #define RTOS_IND_blink(t)		IND_ON();	osDelay(t); IND_OFF()	/* Use after starting the scheduler */
 
- /* ============================== Delay APIs ============================== */
+/* ============================== Delay APIs ============================== */
 extern void StartMicroDelay(uint16_t Delay);
 extern void StartMilliDelay(uint16_t Delay);
 
- /* ======================== BOS Initialization APIs ======================= */
+/* ======================== BOS Initialization APIs ======================= */
 extern void BOS_Init(void);
 extern void Module_Init(void);
 
- /* ======================== BOS Port Handling APIs ======================== */
+/* ======================== BOS Port Handling APIs ======================== */
 extern UART_HandleTypeDef* GetUart(uint8_t port);
 extern uint8_t GetPort(UART_HandleTypeDef *huart);
 extern BOS_Status UpdateBaudrate(uint8_t port, uint32_t baudrate);
@@ -731,12 +712,12 @@ extern void SwapUartPins(UART_HandleTypeDef *huart, uint8_t direction);
 extern BOS_Status ReadPortsDir(void);
 extern BOS_Status UpdateMyPortsDir(void);
 
- /* ================== Module Identification & Naming APIs ================= */
+/* ================== Module Identification & Naming APIs ================= */
 extern int16_t GetID(char *string);
 extern BOS_Status NameModule(uint8_t module, char *alias);
 extern BOS_Status AddModuleToGroup(uint8_t module, char *group);
 
- /* =========================== Exploration APIs =========================== */
+/* =========================== Exploration APIs =========================== */
 extern BOS_Status Explore(void);
 extern BOS_Status ExploreNeighbors(uint8_t ignore);
 extern BOS_Status FindBroadcastRoutes(uint8_t src);
@@ -744,9 +725,9 @@ extern uint8_t FindRoute(uint8_t sourceID, uint8_t desID);
 extern void DisplayTopology(uint8_t port);
 extern void DisplayPortsDir(uint8_t port);
 extern void DisplayModuleStatus(uint8_t port);
-#define NumberOfHops(i) routeDist[i-1]
+#define NumberOfHops(i) RouteDist[i-1]
 
- /* ============================ Messaging APIs ============================ */
+/* ============================ Messaging APIs ============================ */
 extern BOS_Status SendLargeMessageToModule(uint8_t dst, uint16_t code, uint8_t *pParameters, uint16_t numberOfParams);
 extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status SendMessageToGroup(char *group, uint16_t code, uint16_t numberOfParams);
@@ -760,47 +741,44 @@ extern BOS_Status StreamPortToMemory(uint8_t srcP, uint8_t dstM, uint32_t size, 
 extern BOS_Status StreamMemoryToPort(uint8_t dstP, uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored);
 extern BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t size, uint32_t timeout, bool stored);
 
- /* ========================= Data Streaming APIs ========================== */
+/* ========================= Data Streaming APIs ========================== */
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored);
 
- /* ========================= Button Handling APIs ========================= */
-// extern BOS_Status AddPortButton(uint8_t buttonType, uint8_t port);
- extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
- extern BOS_Status AddButton(uint8_t port, ButtonType_e buttonType, ButtonState_e buttonState);
- extern BOS_Status RemovePortButton(uint8_t port);
-// extern BOS_Status SetButtonEvents(uint8_t port, uint8_t clicked, uint8_t dbl_clicked, uint8_t pressed_x1sec, uint8_t pressed_x2sec, uint8_t pressed_x3sec, uint8_t released_y1sec, uint8_t released_y2sec, uint8_t released_y3sec, uint8_t mode);
- extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
- /* ===================== Remote Variable Handling APIs ==================== */
+/* ========================= Button Handling APIs ========================= */
+extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
+extern BOS_Status AddButton(uint8_t port, ButtonType_e buttonType, ButtonState_e buttonState);
+extern BOS_Status RemovePortButton(uint8_t port);
+extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
+
+/* ===================== Remote Variable Handling APIs ==================== */
 extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t *remoteFormat, uint32_t timeout);
 extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t requestedFormat, uint32_t timeout);
 extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString, VariableFormat_t *remoteFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t remoteVarAddress, VariableFormat_t format, uint32_t timeout);
 //extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,VariableFormat_t format,uint32_t timeout);
 extern uint8_t AddBOSvar(VariableFormat_t format, uint32_t address);
-//extern BOS_Status WriteToMBModule(uint8_t dst, uint8_t rank, float var1, float var2, float var3);
-//extern BOS_Status ReadFromMBModule(uint8_t dst, uint8_t rank, uint32_t timeout);
 
- /* ====================== Date & Time Handling APIs ====================== */
+/* ====================== Date & Time Handling APIs ====================== */
 extern BOS_Status BOS_CalendarConfig(Months_e month, uint8_t monthDay, uint16_t year, Weekdays_e weekDay, uint8_t seconds, uint8_t minutes, uint8_t hours, TimePeriod_e AMPM);
 extern void GetTimeDate(void);
 extern char* GetDateString(void);
 extern char* GetTimeString(void);
 
- /* ========================= Port Bridging APIs ========================== */
+/* ========================= Port Bridging APIs ========================== */
 extern BOS_Status Bridge(uint8_t port1, uint8_t port2);
 extern BOS_Status Unbridge(uint8_t port1, uint8_t port2);
 
- /* ============================== CLI APIs =============================== */
+/* ============================== CLI APIs =============================== */
 extern void vRegisterCLICommands(void);
 extern void StringToLowerCase(char *string);
 
- /* =========================== Bootloader APIs =========================== */
+/* =========================== Bootloader APIs =========================== */
 extern void SetupPortForRemoteBootloaderUpdate(uint8_t port);
 
- /* ============================== Print APIs ============================= */
+/* ============================== Print APIs ============================= */
 extern BOS_Status printfp(uint8_t port, char *str);
 
- /* ======================== Power Management APIs ======================== */
+/* ======================== Power Management APIs ======================== */
 extern BOS_Status EnableStopModebyUARTx(uint8_t port);
 extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins);
 extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins);

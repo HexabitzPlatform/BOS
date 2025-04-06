@@ -388,9 +388,9 @@ void vRegisterCLICommands(void){
 	FreeRTOS_CLIRegisterCommand(&ReadTempDefinition);
 	FreeRTOS_CLIRegisterCommand(&ReadVrefDefinition);
 	FreeRTOS_CLIRegisterCommand(&GetReadPercentageDefinition);
-	numOfBosCommands =34;			// Add "help" command
+	NumOfBosCommands =34;			// Add "help" command
 #ifndef __N
-	numOfBosCommands =35;
+	NumOfBosCommands =35;
 #endif
 	
 	/* Register module CLI commands */
@@ -455,10 +455,10 @@ static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the ping */
-	if(!moduleAlias[myID][0])
+	if(!ModuleAlias[myID][0])
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage1,myID);
 	else
-		sprintf((char* )pcWriteBuffer,(char* )pcMessage2,myID,moduleAlias[myID]);
+		sprintf((char* )pcWriteBuffer,(char* )pcMessage2,myID,ModuleAlias[myID]);
 	
 	RTOS_IND_blink(200);
 	
@@ -491,7 +491,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 		/* Respond to the update command */
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage,myID);
 		strcat((char* )pcWriteBuffer,(char* )pcBootloaderUpdateMessage);
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 		#ifndef STM32G0B1xx
 		/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 		*((unsigned long* )0x20007FF0) =0xDEADBEEF;
@@ -499,7 +499,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 		/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
 		*((unsigned long* )0x20023FF0) =0xDEADBEEF; //Boundary address[0x20000000 - 0x20023FFF]
 		#endif
-		indMode =IND_PING;
+		IndicatorMode =IND_PING;
 		osDelay(10);
 		NVIC_SystemReset();
 	}
@@ -529,11 +529,11 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 				OptionByte.Response = BOS_RESPONSE_NONE;
 				
 				/* Forward the command */
-				messageParams[0] =port;
+				MessageParams[0] =port;
 				SendMessageToModule(module,CODE_UPDATE_VIA_PORT,1);
 				osDelay(100);
 				/* Execute locally */
-				remoteBootloaderUpdate(myID,module,PcPort,port);
+				remoteBootloaderUpdate(myID,module,pcPort,port);
 			}
 			/* I'm the source of the command and my neighbor is the target */
 			else{
@@ -541,7 +541,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 				SendMessageFromPort(port,0,0,CODE_UPDATE,0);
 				osDelay(100);
 				/* Then, setup myself for remote 'via port' update */
-				remoteBootloaderUpdate(myID,myID,PcPort,port);
+				remoteBootloaderUpdate(myID,myID,pcPort,port);
 			}
 		}
 		else
@@ -575,18 +575,18 @@ static portBASE_TYPE exploreCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 
 	/* Respond to the update command */
 	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
-	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 
 	/* Call array exploration routine */
 	result = Explore();
 	if (result == BOS_OK) {
 		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
-		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-		DisplayTopology(PcPort);
-		DisplayPortsDir(PcPort);
+		writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		DisplayTopology(pcPort);
+		DisplayPortsDir(pcPort);
 	} else {
 		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
-		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
 	}
 	sprintf( ( char * ) pcWriteBuffer, " ");
 	
@@ -634,8 +634,8 @@ static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	
 	/* Check alias length */
-	if(xParameterStringLength1 > MaxLengthOfAlias){
-		pcParameterString1[MaxLengthOfAlias] ='\0';
+	if(xParameterStringLength1 > MAX_LENGTH_OF_ALIAS){
+		pcParameterString1[MAX_LENGTH_OF_ALIAS] ='\0';
 	}
 	
 	/* Name the module */
@@ -661,9 +661,9 @@ static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,c
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1, *pcParameterString, count;
 	static portBASE_TYPE xParameterStringLength1, xParameterStringLength;
-	char module[MaxLengthOfAlias + 30] ={0};
+	char module[MAX_LENGTH_OF_ALIAS + 30] ={0};
 	int16_t modID =0, type =0;
-	char alias[MaxLengthOfAlias + 1] ={0};
+	char alias[MAX_LENGTH_OF_ALIAS + 1] ={0};
 	
 	static const int8_t *pcMessageWrongModule =(int8_t* )"%s is a wrong module ID or alias\n\r";
 	static const int8_t *pcMessageOKnew =(int8_t* )"] added to new group %s\n\r";
@@ -685,9 +685,9 @@ static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,c
 	
 	/* Is it new or existing group? */
 	type =1;
-	for(uint8_t i =0; i < MaxNumOfGroups; i++){
+	for(uint8_t i =0; i < MAX_NUM_OF_GROUPS; i++){
 		/* This group already exists */
-		if(!strcmp(alias,groupAlias[i])){
+		if(!strcmp(alias,GroupAlias[i])){
 			type =0;
 			break;
 		}
@@ -778,16 +778,16 @@ static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	
 	/* Respond to the info command */
 	sprintf((char* )pcWriteBuffer,"\n\rNumber of modules: %d\n",N);
-	writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
+	writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
 	cmd50ms,HAL_MAX_DELAY);
 	sprintf((char* )pcWriteBuffer,"\n\rArray topology:\n");
-	writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
+	writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
 	cmd50ms,HAL_MAX_DELAY);
-	DisplayTopology(PcPort);
-	DisplayPortsDir(PcPort);
+	DisplayTopology(pcPort);
+	DisplayPortsDir(pcPort);
 	if(result == BOS_ERR_NoResponse){
 		sprintf((char* )pcWriteBuffer,"Could not read ports direction for some modules! Please try again\n\r");
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 	}
 	sprintf((char* )pcWriteBuffer," ");
 	
@@ -806,7 +806,7 @@ static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 //	portBASE_TYPE xParameterStringLength7 =0;
 //	uint8_t direction =0, srcP =0, dstP =0, srcM =0, dstM =0;
 //	uint32_t count =0, timeout =0;
-//	char par1[MaxLengthOfAlias + 1] ={0}, par2[MaxLengthOfAlias + 1] ={0}, par3[MaxLengthOfAlias + 1] ={0};
+//	char par1[MAX_LENGTH_OF_ALIAS + 1] ={0}, par2[MAX_LENGTH_OF_ALIAS + 1] ={0}, par3[MAX_LENGTH_OF_ALIAS + 1] ={0};
 //
 //	static const int8_t *pcMessage =(int8_t* )"Activating a %s single-cast DMA stream from P%d in module %s to P%d in module %s. The stream will deactivate after %d bytes or %d ms\n\r";
 //
@@ -1228,8 +1228,8 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
 		temp8 =0;
 		/* Check group exists */
-		for(i =0; i < MaxNumOfGroups; i++){
-			if(!strcmp((char* )pcParameterString2,groupAlias[i])){
+		for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+			if(!strcmp((char* )pcParameterString2,GroupAlias[i])){
 				temp8 =1;
 				break;
 			}
@@ -1290,7 +1290,7 @@ static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	else if(!strncmp((const char* )pcParameterString1,"array",xParameterStringLength1)){
 		/* Broadcast the default array Message */
 		SendMessageToModule(BOS_BROADCAST,CODE_DEF_ARRAY,0);
-		indMode =IND_TOPOLOGY;
+		IndicatorMode =IND_TOPOLOGY;
 		osDelay(100);
 		/* Clear the topology */
 		ClearEEportsDir();
@@ -1493,11 +1493,11 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the command */
-	writePxMutex(PcPort,(char* )pcMessageSnipWelcome,strlen((char* )pcMessageSnipWelcome),cmd50ms,HAL_MAX_DELAY);
+	writePxMutex(pcPort,(char* )pcMessageSnipWelcome,strlen((char* )pcMessageSnipWelcome),cmd50ms,HAL_MAX_DELAY);
 	
 	/* Go through all stored Snippets */
 	uint8_t count =1;
-	for(uint8_t s =0; s < numOfRecordedSnippets; s++){
+	for(uint8_t s =0; s < NumOfRecordedSnippets; s++){
 		if(Snippets[s].Condition.ConditionType)
 			sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipStart,count,status[Snippets[s].State]);
 		
@@ -1538,7 +1538,7 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 		
 		// Finish and write the buffer
 		strcat((char* )pcWriteBuffer,(char* )pcMessageEnd);
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 		
 		++count;
 	}
@@ -1568,7 +1568,7 @@ static portBASE_TYPE actSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	/* Respond to the command */
@@ -1603,7 +1603,7 @@ static portBASE_TYPE pauseSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	/* Respond to the command */
@@ -1638,7 +1638,7 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	if(result == BOS_OK){
@@ -1651,13 +1651,13 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 		Snippets[index - 1].CMD = NULL;
 		
 		// Reorder remaining Snippets to avoid empty indices
-		for(uint8_t s =index; s < numOfRecordedSnippets; s++){
+		for(uint8_t s =index; s < NumOfRecordedSnippets; s++){
 			if(Snippets[s].Condition.ConditionType){
 				memcpy(&Snippets[s - 1],&Snippets[s],sizeof(Snippet_t));
 				memset(&Snippets[s],0,sizeof(Snippet_t));
 			}
 		}
-		--numOfRecordedSnippets;
+		--NumOfRecordedSnippets;
 		
 		// Write updated list to RO
 		SaveSnippetsToRO();
@@ -1803,9 +1803,9 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(strcmp((char* )pcParameterString1,"all") == 0){
 		if(LastEnter == 0)
-//			LastEnter =UARTRxBufIndex[PcPort - 1];
+//			LastEnter =UARTRxBufIndex[pcPort - 1];
 		for(ports =1; ports <= NumOfPorts; ports++){
-			if(PcPort != ports){
+			if(pcPort != ports){
 				WriteVaule[0] =rand();
 				writePxMutex(ports,WriteVaule,1,10,100);
 #ifndef H41R6
@@ -1820,15 +1820,15 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 				
 				if(result == BOS_OK){
 					sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,ports);
-					writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+					writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
 				}
 				else if(result == BOS_ERR_Keyword){
 					sprintf((char* )pcWriteBuffer,(char* )pcMessageFail,ports);
-					writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+					writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
 				}
 				strcpy((char* )pcWriteBuffer,(char* )pcMessageWait);
-				writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
-				while(UARTRxBuf[PcPort - 1][LastEnter + 1] == 0){
+				writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+				while(UARTRxBuf[pcPort - 1][LastEnter + 1] == 0){
 					Delay_ms(1);
 				}
 				LastEnter++;

@@ -26,7 +26,7 @@ static char *pcNewLine ="\r\n";
 static char *pcEndOfCommandOutputString ="\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] ={0};
 uint16_t timedoutMsg = 0;
-//uint8_t numOfRecordedSnippets =0;
+//uint8_t NumOfRecordedSnippets =0;
 Snippet_t Snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
 /* Exported variables ******************************************************/
@@ -71,34 +71,34 @@ void prvCLITask(void *pvParameters){
 	/* Restore baud rate to the default for all ports except the PC communication port */
 	if(BOS.cliBaudrate != DEF_ARRAY_BAUDRATE){
 		for(uint8_t port =1; port <= NumOfPorts; port++){
-			if(port != PcPort)
+			if(port != pcPort)
 				UpdateBaudrate(port,DEF_ARRAY_BAUDRATE);
 		}
 	}
 
 	/* Send the welcome message */
-	sprintf(pcWelcomePortMessage,"Connected to module %d (%s), port P%d.\n\n\r>",myID,modulePNstring[myPN],PcPort);
-	writePxITMutex(PcPort,pcWelcomeMessage,strlen(pcWelcomeMessage),10);
-	writePxITMutex(PcPort,pcWelcomePortMessage,strlen(pcWelcomePortMessage),10);
+	sprintf(pcWelcomePortMessage,"Connected to module %d (%s), port P%d.\n\n\r>",myID,ModulePNstring[myPN],pcPort);
+	writePxITMutex(pcPort,pcWelcomeMessage,strlen(pcWelcomeMessage),10);
+	writePxITMutex(pcPort,pcWelcomePortMessage,strlen(pcWelcomePortMessage),10);
 
 	for(;;){
 
 		/* Check if a new character has been received.
 		 * Reading only one byte at a time using CLI Flags. */
-		if(Read_In_CLI_Task_Flag == 1){
-			cRxedChar =CLI_Data;
-			CLI_Data =0;
+		if(cliDataInputFlag == 1){
+			cRxedChar =cliData;
+			cliData =0;
 
 			/* Clear the flag to allow new input */
-			Read_In_CLI_Task_Flag =0;
+			cliDataInputFlag =0;
 
 			/* Echo the received character back to the terminal */
-			writePxITMutex(PcPort,&cRxedChar,1,10);
+			writePxITMutex(pcPort,&cRxedChar,1,10);
 
 			switch(cRxedChar){
 				/* If the Enter key is pressed, process the command */
 				case '\r': /* Enter key */
-					writePxITMutex(PcPort,pcNewLine,strlen(pcNewLine),10);
+					writePxITMutex(pcPort,pcNewLine,strlen(pcNewLine),10);
 
 					/* Repeat last command if input is empty */
 					if(cInputIndex == 0){
@@ -106,7 +106,7 @@ void prvCLITask(void *pvParameters){
 					}
 
 					/* Parse the user input and execute the command */
-					CLI_CommandParser(PcPort,true,cInputString,pcOutputString);
+					CLI_CommandParser(pcPort,true,cInputString,pcOutputString);
 
 					/* Store last command for potential reuse */
 					strcpy((char* )cLastInputString,(char* )cInputString);
@@ -148,7 +148,7 @@ void prvCLITask(void *pvParameters){
 /* Hexabitz CLI command parser */
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString){
 	portBASE_TYPE xReturned;
-	char idString[MaxLengthOfAlias] ={0};
+	char idString[MAX_LENGTH_OF_ALIAS] ={0};
 	char *loc =0;
 	static uint8_t recordSnippet;
 	static uint8_t group;
@@ -224,8 +224,8 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 
 				/* Handle broadcast */
 				else if(id == BOS_BROADCAST){
-					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
-					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+					memset(BroadcastResponse,0x00,sizeof(BroadcastResponse));
+					strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,BOS_BROADCAST,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
 					/* Execute locally */
 					xReturned =FreeRTOS_CLIProcessCommand((const signed char* )(loc + 1),pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
@@ -235,8 +235,8 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 				/* Handle multicast */
 				else if((uint8_t )id == BOS_MULTICAST){
 					group =id >> 8;
-					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
-					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+					memset(BroadcastResponse,0x00,sizeof(BroadcastResponse));
+					strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,group,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
 					/* Do I need to execute locally? */
 					if(InGroup(myID,group))
@@ -253,11 +253,11 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						SendMessageToModule(id,CODE_UPDATE,0);
 						osDelay(100);
 						/* Execute locally */
-						remoteBootloaderUpdate(myID,id,PcPort,0);
+						remoteBootloaderUpdate(myID,id,pcPort,0);
 					}
 					else{
 						/* Forward the command */
-						strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+						strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 						SendMessageToModule(id,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString) - 1);
 						sprintf((char* )pcOutputString,"Command forwarded to Module %d\n\r",id);
 
@@ -271,7 +271,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 					if(OptionByte.Response == BOS_RESPONSE_ALL){
 						ulTaskNotifyTake(pdTRUE,1000);		//cmd500ms
 						/* If timeout */
-						if(responseStatus != BOS_OK){
+						if(ResponseStatus != BOS_OK){
 							++timedoutMsg;
 							sprintf((char* )pcOutputString,"%sModule %d is not reachable.\n\r",(char* )pcOutputString,id);
 						}
@@ -294,7 +294,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 		
 	} while(xReturned != pdFALSE);
 	
-	memset(idString,0x00,MaxLengthOfAlias);
+	memset(idString,0x00,MAX_LENGTH_OF_ALIAS);
 	
 	/* Start to transmit a line separator, just to make the output easier to read. */
 	if(!recordSnippet && enableOutput)
@@ -318,7 +318,7 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	int currentLength =0;
 
 	/* Reference to the last recorded snippet */
-	Snippet_t *currentSnippet =&Snippets[numOfRecordedSnippets - 1];
+	Snippet_t *currentSnippet =&Snippets[NumOfRecordedSnippets - 1];
 
 	/* Check for codes */
 	switch(code){
@@ -388,12 +388,12 @@ BOS_Status ParseSnippetCondition(char *string){
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 
 	/* Ensure there is available memory for storing Snippets */
-	if(numOfRecordedSnippets >= MAX_SNIPPETS){
+	if(NumOfRecordedSnippets >= MAX_SNIPPETS){
 		return BOS_ERR_SNIP_MEM_FULL;
 	}
 
 	/* Initialize snippet structure */
-	Snippet_t *currentSnippet =&Snippets[numOfRecordedSnippets];
+	Snippet_t *currentSnippet =&Snippets[NumOfRecordedSnippets];
 	memset(&currentSnippet->Condition,0,sizeof(SnippetConditions_t));
 	
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
@@ -423,7 +423,7 @@ BOS_Status ParseSnippetCondition(char *string){
 			}
 			
 			/* Record snippet */
-			numOfRecordedSnippets++;
+			NumOfRecordedSnippets++;
 
 			return BOS_OK;
 		}
@@ -450,7 +450,7 @@ BOS_Status ParseSnippetCondition(char *string){
 	if(modPar1 && secondPart == NULL && thirdPart == NULL){
 		currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_EVENT;
 		currentSnippet->Condition.Buffer1[1] =modPar1;
-		numOfRecordedSnippets++; /* Record snippet */
+		NumOfRecordedSnippets++; /* Record snippet */
 		return BOS_OK;
 	}
 
@@ -480,7 +480,7 @@ BOS_Status ParseSnippetCondition(char *string){
 		if(!currentSnippet->Condition.MathOperator)
 			return BOS_ERR_WrongParam;
 
-		numOfRecordedSnippets++; /* Record snippet */
+		NumOfRecordedSnippets++; /* Record snippet */
 		return BOS_OK;
 	}
 	return BOS_ERR_WrongParam;
@@ -574,7 +574,7 @@ BOS_Status ExecuteSnippet(void){
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 	
 	/* Loop through all recorded Snippets */
-	for(snippetIndex =0; snippetIndex < numOfRecordedSnippets; snippetIndex++){
+	for(snippetIndex =0; snippetIndex < NumOfRecordedSnippets; snippetIndex++){
 		/* Process only active Snippets */
 		if(Snippets[snippetIndex].State){
 			/* Process Snippet condition */
@@ -585,7 +585,7 @@ BOS_Status ExecuteSnippet(void){
 				/* Loop over all recorded commands within the snippet */
 				while(ParseSnippetCommand(Snippets[snippetIndex].CMD,(int8_t* )&cInputString) != false){
 					/* Pass the parsed command to the CLI command parser */
-					CLI_CommandParser(PcPort,false,cInputString,pcOutputString);
+					CLI_CommandParser(pcPort,false,cInputString,pcOutputString);
 					
 					/* Clear output buffer since we do not need it. Input buffer is cleared in  CLI_CommandParser */
 					memset(pcOutputString,0x00,strlen((char* )pcOutputString));
@@ -606,7 +606,7 @@ bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
 	static char *ptrEnd = NULL;
 
 	/* Return false if the snippet command buffer is NULL */
-	if(Snippets[numOfRecordedSnippets - 1].CMD == NULL)
+	if(Snippets[NumOfRecordedSnippets - 1].CMD == NULL)
 		return false;
 
 	/* Initialize ptrStart if it's the first call */

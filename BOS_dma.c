@@ -35,10 +35,10 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 	uint8_t srcPort =GetPort(huartSrc);
 	
 	/* switch the DMA channel to streaming if it's available */
-	if(portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI){
+	if(PortStatus[srcPort] == FREE || PortStatus[srcPort] == MSG || PortStatus[srcPort] == CLI){
 		SwitchMsgDMAToStream(srcPort);
 	}
-	else if(portStatus[srcPort] == STREAM){
+	else if(PortStatus[srcPort] == STREAM){
 		return BOS_ERR_PORT_BUSY;
 	}
 	else
@@ -49,7 +49,7 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 	
 	/* Lock the source port by marking it as STREAM
 	 * This prevents other tasks from using it while streaming is active */
-	portStatus[srcPort] =STREAM;
+	PortStatus[srcPort] =STREAM;
 	
 	/* Initialize the DMA stream counter */
 	dmaStreamCount[srcPort - 1] =0;
@@ -64,7 +64,7 @@ BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huart
 /* DMA interrupt service routine */
 void DMA_IRQHandler(uint8_t port){
 
-	if(portStatus[port] != STREAM){
+	if(PortStatus[port] != STREAM){
 		HAL_DMA_IRQHandler(UARTDMAHandler[port - 1]);
 	}
 	else{

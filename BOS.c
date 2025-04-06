@@ -15,103 +15,103 @@
 /* Exported variables ******************************************************/
 /***************************************************************************/
 
-bool ACK_FLAG=0;
-bool rejected_FLAG=0;
+bool ACKMessageFlag=0;
+bool RejectedMessageFlag=0;
 bool AddBcastPayload = false;
 
-char groupAlias[MaxNumOfGroups][MaxLengthOfAlias + 1] ={0};
-char message[MAX_MESSAGE_SIZE] ={0};	/* Buffer to construct a message to be sent */
-char cRxedChar =0;
+char GroupAlias[MAX_NUM_OF_GROUPS][MAX_LENGTH_OF_ALIAS + 1] ={0};
+char Message[MAX_MESSAGE_SIZE] ={0};	/* Buffer to construct a message to be sent */
+//char cRxedChar =0;
 
 /* Define module PN strings [available PNs+1][5 chars] */
-const char modulePNstring[NUM_OF_MODULE_PN][6] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6",
+const char ModulePNstring[NUM_OF_MODULE_PN][PN_NUM_OF_CHARACTERS] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6",
 	"P08R6", "H09R0", "H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7", "H1AR2", "H0AR9", "H1DR1",
 	"H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6", "H3BR6", "H18R1", "H1FR5", "H3BR2",
 	"H21R2", "H17R1", "H15R8", "H2BR0", "H05R0", "H3BR7", "H2BR1", "H07R8", "H08R7", "H16R6", "P08R7", "H19R0"};
-static const char BOSkeywords[NumOfKeywords][4] ={"me", "all", "if", "for"};
+static const char BOSkeywords[NUM_OF_KEYWORDS][4] ={"me", "all", "if", "for"};
 static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-const char *pcParamsHelpString[NumOfParamsHelpStrings] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n",
+const char *pcParamsHelpString[NUM_OF_PARAMS_HELP_STRINGS] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n",
 	        "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
-           you must connect to a CLI port on each startup to restore other array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n",
+           you must connect to a CLI port on each startup to restore other Array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n",
            "BOS.singleclicktime: 1 ..... 65536 msec\r\n", "BOS.mininterclicktime: 1 ... 255 msec\r\n", "BOS.maxinterclicktime: 1 ... 255 msec\r\n"};
 const char *pcBootloaderUpdateMessage ="\n\rThis module will be forced into bootloader mode.\n\rPlease use the \"STM Flash Loader Demonstrator\" \
 			utility to update the firmware.\n\r\n\t*** Important ***\n\rIf this module is connected directly to PC please close this port first.\n\r";
 const char *pcRemoteBootloaderUpdateMessage ="\n\rModule %d will be forced into bootloader mode.";
 const char *pcRemoteBootloaderUpdateWarningMessage ="\n\rPlease use the \"STM Flash Loader Demonstrator\" utility to update the firmware.\
 			\n\r\n\t*** Important ***\n\r- If this module is connected directly to PC please close this port first.\n\r\
-			- You must power cycle the entire array after the update is finished.\n\r";
+			- You must power cycle the entire Array after the update is finished.\n\r";
 char *pcRemoteBootloaderUpdateViaPortMessage ="\n\rRemote update via module %d, port P%d will be triggered.";
 
-uint8_t PcPort =0;
+uint8_t pcPort =0;
 uint8_t bcastID =0;			/* Counter for unique broadcast ID */
-uint8_t indMode =IND_OFF;
-uint8_t BOS_initialized =0;
-uint8_t numOfBosCommands = 0;
+uint8_t IndicatorMode =IND_OFF;
+uint8_t bosInitialized =0;
+uint8_t NumOfBosCommands = 0;
 uint8_t dstGroupID =BOS_BROADCAST;
-uint8_t numOfRecordedSnippets =0;
-uint8_t Read_In_CLI_Task_Flag = 0;
-uint8_t messageLength[NumOfPorts] ={0};
-uint8_t portStatus[NumOfPorts + 1] ={0};
+uint8_t NumOfRecordedSnippets =0;
+uint8_t cliDataInputFlag = 0;
+uint8_t MessageLength[NumOfPorts] ={0};
+uint8_t PortStatus[NumOfPorts + 1] ={0};
 uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	/* Buffer for received messages and ready to be parsed */
-uint8_t messageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-uint8_t streamBuffer[STREAM_BUF_SIZE] = {0};
+uint8_t MessageParams[MAX_PARAMS_PER_MESSAGE] ={0};
+uint8_t StreamBuffer[STREAM_BUF_SIZE] = {0};
 
 uint16_t myPN = modulePN;
-uint16_t neighbors[NumOfPorts][2] ={0};
-uint16_t neighbors2[NumOfPorts][2] ={0};
-uint16_t bcastRoutes[MaxNumOfModules] ={0}; /* P1 is LSB */
+uint16_t Neighbors[NumOfPorts][2] ={0};
+uint16_t Neighbors2[NumOfPorts][2] ={0};
+uint16_t bcastRoutes[MAX_NUM_OF_MODULES] ={0}; /* P1 is LSB */
 
 /* BOS variables register: Bits 31-16:
  * variable RAM address shift from SRAM_BASE, Bits 15-8: status.
  * Bits 7-0: format. */
-uint32_t BOS_var_reg[MAX_BOS_VARS];
-volatile uint32_t* index_dma[6] ;
+uint32_t bosVarRegister[MAX_BOS_VARS];
+volatile uint32_t* dmaIndex[NumOfPorts] ;
 
-uint64_t remoteBuffer =0;
-uint8_t requestFormat = 0;
-/*Output_Port_Array[__N]:
-This array stores all solutions (output ports) to send messages
+uint64_t RemoteBuffer =0;
+uint8_t RequestFormat = 0;
+/*OutputPortArray[__N]:
+This Array stores all solutions (output ports) to send messages
 between modules based on the topology file using FindRoute() function,
 so we can read these output ports when needed instead of figuring out the correct port every time.
 */
 #ifdef __N
-uint8_t Output_Port_Array[__N] = {0};
+uint8_t OutputPortArray[__N] = {0};
 #endif
 
 /* User Data from external ports (USB, Ethernet, BLE ...) ******************/
 #ifdef __USER_DATA_BUFFER
 uint8_t UserBufferData[USER_RX_BUF_SIZE]={0};
 uint8_t UserData=0;
-uint8_t indexInputUserDataBuffer = 0;
-uint8_t indexProcessUserDataBuffer = 0;
-volatile uint32_t* DMACountUserDataBuffer = NULL;
+uint8_t IndexInputUserDataBuffer = 0;
+uint8_t IndexProcessUserDataBuffer = 0;
+volatile uint32_t* dmaCountUserDataBuffer = NULL;
 #endif
 
 #ifndef __N
-uint16_t array[MaxNumOfModules][MaxNumOfPorts + 1] ={{0}}; /* Array topology */
-uint8_t routeDist[MaxNumOfModules] ={0};
-uint8_t routePrev[MaxNumOfModules] ={0};
-char moduleAlias[MaxNumOfModules + 1][MaxLengthOfAlias + 1] ={0}; /* moduleAlias[0] used to store alias for module 0 */
-uint8_t broadcastResponse[MaxNumOfModules] ={0};
-uint16_t groupModules[MaxNumOfModules] ={0}; /* Group 0 (LSB) to Group 15 (MSB) */
-uint16_t arrayPortsDir[MaxNumOfModules]; /* Array ports directions */
+uint16_t Array[MAX_NUM_OF_MODULES][MAX_NUM_OF_PORTS + 1] ={{0}}; /* Array topology */
+uint8_t RouteDist[MAX_NUM_OF_MODULES] ={0};
+uint8_t RoutePrev[MAX_NUM_OF_MODULES] ={0};
+char ModuleAlias[MAX_NUM_OF_MODULES + 1][MAX_LENGTH_OF_ALIAS + 1] ={0}; /* ModuleAlias[0] used to store alias for module 0 */
+uint8_t BroadcastResponse[MAX_NUM_OF_MODULES] ={0};
+uint16_t GroupModules[MAX_NUM_OF_MODULES] ={0}; /* Group 0 (LSB) to Group 15 (MSB) */
+uint16_t ArrayPortsDir[MAX_NUM_OF_MODULES]; /* Array ports directions */
 uint8_t N =1;
 uint8_t myID =0;
 #else
-	uint8_t routeDist[__N] = {0};
-	uint8_t routePrev[__N] = {0};
-	char moduleAlias[__N+1][MaxLengthOfAlias+1] = {0};
-	uint8_t broadcastResponse[__N] = {0};
-	uint16_t groupModules[__N] = {0};
-	uint16_t arrayPortsDir[__N ] = {0};
+	uint8_t RouteDist[__N] = {0};
+	uint8_t RoutePrev[__N] = {0};
+	char ModuleAlias[__N+1][MAX_LENGTH_OF_ALIAS+1] = {0};
+	uint8_t BroadcastResponse[__N] = {0};
+	uint16_t GroupModules[__N] = {0};
+	uint16_t ArrayPortsDir[__N ] = {0};
 	uint8_t N = __N;
 	uint8_t myID = _module;
 #endif
 
 BOS_t BOS;
 BOSOptionByte_t OptionByte ={0};
-BOS_Status responseStatus =BOS_OK;
+BOS_Status ResponseStatus =BOS_OK;
 VariableFormat_t remoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
 BOS_t BOS_default ={.cliBaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
@@ -127,7 +127,7 @@ typedef struct xCOMMAND_INPUT_LIST {
 extern CLI_Definition_List_Item_t xRegisteredCommands;
 
 /* Local Variables *********************************************************/
-static char pcUserMessage[80];
+static char pcUserMessage[PC_USER_MESSAGE_SIZE];
 uint8_t ExtraPcPort = 0;
 uint8_t CLI_LOW_Baudrate_Flag =0; 	/* Flag for Lower CLI baudrate is set */
 
@@ -196,7 +196,7 @@ char Processor_type(uint8_t module_name)
 
 //Function To find Name of Module
 uint8_t Get_Module_Name(uint8_t dst){
-	return array[dst - 1][0];
+	return Array[dst - 1][0];
 }
 
 HAL_StatusTypeDef Send_BOS_Message(uint8_t port,uint8_t *buffer,uint16_t n,uint32_t mutexTimeout,uint8_t dst){
@@ -232,7 +232,7 @@ HAL_StatusTypeDef Send_BOS_Message(uint8_t port,uint8_t *buffer,uint16_t n,uint3
  * from emulated EEPROM and RO Flash
  */
 void LoadEEvars(void){
-	/* Load array topology */
+	/* Load Array topology */
 #ifndef __N
 	LoadROtopology();
 #endif
@@ -259,7 +259,7 @@ void LoadEEvars(void){
 }
 
 /***************************************************************************/
-/* Load array topology stored in Flash RO */
+/* Load Array topology stored in Flash RO */
 BOS_Status LoadROtopology(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =8, temp =0;
@@ -280,8 +280,8 @@ BOS_Status LoadROtopology(void){
 		
 		/* Load topology */
 		for(uint8_t i =1; i <= N; i++){
-			for(volatile uint8_t j =0; j <= MaxNumOfPorts; j++){
-				array[i - 1][j] =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS + add));
+			for(volatile uint8_t j =0; j <= MAX_NUM_OF_PORTS; j++){
+				Array[i - 1][j] =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS + add));
 				add +=8;
 			}
 		}
@@ -291,12 +291,12 @@ BOS_Status LoadROtopology(void){
 }
 
 /***************************************************************************/
-/* Load array ports directions stored in Emulated EEPROM */
+/* Load Array ports directions stored in Emulated EEPROM */
 BOS_Status LoadEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
 	for(uint8_t i =1; i <= N; i++){
-		EE_ReadVariable(_EE_PORT_DIR_BASE + i - 1,&arrayPortsDir[i - 1]);
+		EE_ReadVariable(_EE_PORT_DIR_BASE + i - 1,&ArrayPortsDir[i - 1]);
 		
 		if((i + _EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result =BOS_ERR_EEPROM;
@@ -312,13 +312,13 @@ BOS_Status LoadEEalias(void){
 	uint16_t add =0, temp =0;
 	
 	for(uint8_t i =0; i <= N; i++){ // N+1 module aliases
-		for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
+		for(uint8_t j =1; j <= MAX_LENGTH_OF_ALIAS; j +=2){
 			EE_ReadVariable(_EE_ALIAS_BASE + add,&temp);
-			moduleAlias[i][j] =(uint8_t )temp;
-			moduleAlias[i][j - 1] =(uint8_t )(temp >> 8);
+			ModuleAlias[i][j] =(uint8_t )temp;
+			ModuleAlias[i][j - 1] =(uint8_t )(temp >> 8);
 			add++;
 		}
-		moduleAlias[i][MaxLengthOfAlias] ='\0';
+		ModuleAlias[i][MAX_LENGTH_OF_ALIAS] ='\0';
 	}
 	
 	return result;
@@ -333,19 +333,19 @@ BOS_Status LoadEEgroup(void){
 	
 	/* Load group members */
 	for(i =0; i < N; i++){ // N modules
-		EE_ReadVariable(_EE_GROUP_MODULES_BASE + add,&groupModules[i]);
+		EE_ReadVariable(_EE_GROUP_MODULES_BASE + add,&GroupModules[i]);
 		add++;
 	}
 	
 	/* Load group alias */
-	for(i =0; i < MaxNumOfGroups; i++){
-		for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+		for(uint8_t j =1; j <= MAX_LENGTH_OF_ALIAS; j +=2){
 			EE_ReadVariable(_EE_GROUP_ALIAS_BASE + add,&temp);
-			groupAlias[i][j] =(uint8_t )temp;
-			groupAlias[i][j - 1] =(uint8_t )(temp >> 8);
+			GroupAlias[i][j] =(uint8_t )temp;
+			GroupAlias[i][j - 1] =(uint8_t )(temp >> 8);
 			add++;
 		}
-		groupAlias[i][MaxLengthOfAlias] ='\0';
+		GroupAlias[i][MAX_LENGTH_OF_ALIAS] ='\0';
 	}
 	
 	return result;
@@ -579,7 +579,7 @@ BOS_Status LoadROsnippets(void){
 		else{
 			// Copy the command
 			memcpy(Snippets[s].CMD,snipBuffer,i);
-			++numOfRecordedSnippets;		// Record a successful Snippet
+			++NumOfRecordedSnippets;		// Record a successful Snippet
 			memset(snipBuffer,0,i);
 		}
 		// Exit if no more Snippets
@@ -592,13 +592,13 @@ BOS_Status LoadROsnippets(void){
 }
 
 /***************************************************************************/
-/* Save array ports directions to Emulated EEPROM */
+/* Save Array ports directions to Emulated EEPROM */
 BOS_Status SaveEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
 	for(uint8_t i =1; i <= N; i++){
-		if(arrayPortsDir[i - 1])
-			EE_WriteVariable(_EE_PORT_DIR_BASE + i - 1,arrayPortsDir[i - 1]);
+		if(ArrayPortsDir[i - 1])
+			EE_WriteVariable(_EE_PORT_DIR_BASE + i - 1,ArrayPortsDir[i - 1]);
 		
 		if((i + _EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result =BOS_ERR_EEPROM;
@@ -615,9 +615,9 @@ BOS_Status SaveEEalias(void){
 	
 	for(uint8_t i =0; i <= N; i++)				// N+1 module aliases
 	    {
-		if(moduleAlias[i][0]){
-			for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
-				temp =(uint16_t )(moduleAlias[i][j - 1] << 8) + moduleAlias[i][j];
+		if(ModuleAlias[i][0]){
+			for(uint8_t j =1; j <= MAX_LENGTH_OF_ALIAS; j +=2){
+				temp =(uint16_t )(ModuleAlias[i][j - 1] << 8) + ModuleAlias[i][j];
 				EE_WriteVariable(_EE_ALIAS_BASE + add,temp);
 				add++;
 			}
@@ -636,17 +636,17 @@ BOS_Status SaveEEgroup(void){
 	
 	/* Save group members */
 	for(i =0; i < N; i++){  /* N modules */
-		if(groupModules[i]){
-			EE_WriteVariable(_EE_GROUP_MODULES_BASE + add,groupModules[i]);
+		if(GroupModules[i]){
+			EE_WriteVariable(_EE_GROUP_MODULES_BASE + add,GroupModules[i]);
 			add++;
 		}
 	}
 	
 	/* Save group alias */
-	for(i =0; i < MaxNumOfGroups; i++){
-		if(groupAlias[i][0]){
-			for(uint8_t j =1; j <= MaxLengthOfAlias; j +=2){
-				temp =(uint16_t )(groupAlias[i][j - 1] << 8) + groupAlias[i][j];
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+		if(GroupAlias[i][0]){
+			for(uint8_t j =1; j <= MAX_LENGTH_OF_ALIAS; j +=2){
+				temp =(uint16_t )(GroupAlias[i][j - 1] << 8) + GroupAlias[i][j];
 				EE_WriteVariable(_EE_GROUP_ALIAS_BASE + add,temp);
 				add++;
 			}
@@ -705,15 +705,15 @@ BOS_Status SaveEEparams(void){
 }
 
 /***************************************************************************/
-/* Clear array ports directions in Emulated EEPROM */
+/* Clear Array ports directions in Emulated EEPROM */
 BOS_Status ClearEEportsDir(void){
 	BOS_Status result =BOS_OK;
 	
-	memset(arrayPortsDir,0,sizeof(arrayPortsDir));
+	memset(ArrayPortsDir,0,sizeof(ArrayPortsDir));
 	
 	for(uint8_t i =1; i <= N; i++){
-		if(arrayPortsDir[i - 1])
-			EE_WriteVariable(_EE_PORT_DIR_BASE + i - 1,arrayPortsDir[i - 1]);
+		if(ArrayPortsDir[i - 1])
+			EE_WriteVariable(_EE_PORT_DIR_BASE + i - 1,ArrayPortsDir[i - 1]);
 		
 		if((i + _EE_PORT_DIR_BASE) >= _EE_ALIAS_BASE)
 			result =BOS_ERR_EEPROM;
@@ -820,12 +820,12 @@ uint8_t IsMathOperator(char *string){
 /* BitzOS initialization */
 void BOS_Init(void){
 
-	/* Storing Values inside Output_Port_Array[] using FindRoute() Function */
+	/* Storing Values inside OutputPortArray[] using FindRoute() Function */
 #ifdef __N
 	for(uint8_t i = 1;i <= __N;i++)
 	{
-		if(myID == i) Output_Port_Array[i-1] = 0;
-		else Output_Port_Array[i-1] = FindRoute(myID, i);
+		if(myID == i) OutputPortArray[i-1] = 0;
+		else OutputPortArray[i-1] = FindRoute(myID, i);
 	}
 #endif
 
@@ -904,7 +904,7 @@ void BOS_Init(void){
 	
 	/* initialize IWDG timer lastly in order to avoid reset */
 //	MX_IWDG_Init();
-	BOS_initialized =1;
+	bosInitialized =1;
 }
 
 /***************************************************************************/
@@ -939,22 +939,22 @@ void Module_Init(void){
 #ifdef __USER_DATA_BUFFER
 uint8_t GetUserDataCount(void)
 {
-	indexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*DMACountUserDataBuffer);
+	IndexInputUserDataBuffer = USER_RX_BUF_SIZE - (uint8_t)(*dmaCountUserDataBuffer);
 
-	if(indexInputUserDataBuffer== indexProcessUserDataBuffer)
+	if(IndexInputUserDataBuffer== IndexProcessUserDataBuffer)
 	{
 		return 0;
 	}
 
 	else
 	{
-		if(indexInputUserDataBuffer > indexProcessUserDataBuffer)
+		if(IndexInputUserDataBuffer > IndexProcessUserDataBuffer)
 		{
-			return (indexInputUserDataBuffer - indexProcessUserDataBuffer);
+			return (IndexInputUserDataBuffer - IndexProcessUserDataBuffer);
 		}
 		else
 		{
-			return (indexInputUserDataBuffer - indexProcessUserDataBuffer + USER_RX_BUF_SIZE);
+			return (IndexInputUserDataBuffer - IndexProcessUserDataBuffer + USER_RX_BUF_SIZE);
 		}
 	}
 }
@@ -970,11 +970,11 @@ BOS_Status GetUserDataByte(uint8_t* pData)
 			return BOS_ERROR;
 		}
 
-		*pData =  UserBufferData[indexProcessUserDataBuffer];
-		indexProcessUserDataBuffer++;
-		if(indexProcessUserDataBuffer == USER_RX_BUF_SIZE)
+		*pData =  UserBufferData[IndexProcessUserDataBuffer];
+		IndexProcessUserDataBuffer++;
+		if(IndexProcessUserDataBuffer == USER_RX_BUF_SIZE)
 		{
-			indexProcessUserDataBuffer = 0;
+			IndexProcessUserDataBuffer = 0;
 		}
 		return BOS_OK;
 	}
@@ -989,7 +989,7 @@ BOS_Status GetUserDataByte(uint8_t* pData)
 
 /***************************************************************************/
 #ifndef __N
-/* Explore the array and create its topology (executed only by master) */
+/* Explore the Array and create its topology (executed only by master) */
 BOS_Status Explore(void)
 {
 	BOS_Status result = BOS_OK;
@@ -998,61 +998,61 @@ BOS_Status Explore(void)
 	myID = 1; 		/* Master ID */
 
 	/* Step 1: ******************************************************************/
-	/* Reverse master ports and explore adjacent neighbors **********************/
+	/* Reverse master ports and explore adjacent Neighbors **********************/
 	/* **************************************************************************/
 
-	PcPort = ExtraPcPort;
+	pcPort = ExtraPcPort;
 	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
-		if (port != PcPort)	SwapUartPins(GetUart(port), REVERSED);
+		if (port != pcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(PcPort); indMode = IND_TOPOLOGY;
+	ExploreNeighbors(pcPort); IndicatorMode = IND_TOPOLOGY;
 	osDelay(50);
 
 	/* Step 2: ******************************************************************/
-	/* Assign IDs to new modules & update the topology array ********************/
+	/* Assign IDs to new modules & update the topology Array ********************/
 	/* **************************************************************************/
 
 	/* Step 2a - Assign IDs to new modules **************************************/
 	currentID = 1;
 	for (port=1 ; port<=NumOfPorts ; port++)
 	{
-		if (neighbors[port-1][0])
+		if (Neighbors[port-1][0])
 		{
 			/* New ID */
-			messageParams[1] = ++currentID;
-			N = currentID;			/* Update number of modules in the array */
+			MessageParams[1] = ++currentID;
+			N = currentID;			/* Update number of modules in the Array */
 			/* Inform module to change ID */
-			messageParams[0] = 0;	/* change own ID */
+			MessageParams[0] = 0;	/* change own ID */
 			SendMessageFromPort(port, 0, 0, CODE_MODULE_ID, 3);
-			/* Modify neighbors table */
-			neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors[port-1][0]);
+			/* Modify Neighbors table */
+			Neighbors[port-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(Neighbors[port-1][0]);
 			osDelay(50);
 		}
 	}
 
-	/* Step 2b - Update master topology array ***********************************/
-	array[0][0]	= myPN;
+	/* Step 2b - Update master topology Array ***********************************/
+	Array[0][0]	= myPN;
 	for (port=1 ; port<=NumOfPorts ; port++)
 	{
-		if (neighbors[port-1][0])
+		if (Neighbors[port-1][0])
 		{
-			temp16 = neighbors[port-1][0];
+			temp16 = Neighbors[port-1][0];
 			temp1 = (uint8_t)(temp16>>8);					/* Neighbor ID */
-			temp2 = (uint8_t)(neighbors[port-1][0]);		/* Neighbor port */
+			temp2 = (uint8_t)(Neighbors[port-1][0]);		/* Neighbor port */
 			/* Module 1 (master) */
-			array[0][port] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
-			/* Rest of the neighbors */
-			array[temp1-1][0]	= neighbors[port-1][1];		/* Neighbor PN */
-			array[temp1-1][temp2] = ( myID << 3 ) | port;	/* Module 1 ID | Module 1 port */
+			Array[0][port] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
+			/* Rest of the Neighbors */
+			Array[temp1-1][0]	= Neighbors[port-1][1];		/* Neighbor PN */
+			Array[temp1-1][temp2] = ( myID << 3 ) | port;	/* Module 1 ID | Module 1 port */
 		}
 	}
 
-	/* Step 2c - Ask neighbors to update their topology array *******************/
+	/* Step 2c - Ask Neighbors to update their topology Array *******************/
 	for (i=2 ; i<=currentID ; i++)
 	{
-//		memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-//		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-		SendLargeMessageToModule(i, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
+//		memcpy(MessageParams, Array, (size_t) (currentID*(MAX_NUM_OF_PORTS+1)*2) );
+//		SendMessageToModule(i, CODE_TOPOLOGY, (size_t) (currentID*(MAX_NUM_OF_PORTS+1)*2));
+		SendLargeMessageToModule(i, CODE_TOPOLOGY, (uint8_t *) Array, (currentID*(MAX_NUM_OF_PORTS+1)*2));
 
 		osDelay(10);
 	}
@@ -1067,69 +1067,69 @@ BOS_Status Explore(void)
 		for (i=2 ; i<=currentID ; i++)
 		{
 			/* Step 3a - Ask the module to reverse ports ********************************/
-			for (uint8_t p=1 ; p<=MaxNumOfPorts ; p++) {
-				messageParams[p-1] = REVERSED;
+			for (uint8_t p=1 ; p<=MAX_NUM_OF_PORTS ; p++) {
+				MessageParams[p-1] = REVERSED;
 			}
-			messageParams[MaxNumOfPorts] = NORMAL;	/* Make sure the inport is not reversed */
-			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
+			MessageParams[MAX_NUM_OF_PORTS] = NORMAL;	/* Make sure the inport is not reversed */
+			SendMessageToModule(i, CODE_PORT_DIRECTION, MAX_NUM_OF_PORTS+1);
 			osDelay(50);
 
-			/* Step 3b - Ask the module to explore adjacent neighbors *******************/
+			/* Step 3b - Ask the module to explore adjacent Neighbors *******************/
 			SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
 			osDelay(300);
 
 			/* Step 3c - Assign IDs to new modules **************************************/
-			for (j=1 ; j<=MaxNumOfPorts ; j++)
+			for (j=1 ; j<=MAX_NUM_OF_PORTS ; j++)
 			{
-				temp16 = neighbors2[j-1][0];		/* Neighbor ID */
+				temp16 = Neighbors2[j-1][0];		/* Neighbor ID */
 				temp1 = (uint8_t)(temp16>>8);
 				if (temp16 != 0 && temp1 == 0)		/* UnIDed module */
 				{
 					/* New ID */
-					messageParams[1] = ++currentID;
-					N = currentID;			        /* Update number of modules in the array */
-					/* Modify neighbors table */
-					neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(neighbors2[j-1][0]);
-					/* Ask the module to ID its yet unIDed neighbors */
-					messageParams[0] = 1;		    /* change neighbor ID */
-					messageParams[2] = j;		    /* neighbor port */
+					MessageParams[1] = ++currentID;
+					N = currentID;			        /* Update number of modules in the Array */
+					/* Modify Neighbors table */
+					Neighbors2[j-1][0] = ( (uint16_t) currentID << 8 ) + (uint8_t)(Neighbors2[j-1][0]);
+					/* Ask the module to ID its yet unIDed Neighbors */
+					MessageParams[0] = 1;		    /* change neighbor ID */
+					MessageParams[2] = j;		    /* neighbor port */
 					SendMessageToModule(i, CODE_MODULE_ID, 3);
 					osDelay(50);
 				}
 			}
 
-			/* Step 3d - Update master topology array ***********************************/
-			for (j=1 ; j<=MaxNumOfPorts ; j++)
+			/* Step 3d - Update master topology Array ***********************************/
+			for (j=1 ; j<=MAX_NUM_OF_PORTS ; j++)
 			{
-				if (neighbors2[j-1][0])
+				if (Neighbors2[j-1][0])
 				{
-					temp16 = neighbors2[j-1][0];
+					temp16 = Neighbors2[j-1][0];
 					temp1 = (uint8_t)(temp16>>8);			/* Neighbor ID */
-					temp2 = (uint8_t)(neighbors2[j-1][0]);	/* Neighbor port */
+					temp2 = (uint8_t)(Neighbors2[j-1][0]);	/* Neighbor port */
 					if (temp1 != 1)			                /* Exclude the master */
 					{
 						/* Update module i section */
-						if (array[i-1][j] == 0) {
-							array[i-1][j] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
+						if (Array[i-1][j] == 0) {
+							Array[i-1][j] = ( temp1 << 3 ) | temp2;		/* Neighbor ID | Neighbor port */
 						}
-						/* Update module i neighbors */
-						if (array[temp1-1][temp2] == 0) {
-							array[temp1-1][0]	= neighbors2[j-1][1];	/* Neighbor PN */
-							array[temp1-1][temp2] = ( i << 3 ) | j;		/* Module i ID | Module i port */
+						/* Update module i Neighbors */
+						if (Array[temp1-1][temp2] == 0) {
+							Array[temp1-1][0]	= Neighbors2[j-1][1];	/* Neighbor PN */
+							Array[temp1-1][temp2] = ( i << 3 ) | j;		/* Module i ID | Module i port */
 						}
 					}
 				}
 			}
 
-			/* Reset neighbors2 array */
-			memset(neighbors2, 0, sizeof(neighbors2) );
+			/* Reset Neighbors2 Array */
+			memset(Neighbors2, 0, sizeof(Neighbors2) );
 
-			/* Step 3e - Ask all discovered modules to update their topology array ******/
+			/* Step 3e - Ask all discovered modules to update their topology Array ******/
 			for (j=2 ; j<=currentID ; j++)
 			{
-//				memcpy(messageParams, array, (size_t) (currentID*(MaxNumOfPorts+1)*2) );
-//				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MaxNumOfPorts+1)*2));
-				SendLargeMessageToModule(j, CODE_TOPOLOGY, (uint8_t *) array, (currentID*(MaxNumOfPorts+1)*2));
+//				memcpy(MessageParams, Array, (size_t) (currentID*(MAX_NUM_OF_PORTS+1)*2) );
+//				SendMessageToModule(j, CODE_TOPOLOGY, (size_t) (currentID*(MAX_NUM_OF_PORTS+1)*2));
+				SendLargeMessageToModule(j, CODE_TOPOLOGY, (uint8_t *) Array, (currentID*(MAX_NUM_OF_PORTS+1)*2));
 				osDelay(100);
 			}
 		}
@@ -1142,28 +1142,28 @@ BOS_Status Explore(void)
 	/* Make sure all connected modules have been discovered *********************/
 	/* **************************************************************************/
 
-	PcPort = ExtraPcPort;
-	ExploreNeighbors(PcPort);
+	pcPort = ExtraPcPort;
+	ExploreNeighbors(pcPort);
 	osDelay(50);
 
-	/* Check for any unIDed neighbors */
+	/* Check for any unIDed Neighbors */
 	for (i=1 ; i<=NumOfPorts ; i++)
 	{
-		temp16 = neighbors[i-1][0];		    /* Neighbor ID */
+		temp16 = Neighbors[i-1][0];		    /* Neighbor ID */
 		temp1 = (uint8_t)(temp16>>8);
 		if (temp16 != 0 && temp1 == 0) {	/* UnIDed module */
 			result = BOS_ERR_UnIDedModule;
 		}
 	}
-	/* Ask other modules for any unIDed neighbors */
+	/* Ask other modules for any unIDed Neighbors */
 	for (i=2 ; i<=currentID ; i++)
 	{
 		SendMessageToModule(i, CODE_EXPLORE_ADJ, 0);
 		osDelay(300);
-		/* Check for any unIDed neighbors */
-		for (j=1 ; j<=MaxNumOfPorts ; j++)
+		/* Check for any unIDed Neighbors */
+		for (j=1 ; j<=MAX_NUM_OF_PORTS ; j++)
 		{
-			temp16 = neighbors2[j-1][0];		/* Neighbor ID */
+			temp16 = Neighbors2[j-1][0];		/* Neighbor ID */
 			temp1 = (uint8_t)(temp16>>8);
 			if (temp16 != 0 && temp1 == 0) {	/* UnIDed module */
 				result = BOS_ERR_UnIDedModule;
@@ -1179,31 +1179,31 @@ BOS_Status Explore(void)
 	{
 		/* Step 5a - Virtually reset the state of master ports to Normal ************/
 		for (port=1 ; port<=NumOfPorts ; port++) {
-			arrayPortsDir[0] &= (~(0x8000>>(port-1)));		   /* Set bit to zero */
+			ArrayPortsDir[0] &= (~(0x8000>>(port-1)));		   /* Set bit to zero */
 		}
 		/* Step 5b - Update other modules ports starting from the last one **********/
 		for (i=currentID ; i>=2 ; i--)
 		{
-			for (p=1 ; p<=MaxNumOfPorts ; p++)
+			for (p=1 ; p<=MAX_NUM_OF_PORTS ; p++)
 			{
-				if (!array[i-1][p])	{
+				if (!Array[i-1][p])	{
 					/* If empty port leave normal */
-					messageParams[p-1] = NORMAL;
-					arrayPortsDir[i-1] &= (~(0x8000>>(p-1)));	 /* Set bit to zero */
+					MessageParams[p-1] = NORMAL;
+					ArrayPortsDir[i-1] &= (~(0x8000>>(p-1)));	 /* Set bit to zero */
 				} else {
 					/* If not empty, check neighbor */
-					temp16 = array[i-1][p];
+					temp16 = Array[i-1][p];
 					temp1 = (uint8_t)(temp16>>3);				 /* Neighbor ID */
 					temp2 = (uint8_t)(temp16 & 0x0007);			 /* Neighbor port */
 					/* Check neighbor port direction */
-					if ( !(arrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
+					if ( !(ArrayPortsDir[temp1-1] & (0x8000>>(temp2-1))) ) {
 						/* Neighbor port is normal */
-						messageParams[p-1] = REVERSED;
-						arrayPortsDir[i-1] |= (0x8000>>(p-1));	  /* Set bit to one */
+						MessageParams[p-1] = REVERSED;
+						ArrayPortsDir[i-1] |= (0x8000>>(p-1));	  /* Set bit to one */
 					} else {
 						/* Neighbor port is reversed */
-						messageParams[p-1] = NORMAL;
-						arrayPortsDir[i-1] &= (~(0x8000>>(p-1))); /* Set bit to zero */
+						MessageParams[p-1] = NORMAL;
+						ArrayPortsDir[i-1] &= (~(0x8000>>(p-1))); /* Set bit to zero */
 					}
 				}
 			}
@@ -1211,20 +1211,20 @@ BOS_Status Explore(void)
 			/* Step 5c - Check if an inport is reversed *********************************/
 			/* Find out the inport to this module from master */
 			FindRoute(1, i);
-			temp1 = route[NumberOfHops(i)-1];				/* previous module = route[Number of hops - 1] */
+			temp1 = Route[NumberOfHops(i)-1];				/* previous module = Route[Number of hops - 1] */
 			temp2 = FindRoute(i, temp1);
 			/* Is the inport reversed? */
-			if ( (temp1 == i) || (messageParams[temp2-1] == REVERSED) )
-				messageParams[MaxNumOfPorts] = REVERSED;	/* Make sure the inport is reversed */
+			if ( (temp1 == i) || (MessageParams[temp2-1] == REVERSED) )
+				MessageParams[MAX_NUM_OF_PORTS] = REVERSED;	/* Make sure the inport is reversed */
 
 			/* Step 5d - Update module ports directions *********************************/
-			SendMessageToModule(i, CODE_PORT_DIRECTION, MaxNumOfPorts+1);
+			SendMessageToModule(i, CODE_PORT_DIRECTION, MAX_NUM_OF_PORTS+1);
 			osDelay(10);
 		}
 
 		/* Step 5e - Update master ports > all normal *******************************/
 		for (port=1 ; port<=NumOfPorts ; port++) {
-			if (port != PcPort)	SwapUartPins(GetUart(port), NORMAL);
+			if (port != pcPort)	SwapUartPins(GetUart(port), NORMAL);
 		}
 	}
 
@@ -1266,17 +1266,17 @@ BOS_Status Explore(void)
 
 /***************************************************************************/
 #ifndef __N
-/* Explore adjacent neighbors */
+/* Explore adjacent Neighbors */
 BOS_Status ExploreNeighbors(uint8_t ignore){
 	BOS_Status result =BOS_OK;
 	
-	/* Send Hi messages to adjacent neighbors */
+	/* Send Hi messages to adjacent Neighbors */
 	for(uint8_t port =1; port <= NumOfPorts; port++){
 		if(port != ignore){
 			/* This module info */
-			messageParams[0] =(uint8_t )(myPN >> 8);
-			messageParams[1] =(uint8_t )myPN;
-			messageParams[2] =port;
+			MessageParams[0] =(uint8_t )(myPN >> 8);
+			MessageParams[1] =(uint8_t )myPN;
+			MessageParams[2] =port;
 			/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
 			SendMessageFromPort(port,0,0,CODE_HI,3);
 			/* Minimum delay between two consecutive SendMessage commands (with response) */
@@ -1289,7 +1289,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore){
 #endif
 
 /***************************************************************************/
-/* Find array broadcast routes starting from a given module (Takes about 50 usec) */
+/* Find Array broadcast routes starting from a given module (Takes about 50 usec) */
 BOS_Status FindBroadcastRoutes(uint8_t src){
 	BOS_Status result =BOS_OK;
 	uint8_t p =0, m =0, level =0, untaged =0;
@@ -1303,18 +1303,18 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 	/* Tag the source */
 	modules[src - 1] =++level;
 	
-	/* 2. Source module should send to all neighbors */
+	/* 2. Source module should send to all Neighbors */
 	/* Move one level */
 	++level;
 	
 	for(p =1; p <= 6; p++){
-		if(array[src - 1][p]){
+		if(Array[src - 1][p]){
 			bcastRoutes[src - 1] |=(0x01 << (p - 1));
-			modules[(array[src - 1][p] >> 3) - 1] =level;												// Tag this module as already broadcasted-to
+			modules[(Array[src - 1][p] >> 3) - 1] =level;												// Tag this module as already broadcasted-to
 		}
 	}
 	
-	/* 3. Starting from source neighbors,
+	/* 3. Starting from source Neighbors,
 	 * check all other modules we haven't broadcasted-to yet, one by one */
 	do{
 		/* Reset the untaged counter */
@@ -1326,13 +1326,13 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 		for(m =0; m < N; m++){
 			/* This module is already broadcasted-to from the previous level */
 			if(modules[m] == (level - 1)){
-				/* Check all neighbors if they're not already broadcasted-to */
+				/* Check all Neighbors if they're not already broadcasted-to */
 				for(p =1; p <= 6; p++){
 					/* Found an untaged module */
-					if(array[m][p] && (modules[(array[m][p] >> 3) - 1] == 0)){
+					if(Array[m][p] && (modules[(Array[m][p] >> 3) - 1] == 0)){
 						bcastRoutes[m] |=(0x01 << (p - 1));
 						/* Tag this module as already broadcasted-to */
-						modules[(array[m][p] >> 3) - 1] =level;
+						modules[(Array[m][p] >> 3) - 1] =level;
 						++untaged;
 					}
 				}
@@ -1344,7 +1344,7 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
 }
 
 /***************************************************************************/
-/* Find the shortest route to a module using Dijkstra's algorithm
+/* Find the shortest Route to a module using Dijkstra's algorithm
  
  Algorithm (from Wikipedia):
 
@@ -1354,17 +1354,17 @@ BOS_Status FindBroadcastRoutes(uint8_t src){
  2- Set the initial node as current. Mark all other nodes unvisited. Create a set of all
  the unvisited nodes called the unvisited set.
 
- 3- For the current node, consider all of its unvisited neighbors and calculate their tentative
+ 3- For the current node, consider all of its unvisited Neighbors and calculate their tentative
  distances. Compare the newly calculated tentative distance to the current assigned value and
  assign the smaller one. For example, if the current node A is marked with a distance of 6,
  and the edge connecting it with a neighbor B has length 2, then the distance to B (through A)
  will be 6 + 2 = 8. If B was previously marked with a distance greater than 8 then change it to 8.
  Otherwise, keep the current value.
 
- 4- When we are done considering all of the neighbors of the current node, mark the current
+ 4- When we are done considering all of the Neighbors of the current node, mark the current
  node as visited and remove it from the unvisited set. A visited node will never be checked again.
 
- 5- If the destination node has been marked visited (when planning a route between two specific
+ 5- If the destination node has been marked visited (when planning a Route between two specific
  nodes) or if the smallest tentative distance among the nodes in the unvisited set is infinity
  (when planning a complete traversal; occurs when there is no connection between the initial
  node and remaining unvisited nodes), then stop. The algorithm has finished.
@@ -1385,15 +1385,15 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 	uint8_t v =0;
 	uint8_t j =0;
 	
-	memset(route,0,sizeof(route));
-	routeDist[sourceID - 1] =0; /* Distance from source to source */
-	routePrev[sourceID - 1] =0; /* Previous node in optimal path initialization undefined */
+	memset(Route,0,sizeof(Route));
+	RouteDist[sourceID - 1] =0; /* Distance from source to source */
+	RoutePrev[sourceID - 1] =0; /* Previous node in optimal path initialization undefined */
 	
-	/* Check adjacent neighbors first! */
+	/* Check adjacent Neighbors first! */
 	for(int col =1; col <= 6; col++){
-		if(array[sourceID - 1][col] && ((array[sourceID - 1][col] >> 3) == desID)){
-			routeDist[desID - 1] =1;
-			route[0] =desID;
+		if(Array[sourceID - 1][col] && ((Array[sourceID - 1][col] >> 3) == desID)){
+			RouteDist[desID - 1] =1;
+			Route[0] =desID;
 			return col;
 		}
 	}
@@ -1403,16 +1403,16 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 		/* Where i has not yet been removed from Q (unvisited nodes) */
 		if(i != sourceID){
 			/* Unknown distance function from source to i */
-			routeDist[i - 1] =0xFF;
+			RouteDist[i - 1] =0xFF;
 			/* Previous node in optimal path from source */
-			routePrev[i - 1] =0;
+			RoutePrev[i - 1] =0;
 		}
 	}
 	
 	/* Algorithm */
 	while(!QnotEmpty(Q)){
 		/* Source node in first case */
-		u =minArr(routeDist,Q) + 1;
+		u =minArr(RouteDist,Q) + 1;
 		if(u == desID){
 			goto finishedRoute;
 		}
@@ -1423,16 +1423,16 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 		/* Check all module ports */
 		for(uint8_t n =1; n <= 6; n++){
 			/* There's a neighbor v at this port n */
-			if(array[u - 1][n]){
-				v =(array[u - 1][n] >> 3);
+			if(Array[u - 1][n]){
+				v =(Array[u - 1][n] >> 3);
 				/* v is still in Q */
 				if(!Q[v - 1]){
 					/* Add one hop */
-					alt =routeDist[u - 1] + 1;
+					alt =RouteDist[u - 1] + 1;
 					/* A shorter path to v has been found */
-					if(alt < routeDist[v - 1]){
-						routeDist[v - 1] =alt;
-						routePrev[v - 1] =u;
+					if(alt < RouteDist[v - 1]){
+						RouteDist[v - 1] =alt;
+						RoutePrev[v - 1] =u;
 					}
 				}
 			}
@@ -1441,18 +1441,18 @@ uint8_t FindRoute(uint8_t sourceID,uint8_t desID){
 	
 	finishedRoute:
 
-	/* Build the virtual route */
-	/* Construct the shortest path with a stack route */
-	while(routePrev[u - 1]){
+	/* Build the virtual Route */
+	/* Construct the shortest path with a stack Route */
+	while(RoutePrev[u - 1]){
 		/* Push the vertex onto the stack */
-		route[j++] =u;
+		Route[j++] =u;
 		/* Traverse from target to source */
-		u =routePrev[u - 1];
+		u =RoutePrev[u - 1];
 	}
 	
 	/* Check which port leads to the correct module */
 	for(int col =1; col <= 6; col++){
-		if(array[sourceID - 1][col] && ((array[sourceID - 1][col] >> 3) == route[routeDist[desID - 1] - 1])){
+		if(Array[sourceID - 1][col] && ((Array[sourceID - 1][col] >> 3) == Route[RouteDist[desID - 1] - 1])){
 			return col;
 		}
 	}
@@ -1494,7 +1494,7 @@ uint8_t QnotEmpty(uint8_t *Q){
 }
 
 /***************************************************************************/
-/* Display array topology in human-readable format through module port */
+/* Display Array topology in human-readable format through module port */
 void DisplayTopology(uint8_t port){
 	/* Print table header */
 	sprintf(pcUserMessage,"\n\r(Module:Port)\t\t");
@@ -1513,15 +1513,15 @@ void DisplayTopology(uint8_t port){
 		writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,
 		HAL_MAX_DELAY);
 		/* Module PN */
-		strncpy(pcUserMessage,modulePNstring[(array[row][0])],5);
+		strncpy(pcUserMessage,ModulePNstring[(Array[row][0])],5);
 		writePxMutex(port,pcUserMessage,5,cmd50ms,HAL_MAX_DELAY);
 		writePxMutex(port,"\t",1,cmd50ms,HAL_MAX_DELAY);
 		/* Connections */
 		for(uint8_t col =1; col <= NumOfPorts; col++){
-			if(!array[row][col])
+			if(!Array[row][col])
 				sprintf(pcUserMessage,"%d\t",0);
 			else
-				sprintf(pcUserMessage,"%d:%d\t",(array[row][col] >> 3),(array[row][col] & 0x07));
+				sprintf(pcUserMessage,"%d:%d\t",(Array[row][col] >> 3),(Array[row][col] & 0x07));
 			writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,
 			HAL_MAX_DELAY);
 		}
@@ -1538,8 +1538,8 @@ void DisplayPortsDir(uint8_t port){
 	writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
 	
 	for(uint8_t i =1; i <= N; i++){
-		for(uint8_t p =1; p <= MaxNumOfPorts; p++){
-			if((arrayPortsDir[i - 1] & (0x8000 >> (p - 1)))) /* Port is reversed */
+		for(uint8_t p =1; p <= MAX_NUM_OF_PORTS; p++){
+			if((ArrayPortsDir[i - 1] & (0x8000 >> (p - 1)))) /* Port is reversed */
 			{
 				sprintf(pcUserMessage,"\n\rModule %d : P%d",i,p);
 				writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
@@ -1564,7 +1564,7 @@ void DisplayModuleStatus(uint8_t port){
 	
 	sprintf(pcUserMessage,"\n\r*** Module %d Status ***\n",myID);
 	strcat((char* )pcOutputString,pcUserMessage);
-	sprintf(pcUserMessage,"\n\rConnected via port: P%d\n\r",PcPort);
+	sprintf(pcUserMessage,"\n\rConnected via port: P%d\n\r",pcPort);
 	strcat((char* )pcOutputString,pcUserMessage);
 	
 	/* Firmware */
@@ -1582,7 +1582,7 @@ void DisplayModuleStatus(uint8_t port){
 	for(uint8_t i =1; i <= NumOfPorts; i++){
 		sprintf(pcUserMessage,"P%d: ",i);
 		strcat((char* )pcOutputString,pcUserMessage);
-		switch(portStatus[i]){
+		switch(PortStatus[i]){
 			case FREE:
 				sprintf(pcUserMessage,"Free\n\r");
 				break;
@@ -1623,7 +1623,7 @@ void DisplayModuleStatus(uint8_t port){
 	strcat((char* )pcOutputString,"\n\rThese ports are reversed: ");
 	temp =strlen((char* )pcOutputString);
 	for(uint8_t p =1; p <= NumOfPorts; p++){
-		if((arrayPortsDir[myID - 1] & (0x8000 >> (p - 1)))) /* Port is reversed */
+		if((ArrayPortsDir[myID - 1] & (0x8000 >> (p - 1)))) /* Port is reversed */
 		{
 			sprintf(pcUserMessage,"P%d ",p);
 			strcat((char* )pcOutputString,pcUserMessage);
@@ -1663,13 +1663,13 @@ int16_t GetID(char *string){
 	else{
 		/* Check module alias */
 		for(i =0; i < N; i++){
-			if(!strcmp(string,moduleAlias[i]) && (*string != 0))
+			if(!strcmp(string,ModuleAlias[i]) && (*string != 0))
 				return (i);
 		}
 		
 		/* Check group alias */
-		for(i =0; i < MaxNumOfGroups; i++){
-			if(!strcmp(string,groupAlias[i]))
+		for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+			if(!strcmp(string,GroupAlias[i]))
 				return (BOS_MULTICAST | (i << 8));
 		}
 		
@@ -1687,20 +1687,20 @@ BOS_Status NameModule(uint8_t module,char *alias){
 	size_t xCommandStringLength;
 	
 	/* 1. Check module alias with keywords */
-	for(i =0; i < NumOfKeywords; i++){
+	for(i =0; i < NUM_OF_KEYWORDS; i++){
 		if(!strcmp(alias,BOSkeywords[i]))
 			return BOS_ERR_Keyword;
 	}
 	
 	/* 2. Check module alias with other module aliases */
 	for(i =1; i < N; i++){
-		if(!strcmp(alias,moduleAlias[i]))
+		if(!strcmp(alias,ModuleAlias[i]))
 			return BOS_ERR_ExistingAlias;
 	}
 	
 	/* 3. Check module alias with group aliases */
-	for(i =0; i < MaxNumOfGroups; i++){
-		if(!strcmp(alias,groupAlias[i]))
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+		if(!strcmp(alias,GroupAlias[i]))
 			return BOS_ERR_ExistingAlias;
 	}
 	
@@ -1715,7 +1715,7 @@ BOS_Status NameModule(uint8_t module,char *alias){
 	}
 	
 	/* 5. Module alias is unique */
-	strcpy(moduleAlias[module],alias);
+	strcpy(ModuleAlias[module],alias);
 	
 	/* 6. Share new module alias with other modules */
 
@@ -1736,11 +1736,11 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 	
 	/* Check alias with other group aliases */
 
-	for(i =0; i < MaxNumOfGroups; i++){
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
 		/* This group already exists */
-		if(!strcmp(group,groupAlias[i])){
+		if(!strcmp(group,GroupAlias[i])){
 			/* 1. Add this module to the group */
-			groupModules[module - 1] |=(0x0001 << i);
+			GroupModules[module - 1] |=(0x0001 << i);
 			
 			/* 2. Save group to emulated EEPROM -- Should call this manually */
 			//result = SaveEEgroup();			
@@ -1751,14 +1751,14 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 	/* This is a new group - Verify alias and create the group */
 
 	/* 1. Check group alias with keywords */
-	for(j =0; j < NumOfKeywords; j++){
+	for(j =0; j < NUM_OF_KEYWORDS; j++){
 		if(!strcmp(group,BOSkeywords[j]))
 			return BOS_ERR_Keyword;
 	}
 	
 	/* 2. Check group alias with module aliases */
 	for(j =1; j < N; j++){
-		if(!strcmp(group,moduleAlias[j]))
+		if(!strcmp(group,ModuleAlias[j]))
 			return BOS_ERR_ExistingAlias;
 	}
 	
@@ -1773,15 +1773,15 @@ BOS_Status AddModuleToGroup(uint8_t module,char *group){
 	}
 	
 	/* 4. Group alias is unique - copy to first empty location */
-	for(i =0; i < MaxNumOfGroups; i++){
-		if(!groupAlias[i][0]){
-			strcpy(groupAlias[i],group);
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+		if(!GroupAlias[i][0]){
+			strcpy(GroupAlias[i],group);
 			break;
 		}
 	}
 	
 	/* 5. Add this module to the new group */
-	groupModules[module - 1] |=(0x0001 << i);
+	GroupModules[module - 1] |=(0x0001 << i);
 	
 	/* 6. Share new group with other modules */
 
@@ -1820,52 +1820,52 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
 
 	/* Writing to a BOS var */
 	if(remoteVarAddress < FLASH_BASE){
-		messageParams[0] =remoteVarAddress;			// Send BOS variable index
-		messageParams[1] =format;						// Send local format
+		MessageParams[0] =remoteVarAddress;			// Send BOS variable index
+		MessageParams[1] =format;						// Send local format
 		/* Send variable value based on local format */
 		switch(format){
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[2] =*(__IO uint8_t* )localVarAddress;
+				MessageParams[2] =*(__IO uint8_t* )localVarAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
 			case FMT_INT8:
-				messageParams[2] =*(__IO int8_t* )localVarAddress;
+				MessageParams[2] =*(__IO int8_t* )localVarAddress;
 				SendMessageToModule(module,CODE_WRITE_REMOTE,3);
 				break;
 			case FMT_UINT16:
-				messageParams[2] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
+				MessageParams[2] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
+				MessageParams[3] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
 			case FMT_INT16:
-				messageParams[2] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
+				MessageParams[2] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
+				MessageParams[3] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,4);
 				break;
 			case FMT_UINT32:
-				messageParams[2] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
-				messageParams[4] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
-				messageParams[5] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
+				MessageParams[2] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
+				MessageParams[3] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
+				MessageParams[4] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
+				MessageParams[5] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
 			case FMT_INT32:
-				messageParams[2] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
-				messageParams[3] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
-				messageParams[4] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
-				messageParams[5] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
+				MessageParams[2] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
+				MessageParams[3] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
+				MessageParams[4] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
+				MessageParams[5] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,CODE_WRITE_REMOTE,6);
 				break;
 			case FMT_FLOAT:
-				messageParams[2] =*(__IO uint8_t* )(localVarAddress + 0);
-				messageParams[3] =*(__IO uint8_t* )(localVarAddress + 1);
-				messageParams[4] =*(__IO uint8_t* )(localVarAddress + 2);
-				messageParams[5] =*(__IO uint8_t* )(localVarAddress + 3);
-				messageParams[6] =*(__IO uint8_t* )(localVarAddress + 4);
-				messageParams[7] =*(__IO uint8_t* )(localVarAddress + 5);
-				messageParams[8] =*(__IO uint8_t* )(localVarAddress + 6);
-				messageParams[9] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
+				MessageParams[2] =*(__IO uint8_t* )(localVarAddress + 0);
+				MessageParams[3] =*(__IO uint8_t* )(localVarAddress + 1);
+				MessageParams[4] =*(__IO uint8_t* )(localVarAddress + 2);
+				MessageParams[5] =*(__IO uint8_t* )(localVarAddress + 3);
+				MessageParams[6] =*(__IO uint8_t* )(localVarAddress + 4);
+				MessageParams[7] =*(__IO uint8_t* )(localVarAddress + 5);
+				MessageParams[8] =*(__IO uint8_t* )(localVarAddress + 6);
+				MessageParams[9] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
 				SendMessageToModule(module,CODE_WRITE_REMOTE,10);
 				break;
 			default:
@@ -1874,56 +1874,56 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
 	}
 	/* Writing to a memory address */
 	else{
-		messageParams[0] =0;
-		messageParams[1] =format;							// Local format
-		messageParams[2] =(uint8_t )(remoteVarAddress >> 24);
-		messageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
-		messageParams[4] =(uint8_t )(remoteVarAddress >> 8);
-		messageParams[5] =(uint8_t )remoteVarAddress;
+		MessageParams[0] =0;
+		MessageParams[1] =format;							// Local format
+		MessageParams[2] =(uint8_t )(remoteVarAddress >> 24);
+		MessageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
+		MessageParams[4] =(uint8_t )(remoteVarAddress >> 8);
+		MessageParams[5] =(uint8_t )remoteVarAddress;
 		/* Send variable value based on local format */
 		switch(format){
 			case FMT_BOOL:
 			case FMT_UINT8:
-				messageParams[6] =*(__IO uint8_t* )localVarAddress;
+				MessageParams[6] =*(__IO uint8_t* )localVarAddress;
 				SendMessageToModule(module,code,7);
 				break;
 			case FMT_INT8:
-				messageParams[6] =*(__IO int8_t* )localVarAddress;
+				MessageParams[6] =*(__IO int8_t* )localVarAddress;
 				SendMessageToModule(module,code,7);
 				break;
 			case FMT_UINT16:
-				messageParams[6] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
+				MessageParams[6] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 0);
+				MessageParams[7] =(uint8_t )((*(__IO uint16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,code,8);
 				break;
 			case FMT_INT16:
-				messageParams[6] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
+				MessageParams[6] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 0);
+				MessageParams[7] =(uint8_t )((*(__IO int16_t* )localVarAddress) >> 8);
 				SendMessageToModule(module,code,8);
 				break;
 			case FMT_UINT32:
-				messageParams[6] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
+				MessageParams[6] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 0);
+				MessageParams[7] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 8);
+				MessageParams[8] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 16);
+				MessageParams[9] =(uint8_t )((*(__IO uint32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,code,10);
 				break;
 			case FMT_INT32:
-				messageParams[6] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
-				messageParams[7] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
-				messageParams[8] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
-				messageParams[9] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
+				MessageParams[6] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 0);
+				MessageParams[7] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 8);
+				MessageParams[8] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 16);
+				MessageParams[9] =(uint8_t )((*(__IO int32_t* )localVarAddress) >> 24);
 				SendMessageToModule(module,code,10);
 				break;
 			case FMT_FLOAT:
-				messageParams[6] =*(__IO uint8_t* )(localVarAddress + 0);
-				messageParams[7] =*(__IO uint8_t* )(localVarAddress + 1);
-				messageParams[8] =*(__IO uint8_t* )(localVarAddress + 2);
-				messageParams[9] =*(__IO uint8_t* )(localVarAddress + 3);
-				messageParams[10] =*(__IO uint8_t* )(localVarAddress + 4);
-				messageParams[11] =*(__IO uint8_t* )(localVarAddress + 5);
-				messageParams[12] =*(__IO uint8_t* )(localVarAddress + 6);
-				messageParams[13] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
+				MessageParams[6] =*(__IO uint8_t* )(localVarAddress + 0);
+				MessageParams[7] =*(__IO uint8_t* )(localVarAddress + 1);
+				MessageParams[8] =*(__IO uint8_t* )(localVarAddress + 2);
+				MessageParams[9] =*(__IO uint8_t* )(localVarAddress + 3);
+				MessageParams[10] =*(__IO uint8_t* )(localVarAddress + 4);
+				MessageParams[11] =*(__IO uint8_t* )(localVarAddress + 5);
+				MessageParams[12] =*(__IO uint8_t* )(localVarAddress + 6);
+				MessageParams[13] =*(__IO uint8_t* )(localVarAddress + 7); // You cannot bitwise floats
 				SendMessageToModule(module,code,14);
 				break;
 			default:
@@ -1937,8 +1937,8 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
 	/* If confirmation is requested, wait for it until timeout */
 	if(timeout){
 		uint32_t t0 =HAL_GetTick();
-		while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){};
-		return responseStatus;
+		while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){};
+		return ResponseStatus;
 	}
 	
 	return BOS_OK;
@@ -1966,23 +1966,23 @@ BOS_Status WriteToRemote(uint8_t module,uint32_t localVarAddress,uint32_t remote
  */
 uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,VariableFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
-	remoteBuffer = REMOTE_BOS_VAR;
+	RemoteBuffer = REMOTE_BOS_VAR;
 	
 	/* Send the Message */
-	messageParams[0] =remoteVarAddress + REMOTE_BOS_VAR; // Send BOS variable index
+	MessageParams[0] =remoteVarAddress + REMOTE_BOS_VAR; // Send BOS variable index
 	SendMessageToModule(module,CODE_READ_REMOTE,1);
 	
 	/* Wait until read is complete */
 	uint32_t t0 =HAL_GetTick();
-	while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
 	};
 	
 	/* Return the read value address */
-//	if(responseStatus == BOS_OK){
+//	if(ResponseStatus == BOS_OK){
 	/* Return the remote var format */
 	*remoteFormat =remoteVarFormat;
 
-	return ((uint32_t* )&remoteBuffer);
+	return ((uint32_t* )&RemoteBuffer);
 //	}
 //	else
 //		return NULL;
@@ -1998,26 +1998,26 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,VariableFormat_
  */
 uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,VariableFormat_t requestedFormat,uint32_t timeout){
 	/* Reset local buffer */
-	remoteBuffer = REMOTE_MEMORY_ADD;
+	RemoteBuffer = REMOTE_MEMORY_ADD;
 	
 	/* Send the Message */
-	messageParams[0] = REMOTE_MEMORY_ADD;
-	messageParams[1] =requestedFormat;						// Requested format
-	messageParams[2] =(uint8_t )(remoteVarAddress >> 24);
-	messageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
-	messageParams[4] =(uint8_t )(remoteVarAddress >> 8);
-	messageParams[5] =(uint8_t )remoteVarAddress;
-	requestFormat =requestedFormat;	// Set a flag that we requested a memory location
+	MessageParams[0] = REMOTE_MEMORY_ADD;
+	MessageParams[1] =requestedFormat;						// Requested format
+	MessageParams[2] =(uint8_t )(remoteVarAddress >> 24);
+	MessageParams[3] =(uint8_t )(remoteVarAddress >> 16); // Remote address
+	MessageParams[4] =(uint8_t )(remoteVarAddress >> 8);
+	MessageParams[5] =(uint8_t )remoteVarAddress;
+	RequestFormat =requestedFormat;	// Set a flag that we requested a memory location
 	SendMessageToModule(module,CODE_READ_REMOTE,6);
 	
 	/* Wait until read is complete */
 	uint32_t t0 =HAL_GetTick();
-	while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
 	};
 	
 	/* Return the read value address */
-//	if(responseStatus == BOS_OK)
-		return ((uint32_t* )&remoteBuffer);
+//	if(ResponseStatus == BOS_OK)
+		return ((uint32_t* )&RemoteBuffer);
 //	else
 //		return NULL;
 }
@@ -2034,24 +2034,24 @@ uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,VariableForm
  */
 uint32_t* ReadRemoteParam(uint8_t module,char *paramString,VariableFormat_t *remoteFormat,uint32_t timeout){
 	/* Reset local buffer */
-	remoteBuffer = REMOTE_MODULE_PARAM;
+	RemoteBuffer = REMOTE_MODULE_PARAM;
 	
 	/* Send the Message */
-	messageParams[0] = REMOTE_MODULE_PARAM;
-	memcpy(&messageParams[1],paramString,strlen(paramString)); // copy BOS parameter index to location
+	MessageParams[0] = REMOTE_MODULE_PARAM;
+	memcpy(&MessageParams[1],paramString,strlen(paramString)); // copy BOS parameter index to location
 	SendMessageToModule(module,CODE_READ_REMOTE,strlen(paramString) + 1);
 	
 	/* Wait until read is complete */
 	uint32_t t0 =HAL_GetTick();
-	while((responseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
 	};
 	
 	/* Return the read value address */
-	if(responseStatus == BOS_OK){
+	if(ResponseStatus == BOS_OK){
 		/* Return the remote var format */
 		*remoteFormat =remoteVarFormat;
 		
-		return ((uint32_t* )&remoteBuffer);
+		return ((uint32_t* )&RemoteBuffer);
 	}
 	else
 		return NULL;
@@ -2080,9 +2080,9 @@ BOS_Status WriteRemote(uint8_t dstModuleID,uint32_t localVarAddress,uint32_t rem
  */
 uint8_t AddBOSvar(VariableFormat_t format,uint32_t address){
 	for(uint8_t v =0; v < MAX_BOS_VARS; v++){
-		if((BOS_var_reg[v] & 0x000F) == 0)		// Index not assigned yet
+		if((bosVarRegister[v] & 0x000F) == 0)		// Index not assigned yet
 		{
-			BOS_var_reg[v] =format + ((address - SRAM_BASE) << 16);
+			bosVarRegister[v] =format + ((address - SRAM_BASE) << 16);
 			return (v + 1);
 		}
 	}
@@ -2105,28 +2105,28 @@ uint8_t AddBOSvar(VariableFormat_t format,uint32_t address){
  2 is var7 , var8 and var9 in mb-module.
  */
 //BOS_Status ReadFromMBModule(uint8_t dst,uint8_t rank,uint32_t timeout){
-//	messageParams[0] =rank;
-//	messageParams[1] =0;        // the size of message buffer
-//	messageParams[2] =0;        //  of the MB module is 21 byte
-//	messageParams[3] =0;        // so , 13 bytes' messageParams '
-//	messageParams[4] =0;        // + 8 bytes ' message frame setting'
-//	messageParams[5] =0;        // = 21 bytes.
-//	messageParams[6] =0;
-//	messageParams[7] =0;
-//	messageParams[8] =0;
-//	messageParams[9] =0;
-//	messageParams[10] =0;
-//	messageParams[11] =0;
-//	messageParams[12] =0;
+//	MessageParams[0] =rank;
+//	MessageParams[1] =0;        // the size of message buffer
+//	MessageParams[2] =0;        //  of the MB module is 21 byte
+//	MessageParams[3] =0;        // so , 13 bytes' MessageParams '
+//	MessageParams[4] =0;        // + 8 bytes ' message frame setting'
+//	MessageParams[5] =0;        // = 21 bytes.
+//	MessageParams[6] =0;
+//	MessageParams[7] =0;
+//	MessageParams[8] =0;
+//	MessageParams[9] =0;
+//	MessageParams[10] =0;
+//	MessageParams[11] =0;
+//	MessageParams[12] =0;
 //	SendMessageToModule(dst,CODE_READ_REMOTE,13);
 //
 //	/* Wait until read is complete */
 //	uint32_t t0 =HAL_GetTick();
-//	//while ( (responseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
+//	//while ( (ResponseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
 //	while(((HAL_GetTick() - t0) < timeout)){
 //	};
 //	/* Return the read value address */
-//	if(responseStatus == BOS_OK){
+//	if(ResponseStatus == BOS_OK){
 //
 //		return BOS_OK;
 //	}
@@ -2150,21 +2150,21 @@ uint8_t AddBOSvar(VariableFormat_t format,uint32_t address){
 //	BOS_Status result =BOS_OK;
 //
 //	if(rank <= 3){
-//		messageParams[0] =rank;
-//		messageParams[1] =(uint8_t )((*(uint32_t* )&var1) >> 0);   // first var
-//		messageParams[2] =(uint8_t )((*(uint32_t* )&var1) >> 8);
-//		messageParams[3] =(uint8_t )((*(uint32_t* )&var1) >> 16);
-//		messageParams[4] =(uint8_t )((*(uint32_t* )&var1) >> 24);
+//		MessageParams[0] =rank;
+//		MessageParams[1] =(uint8_t )((*(uint32_t* )&var1) >> 0);   // first var
+//		MessageParams[2] =(uint8_t )((*(uint32_t* )&var1) >> 8);
+//		MessageParams[3] =(uint8_t )((*(uint32_t* )&var1) >> 16);
+//		MessageParams[4] =(uint8_t )((*(uint32_t* )&var1) >> 24);
 //
-//		messageParams[5] =(uint8_t )((*(uint32_t* )&var2) >> 0);  // second var
-//		messageParams[6] =(uint8_t )((*(uint32_t* )&var2) >> 8);
-//		messageParams[7] =(uint8_t )((*(uint32_t* )&var2) >> 16);
-//		messageParams[8] =(uint8_t )((*(uint32_t* )&var2) >> 24);
+//		MessageParams[5] =(uint8_t )((*(uint32_t* )&var2) >> 0);  // second var
+//		MessageParams[6] =(uint8_t )((*(uint32_t* )&var2) >> 8);
+//		MessageParams[7] =(uint8_t )((*(uint32_t* )&var2) >> 16);
+//		MessageParams[8] =(uint8_t )((*(uint32_t* )&var2) >> 24);
 //
-//		messageParams[9] =(uint8_t )((*(uint32_t* )&var3) >> 0);   // third var
-//		messageParams[10] =(uint8_t )((*(uint32_t* )&var3) >> 8);
-//		messageParams[11] =(uint8_t )((*(uint32_t* )&var3) >> 16);
-//		messageParams[12] =(uint8_t )((*(uint32_t* )&var3) >> 24);
+//		MessageParams[9] =(uint8_t )((*(uint32_t* )&var3) >> 0);   // third var
+//		MessageParams[10] =(uint8_t )((*(uint32_t* )&var3) >> 8);
+//		MessageParams[11] =(uint8_t )((*(uint32_t* )&var3) >> 16);
+//		MessageParams[12] =(uint8_t )((*(uint32_t* )&var3) >> 24);
 //
 //		SendMessageToModule(dst,CODE_WRITE_REMOTE,13);
 //	}
@@ -2195,14 +2195,14 @@ char* GetTimeString(void){
 }
 
 /***************************************************************************/
-/* Bridge two array/communication ports together */
+/* Bridge two Array/communication ports together */
 BOS_Status Bridge(uint8_t port1,uint8_t port2){
 	/* Link the ports together with an infinite DMA stream */
 	return StartScastDMAStream(port1,myID,port2,myID,BIDIRECTIONAL,0xFFFFFFFF,0xFFFFFFFF,true);
 }
 
 /***************************************************************************/
-/* Un-bridge two array/communication ports */
+/* Un-bridge two Array/communication ports */
 BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	/* Remove the stream from EEPROM */
 	SaveEEstreams(0,0,0,0,0,0,0,0,0);
