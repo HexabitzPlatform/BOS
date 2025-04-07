@@ -64,5 +64,4 @@
 
 #endif /* BOS_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
-
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

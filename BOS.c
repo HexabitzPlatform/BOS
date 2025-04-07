@@ -177,53 +177,6 @@ BOS_Status SaveEEgroup(void);
 BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src1,uint8_t dst1,uint8_t src2,uint8_t dst2,uint8_t src3,uint8_t dst3);
 BOS_Status SaveEEparams(void);
 
-
-// Function To find  type of MCU
-char Processor_type(uint8_t module_name)
-{
-	if( module_name==_H1AR2 || module_name==_H23R3 ||
-		module_name==_H10R4 || module_name==_H0FR6 ||
-		module_name==_H41R6 || module_name==_H15R0 ||
-		module_name==_H1DR1 || module_name==_H07R3 )
-	{
-	  return 'F' ;
-     }
-   else
-     {
-	  return 'G';
-	  }
-}
-
-//Function To find Name of Module
-uint8_t Get_Module_Name(uint8_t dst){
-	return Array[dst - 1][0];
-}
-
-HAL_StatusTypeDef Send_BOS_Message(uint8_t port,uint8_t *buffer,uint16_t n,uint32_t mutexTimeout,uint8_t dst){
-	uint8_t module_name =Get_Module_Name(dst);
-	HAL_StatusTypeDef result =HAL_ERROR;
-
-	if(GetUart(port) != NULL){
-		/* Wait for the mutex to be available. */
-		if(osSemaphoreWait(PxTxSemaphoreHandle[port],mutexTimeout) == osOK){
-			if(Processor_type(module_name) == 'G'){
-				result =HAL_UART_Transmit_IT(GetUart(port),buffer,n);
-			}
-			else{
-				for(uint8_t i =0; i < n; i++){
-					result =HAL_UART_Transmit_IT(GetUart(port),buffer,1);
-					buffer++;
-					//Delay_us(500);
-					Delay_ms(2);
-				}
-			}
-		}
-	}
-
-	Delay_ms(5); 		// Delay Between Sending Two Messages.
-	return result;
-}
-
 /***************************************************************************/
 /*****************************  Private Functions **************************/
 /***************************************************************************/
@@ -512,25 +465,15 @@ BOS_Status LoadEEbuttons(void){
 	for(uint8_t i =0; i <= NumOfPorts; i++){
 		status1 =EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i),&temp16);
 		
-		if(!status1)									// This variable exists
-		{
+		/* This variable exists */
+		if(!status1){
 			temp8 =(uint8_t )(temp16 >> 8);
-			if(((temp8 >> 4) == i + 1) && ((temp8 & 0x0F) != NONE))									// This is same port and button type is not none
-			{
+			if(((temp8 >> 4) == i + 1) && ((temp8 & 0x0F) != NONE)){
 				Button[i + 1].Type =temp8 & 0x0F;
 				Button[i + 1].Event =(uint8_t )temp16;
-				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 1,&temp16);
-//				button[i + 1].pressedX1Sec =(uint8_t )(temp16 >> 8);
-//				button[i + 1].releasedY1Sec =(uint8_t )temp16;
-				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 2,&temp16);
-//				button[i + 1].pressedX2Sec =(uint8_t )(temp16 >> 8);
-//				button[i + 1].releasedY2Sec =(uint8_t )temp16;
-				EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i) + 3,&temp16);
-//				button[i + 1].pressedX3Sec =(uint8_t )(temp16 >> 8);
-//				button[i + 1].releasedY3Sec =(uint8_t )temp16;
+
 				/* Setup the button and its events */
 				AddPortButton(Button[i + 1].Type,i + 1);
-//				SetButtonEvents(i + 1,(button[i + 1].events & BUTTON_EVENT_CLICKED),((button[i + 1].events & BUTTON_EVENT_DBL_CLICKED) >> 1),button[i + 1].pressedX1Sec,button[i + 1].pressedX2Sec,button[i + 1].pressedX3Sec,button[i + 1].releasedY1Sec,button[i + 1].releasedY2Sec,button[i + 1].releasedY3Sec,BUTTON_EVENT_MODE_CLEAR);
 				SetButtonEvents(i + 1,(Button[i + 1].Event & BUTTON_EVENT_CLICKED),BUTTON_EVENT_MODE_CLEAR);
 			}
 		}
@@ -548,19 +491,19 @@ BOS_Status LoadROsnippets(void){
 	if(snipBuffer == NULL)
 		return BOS_MEM_FULL;
 	
-	// Exit if no recorded Snippets
+	/* Exit if no recorded Snippets */
 	if(*(uint8_t* )currentAdd != 0xFE)
 		return BOS_ERROR;
 	
 	/* Load Snippets */
 	for(uint8_t s =0; s < MAX_SNIPPETS; s++){
-		// Load conditions starting at RO_MID_ADDRESS
+		/* Load conditions starting at RO_MID_ADDRESS */
 		for(i =0; i < sizeof(Snippet_t); i++)
 			snipBuffer[i] =(*(__IO uint8_t* )(currentAdd++));
 		memcpy((uint8_t* )&Snippets[s],(uint8_t* )&snipBuffer[1],sizeof(Snippet_t));
 		memset(snipBuffer,0,sizeof(Snippet_t));
 		i =0;
-		// Load commands until you get next 0xFE
+		/* Load commands until you get next 0xFE */
 		currentAdd =currentAdd + 20;
 		while(*(uint8_t* )currentAdd != 0xFE && *(uint8_t* )currentAdd != 0xFF && i < cmdMAX_INPUT_SIZE){
 			snipBuffer[i] =*(uint8_t* )currentAdd;
@@ -568,8 +511,9 @@ BOS_Status LoadROsnippets(void){
 			++i;
 		}
 		if(snipBuffer[i - 1] != 0)
-			++i;	// String termination char was not recorded, then add one
-		// Allocate buffer for the Snippet commands
+			++i; /* String termination char was not recorded, then add one */
+
+		/* Allocate buffer for the Snippet commands */
 		Snippets[s].CMD =(char* )malloc(i);
 		if(Snippets[s].CMD == NULL){
 			memset(&Snippets[s],0,sizeof(Snippet_t));
@@ -577,12 +521,12 @@ BOS_Status LoadROsnippets(void){
 			return BOS_ERR_SNIP_MEM_FULL;
 		}
 		else{
-			// Copy the command
+			/*- Copy the command */
 			memcpy(Snippets[s].CMD,snipBuffer,i);
-			++NumOfRecordedSnippets;		// Record a successful Snippet
+			++NumOfRecordedSnippets; /* Record a successful Snippet */
 			memset(snipBuffer,0,i);
 		}
-		// Exit if no more Snippets
+		/* Exit if no more Snippets */
 		if(*(uint8_t* )currentAdd != 0xFE)
 			break;
 	}
@@ -613,8 +557,8 @@ BOS_Status SaveEEalias(void){
 	BOS_Status result =BOS_OK;
 	uint16_t add =0, temp =0;
 	
-	for(uint8_t i =0; i <= N; i++)				// N+1 module aliases
-	    {
+	/* N+1 module aliases */
+	for(uint8_t i =0; i <= N; i++){
 		if(ModuleAlias[i][0]){
 			for(uint8_t j =1; j <= MAX_LENGTH_OF_ALIAS; j +=2){
 				temp =(uint16_t )(ModuleAlias[i][j - 1] << 8) + ModuleAlias[i][j];
@@ -634,8 +578,9 @@ BOS_Status SaveEEgroup(void){
 	uint16_t add =0, temp =0;
 	uint8_t i =0;
 	
-	/* Save group members */
-	for(i =0; i < N; i++){  /* N modules */
+	/* Save group members
+	 * N modules */
+	for(i =0; i < N; i++){
 		if(GroupModules[i]){
 			EE_WriteVariable(_EE_GROUP_MODULES_BASE + add,GroupModules[i]);
 			add++;
@@ -679,8 +624,8 @@ BOS_Status SaveEEparams(void){
 	BOS_Status result =BOS_OK;
 	
 	/* Save params base - BOS response & BOS trace */
-//	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.trace << 5) | (uint16_t )BOSMessaging.response);
-//	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )BOSMessaging.Acknowledgment << 15) | (uint16_t )BOSMessaging.trial);
+//	EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 5) | (uint16_t )OptionByte.Response);
+//	EE_WriteVariable(_EE_PARAMS_Messaging,((uint16_t )OptionByte.Acknowledgment << 15) | (uint16_t )OptionByte.trial);
 
 	/* Save Button debounce */
 	EE_WriteVariable(_EE_PARAMS_DEBOUNCE,BOS.Buttons.Debounce);
@@ -723,7 +668,7 @@ BOS_Status ClearEEportsDir(void){
 }
 
 /***************************************************************************/
-//TODO change loction of the API
+//TODO change location of the API
 /* Format Emulated EEPROM for a factory reset */
 void EE_FormatForFactoryReset(void){
 	/* Check if EEPROM was just formated? */
@@ -748,8 +693,6 @@ uint8_t IsLowerCLIbaud(void){
 	GPIO_InitTypeDef GPIO_InitStruct;
 	uint32_t P1_TX_Port, P1_RX_Port, P2_TX_Port, P2_RX_Port;
 	uint16_t P1_TX_Pin, P1_RX_Pin, P2_TX_Pin, P2_RX_Pin;
-	
-	/* -- Setup GPIOs -- */
 
 	/* Get GPIOs */
 	GetPortGPIOs(P1,&P1_TX_Port,&P1_TX_Pin,&P1_RX_Port,&P1_RX_Pin);
@@ -2092,89 +2035,6 @@ uint8_t AddBOSvar(VariableFormat_t format,uint32_t address){
 }
 
 /***************************************************************************/
-/* Read three variables From ModBus module , by sending a request
- to MB module , which responed and send the variables and store it
- in MBmessageParams.
- dst : When creating topology , you have to consider :
- MB module ID is 1.
- BOS module ID is 2.
- rank : represents a set of 3 variables.
- ModBus module has nine variables.
- 0 is var1 , var2 and var3 in mb-module.
- 1 is var4 , var5 and var6 in mb-module.
- 2 is var7 , var8 and var9 in mb-module.
- */
-//BOS_Status ReadFromMBModule(uint8_t dst,uint8_t rank,uint32_t timeout){
-//	MessageParams[0] =rank;
-//	MessageParams[1] =0;        // the size of message buffer
-//	MessageParams[2] =0;        //  of the MB module is 21 byte
-//	MessageParams[3] =0;        // so , 13 bytes' MessageParams '
-//	MessageParams[4] =0;        // + 8 bytes ' message frame setting'
-//	MessageParams[5] =0;        // = 21 bytes.
-//	MessageParams[6] =0;
-//	MessageParams[7] =0;
-//	MessageParams[8] =0;
-//	MessageParams[9] =0;
-//	MessageParams[10] =0;
-//	MessageParams[11] =0;
-//	MessageParams[12] =0;
-//	SendMessageToModule(dst,CODE_READ_REMOTE,13);
-//
-//	/* Wait until read is complete */
-//	uint32_t t0 =HAL_GetTick();
-//	//while ( (ResponseStatus != BOS_OK) && ((HAL_GetTick()-t0) < timeout) ) { };
-//	while(((HAL_GetTick() - t0) < timeout)){
-//	};
-//	/* Return the read value address */
-//	if(ResponseStatus == BOS_OK){
-//
-//		return BOS_OK;
-//	}
-//	else
-//		return BOS_ERROR;
-//
-//}
-
-/***************************************************************************/
-/* Write three variables to ModBus module:
- dst : When creating topology , you have to consider :
- MB module ID is 1.
- BOS module ID is 2.
- rank : represents a set of 3 variables.
- ModBus module has nine variables.
- 0 is var1 , var2 and var3 in mb-module.
- 1 is var4 , var5 and var6 in mb-module.
- 2 is var7 , var8 and var9 in mb-module.
- */
-//BOS_Status WriteToMBModule(uint8_t dst,uint8_t rank,float var1,float var2,float var3){
-//	BOS_Status result =BOS_OK;
-//
-//	if(rank <= 3){
-//		MessageParams[0] =rank;
-//		MessageParams[1] =(uint8_t )((*(uint32_t* )&var1) >> 0);   // first var
-//		MessageParams[2] =(uint8_t )((*(uint32_t* )&var1) >> 8);
-//		MessageParams[3] =(uint8_t )((*(uint32_t* )&var1) >> 16);
-//		MessageParams[4] =(uint8_t )((*(uint32_t* )&var1) >> 24);
-//
-//		MessageParams[5] =(uint8_t )((*(uint32_t* )&var2) >> 0);  // second var
-//		MessageParams[6] =(uint8_t )((*(uint32_t* )&var2) >> 8);
-//		MessageParams[7] =(uint8_t )((*(uint32_t* )&var2) >> 16);
-//		MessageParams[8] =(uint8_t )((*(uint32_t* )&var2) >> 24);
-//
-//		MessageParams[9] =(uint8_t )((*(uint32_t* )&var3) >> 0);   // third var
-//		MessageParams[10] =(uint8_t )((*(uint32_t* )&var3) >> 8);
-//		MessageParams[11] =(uint8_t )((*(uint32_t* )&var3) >> 16);
-//		MessageParams[12] =(uint8_t )((*(uint32_t* )&var3) >> 24);
-//
-//		SendMessageToModule(dst,CODE_WRITE_REMOTE,13);
-//	}
-//	else
-//		result =BOS_ERR_WrongParam;
-//
-//	return result;
-//}
-
-/***************************************************************************/
 /* Make a data string with format weekday / month / date / year */
 char* GetDateString(void){
 	static const char formatDateStr[] ="%s %02d/%02d/%04d";
@@ -2207,21 +2067,17 @@ BOS_Status Unbridge(uint8_t port1,uint8_t port2){
 	/* Remove the stream from EEPROM */
 	SaveEEstreams(0,0,0,0,0,0,0,0,0);
 	
-
-	// Stop the DMA streams and enable messaging back on these ports
-	if(UARTDMAHandler[port1 - 1]->Instance != 0 && UARTDMAHandler[port2 - 1]->Instance != 0)
-	{
+	/* Stop the DMA streams and enable messaging back on these ports */
+	if(UARTDMAHandler[port1 - 1]->Instance != 0 && UARTDMAHandler[port2 - 1]->Instance != 0){
 		SwitchStreamDMAToMsg(port1);
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
-	else if(UARTDMAHandler[port1 - 1]->Instance != 0)
-	{
+	else if(UARTDMAHandler[port1 - 1]->Instance != 0){
 		SwitchStreamDMAToMsg(port1);
 		return BOS_OK;
 	}
-	else if(UARTDMAHandler[port2 - 1]->Instance != 0)
-	{
+	else if(UARTDMAHandler[port2 - 1]->Instance != 0){
 		SwitchStreamDMAToMsg(port2);
 		return BOS_OK;
 	}
@@ -2281,13 +2137,13 @@ BOS_Status EnableStopModebyUARTx(uint8_t port){
  * WKUP2: PC13 pin
  * NRST pin
  *  */
-BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins){
+BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t wakeupPins){
 
 	/* Clear the WUF FLAG */
 	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
 
 	/* Enable the WAKEUP PIN */
-	switch(WakeupPins){
+	switch(wakeupPins){
 
 		case PA0_PIN:
 			HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
@@ -2327,7 +2183,7 @@ BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins){
  * WKUP2: PC13 pin
  * NRST pin
  *  */
-BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins){
+BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t wakeupPins){
 
 	/* The standby wake-up is same as a system RESET:
 	 * The entire code runs from the beginning just as if it was a RESET.
@@ -2338,7 +2194,7 @@ BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins){
 		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB);
 
 		/* Disable  Wake-up Pinx */
-		switch(WakeupPins){
+		switch(wakeupPins){
 
 			case PA0_PIN:
 				HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */

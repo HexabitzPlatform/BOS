@@ -24,8 +24,8 @@
 
 /* Firmware */
 #define	_firmMajor			0
-#define	_firmMinor			2
-#define	_firmPatch			6
+#define	_firmMinor			4
+#define	_firmPatch			0
 #define _firmDate			__DATE__
 #define _firmTime			__TIME__
 
@@ -736,7 +736,7 @@ extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numbe
 extern BOS_Status SendMessageToGroup(char *group, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams);
-extern BOS_Status ReadDataFromSensorModule(uint8_t disModuleID, uint16_t Code, uint32_t *pDataReceived, uint16_t timeout);
+extern BOS_Status ReadDataFromSensorModule(uint8_t disModuleID, uint16_t code, uint32_t *pDataReceived, uint16_t timeout);
 
 /* ============================ DMA Stream APIs ============================ */
 extern BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored);
@@ -758,7 +758,6 @@ extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, Variab
 extern uint32_t* ReadRemoteMemory(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t requestedFormat, uint32_t timeout);
 extern uint32_t* ReadRemoteParam(uint8_t module, char *paramString, VariableFormat_t *remoteFormat, uint32_t timeout);
 extern BOS_Status WriteRemote(uint8_t dstModuleID, uint32_t localVarAddress, uint32_t remoteVarAddress, VariableFormat_t format, uint32_t timeout);
-//extern BOS_Status WriteRemoteForce(uint8_t module,uint32_t localAddress,uint32_t remoteAddress,VariableFormat_t format,uint32_t timeout);
 extern uint8_t AddBOSvar(VariableFormat_t format, uint32_t address);
 
 /* ====================== Date & Time Handling APIs ====================== */
@@ -783,9 +782,9 @@ extern BOS_Status printfp(uint8_t port, char *str);
 
 /* ======================== Power Management APIs ======================== */
 extern BOS_Status EnableStopModebyUARTx(uint8_t port);
-extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t WakeupPins);
-extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins);
+extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t wakeupPins);
+extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t wakeupPins);
 
 #endif /* BOS_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

@@ -280,14 +280,14 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 
 /***************************************************************************/
 /* Read message codes data from a remote sensor "input" module */
-BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout){
+BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t code,uint32_t *pDataReceived,uint16_t timeout){
 	BOS_Status result =BOS_OK;
 	uint8_t dataIndex =0;
 	uint32_t tickstart =HAL_GetTick();
 
 	/* Sending a message to the module */
 	MessageParams[0] =myID; /* source module ID */
-	SendMessageToModule(disModuleID,Code,1);
+	SendMessageToModule(disModuleID,code,1);
 
 	/* timeout loop */
 	while(0 == RemoteResponseFlag){
