@@ -29,8 +29,8 @@ const char ModulePNstring[NUM_OF_MODULE_PN][PN_NUM_OF_CHARACTERS] ={"", "H01R0",
 	"H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6", "H3BR6", "H18R1", "H1FR5", "H3BR2",
 	"H21R2", "H17R1", "H15R8", "H2BR0", "H05R0", "H3BR7", "H2BR1", "H07R8", "H08R7", "H16R6", "P08R7", "H19R0"};
 static const char BOSkeywords[NUM_OF_KEYWORDS][4] ={"me", "all", "if", "for"};
-static const char *weekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-const char *monthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static const char *WeekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+const char *MonthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char *pcParamsHelpString[NUM_OF_PARAMS_HELP_STRINGS] ={"\r\nBOS.response: all, message, cli, none\r\n", "\r\nBOS.trace: all, message, response, none\r\n",
 	        "BOS.clibaudrate: CLI baudrate. Default is 921600. This affects all ports. If you change this value, \
            you must connect to a CLI port on each startup to restore other Array ports into default baudrate\r\n", "BOS.debounce: 1 ............ 65536 msec\r\n",
@@ -112,7 +112,7 @@ uint8_t myID =0;
 BOS_t BOS;
 BOSOptionByte_t OptionByte ={0};
 BOS_Status ResponseStatus =BOS_OK;
-VariableFormat_t remoteVarFormat =FMT_UINT8;
+VariableFormat_t RemoteVarFormat =FMT_UINT8;
 BOSOptionByte_t UserOptionByte ={.Trace = false, .Acknowledgment = false, .Response = BOS_RESPONSE_NONE};
 BOS_t BOS_default ={.cliBaudrate = DEF_CLI_BAUDRATE, .Buttons.Debounce =DEF_BUTTON_DEBOUNCE,
 	.Buttons.SingleClickTime = DEF_BUTTON_CLICK,.Buttons.minInterClickTime = DEF_BUTTON_MIN_INTER_CLICK,
@@ -129,7 +129,7 @@ extern CLI_Definition_List_Item_t xRegisteredCommands;
 /* Local Variables *********************************************************/
 static char pcUserMessage[PC_USER_MESSAGE_SIZE];
 uint8_t ExtraPcPort = 0;
-uint8_t CLI_LOW_Baudrate_Flag =0; 	/* Flag for Lower CLI baudrate is set */
+uint8_t cliLowBaudrateFlag =0; 	/* Flag for Lower CLI baudrate is set */
 
 /***************************************************************************/
 /* Exported Functions ******************************************************/
@@ -472,7 +472,7 @@ BOS_Status LoadEEparams(void){
 	if(!status1 && !status2){
 		BOS.cliBaudrate =(uint32_t )temp1 | (((uint32_t )temp2) << 16);
 	}
-	else if(CLI_LOW_Baudrate_Flag)
+	else if(cliLowBaudrateFlag)
 		BOS.cliBaudrate = CLI_BAUDRATE_1;
 	else
 		BOS.cliBaudrate =BOS_default.cliBaudrate;
@@ -854,7 +854,7 @@ void BOS_Init(void){
 	
 	/* Check if booting at lower CLI baudrate */
 	if(IsLowerCLIbaud()){
-		CLI_LOW_Baudrate_Flag =1;
+		cliLowBaudrateFlag =1;
 		/* Initialize the module */
 		/* Give other modules time to finish factory reset and baudrate check */
 		Delay_ms_no_rtos(50);
@@ -1980,7 +1980,7 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,VariableFormat_
 	/* Return the read value address */
 //	if(ResponseStatus == BOS_OK){
 	/* Return the remote var format */
-	*remoteFormat =remoteVarFormat;
+	*remoteFormat =RemoteVarFormat;
 
 	return ((uint32_t* )&RemoteBuffer);
 //	}
@@ -2049,7 +2049,7 @@ uint32_t* ReadRemoteParam(uint8_t module,char *paramString,VariableFormat_t *rem
 	/* Return the read value address */
 	if(ResponseStatus == BOS_OK){
 		/* Return the remote var format */
-		*remoteFormat =remoteVarFormat;
+		*remoteFormat =RemoteVarFormat;
 		
 		return ((uint32_t* )&RemoteBuffer);
 	}
@@ -2180,7 +2180,7 @@ char* GetDateString(void){
 	static const char formatDateStr[] ="%s %02d/%02d/%04d";
 	char *buffer =malloc(30 * sizeof(int8_t));
 	memset(buffer,0x00,30 * sizeof(int8_t));
-	sprintf(buffer,formatDateStr,weekdayString[BOS.Date.Weekday - 1],BOS.Date.Month,BOS.Date.Day,BOS.Date.Year);
+	sprintf(buffer,formatDateStr,WeekdayString[BOS.Date.Weekday - 1],BOS.Date.Month,BOS.Date.Day,BOS.Date.Year);
 	return buffer;
 }
 

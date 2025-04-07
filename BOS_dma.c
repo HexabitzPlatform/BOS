@@ -23,11 +23,9 @@ UART_HandleTypeDef *dmaStreamDst[NumOfPorts] ={0};
 uint32_t dmaStreamCount[NumOfPorts] ={0};
 uint32_t dmaStreamTotal[NumOfPorts] ={0};
 bool MsgDMAStopped[NumOfPorts] ={0};
-/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports */
-uint8_t Rx_Data[NumOfPorts] = {0};
 
 /* Exported variables ******************************************************/
-extern uint16_t dstP[NumOfPorts];
+extern uint16_t dmaDstPort[NumOfPorts];
 extern uint8_t StreamCplt;
 
 /* Setup and start a streaming DMA (port-to-port) */
@@ -71,10 +69,10 @@ void DMA_IRQHandler(uint8_t port){
 		HAL_DMA_IRQHandler(UARTDMAHandler[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
-		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t )dstP[port - 1] == P_VIRTUAL)){
+		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t )dmaDstPort[port - 1] == P_VIRTUAL)){
 
-			uint8_t direction =dstP[port - 1] >> 8;
-			uint8_t dst =(uint8_t )dstP[port - 1];
+			uint8_t direction =dmaDstPort[port - 1] >> 8;
+			uint8_t dst =(uint8_t )dmaDstPort[port - 1];
 			if((direction == FORWARD) || (direction == BACKWARD)){
 				SwitchStreamDMAToMsg(port);
 				StreamCplt =1;

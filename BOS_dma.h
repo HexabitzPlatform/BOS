@@ -18,7 +18,6 @@
 extern UART_HandleTypeDef *dmaStreamDst[NumOfPorts];
 extern uint32_t dmaStreamCount[NumOfPorts];
 extern uint32_t dmaStreamTotal[NumOfPorts];
-extern uint8_t Rx_Data[NumOfPorts];
 extern bool MsgDMAStopped[NumOfPorts];
 
 /* External Functions ******************************************************/

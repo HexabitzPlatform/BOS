@@ -25,8 +25,7 @@ static char *pcWelcomeMessage ="\n\r\n\r========================================
 static char *pcNewLine ="\r\n";
 static char *pcEndOfCommandOutputString ="\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] ={0};
-uint16_t timedoutMsg = 0;
-//uint8_t NumOfRecordedSnippets =0;
+uint16_t TimedoutMsg = 0;
 Snippet_t Snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
 /* Exported variables ******************************************************/
@@ -46,7 +45,6 @@ extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
 extern uint8_t SaveSnippetsToRO(void);
-//extern char Processor_type(uint8_t module_name);
 
 /***************************************************************************/
 /*****************************  Private Functions **************************/
@@ -272,7 +270,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						ulTaskNotifyTake(pdTRUE,1000);		//cmd500ms
 						/* If timeout */
 						if(ResponseStatus != BOS_OK){
-							++timedoutMsg;
+							++TimedoutMsg;
 							sprintf((char* )pcOutputString,"%sModule %d is not reachable.\n\r",(char* )pcOutputString,id);
 						}
 					}

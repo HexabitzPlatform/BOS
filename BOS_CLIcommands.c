@@ -11,7 +11,7 @@
 #include "BOS.h"
 
 /* Local Variables *********************************************************/
-const char mathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
+const char MathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
 
 /* Exported variables ******************************************************/
 extern BOS_t BOS;
@@ -1523,7 +1523,7 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 			case SNIP_COND_MODULE_PARAM_CONST:
 				// Get the module parameter, math operator and constant values.
 				memcpy((uint8_t* )&flt1,&Snippets[s].Condition.Buffer2,sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,ModuleParam[Snippets[s].Condition.Buffer1[1] - 1].ParamName,mathStr[Snippets[s].Condition.MathOperator - 1],flt1);
+				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,ModuleParam[Snippets[s].Condition.Buffer1[1] - 1].ParamName,MathStr[Snippets[s].Condition.MathOperator - 1],flt1);
 				break;
 				
 			default:

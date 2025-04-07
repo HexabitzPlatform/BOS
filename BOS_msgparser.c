@@ -16,52 +16,36 @@
 /***************************************************************************/
 
 /* BackEndTask global variables ********************************************/
-uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
-uint8_t Activate_CLI_For_First_Time_Flag =0;
-uint8_t MSG_Buffer_Index_Start[NumOfPorts] ={0};
-uint8_t MSG_Buffer_Index_End[NumOfPorts] ={0};
-uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] ={0};
-uint8_t Process_Message_Buffer[MSG_COUNT] ={0};
-uint8_t Process_Message_Buffer_Index_Start =0;
-uint8_t Process_Message_Buffer_Index_End =0;
+uint8_t crcCalculateBuffer[MSG_MAX_SIZE];
+uint8_t cliFirstTimeActivation =0;
+uint8_t MessageIndexStart[NumOfPorts] ={0};
+uint8_t MessageIndexEnd[NumOfPorts] ={0};
+uint8_t MessageBuffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] ={0};
+uint8_t ProcessMessageBuffer[MSG_COUNT] ={0};
+uint8_t ProcessMessageIndexStart =0;
+uint8_t ProcessMessageIndexEnd =0;
 volatile uint8_t bcastLastID = 0;
 uint8_t IndexProcess[NumOfPorts] ={0};
 uint8_t IndexInput[NumOfPorts] ={0};
 uint8_t cliData =0;
-uint8_t port_DMA =0;
+uint8_t dmaPortIndex =0;
 
-uint16_t Accepted_Messages =0;
-uint16_t Rejected_Messages =0;
-uint16_t Message_counter =0;
+uint16_t AcceptedMessages =0;
+uint16_t RejectedMessages =0;
+uint16_t MessageCounter =0;
 
 /* PxMsgTaskHandle global variables ****************************************/
-uint16_t ADCPort =0;
-uint16_t ADCSide =0;
-uint8_t PortSelect =0;
-uint8_t PinSelect =0;
-static uint8_t longMessageScratchpad[(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES];
-
-uint16_t longMessageLastPtr =0;
-
-//volatile uint32_t MBmessageParams[9] ={0};
-
-float ADCValue =0;
-float ADCPercentage =0;
-float InternalTemperature =0;
-float InternalVoltageReferance =0;
-
-receive_defalt_value defalt_data;     /* Receiving the Defalt_Value for the H1DR5 module */
-RemoteDataBuffer_t RemoteDataBuffer;  /* Remote Buffer of Messages */
+receive_defalt_value EthernetDefaultSetting;  /* Receiving the Default setting of the H1DR5 module */
+RemoteDataBuffer_t RemoteDataBuffer;          /* Remote Buffer of Messages */
 
 /***************************************************************************/
 /* Exported variables ******************************************************/
 /***************************************************************************/
 extern uint8_t ExtraPcPort;
 extern volatile uint8_t RemoteResponseFlag;
-extern volatile uint8_t numOfElement;
+extern volatile uint8_t NumOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
-//extern uint8_t UARTRxBufIndex[NumOfPorts];
-extern VariableFormat_t remoteVarFormat;
+extern VariableFormat_t RemoteVarFormat;
 
 /* Exported Messaging tasks handles ****************************************/
 extern TaskHandle_t UserTaskHandle;
@@ -139,20 +123,20 @@ void BackEndTask(void *argument) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		/* Parsing all module ports */
-		for (port_DMA = 0; port_DMA < NumOfPorts;) {
+		for (dmaPortIndex = 0; dmaPortIndex < NumOfPorts;) {
 			/* Computes how many new bytes have been received on each port: */
-			port_index = port_DMA;
-			IndexInput[port_DMA] = MSG_RX_BUF_SIZE - (*dmaIndex[port_DMA]);
+			port_index = dmaPortIndex;
+			IndexInput[dmaPortIndex] = MSG_RX_BUF_SIZE - (*dmaIndex[dmaPortIndex]);
 
 			/***************************************************************************************/
 			/* 1- Check if there's new data to process *********************************************/
 			/***************************************************************************************/
-			if (IndexInput[port_DMA] != IndexProcess[port_DMA]) {
-				port_number = port_DMA + 1;
+			if (IndexInput[dmaPortIndex] != IndexProcess[dmaPortIndex]) {
+				port_number = dmaPortIndex + 1;
 
 				/* CLI Handling: If the received byte is 0x0D and the port is free,
 				 * it assigns the port to the CLI.*/
-				if (UARTRxBuf[port_number - 1][IndexProcess[port_DMA]] == 0x0D && PortStatus[port_number] == FREE) {
+				if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 0x0D && PortStatus[port_number] == FREE) {
 					for (int i = 0; i <= NumOfPorts; i++) { // Free previous CLI port
 						if (PortStatus[i] == CLI)
 							PortStatus[i] = FREE;
@@ -163,32 +147,32 @@ void BackEndTask(void *argument) {
 					pcPort = port_number;
 					ExtraPcPort = port_number;
 
-					cliData = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]];
+					cliData = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 
 					xTaskNotifyGive(xCommandConsoleTaskHandle);
 
-					if (Activate_CLI_For_First_Time_Flag == 1)
+					if (cliFirstTimeActivation == 1)
 						cliDataInputFlag = 1;
 
-					Activate_CLI_For_First_Time_Flag = 1;
+					cliFirstTimeActivation = 1;
 
 				}
 				/* Continue processing CLI data if the port is already in CLI mode */
 				else if (PortStatus[port_number] == CLI) {
-					cliData = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]];
+					cliData = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 					cliDataInputFlag = 1;
 				}
 
 				/* Hexabitz Protocol Handling (H and Z Characters): */
-				else if (UARTRxBuf[port_number - 1][IndexProcess[port_DMA]] == 'H' && PortStatus[port_number] == FREE) {
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 'H' && PortStatus[port_number] == FREE) {
 					PortStatus[port_number] = H_Status; // H  Character was received, waiting for Z character.
 				}
 
-				else if (UARTRxBuf[port_number - 1][IndexProcess[port_DMA]] == 'Z' && PortStatus[port_number] == H_Status) {
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 'Z' && PortStatus[port_number] == H_Status) {
 					PortStatus[port_number] = Z_Status; // Z  Character was received, waiting for length byte.
 				}
 
-				else if (UARTRxBuf[port_number - 1][IndexProcess[port_DMA]] != 'Z' && PortStatus[port_number] == H_Status) {
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] != 'Z' && PortStatus[port_number] == H_Status) {
 					PortStatus[port_number] = FREE; // Z  Character was not received, so there is no message to receive.
 				}
 
@@ -196,32 +180,32 @@ void BackEndTask(void *argument) {
 				 * it prepares to receive the message content. */
 				else if (PortStatus[port_number] == Z_Status) {
 					PortStatus[port_number] = MSG; // Receive length byte.
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]];
+					MessageBuffer[port_index][MessageIndexEnd[port_index]][2] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 					temp_index[port_index] = 3;
-					temp_length[port_index] = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]] + 1;
+					temp_length[port_index] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] + 1;
 				}
 
 				/* Message Reception Handling: */
 				else if (PortStatus[port_number] == MSG) {
-					/* The message is received and stored in the MSG_Buffer.*/
+					/* The message is received and stored in the MessageBuffer.*/
 					if (temp_length[port_index] > 1) {
-						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]];
+						MessageBuffer[port_index][MessageIndexEnd[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 						temp_index[port_index]++;
 						temp_length[port_index]--;
 					} else {
 						/* If there is only one byte left to receive (when the message is fully received)
 						 * it updates indices and processes the message. */
-						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[port_DMA]];
+						MessageBuffer[port_index][MessageIndexEnd[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 						temp_index[port_index]++;
 						temp_length[port_index]--;
-						MSG_Buffer_Index_End[port_index]++;
-						if (MSG_Buffer_Index_End[port_index] == MSG_COUNT)
-							MSG_Buffer_Index_End[port_index] = 0;
+						MessageIndexEnd[port_index]++;
+						if (MessageIndexEnd[port_index] == MSG_COUNT)
+							MessageIndexEnd[port_index] = 0;
 
-						Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
-						Process_Message_Buffer_Index_End++;
-						if (Process_Message_Buffer_Index_End == MSG_COUNT)
-							Process_Message_Buffer_Index_End = 0;
+						ProcessMessageBuffer[ProcessMessageIndexEnd] = port_number;
+						ProcessMessageIndexEnd++;
+						if (ProcessMessageIndexEnd == MSG_COUNT)
+							ProcessMessageIndexEnd = 0;
 
 						/* The PortStatus is set to FREE(End of receiving message)
 						 * indicating that the port is ready to receive a new message. */
@@ -230,9 +214,9 @@ void BackEndTask(void *argument) {
 				}
 
 				/* After processing each byte, update the processing index */
-				IndexProcess[port_DMA]++;
-				if (IndexProcess[port_DMA] == MSG_RX_BUF_SIZE)
-					IndexProcess[port_DMA] = 0;
+				IndexProcess[dmaPortIndex]++;
+				if (IndexProcess[dmaPortIndex] == MSG_RX_BUF_SIZE)
+					IndexProcess[dmaPortIndex] = 0;
 
 			}
 
@@ -240,26 +224,26 @@ void BackEndTask(void *argument) {
 			/* 2- In case there is no bytes to process *********************************************/
 			/***************************************************************************************/
 			/* Increase the DMA port index to parse all Module ports */
-			else if (IndexInput[port_DMA] == IndexProcess[port_DMA]) {
-				port_DMA++;
+			else if (IndexInput[dmaPortIndex] == IndexProcess[dmaPortIndex]) {
+				dmaPortIndex++;
 			}
 
 			/***************************************************************************************/
 			/* 3- Message Processing ***************************************************************/
 			/***************************************************************************************/
-			if (Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start) {
-				port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
+			if (ProcessMessageIndexEnd != ProcessMessageIndexStart) {
+				port_number = ProcessMessageBuffer[ProcessMessageIndexStart];
 				port_index = port_number - 1;
-				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
-				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
+				MessageBuffer[port_index][MessageIndexStart[port_index]][0] = 'H';
+				MessageBuffer[port_index][MessageIndexStart[port_index]][1] = 'Z';
 
-				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
-				dst = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3];
+				length = MessageBuffer[port_index][MessageIndexStart[port_index]][2];
+				dst = MessageBuffer[port_index][MessageIndexStart[port_index]][3];
 
 				/* Forward Message in these cases: wrong ID , dst ~= 0 (explore) ,not MULTICAST , not BROADCAST */
 				if ((dst != myID) && (dst != 0) && (dst != BOS_BROADCAST) && (dst != BOS_MULTICAST)) {
 					MessageLength[port_index] = length;
-					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+					memcpy(&cMessage[port_index][0], &MessageBuffer[port_index][MessageIndexStart[port_index]][3],length);
 
 					/* in case trace feature is enabled: */
 //					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
@@ -272,20 +256,20 @@ void BackEndTask(void *argument) {
 				} else {
 					/* Notify Messaging Tasks if Message is for Current Module:
 					 * Prepare CRC Buffer and Calculate CRC. */
-					Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
-					Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
-					Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+					crcCalculateBuffer[0] = MessageBuffer[port_index][MessageIndexStart[port_index]][0];
+					crcCalculateBuffer[1] = MessageBuffer[port_index][MessageIndexStart[port_index]][1];
+					crcCalculateBuffer[2] = MessageBuffer[port_index][MessageIndexStart[port_index]][2];
 					for (int i = 0; i < length; i++) {
-						Calculate_CRC_Buffer[i + 3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
+						crcCalculateBuffer[i + 3] = MessageBuffer[port_index][MessageIndexStart[port_index]][i + 3];
 					}
 
-					calculated_crc = CalculateCRC8(Calculate_CRC_Buffer, length + 3);
+					calculated_crc = CalculateCRC8(crcCalculateBuffer, length + 3);
 
-					Message_counter++;
-					if (calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3]) {
-						Accepted_Messages++;
+					MessageCounter++;
+					if (calculated_crc == MessageBuffer[port_index][MessageIndexStart[port_index]][length + 3]) {
+						AcceptedMessages++;
 						MessageLength[port_index] = length;
-						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+						memcpy(&cMessage[port_index][0], &MessageBuffer[port_index][MessageIndexStart[port_index]][3],length);
 
 						result =BOS_OK;
 
@@ -328,19 +312,19 @@ void BackEndTask(void *argument) {
 							NotifyMessagingTask(port_number);
 
 					} else {
-						Rejected_Messages++;
+						RejectedMessages++;
 						//TODO: Implement something here when the message is rejected.
 					}
 
 				}
 
-				MSG_Buffer_Index_Start[port_index]++;
-				if (MSG_Buffer_Index_Start[port_index] == MSG_COUNT)
-					MSG_Buffer_Index_Start[port_index] = 0;
+				MessageIndexStart[port_index]++;
+				if (MessageIndexStart[port_index] == MSG_COUNT)
+					MessageIndexStart[port_index] = 0;
 
-				Process_Message_Buffer_Index_Start++;
-				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
-					Process_Message_Buffer_Index_Start = 0;
+				ProcessMessageIndexStart++;
+				if (ProcessMessageIndexStart == MSG_COUNT)
+					ProcessMessageIndexStart = 0;
 			}
 		}
 	}
@@ -358,6 +342,15 @@ void PxMessagingTask(void *argument){
 	portBASE_TYPE xReturned;
 	int8_t *pcOutputString;
 
+	uint16_t adcPort =0;
+	uint16_t adcSide =0;
+	uint8_t PortSelect =0;
+	uint8_t PinSelect =0;
+	static uint8_t longMessageScratchpad[(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES];
+	uint16_t longMessageLastPtr =0;
+	float adcValue =0;
+	float InternalTemperature =0;
+	float InternalVoltageReferance =0;
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -561,42 +554,42 @@ void PxMessagingTask(void *argument){
 
 						/* Receiving the Defalt_Value for the H1DR5 module */
 					case CODE_H1DR5_receive_Defalt_Value:
-						defalt_data.Local_mac_addr[0] =cMessage[port - 1][0 + shift];
-						defalt_data.Local_mac_addr[1] =cMessage[port - 1][1 + shift];
-						defalt_data.Local_mac_addr[2] =cMessage[port - 1][2 + shift];
-						defalt_data.Local_mac_addr[3] =cMessage[port - 1][3 + shift];
-						defalt_data.Local_mac_addr[4] =cMessage[port - 1][4 + shift];
-						defalt_data.Local_mac_addr[5] =cMessage[port - 1][5 + shift];
+						EthernetDefaultSetting.Local_mac_addr[0] =cMessage[port - 1][0 + shift];
+						EthernetDefaultSetting.Local_mac_addr[1] =cMessage[port - 1][1 + shift];
+						EthernetDefaultSetting.Local_mac_addr[2] =cMessage[port - 1][2 + shift];
+						EthernetDefaultSetting.Local_mac_addr[3] =cMessage[port - 1][3 + shift];
+						EthernetDefaultSetting.Local_mac_addr[4] =cMessage[port - 1][4 + shift];
+						EthernetDefaultSetting.Local_mac_addr[5] =cMessage[port - 1][5 + shift];
 
-						defalt_data.Remote_mac_addr[0] =cMessage[port - 1][6 + shift];
-						defalt_data.Remote_mac_addr[1] =cMessage[port - 1][7 + shift];
-						defalt_data.Remote_mac_addr[2] =cMessage[port - 1][8 + shift];
-						defalt_data.Remote_mac_addr[3] =cMessage[port - 1][9 + shift];
-						defalt_data.Remote_mac_addr[4] =cMessage[port - 1][10 + shift];
-						defalt_data.Remote_mac_addr[5] =cMessage[port - 1][11 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[0] =cMessage[port - 1][6 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[1] =cMessage[port - 1][7 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[2] =cMessage[port - 1][8 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[3] =cMessage[port - 1][9 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[4] =cMessage[port - 1][10 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[5] =cMessage[port - 1][11 + shift];
 
-						defalt_data.Local_IP[0] =cMessage[port - 1][12 + shift];
-						defalt_data.Local_IP[1] =cMessage[port - 1][13 + shift];
-						defalt_data.Local_IP[2] =cMessage[port - 1][14 + shift];
-						defalt_data.Local_IP[3] =cMessage[port - 1][15 + shift];
+						EthernetDefaultSetting.Local_IP[0] =cMessage[port - 1][12 + shift];
+						EthernetDefaultSetting.Local_IP[1] =cMessage[port - 1][13 + shift];
+						EthernetDefaultSetting.Local_IP[2] =cMessage[port - 1][14 + shift];
+						EthernetDefaultSetting.Local_IP[3] =cMessage[port - 1][15 + shift];
 
-						defalt_data.Remote_IP[0] =cMessage[port - 1][16 + shift];
-						defalt_data.Remote_IP[1] =cMessage[port - 1][17 + shift];
-						defalt_data.Remote_IP[2] =cMessage[port - 1][18 + shift];
-						defalt_data.Remote_IP[3] =cMessage[port - 1][19 + shift];
+						EthernetDefaultSetting.Remote_IP[0] =cMessage[port - 1][16 + shift];
+						EthernetDefaultSetting.Remote_IP[1] =cMessage[port - 1][17 + shift];
+						EthernetDefaultSetting.Remote_IP[2] =cMessage[port - 1][18 + shift];
+						EthernetDefaultSetting.Remote_IP[3] =cMessage[port - 1][19 + shift];
 
-						defalt_data.ip_mask[0] =cMessage[port - 1][20 + shift];
-						defalt_data.ip_mask[1] =cMessage[port - 1][21 + shift];
-						defalt_data.ip_mask[2] =cMessage[port - 1][22 + shift];
-						defalt_data.ip_mask[3] =cMessage[port - 1][23 + shift];
+						EthernetDefaultSetting.ip_mask[0] =cMessage[port - 1][20 + shift];
+						EthernetDefaultSetting.ip_mask[1] =cMessage[port - 1][21 + shift];
+						EthernetDefaultSetting.ip_mask[2] =cMessage[port - 1][22 + shift];
+						EthernetDefaultSetting.ip_mask[3] =cMessage[port - 1][23 + shift];
 
-						defalt_data.ip_dest[0] =cMessage[port - 1][24 + shift];
-						defalt_data.ip_dest[1] =cMessage[port - 1][25 + shift];
-						defalt_data.ip_dest[2] =cMessage[port - 1][26 + shift];
-						defalt_data.ip_dest[3] =cMessage[port - 1][27 + shift];
+						EthernetDefaultSetting.ip_dest[0] =cMessage[port - 1][24 + shift];
+						EthernetDefaultSetting.ip_dest[1] =cMessage[port - 1][25 + shift];
+						EthernetDefaultSetting.ip_dest[2] =cMessage[port - 1][26 + shift];
+						EthernetDefaultSetting.ip_dest[3] =cMessage[port - 1][27 + shift];
 
-						defalt_data.Local_PORT =cMessage[port - 1][28 + shift];
-						defalt_data.Remote_PORT =cMessage[port - 1][29 + shift];
+						EthernetDefaultSetting.Local_PORT =cMessage[port - 1][28 + shift];
+						EthernetDefaultSetting.Remote_PORT =cMessage[port - 1][29 + shift];
 						break;
 
 #ifndef __N
@@ -1027,7 +1020,7 @@ void PxMessagingTask(void *argument){
 						if(RemoteBuffer == REMOTE_BOS_VAR || RemoteBuffer == REMOTE_MODULE_PARAM)
 						{
 							/* Read variable according to its format */
-							remoteVarFormat =(VariableFormat_t )cMessage[port - 1][shift];
+							RemoteVarFormat =(VariableFormat_t )cMessage[port - 1][shift];
 							switch(cMessage[port - 1][shift]) /* Remote format */
 							{/* Note that cMessage[port-1][5+shift] can be unaligned.
 								That's why we cannot use simple memory access */
@@ -1424,15 +1417,15 @@ void PxMessagingTask(void *argument){
 //							}
 
 					case CODE_READ_ADC_VALUE:
-						ADCPort =cMessage[port - 1][shift];
-						ADCSide =cMessage[port - 1][shift + 1];
-						if(0 == ADCSide){
-							ADCSelectChannel(ADCPort,"top");
-							ReadADCChannel(ADCPort,"top",&ADCValue);
+						adcPort =cMessage[port - 1][shift];
+						adcSide =cMessage[port - 1][shift + 1];
+						if(0 == adcSide){
+							ADCSelectChannel(adcPort,"top");
+							ReadADCChannel(adcPort,"top",&adcValue);
 						}
-						else if(1 == ADCSide){
-							ADCSelectChannel(ADCPort,"bottom");
-							ReadADCChannel(ADCPort,"bottom",&ADCValue);
+						else if(1 == adcSide){
+							ADCSelectChannel(adcPort,"bottom");
+							ReadADCChannel(adcPort,"bottom",&adcValue);
 						}
 
 					case CODE_READ_TEMPERATURE:
@@ -1440,8 +1433,8 @@ void PxMessagingTask(void *argument){
 						ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
 
 //					case CODE_READ_ADC_PERCENTAGE:
-//						ADCPort = cMessage[port - 1][shift];
-//						GetReadPrecentage(ADCPort, &ADCPercentage);
+//						adcPort = cMessage[port - 1][shift];
+//						GetReadPrecentage(adcPort, &ADCPercentage);
 //						MBmessageParams[7] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
 //								+ ((uint32_t) cMessage[port - 1][6 + shift] << 8)
 //								+ ((uint32_t) cMessage[port - 1][7 + shift] << 16)
@@ -1476,7 +1469,7 @@ void PxMessagingTask(void *argument){
 							case FMT_BOOL:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 								}
 								else
@@ -1486,7 +1479,7 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT8:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 									RemoteResponseBuffer[1] =(uint32_t )cMessage[port - 1][4 + shift];
 									RemoteResponseBuffer[2] =(uint32_t )cMessage[port - 1][5 + shift];
@@ -1499,7 +1492,7 @@ void PxMessagingTask(void *argument){
 							case FMT_INT8:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 
 								}
@@ -1510,7 +1503,7 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT16:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8);
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8);
 									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][7 + shift] << 0) + ((uint32_t )cMessage[port - 1][8 + shift] << 8);
@@ -1523,7 +1516,7 @@ void PxMessagingTask(void *argument){
 							case FMT_INT16:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) +
 										((uint32_t )cMessage[port - 1][4 + shift] << 8);
 								}
@@ -1534,7 +1527,7 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT32:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) +
 										((uint32_t )cMessage[port - 1][4 + shift] << 8) +
 										((uint32_t )cMessage[port - 1][5 + shift] << 16) +
@@ -1548,7 +1541,7 @@ void PxMessagingTask(void *argument){
 							case FMT_INT32:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + ((uint32_t )cMessage[port - 1][5 + shift] << 16) + ((uint32_t )cMessage[port - 1][6 + shift] << 24);
 
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);
@@ -1565,7 +1558,7 @@ void PxMessagingTask(void *argument){
 							case FMT_FLOAT:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) | ((uint32_t )cMessage[port - 1][4 + shift] << 8) | ((uint32_t )cMessage[port - 1][5 + shift] << 16) | ((uint32_t )cMessage[port - 1][6 + shift] << 24);
 
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);

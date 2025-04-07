@@ -38,7 +38,7 @@ TaskHandle_t P5MsgTaskHandle = NULL;
 TaskHandle_t P6MsgTaskHandle = NULL;
 #endif
 
-TaskHandle_t defaultTaskHandle = NULL;
+TaskHandle_t DefaultTaskHandle = NULL;
 TaskHandle_t UserTaskHandle = NULL;
 TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
@@ -71,7 +71,7 @@ void MX_FREERTOS_Init(void){
 	/* Note: CMSIS OS priority levels are -3 to +3 and FreeRTOS priority levels are 0 to 6. Use osPriorityIdle to shift CMSIS priority levels to positive */
 
 	/* Create a defaultTask */
-	xTaskCreate(StartDefaultTask,(const char* )"DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
+	xTaskCreate(StartDefaultTask,(const char* )"DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&DefaultTaskHandle);
 	
 	/* Create the back-end task */
 	xTaskCreate(BackEndTask,(const char* )"BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityHigh - osPriorityIdle,&BackEndTaskHandle);

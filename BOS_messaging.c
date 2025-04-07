@@ -13,11 +13,11 @@
 /* Private and global variables ********************************************/
 uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
 uint8_t StreamCplt =1;
-uint16_t dstP[NumOfPorts] ={0};
-uint32_t ports =0;
+uint16_t dmaDstPort[NumOfPorts] ={0};
+uint32_t dmaStreamPort =0;
 
 volatile uint8_t RemoteResponseFlag;
-volatile uint8_t numOfElement;
+volatile uint8_t NumOfElement;
 volatile uint32_t RemoteResponseBuffer[4];
 
 #ifndef __N
@@ -119,15 +119,15 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	
 	/* Store port mapping for active DMA streams */
 	if(direction == FORWARD)
-		dstP[src - 1] =(direction << 8) + dst;
+		dmaDstPort[src - 1] =(direction << 8) + dst;
 	else if(direction == BACKWARD)
-		dstP[dst - 1] =(direction << 8) + src;
+		dmaDstPort[dst - 1] =(direction << 8) + src;
 	else if(direction == BIDIRECTIONAL){
-		dstP[src - 1] =(direction << 8) + dst;
-		dstP[dst - 1] =(direction << 8) + src;
+		dmaDstPort[src - 1] =(direction << 8) + dst;
+		dmaDstPort[dst - 1] =(direction << 8) + src;
 	}
 
-	ports =(direction << 16) + (dst << 8) + src;
+	dmaStreamPort =(direction << 16) + (dst << 8) + src;
 
 	/* Start timeout timers if they were created successfully */
 	if(xTimerStream != NULL)
@@ -140,13 +140,13 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 /* DMA stream timer callback */
 void StreamTimerCallback(TimerHandle_t xTimerStream){
 	uint8_t srcP =0;
-	uint8_t dstP =0;
+	uint8_t dmaDstPort =0;
 	uint8_t direction =0;
 
 	/* Extract direction, destination, and source from 'ports' */
-	direction =ports >> 16;
-	dstP =ports >> 8;
-	srcP =(uint8_t )ports;
+	direction =dmaStreamPort >> 16;
+	dmaDstPort =dmaStreamPort >> 8;
+	srcP =(uint8_t )dmaStreamPort;
 
     /* Process timeout based on the streaming direction */
     switch (direction) {
@@ -155,13 +155,13 @@ void StreamTimerCallback(TimerHandle_t xTimerStream){
             break;
 
         case BACKWARD:
-            SwitchStreamDMAToMsg(dstP);
+            SwitchStreamDMAToMsg(dmaDstPort);
             StreamCplt = 1;  /* Mark stream as complete */
             break;
 
         case BIDIRECTIONAL:
             SwitchStreamDMAToMsg(srcP);
-            SwitchStreamDMAToMsg(dstP);
+            SwitchStreamDMAToMsg(dmaDstPort);
             StreamCplt = 1;  /* Mark stream as complete */
             break;
 
@@ -298,7 +298,7 @@ BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *
 	if(RemoteResponseFlag){
 		RemoteResponseFlag =0;
 		tickstart =HAL_GetTick();
-		for(dataIndex =0; dataIndex < numOfElement; dataIndex++)
+		for(dataIndex =0; dataIndex < NumOfElement; dataIndex++)
 			pDataReceived[dataIndex] =RemoteResponseBuffer[dataIndex];
 
 		/* NULL DATA */
@@ -654,7 +654,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 /* Start a single-cast DMA stream across the array.
  * Transfer ends after (count) bytes are transferred or timeout (ms),
  * whichever comes first. If stored = true, the stream is stored in emulated eeprom */
-BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored){
+BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0, temp1 =0, temp2 =0;
 	
@@ -672,7 +672,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 		MessageParams[8] =direction; /* Stream direction */
 		MessageParams[9] =srcP;      /* Source port */
 		MessageParams[10] =dstM;     /* destination module */
-		MessageParams[11] =dstP;     /* destination port */
+		MessageParams[11] =dmaDstPort;     /* destination port */
 		MessageParams[12] =stored;   /* EEPROM storage */
 
 		/* Send the message to the source module */
@@ -695,7 +695,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 			}
 			FindRoute(srcM,dstM);
 			if(Route[i] == dstM){
-				temp2 =dstP;
+				temp2 =dmaDstPort;
 			}
 			else{
 				temp2 =FindRoute(Route[i],Route[i - 1]);
@@ -724,7 +724,7 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
 	/* Check if the source port is virtual (indicating memory transfer) */
 	if(srcP != P_VIRTUAL){
 		if(srcM == dstM)
-			port =dstP;
+			port =dmaDstPort;
 		else
 			port =FindRoute(srcM,dstM);
 
@@ -753,12 +753,12 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t ds
  * @param8: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamPortToPort(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t size,uint32_t timeout,bool stored){
+BOS_Status StreamPortToPort(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint8_t dstM,uint8_t direction,uint32_t size,uint32_t timeout,bool stored){
 	BOS_Status result =BOS_OK;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
 	if(StreamCplt == 1){
-		if(BOS_OK != StartScastDMAStream(srcP,srcM,dstP,dstM,direction,size,timeout,stored))
+		if(BOS_OK != StartScastDMAStream(srcP,srcM,dmaDstPort,dstM,direction,size,timeout,stored))
 			return result =BOS_ERROR;
 
 		StreamCplt =0;
@@ -803,19 +803,19 @@ BOS_Status StreamPortToMemory(uint8_t srcP,uint8_t dstM,uint32_t size,uint32_t t
  * @param6: storing the physical data flow path in EEPROM memory(true,false)
  * @retval: BOS_Status.
  */
-BOS_Status StreamMemoryToPort(uint8_t dstP,uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
+BOS_Status StreamMemoryToPort(uint8_t dmaDstPort,uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
 
 	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
 	if(StreamCplt == 1){
-		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dstP,dstM,FORWARD,size,timeout,stored))
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dmaDstPort,dstM,FORWARD,size,timeout,stored))
 			return result =BOS_ERROR;
 
 		StreamCplt =0;
 	}
 	if(myID == dstM)
-		port =dstP;
+		port =dmaDstPort;
 	else
 		port =FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
