@@ -7,14 +7,13 @@
 
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* Define to prevent recursive inclusion************************************/
 #ifndef BOS_MSGCODES_H
 #define BOS_MSGCODES_H
 
-/* -----------------------------------------------------------------------
- |												BOS Message Codes	      |
-   -----------------------------------------------------------------------
- */
+/***************************************************************************/
+/* BOS Message Codes *******************************************************/
+/***************************************************************************/
 #define	CODE_UNKNOWN_MESSAGE				  0
 #define	CODE_PING							  1
 #define	CODE_PING_RESPONSE					  2
@@ -54,27 +53,22 @@
 #define CODE_READ_VREF						  42
 #define CODE_READ_ADC_PERCENTAGE			  43
 
-#define	MSG_Acknowledgment_Accepted 	  	  44
-#define	MSG_rejected 						  45
-
 #define CODE_READ_RESPONSE			          46
 
 #define ENABLE_STOP_MODE_UARTX                47
 #define ENABLE_STANDBY_MODE_WAKE_UP_PINX      48
 
-/*
-   -----------------------------------------------------------------------
-  |					User Message Codes (70-99)  						  |
-   -----------------------------------------------------------------------
-*/
+/***************************************************************************/
+/* User Message Codes (70 -  99) *******************************************/
+/***************************************************************************/
 
-/*
-   -----------------------------------------------------------------------
-  |				Module Message Codes	                                  |
-   -----------------------------------------------------------------------
-*/
 
-// Reserve 50 messages for each PN based on its decimal value
+
+/***************************************************************************/
+/* Module Message Codes ****************************************************/
+/***************************************************************************/
+/* Reserve 50 messages for each PN based on its decimal value **************/
+
 // H01R0x
 #define	CODE_H01R0_ON						  100
 #define	CODE_H01R0_OFF						  101
@@ -98,7 +92,6 @@
 #define CODE_H05R0_CELLCALINTERRES    		  260
 #define CODE_H05R0_SETCHARGVOLTAGE    		  261
 #define CODE_H05R0_SETCHARGCURRENT  		  262
-
 
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				  350
@@ -369,4 +362,4 @@
 
 #endif /* BOS_MSGCODES_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

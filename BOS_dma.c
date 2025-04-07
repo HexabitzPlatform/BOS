@@ -28,6 +28,7 @@ bool MsgDMAStopped[NumOfPorts] ={0};
 extern uint16_t dmaDstPort[NumOfPorts];
 extern uint8_t StreamCplt;
 
+/***************************************************************************/
 /* Setup and start a streaming DMA (port-to-port) */
 BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num){
 	uint8_t srcPort =GetPort(huartSrc);

@@ -365,7 +365,6 @@ void vRegisterCLICommands(void){
 	FreeRTOS_CLIRegisterCommand(&groupCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&statusCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&infoCommandDefinition);
-//	FreeRTOS_CLIRegisterCommand(&scastCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&addbuttonCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&removebuttonCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&setCommandDefinition);
@@ -795,79 +794,6 @@ static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	 pdFALSE. */
 	return pdFALSE;
 }
-
-/***************************************************************************/
-//static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-//	BOS_Status result =BOS_OK;
-//	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3, *pcParameterString4;
-//	static int8_t *pcParameterString5, *pcParameterString6, *pcParameterString7;
-//	portBASE_TYPE xParameterStringLength1 =0, xParameterStringLength2 =0, xParameterStringLength3 =0;
-//	portBASE_TYPE xParameterStringLength4 =0, xParameterStringLength5 =0, xParameterStringLength6 =0;
-//	portBASE_TYPE xParameterStringLength7 =0;
-//	uint8_t direction =0, srcP =0, dstP =0, srcM =0, dstM =0;
-//	uint32_t count =0, timeout =0;
-//	char par1[MAX_LENGTH_OF_ALIAS + 1] ={0}, par2[MAX_LENGTH_OF_ALIAS + 1] ={0}, par3[MAX_LENGTH_OF_ALIAS + 1] ={0};
-//
-//	static const int8_t *pcMessage =(int8_t* )"Activating a %s single-cast DMA stream from P%d in module %s to P%d in module %s. The stream will deactivate after %d bytes or %d ms\n\r";
-//
-//	/* Remove compile time warnings about unused parameters, and check the
-//	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-//	 write buffer length is adequate, so does not check for buffer overflows. */
-//	(void )xWriteBufferLen;
-//	configASSERT(pcWriteBuffer);
-//
-//	/* Obtain the 1st parameter string. */
-//	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
-//	if(pcParameterString1[0] == 'P'){
-//		srcP =(uint8_t )atol((char* )pcParameterString1 + 1);
-//	}
-//
-//	/* Obtain the 2nd parameter string. */
-//	pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
-//	strncpy(par1,(char* )pcParameterString2,xParameterStringLength2);
-//	srcM =(uint8_t )GetID(par1);
-//
-//	/* Obtain the 3rd parameter string. */
-//	pcParameterString3 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,3,&xParameterStringLength3);
-//	if(pcParameterString3[0] == 'p'){
-//		dstP =(uint8_t )atol((char* )pcParameterString3 + 1);
-//	}
-//
-//	/* Obtain the 4th parameter string. */
-//	pcParameterString4 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,4,&xParameterStringLength4);
-//	strncpy(par2,(char* )pcParameterString4,xParameterStringLength4);
-//	dstM =(uint8_t )GetID(par2);
-//
-//	/* Obtain the 5th parameter string. */
-//	pcParameterString5 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,5,&xParameterStringLength5);
-//	/* Read the color value. */
-//	if(!strncmp((const char* )pcParameterString5,"forward",xParameterStringLength5))
-//		direction =FORWARD;
-//	else if(!strncmp((const char* )pcParameterString5,"backward",xParameterStringLength5))
-//		direction =BACKWARD;
-//	else if(!strncmp((const char* )pcParameterString5,"bidirectional",xParameterStringLength5))
-//		direction =BIDIRECTIONAL;
-//	strncpy(par3,(char* )pcParameterString5,xParameterStringLength5);
-//
-//	/* Obtain the 6th parameter string. */
-//	pcParameterString6 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,6,&xParameterStringLength6);
-//	count =(uint32_t )atol((char* )pcParameterString6);
-//
-//	/* Obtain the 7th parameter string. */
-//	pcParameterString7 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,7,&xParameterStringLength7);
-//	timeout =(uint32_t )atol((char* )pcParameterString7);
-//
-//	result =StartScastDMAStream(srcP,srcM,dstP,dstM,direction,count,timeout,false);
-//
-//	/* Respond to the command */
-//	if(result == BOS_OK){
-//		sprintf((char* )pcWriteBuffer,(char* )pcMessage,par3,srcP,par1,dstP,par2,count,timeout);
-//	}
-//
-//	/* There is no more data to return after this single string, so return
-//	 pdFALSE. */
-//	return pdFALSE;
-//}
 
 /***************************************************************************/
 static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){

@@ -488,15 +488,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		Message[3] =dst;
 		Message[4] =src;
 
-		/* Options */
-		/* Set the options bits */
-//	    OptionByte.Trace = UserOptionByte.Trace;
-//	    OptionByte.Acknowledgment = UserOptionByte.Acknowledgment;
-//	    OptionByte.Reserved = 0;
-//	    OptionByte.Response = UserOptionByte.Response;
-//	    OptionByte.LongMessage = LongMessageFlag;
-
-		/* Assign the byte value */
+		/* Assign the Options byte value */
 		Message[5] =*(uint8_t* )&OptionByte;
 
 		/* Code - LSB first */

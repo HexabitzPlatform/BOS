@@ -412,8 +412,11 @@ typedef struct {
 #define MCU_G0_FLASH_SIZE_BASE               0x1FFF75E0UL
 
 /* Message properties */
-#define MSG_COUNT 		5 /* TODO: messages count should be increased, but there's no enough memory now */
-#define MSG_MAX_SIZE 	56
+#define	MSG_ACKNOWLEDGMENT_ACCEPTED 	  	  44
+#define	MSG_REJECTED 						  45
+#define MSG_MAX_SIZE 	                      56
+#define MSG_COUNT 	                          5
+/* TODO: messages count should be increased, but there's no enough memory now */
 
 /***************************************************************************/
 /* Includes ****************************************************************/

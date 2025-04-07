@@ -2368,4 +2368,6 @@ BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t WakeupPins){
 		return BOS_OK;
 
 }
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+
+/***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

@@ -7,7 +7,8 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
+
 #include "BOS.h"
 
 #ifndef __N
@@ -16,4 +17,4 @@ extern uint8_t Route[MAX_NUM_OF_MODULES];
 	extern uint8_t Route[__N];
 #endif
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

@@ -641,3 +641,4 @@ bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
 	return true;
 }
 /***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/
