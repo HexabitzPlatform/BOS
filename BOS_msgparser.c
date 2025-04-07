@@ -964,7 +964,7 @@ void PxMessagingTask(void *argument){
 							}
 							else{
 // Variable exists. Get its memory address
-								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE + 0x10000;
+								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE/* + 0x10000*/;
 // Send variable according to its format
 								switch(messageParams[0]) // requested format
 								{
@@ -1146,7 +1146,8 @@ void PxMessagingTask(void *argument){
 						{
 // Check variable index is within the limit of MAX_BOS_VARS
 							if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
-								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE+0x10000; // Get var memory addres
+								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE/* + 0x10000*/; // Get var memory addres
+//								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE + 0x10000;
 // Modify the variable or create a new one if it does not exist
 								switch(cMessage[port - 1][1 + shift]) // requested format
 								{
