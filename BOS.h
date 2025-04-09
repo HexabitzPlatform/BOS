@@ -379,6 +379,7 @@ typedef struct {
 #define NUM_OF_PARAMS_HELP_STRINGS           7
 #define PN_NUM_OF_CHARACTERS                 6
 #define PC_USER_MESSAGE_SIZE                 80
+#define MEMORY_ERASED                        0xFFFF
 
 /* Default Button Timings */
 #define DEF_BUTTON_DEBOUNCE                  30  /* Button debounce time in ms */
@@ -748,10 +749,8 @@ extern BOS_Status StreamMemoryToMemory(uint8_t dstM, uint8_t *pBuffer, uint32_t 
 extern BOS_Status StartScastDMAStream(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t count, uint32_t timeout, bool stored);
 
 /* ========================= Button Handling APIs ========================= */
-extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
 extern BOS_Status AddButton(uint8_t port, ButtonType_e buttonType, ButtonState_e buttonState);
 extern BOS_Status RemovePortButton(uint8_t port);
-extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
 
 /* ===================== Remote Variable Handling APIs ==================== */
 extern uint32_t* ReadRemoteVar(uint8_t module, uint32_t remoteVarAddress, VariableFormat_t *remoteFormat, uint32_t timeout);

@@ -34,6 +34,7 @@ extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
 /* Global function prototypes **********************************************/
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
 Module_Status GetModuleParameter(uint8_t paramIndex, float *value) ;
+
 /* Private function prototypes *********************************************/
 BOS_Status AddSnippet(uint8_t code,char *string);
 BOS_Status ParseSnippetCondition(char *string);
@@ -42,6 +43,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 
 /* BOS exported functions **************************************************/
 extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
 extern uint8_t SaveSnippetsToRO(void);

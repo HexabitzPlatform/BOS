@@ -21,6 +21,7 @@ extern BOS_t BOS_default;
 extern uint8_t SaveSnippetsToRO(void);
 extern BOS_Status SaveEEparams(void);
 extern BOS_Status ClearEEportsDir(void);
+extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif

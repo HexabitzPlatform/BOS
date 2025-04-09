@@ -139,6 +139,8 @@ uint8_t cliLowBaudrateFlag =0; 	/* Flag for Lower CLI baudrate is set */
 extern uint8_t SaveTopologyToRO(void);
 extern uint8_t IsFactoryReset(void);
 extern BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t *RX_Port,uint16_t *RX_Pin);
+extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
+extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
 extern BOS_Status RTC_Init(void);
 extern void Module_Peripheral_Init(void);
 extern void TIM_USEC_Init(void);
@@ -220,7 +222,7 @@ BOS_Status LoadROtopology(void){
 	/* Load number of modules */
 	temp =(*(__IO uint16_t* )(TOPOLOGY_START_ADDRESS));
 	
-	if(temp == 0xFFFF){   /* if memory has been erased */
+	if(temp == MEMORY_ERASED){   /* if memory has been erased */
 		N =1;
 		myID =0;
 		return BOS_MEM_ERASED;
@@ -665,23 +667,6 @@ BOS_Status ClearEEportsDir(void){
 	}
 	
 	return result;
-}
-
-/***************************************************************************/
-//TODO change location of the API
-/* Format Emulated EEPROM for a factory reset */
-void EE_FormatForFactoryReset(void){
-	/* Check if EEPROM was just formated? */
-	/* Flag address (STM32F09x) - Last 4 words of SRAM */
-	if(*((unsigned long* )0x20007FF0) == 0xBEEFDEAD){
-		// Do nothing
-	}
-	else{
-		if(EE_Format() == HAL_OK){
-			/* Set flag for formated EEPROM */
-			*((unsigned long* )0x20007FF0) =0xBEEFDEAD;
-		}
-	}
 }
 
 /***************************************************************************/
@@ -2093,136 +2078,6 @@ BOS_Status printfp(uint8_t port,char *str){
 		return BOS_OK;
 	else
 		return BOS_ERROR;
-}
-
-/***************************************************************************/
-/* enable stop mode regarding only UART1 , UART2 , and UART3 */
-BOS_Status EnableStopModebyUARTx(uint8_t port){
-
-	UART_WakeUpTypeDef WakeUpSelection;
-	UART_HandleTypeDef *huart =GetUart(port);
-
-	if((huart->Instance == USART1) || (huart->Instance == USART2) || (huart->Instance == USART3)){
-
-		/* make sure that no UART transfer is on-going */
-		while(__HAL_UART_GET_FLAG(huart, USART_ISR_BUSY) == SET);
-
-		/* make sure that UART is ready to receive */
-		while(__HAL_UART_GET_FLAG(huart, USART_ISR_REACK) == RESET);
-
-		/* set the wake-up event:
-		 * specify wake-up on start-bit detection */
-		WakeUpSelection.WakeUpEvent = UART_WAKEUP_ON_STARTBIT;
-		HAL_UARTEx_StopModeWakeUpSourceConfig(huart,WakeUpSelection);
-
-		/* Enable the UART Wake UP from stop mode Interrupt */
-		__HAL_UART_ENABLE_IT(huart,UART_IT_WUF);
-
-		/* enable MCU wake-up by LPUART */
-		HAL_UARTEx_EnableStopMode(huart);
-
-		/* enter STOP mode */
-		HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON,PWR_STOPENTRY_WFI);
-	}
-	else
-		return BOS_ERROR;
-
-}
-
-/***************************************************************************/
-/* Enable standby mode regarding wake-up pins:
- * WKUP1: PA0  pin
- * WKUP4: PA2  pin
- * WKUP6: PB5  pin
- * WKUP2: PC13 pin
- * NRST pin
- *  */
-BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t wakeupPins){
-
-	/* Clear the WUF FLAG */
-	__HAL_PWR_CLEAR_FLAG(PWR_FLAG_WUF);
-
-	/* Enable the WAKEUP PIN */
-	switch(wakeupPins){
-
-		case PA0_PIN:
-			HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
-			break;
-
-		case PA2_PIN:
-			HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
-			break;
-
-		case PB5_PIN:
-			HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
-			break;
-
-		case PC13_PIN:
-			HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
-			break;
-
-		case NRST_PIN:
-			/* do no thing*/
-			break;
-	}
-
-	/* Enable SRAM content retention in Standby mode */
-	HAL_PWREx_EnableSRAMRetention();
-
-	/* Finally enter the standby mode */
-	HAL_PWR_EnterSTANDBYMode();
-
-	return BOS_OK;
-}
-
-/***************************************************************************/
-/* Disable standby mode regarding wake-up pins:
- * WKUP1: PA0  pin
- * WKUP4: PA2  pin
- * WKUP6: PB5  pin
- * WKUP2: PC13 pin
- * NRST pin
- *  */
-BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t wakeupPins){
-
-	/* The standby wake-up is same as a system RESET:
-	 * The entire code runs from the beginning just as if it was a RESET.
-	 * The only difference between a reset and a STANDBY wake-up is that, when the MCU wakes-up,
-	 * The SBF status flag in the PWR power control/status register (PWR_CSR) is set */
-	if(__HAL_PWR_GET_FLAG(PWR_FLAG_SB) != RESET){
-		/* clear the flag */
-		__HAL_PWR_CLEAR_FLAG(PWR_FLAG_SB);
-
-		/* Disable  Wake-up Pinx */
-		switch(wakeupPins){
-
-			case PA0_PIN:
-				HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN1); /* PA0 */
-				break;
-
-			case PA2_PIN:
-				HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN4); /* PA2 */
-				break;
-
-			case PB5_PIN:
-				HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN6); /* PB5 */
-				break;
-
-			case PC13_PIN:
-				HAL_PWR_DisableWakeUpPin(PWR_WAKEUP_PIN2); /* PC13 */
-				break;
-
-			case NRST_PIN:
-				/* do no thing*/
-				break;
-		}
-
-		IND_blink(1000);
-
-	}
-	else
-		return BOS_OK;
-
 }
 
 /***************************************************************************/
