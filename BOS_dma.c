@@ -91,22 +91,22 @@ void DMA_IRQHandler(uint8_t port){
 /***************************************************************************/
 /* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup */
 void ResetUartORE(void){
-#if defined(_Usart1)
+#if defined(_USART1)
 	__HAL_UART_CLEAR_OREFLAG(&huart1);
 #endif
-#if defined(_Usart2)
+#if defined(_USART2)
 	__HAL_UART_CLEAR_OREFLAG(&huart2);
 #endif
-#if defined(_Usart3)
+#if defined(_USART3)
 	__HAL_UART_CLEAR_OREFLAG(&huart3);
 #endif
-#if defined(_Usart4) || defined(_Uart4)
+#if defined(_USART4) || defined(_UART4)
 	__HAL_UART_CLEAR_OREFLAG(&huart4);
 #endif
-#if defined(_Usart5) || defined(_Uart5)
+#if defined(_USART5) || defined(_UART5)
 	__HAL_UART_CLEAR_OREFLAG(&huart5);
 #endif
-#if defined(_Usart6)
+#if defined(_USART6)
 	__HAL_UART_CLEAR_OREFLAG(&huart6);
 #endif
 }
