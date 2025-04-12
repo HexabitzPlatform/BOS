@@ -51,22 +51,22 @@ uint8_t NumOfBosCommands = 0;
 uint8_t dstGroupID =BOS_BROADCAST;
 uint8_t NumOfRecordedSnippets =0;
 uint8_t cliDataInputFlag = 0;
-uint8_t MessageLength[NumOfPorts] ={0};
-uint8_t PortStatus[NumOfPorts + 1] ={0};
-uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE] ={0};	/* Buffer for received messages and ready to be parsed */
+uint8_t MessageLength[NUM_OF_PORTS] ={0};
+uint8_t PortStatus[NUM_OF_PORTS + 1] ={0};
+uint8_t cMessage[NUM_OF_PORTS][MAX_MESSAGE_SIZE] ={0};	/* Buffer for received messages and ready to be parsed */
 uint8_t MessageParams[MAX_PARAMS_PER_MESSAGE] ={0};
 uint8_t StreamBuffer[STREAM_BUF_SIZE] = {0};
 
-uint16_t myPN = modulePN;
-uint16_t Neighbors[NumOfPorts][2] ={0};
-uint16_t Neighbors2[NumOfPorts][2] ={0};
+uint16_t myPN = MODULE_PN;
+uint16_t Neighbors[NUM_OF_PORTS][2] ={0};
+uint16_t Neighbors2[NUM_OF_PORTS][2] ={0};
 uint16_t bcastRoutes[MAX_NUM_OF_MODULES] ={0}; /* P1 is LSB */
 
 /* BOS variables register: Bits 31-16:
  * variable RAM address shift from SRAM_BASE, Bits 15-8: status.
  * Bits 7-0: format. */
 uint32_t bosVarRegister[MAX_BOS_VARS];
-volatile uint32_t* dmaIndex[NumOfPorts] ;
+volatile uint32_t* dmaIndex[NUM_OF_PORTS] ;
 
 uint64_t RemoteBuffer =0;
 uint8_t RequestFormat = 0;
@@ -464,7 +464,7 @@ BOS_Status LoadEEbuttons(void){
 	uint16_t temp16 =0, status1 =0;
 	uint8_t temp8 =0;
 	
-	for(uint8_t i =0; i <= NumOfPorts; i++){
+	for(uint8_t i =0; i <= NUM_OF_PORTS; i++){
 		status1 =EE_ReadVariable(_EE_BUTTON_BASE + 4 * (i),&temp16);
 		
 		/* This variable exists */
@@ -790,7 +790,7 @@ void BOS_Init(void){
 		
 		BOS.cliBaudrate = CLI_BAUDRATE_1;
 		/* Update all ports to lower baudrate */
-		for(uint8_t port =1; port <= NumOfPorts; port++){
+		for(uint8_t port =1; port <= NUM_OF_PORTS; port++){
 			UpdateBaudrate(port,BOS.cliBaudrate);
 		}
 	}
@@ -930,7 +930,7 @@ BOS_Status Explore(void)
 	/* **************************************************************************/
 
 	pcPort = ExtraPcPort;
-	for (uint8_t port=1 ; port<=NumOfPorts ; port++) {
+	for (uint8_t port=1 ; port<=NUM_OF_PORTS ; port++) {
 		if (port != pcPort)	SwapUartPins(GetUart(port), REVERSED);
 	}
 	ExploreNeighbors(pcPort); IndicatorMode = IND_TOPOLOGY;
@@ -942,7 +942,7 @@ BOS_Status Explore(void)
 
 	/* Step 2a - Assign IDs to new modules **************************************/
 	currentID = 1;
-	for (port=1 ; port<=NumOfPorts ; port++)
+	for (port=1 ; port<=NUM_OF_PORTS ; port++)
 	{
 		if (Neighbors[port-1][0])
 		{
@@ -960,7 +960,7 @@ BOS_Status Explore(void)
 
 	/* Step 2b - Update master topology Array ***********************************/
 	Array[0][0]	= myPN;
-	for (port=1 ; port<=NumOfPorts ; port++)
+	for (port=1 ; port<=NUM_OF_PORTS ; port++)
 	{
 		if (Neighbors[port-1][0])
 		{
@@ -1075,7 +1075,7 @@ BOS_Status Explore(void)
 	osDelay(50);
 
 	/* Check for any unIDed Neighbors */
-	for (i=1 ; i<=NumOfPorts ; i++)
+	for (i=1 ; i<=NUM_OF_PORTS ; i++)
 	{
 		temp16 = Neighbors[i-1][0];		    /* Neighbor ID */
 		temp1 = (uint8_t)(temp16>>8);
@@ -1106,7 +1106,7 @@ BOS_Status Explore(void)
 	if (result == BOS_OK)
 	{
 		/* Step 5a - Virtually reset the state of master ports to Normal ************/
-		for (port=1 ; port<=NumOfPorts ; port++) {
+		for (port=1 ; port<=NUM_OF_PORTS ; port++) {
 			ArrayPortsDir[0] &= (~(0x8000>>(port-1)));		   /* Set bit to zero */
 		}
 		/* Step 5b - Update other modules ports starting from the last one **********/
@@ -1151,7 +1151,7 @@ BOS_Status Explore(void)
 		}
 
 		/* Step 5e - Update master ports > all normal *******************************/
-		for (port=1 ; port<=NumOfPorts ; port++) {
+		for (port=1 ; port<=NUM_OF_PORTS ; port++) {
 			if (port != pcPort)	SwapUartPins(GetUart(port), NORMAL);
 		}
 	}
@@ -1199,7 +1199,7 @@ BOS_Status ExploreNeighbors(uint8_t ignore){
 	BOS_Status result =BOS_OK;
 	
 	/* Send Hi messages to adjacent Neighbors */
-	for(uint8_t port =1; port <= NumOfPorts; port++){
+	for(uint8_t port =1; port <= NUM_OF_PORTS; port++){
 		if(port != ignore){
 			/* This module info */
 			MessageParams[0] =(uint8_t )(myPN >> 8);
@@ -1428,7 +1428,7 @@ void DisplayTopology(uint8_t port){
 	sprintf(pcUserMessage,"\n\r(Module:Port)\t\t");
 	writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,
 	HAL_MAX_DELAY);
-	for(uint8_t i =1; i <= NumOfPorts; i++){
+	for(uint8_t i =1; i <= NUM_OF_PORTS; i++){
 		sprintf(pcUserMessage,"P%d\t",i);
 		writePxMutex(port,pcUserMessage,strlen(pcUserMessage),cmd50ms,
 		HAL_MAX_DELAY);
@@ -1445,7 +1445,7 @@ void DisplayTopology(uint8_t port){
 		writePxMutex(port,pcUserMessage,5,cmd50ms,HAL_MAX_DELAY);
 		writePxMutex(port,"\t",1,cmd50ms,HAL_MAX_DELAY);
 		/* Connections */
-		for(uint8_t col =1; col <= NumOfPorts; col++){
+		for(uint8_t col =1; col <= NUM_OF_PORTS; col++){
 			if(!Array[row][col])
 				sprintf(pcUserMessage,"%d\t",0);
 			else
@@ -1507,7 +1507,7 @@ void DisplayModuleStatus(uint8_t port){
 	/* Ports */
 	sprintf(pcUserMessage,"\n\rPorts Status:\n\n\r");
 	strcat((char* )pcOutputString,pcUserMessage);
-	for(uint8_t i =1; i <= NumOfPorts; i++){
+	for(uint8_t i =1; i <= NUM_OF_PORTS; i++){
 		sprintf(pcUserMessage,"P%d: ",i);
 		strcat((char* )pcOutputString,pcUserMessage);
 		switch(PortStatus[i]){
@@ -1550,7 +1550,7 @@ void DisplayModuleStatus(uint8_t port){
 	/* Ports direction */
 	strcat((char* )pcOutputString,"\n\rThese ports are reversed: ");
 	temp =strlen((char* )pcOutputString);
-	for(uint8_t p =1; p <= NumOfPorts; p++){
+	for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 		if((ArrayPortsDir[myID - 1] & (0x8000 >> (p - 1)))) /* Port is reversed */
 		{
 			sprintf(pcUserMessage,"P%d ",p);

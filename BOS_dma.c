@@ -18,14 +18,14 @@
 #include "BOS_DMA.h"
 
 /* Private variables *******************************************************/
-uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] ={0};
-UART_HandleTypeDef *dmaStreamDst[NumOfPorts] ={0};
-uint32_t dmaStreamCount[NumOfPorts] ={0};
-uint32_t dmaStreamTotal[NumOfPorts] ={0};
-bool MsgDMAStopped[NumOfPorts] ={0};
+uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE] ={0};
+UART_HandleTypeDef *dmaStreamDst[NUM_OF_PORTS] ={0};
+uint32_t dmaStreamCount[NUM_OF_PORTS] ={0};
+uint32_t dmaStreamTotal[NUM_OF_PORTS] ={0};
+bool MsgDMAStopped[NUM_OF_PORTS] ={0};
 
 /* Exported variables ******************************************************/
-extern uint16_t dmaDstPort[NumOfPorts];
+extern uint16_t dmaDstPort[NUM_OF_PORTS];
 extern uint8_t StreamCplt;
 
 /***************************************************************************/

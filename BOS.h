@@ -107,27 +107,6 @@ enum BootStatus_e {
 	RESET_BOOT     /* Booting from reset */
 };
 
-/* Basic colors */
-enum BasicColors {
-	BLACK =1, WHITE, RED, BLUE, YELLOW, CYAN, MAGENTA, GREEN, AQUA, PURPLE, LIGHTBLUE, ORANGE, INDIGO,
-};
-
-/* RGB LED operating modes */
-enum RGBLedMode {
-	RGB_PULSE_RGB = 1,    /* Pulsing RGB colors */
-	RGB_PULSE_COLOR,      /* Pulsing a single color */
-	RGB_SWEEP_BASIC,      /* Sweeping through basic colors */
-	RGB_SWEEP_FINE,       /* Smooth color sweeping */
-	RGB_DIM_UP,           /* Gradually increasing brightness */
-	RGB_DIM_UP_WAIT,      /* Gradually increasing brightness with wait time */
-	RGB_DIM_DOWN,         /* Gradually decreasing brightness */
-	RGB_DIM_DOWN_WAIT,    /* Gradually decreasing brightness with wait time */
-	RGB_DIM_UP_DOWN,      /* Brightness up then down */
-	RGB_DIM_DOWN_UP,      /* Brightness down then up */
-	RGB_DIM_UP_DOWN_WAIT, /* Brightness up-down with wait */
-	RGB_DIM_DOWN_UP_WAIT  /* Brightness down-up with wait */
-};
-
 /* Daylight saving adjustments */
 enum Daylight_e {
 	DAYLIGHT_SUB1H = -1, /* Subtract 1 hour for daylight saving */
@@ -366,7 +345,7 @@ typedef struct {
 
 /* BOS Parameters and Constants */
 #define NUM_OF_MODULE_PN                     46 /* Number of Modules */
-#define P_LAST                               NumOfPorts
+#define P_LAST                               NUM_OF_PORTS
 #define MAX_MESSAGE_SIZE                     56 /* Max Number of Bytes in One Message */
 #define MAX_PARAMS_PER_MESSAGE               (MAX_MESSAGE_SIZE - 10) /* Calculated max params per message */
 #define cmdMAX_INPUT_SIZE                    50
@@ -610,30 +589,30 @@ extern uint8_t dstGroupID;
 extern uint8_t Route[];
 extern uint8_t NumOfRecordedSnippets;
 extern uint8_t MessageParams[MAX_PARAMS_PER_MESSAGE];
-extern uint8_t MessageLength[NumOfPorts];
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];
-extern uint8_t PortStatus[NumOfPorts + 1];
+extern uint8_t MessageLength[NUM_OF_PORTS];
+extern uint8_t cMessage[NUM_OF_PORTS][MAX_MESSAGE_SIZE];
+extern uint8_t PortStatus[NUM_OF_PORTS + 1];
 
 /* Flags for CLI Task */
 extern uint8_t cliDataInputFlag;
-extern uint8_t IndexInput[NumOfPorts] ;
-extern uint8_t IndexProcess[NumOfPorts] ;
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t IndexInput[NUM_OF_PORTS] ;
+extern uint8_t IndexProcess[NUM_OF_PORTS] ;
+extern uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE];
 extern uint8_t StreamBuffer[STREAM_BUF_SIZE];
 
 extern uint16_t myPN;
-extern uint16_t Neighbors[NumOfPorts][2];
-extern uint16_t Neighbors2[NumOfPorts][2];
+extern uint16_t Neighbors[NUM_OF_PORTS][2];
+extern uint16_t Neighbors2[NUM_OF_PORTS][2];
 extern uint16_t bcastRoutes[MAX_NUM_OF_MODULES]; /* P1 is LSB */
 
 extern uint32_t bosVarRegister[MAX_BOS_VARS];
-extern volatile uint32_t* dmaIndex[NumOfPorts];
+extern volatile uint32_t* dmaIndex[NUM_OF_PORTS];
 
 extern uint64_t RemoteBuffer;
 extern uint8_t RequestFormat;
 
 extern Snippet_t Snippets[MAX_SNIPPETS];
-extern Button_t Button[NumOfPorts + 1];
+extern Button_t Button[NUM_OF_PORTS + 1];
 extern BOS_t BOS;
 extern BOS_Status ResponseStatus;
 extern BOSOptionByte_t OptionByte;

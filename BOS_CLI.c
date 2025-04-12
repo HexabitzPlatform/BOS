@@ -29,7 +29,7 @@ uint16_t TimedoutMsg = 0;
 Snippet_t Snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
 /* Exported variables ******************************************************/
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE];
 
 /* Global function prototypes **********************************************/
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
@@ -42,7 +42,7 @@ bool CheckSnippetCondition(uint8_t index);
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString);
 
 /* BOS exported functions **************************************************/
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
@@ -70,7 +70,7 @@ void prvCLITask(void *pvParameters){
 
 	/* Restore baud rate to the default for all ports except the PC communication port */
 	if(BOS.cliBaudrate != DEF_ARRAY_BAUDRATE){
-		for(uint8_t port =1; port <= NumOfPorts; port++){
+		for(uint8_t port =1; port <= NUM_OF_PORTS; port++){
 			if(port != pcPort)
 				UpdateBaudrate(port,DEF_ARRAY_BAUDRATE);
 		}
@@ -253,7 +253,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						SendMessageToModule(id,CODE_UPDATE,0);
 						osDelay(100);
 						/* Execute locally */
-						remoteBootloaderUpdate(myID,id,pcPort,0);
+						RemoteBootloaderUpdate(myID,id,pcPort,0);
 					}
 					else{
 						/* Forward the command */
@@ -399,7 +399,7 @@ BOS_Status ParseSnippetCondition(char *string){
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
 	/* Check if the condition starts with "bx." (Button event) */
 	if(string[0] == 'b' && string[2] == '.'){
-		if(string[1] >= '0' && (string[1] - '0') < NumOfPorts){
+		if(string[1] >= '0' && (string[1] - '0') < NUM_OF_PORTS){
 			/* Extract the button port */
 			port =string[1] - '0';
 			currentSnippet->Condition.ConditionType = SNIP_COND_BUTTON_EVENT;

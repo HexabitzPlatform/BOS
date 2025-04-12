@@ -13,7 +13,7 @@
 /* Private and global variables ********************************************/
 uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
 uint8_t StreamCplt =1;
-uint16_t dmaDstPort[NumOfPorts] ={0};
+uint16_t dmaDstPort[NUM_OF_PORTS] ={0};
 uint32_t dmaStreamPort =0;
 
 volatile uint8_t RemoteResponseFlag;
@@ -617,7 +617,7 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		FindBroadcastRoutes(src);
 		
 		/* Send to all my broadcast ports */
-		for(uint8_t p =1; p <= NumOfPorts; p++){
+		for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
 //				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);

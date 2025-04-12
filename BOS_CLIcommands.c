@@ -27,7 +27,7 @@ extern uint8_t ClearROtopology(void);
 #endif
 extern void RegisterModuleCLICommands(void);
 extern bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 
 /***************************************************************************/
 /* CLI Commands Declarations ***********************************************/
@@ -533,7 +533,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 				SendMessageToModule(module,CODE_UPDATE_VIA_PORT,1);
 				osDelay(100);
 				/* Execute locally */
-				remoteBootloaderUpdate(myID,module,pcPort,port);
+				RemoteBootloaderUpdate(myID,module,pcPort,port);
 			}
 			/* I'm the source of the command and my neighbor is the target */
 			else{
@@ -541,7 +541,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 				SendMessageFromPort(port,0,0,CODE_UPDATE,0);
 				osDelay(100);
 				/* Then, setup myself for remote 'via port' update */
-				remoteBootloaderUpdate(myID,myID,pcPort,port);
+				RemoteBootloaderUpdate(myID,myID,pcPort,port);
 			}
 		}
 		else
@@ -1716,7 +1716,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	portBASE_TYPE xParameterStringLength1 =0;
 	BOS_Status result =BOS_OK;
 	uint8_t portt, ports;
-//	extern uint8_t UARTRxBufIndex[NumOfPorts];
+//	extern uint8_t UARTRxBufIndex[NUM_OF_PORTS];
 	char WriteVaule[1] ="H";
 	char ReadValue[1];
 	int LastEnter =0;
@@ -1731,7 +1731,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	if(strcmp((char* )pcParameterString1,"all") == 0){
 		if(LastEnter == 0)
 //			LastEnter =UARTRxBufIndex[pcPort - 1];
-		for(ports =1; ports <= NumOfPorts; ports++){
+		for(ports =1; ports <= NUM_OF_PORTS; ports++){
 			if(pcPort != ports){
 				WriteVaule[0] =rand();
 				writePxMutex(ports,WriteVaule,1,10,100);
@@ -1764,7 +1764,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	}
 	else if(pcParameterString1[0] == 'p'){
 		portt =(uint8_t )atol((char* )pcParameterString1 + 1);
-		if(portt > 0 && portt <= NumOfPorts){
+		if(portt > 0 && portt <= NUM_OF_PORTS){
 			if(result == BOS_OK){
 				WriteVaule[0] =rand();
 				writePxMutex(portt,WriteVaule,1,cmd50ms,100);

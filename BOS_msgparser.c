@@ -18,15 +18,15 @@
 /* BackEndTask global variables ********************************************/
 uint8_t crcCalculateBuffer[MSG_MAX_SIZE];
 uint8_t cliFirstTimeActivation =0;
-uint8_t MessageIndexStart[NumOfPorts] ={0};
-uint8_t MessageIndexEnd[NumOfPorts] ={0};
-uint8_t MessageBuffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] ={0};
+uint8_t MessageIndexStart[NUM_OF_PORTS] ={0};
+uint8_t MessageIndexEnd[NUM_OF_PORTS] ={0};
+uint8_t MessageBuffer[NUM_OF_PORTS][MSG_COUNT][MSG_MAX_SIZE] ={0};
 uint8_t ProcessMessageBuffer[MSG_COUNT] ={0};
 uint8_t ProcessMessageIndexStart =0;
 uint8_t ProcessMessageIndexEnd =0;
 volatile uint8_t bcastLastID = 0;
-uint8_t IndexProcess[NumOfPorts] ={0};
-uint8_t IndexInput[NumOfPorts] ={0};
+uint8_t IndexProcess[NUM_OF_PORTS] ={0};
+uint8_t IndexInput[NUM_OF_PORTS] ={0};
 uint8_t cliData =0;
 uint8_t dmaPortIndex =0;
 
@@ -92,7 +92,7 @@ extern BOS_Status ClearEEportsDir(void);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 
 /* Module exported internal functions */
 extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
@@ -123,8 +123,8 @@ void BackEndTask(void *argument) {
 	BOS_Status result =BOS_OK;
 
 	uint8_t calculated_crc, port_number, length, port_index , dst;
-	uint8_t temp_length[NumOfPorts] = { 0 };
-	uint8_t temp_index[NumOfPorts] = { 0 };
+	uint8_t temp_length[NUM_OF_PORTS] = { 0 };
+	uint8_t temp_index[NUM_OF_PORTS] = { 0 };
 	uint8_t NumofModulesinGroup = 0;
 
 	for (;;) {
@@ -133,7 +133,7 @@ void BackEndTask(void *argument) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		/* Parsing all module ports */
-		for (dmaPortIndex = 0; dmaPortIndex < NumOfPorts;) {
+		for (dmaPortIndex = 0; dmaPortIndex < NUM_OF_PORTS;) {
 			/* Computes how many new bytes have been received on each port: */
 			port_index = dmaPortIndex;
 			IndexInput[dmaPortIndex] = MSG_RX_BUF_SIZE - (*dmaIndex[dmaPortIndex]);
@@ -147,7 +147,7 @@ void BackEndTask(void *argument) {
 				/* CLI Handling: If the received byte is 0x0D and the port is free,
 				 * it assigns the port to the CLI.*/
 				if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 0x0D && PortStatus[port_number] == FREE) {
-					for (int i = 0; i <= NumOfPorts; i++) { // Free previous CLI port
+					for (int i = 0; i <= NUM_OF_PORTS; i++) { // Free previous CLI port
 						if (PortStatus[i] == CLI)
 							PortStatus[i] = FREE;
 
@@ -510,7 +510,7 @@ void PxMessagingTask(void *argument){
 						osDelay(50);
 						temp =0;
 						/* Exploration response message */
-						for(uint8_t p =1; p <= NumOfPorts; p++){
+						for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 							if(Neighbors[p - 1][0]){
 								MessageParams[temp] =p;
 								memcpy(MessageParams + temp + 1,Neighbors[p - 1],(size_t )(4));
@@ -532,7 +532,7 @@ void PxMessagingTask(void *argument){
 
 					case CODE_PORT_DIRECTION:
 						/* Reverse/un-reverse ports according to command parameters */
-						for(uint8_t p =1; p <= NumOfPorts; p++){
+						for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 							if(p != port)
 								SwapUartPins(GetUart(p),cMessage[port - 1][shift + p - 1]);
 						}
@@ -587,14 +587,14 @@ void PxMessagingTask(void *argument){
 						temp32 =((uint32_t )cMessage[port - 1][shift] << 24) + ((uint32_t )cMessage[port - 1][1 + shift] << 16) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + cMessage[port - 1][3 + shift];
 						if(cMessage[port - 1][4 + shift] == 0xFF) // All ports
 						{
-							for(p =1; p <= NumOfPorts; p++){
+							for(p =1; p <= NUM_OF_PORTS; p++){
 								UpdateBaudrate(p,temp32);
 							}
 						}
 						else{
 							for(p =0; p < numOfParams; p++){
 								temp =cMessage[port - 1][4 + shift + p];
-								if(temp > 0 && temp <= NumOfPorts){
+								if(temp > 0 && temp <= NUM_OF_PORTS){
 									UpdateBaudrate(temp,temp32);
 								}
 							}
@@ -687,7 +687,7 @@ void PxMessagingTask(void *argument){
 						SendMessageFromPort(cMessage[port - 1][shift],0,0,CODE_UPDATE,0);
 						osDelay(100);
 						/* Then, setup myself for remote 'via port' update */
-						remoteBootloaderUpdate(src,myID,port,cMessage[port - 1][shift]);
+						RemoteBootloaderUpdate(src,myID,port,cMessage[port - 1][shift]);
 						break;
 
 					case CODE_DMA_CHANNEL:
