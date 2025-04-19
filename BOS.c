@@ -137,8 +137,8 @@ uint8_t cliLowBaudrateFlag =0; 	/* Flag for Lower CLI baudrate is set */
 
 /* Module exported internal functions **************************************/
 extern uint8_t SaveTopologyToRO(void);
-extern uint8_t IsFactoryReset(void);
-extern BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t *RX_Port,uint16_t *RX_Pin);
+//extern uint8_t IsFactoryReset(void);
+//extern BOS_Status GetPortGPIOs(uint8_t port,uint32_t *TX_Port,uint16_t *TX_Pin,uint32_t *RX_Port,uint16_t *RX_Pin);
 extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
 extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
 extern BOS_Status RTC_Init(void);
