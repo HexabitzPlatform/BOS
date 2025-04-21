@@ -150,7 +150,7 @@
 #define CODE_H09R9_STREAM_TEMP                476
 #define CODE_H09R9_STREAM_STOP                477
 
-// H0AR9
+/* H0AR9 */
 #define CODE_H0AR9_SAMPLE_COLOR               500
 #define CODE_H0AR9_SAMPLE_DISTANCE            501
 #define CODE_H0AR9_SAMPLE_TEMP                502
@@ -161,7 +161,6 @@
 #define CODE_H0AR9_STREAM_TEMP                507
 #define CODE_H0AR9_STREAM_HUMIDITY            508
 #define CODE_H0AR9_STREAM_PIR                 509
-#define CODE_H0AR9_STREAM_STOP                510
 
 /* H0BR4x */
 #define CODE_H0BR4_SAMPLE_GYRO                550
