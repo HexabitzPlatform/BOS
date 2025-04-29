@@ -1324,11 +1324,11 @@ void PxMessagingTask(void *argument){
 						adcPort =cMessage[port - 1][shift];
 						adcSide =cMessage[port - 1][shift + 1];
 						if(0 == adcSide){
-							ADCSelectChannel(adcPort,"top");
+							ADCSelectPort(adcPort);
 							ReadADCChannel(adcPort,"top",&adcValue);
 						}
 						else if(1 == adcSide){
-							ADCSelectChannel(adcPort,"bottom");
+							ADCSelectPort(adcPort);
 							ReadADCChannel(adcPort,"bottom",&adcValue);
 						}
 
@@ -1338,7 +1338,7 @@ void PxMessagingTask(void *argument){
 
 //					case CODE_READ_ADC_PERCENTAGE:
 //						adcPort = cMessage[port - 1][shift];
-//						GetReadPrecentage(adcPort, &adcPercentage);
+//						GetReadPercentage(adcPort, &adcPercentage);
 //						MBmessageParams[7] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
 //								+ ((uint32_t) cMessage[port - 1][6 + shift] << 8)
 //								+ ((uint32_t) cMessage[port - 1][7 + shift] << 16)

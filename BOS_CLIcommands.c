@@ -66,7 +66,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
-static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
+static portBASE_TYPE GetReadPercentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 
 /***************************************************************************/
 /* CLI-FreeRtos Definitions ************************************************/
@@ -338,8 +338,8 @@ static const CLI_Command_Definition_t ReadVrefDefinition ={
 /* CLI command structure : Read ADC Percentage value */
 static const CLI_Command_Definition_t GetReadPercentageDefinition ={
 	(const int8_t* )"read-adc-percentage", /* The command string to type. */
-	(const int8_t* )"read-adc-percentage:\r\n Get percentage value from port 2 or port 3\r\n\r\n", GetReadPrecentageCommand, /* The function to run. */
-	1 /* one parameter is expected. */
+	(const int8_t* )"read-adc-percentage:\r\n Get percentage value from port 2 or port 3\r\n\r\n", GetReadPercentageCommand, /* The function to run. */
+	2 /* Two parameter is expected. */
 };
 
 /***************************************************************************/
@@ -1831,15 +1831,15 @@ static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 			
 			if(strcmp((char* )pcParameterString2,"top") == 0)
 				ADC_Side ="top";
-			else if(strcmp((char* )pcParameterString2,"top") == 0)
+			else if(strcmp((char* )pcParameterString2,"bottom") == 0)
 				ADC_Side ="bottom";
 			
-			ADCSelectChannel(ADCports,ADC_Side);
+			ADCSelectPort(ADCports);
 			ReadADCChannel(ADCports,ADC_Side,&ADC_Value_CLI);
 			
 			strcpy(pcWriteBuffer,(char* )&ADC_Value_CLI);
 			
-			sprintf(pcWriteBuffer,"ADC_Value=%u \r\n",(uint16_t )ADC_Value_CLI);
+			sprintf(pcWriteBuffer,"ADC value = %0.2f \r\n", ADC_Value_CLI);
 			
 		}
 		else
@@ -1890,7 +1890,7 @@ static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	
 	strcpy(pcWriteBuffer,(char* )&ADC_Value_TEMP);
 	
-	sprintf(pcWriteBuffer,"internal reference voltage is=%.2fV \r\n",ADC_Value_Vref);
+	sprintf(pcWriteBuffer,"internal reference voltage is = %.2fV \r\n",ADC_Value_Vref);
 	
 	/* There is no more data to return after this single string, so return
 	 pdFALSE. */
@@ -1898,12 +1898,16 @@ static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 }
 
 /***************************************************************************/
-static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
+static portBASE_TYPE GetReadPercentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong Port number \n\r"; //wrong port number was entered
 	int8_t *pcParameterString1;
+	int8_t *pcParameterString2;
 	portBASE_TYPE xParameterStringLength1 =0;
+	portBASE_TYPE xParameterStringLength2 =0;
+
 	BOS_Status result =BOS_OK;
 	uint8_t ADCports;
+	char *ADC_Side;
 	float ADC_Value_CLI =0;
 	/* Remove compile time warnings about unused parameters, and check the
 	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -1914,12 +1918,21 @@ static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWrit
 	/* Obtain the 1st parameter string. */
 
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
+	pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
+
 	
 	if(*pcParameterString1 == '2' || *pcParameterString1 == '3'){
 		ADCports =(uint8_t )atol((char* )pcParameterString1);
-		GetReadPrecentage(ADCports,&ADC_Value_CLI);
+		if (strcmp((char*) pcParameterString2, "top") == 0	|| strcmp((char*) pcParameterString2, "bottom") == 0) {
+
+			if (strcmp((char*) pcParameterString2, "top") == 0)
+				ADC_Side = "top";
+			else if (strcmp((char*) pcParameterString2, "bottom") == 0)
+				ADC_Side = "bottom";
+		}
+		GetReadPercentage(ADCports, ADC_Side, &ADC_Value_CLI);
 		
-		sprintf(pcWriteBuffer,"ADC value percentage is=%.2f%% %\r\n",ADC_Value_CLI);
+		sprintf(pcWriteBuffer,"ADC value percentage is = %.2f%% %\r\n",ADC_Value_CLI);
 	}
 	else
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageWrong);
