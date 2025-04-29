@@ -177,6 +177,7 @@ typedef enum {
 	BOS_ERR_REMOTE_WRITE_FLASH = 22,     /* Remote write flash error */
 	BOS_ERR_PORT_BUSY = 23,              /* Communication port busy */
 	BOS_ERR_TIMEOUT = 24,                /* Operation timeout */
+	BOS_ERR_ADC_WRONG_PORT = 25,         /* ADC Wrong ADC Port */
 	BOS_ERR_WrongName = 100,             /* Incorrect name */
 	BOS_ERR_WrongGroup = 101,            /* Incorrect group */
 	BOS_ERR_WrongID = 102,               /* Incorrect ID */
