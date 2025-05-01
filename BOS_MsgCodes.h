@@ -156,11 +156,6 @@
 #define CODE_H0AR9_SAMPLE_TEMP                502
 #define CODE_H0AR9_SAMPLE_HUMIDITY            503
 #define CODE_H0AR9_SAMPLE_PIR                 504
-#define CODE_H0AR9_STREAM_COLOR               505
-#define CODE_H0AR9_STREAM_DISTANCE            506
-#define CODE_H0AR9_STREAM_TEMP                507
-#define CODE_H0AR9_STREAM_HUMIDITY            508
-#define CODE_H0AR9_STREAM_PIR                 509
 
 /* H0BR4x */
 #define CODE_H0BR4_SAMPLE_GYRO                550
