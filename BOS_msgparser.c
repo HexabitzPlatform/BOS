@@ -16,53 +16,45 @@
 /***************************************************************************/
 
 /* BackEndTask global variables ********************************************/
-uint8_t Calculate_CRC_Buffer[MSG_MAX_SIZE];
-uint8_t Activate_CLI_For_First_Time_Flag =0;
-uint8_t MSG_Buffer_Index_Start[NumOfPorts] ={0};
-uint8_t MSG_Buffer_Index_End[NumOfPorts] ={0};
-uint8_t MSG_Buffer[NumOfPorts][MSG_COUNT][MSG_MAX_SIZE] ={0};
-uint8_t Process_Message_Buffer[MSG_COUNT] ={0};
-uint8_t Process_Message_Buffer_Index_Start =0;
-uint8_t Process_Message_Buffer_Index_End =0;
+uint8_t crcCalculateBuffer[MSG_MAX_SIZE];
+uint8_t cliFirstTimeActivation =0;
+uint8_t MessageIndexStart[NUM_OF_PORTS] ={0};
+uint8_t MessageIndexEnd[NUM_OF_PORTS] ={0};
+uint8_t MessageBuffer[NUM_OF_PORTS][MSG_COUNT][MSG_MAX_SIZE] ={0};
+uint8_t ProcessMessageBuffer[MSG_COUNT] ={0};
+uint8_t ProcessMessageIndexStart =0;
+uint8_t ProcessMessageIndexEnd =0;
 volatile uint8_t bcastLastID = 0;
-uint8_t index_process[6] ={0};
-uint8_t index_input[6] ={0};
-uint8_t CLI_Data =0;
-uint8_t port_DMA =0;
+uint8_t IndexProcess[NUM_OF_PORTS] ={0};
+uint8_t IndexInput[NUM_OF_PORTS] ={0};
+uint8_t cliData =0;
+uint8_t dmaPortIndex =0;
 
-uint16_t Accepted_Messages =0;
-uint16_t Rejected_Messages =0;
-uint16_t Message_counter =0;
+uint16_t AcceptedMessages =0;
+uint16_t RejectedMessages =0;
+uint16_t MessageCounter =0;
 
 /* PxMsgTaskHandle global variables ****************************************/
-uint16_t ADCPort =0;
-uint16_t ADCSide =0;
 uint8_t PortSelect =0;
 uint8_t PinSelect =0;
-static uint8_t longMessageScratchpad[(MaxNumOfPorts + 1) * MaxNumOfModules];
-
-uint16_t longMessageLastPtr =0;
-
-//volatile uint32_t MBmessageParams[9] ={0};
-
-float ADCValue =0;
-float ADCPercentage =0;
+uint16_t adcPort =0;
+uint16_t adcSide =0;
+float adcValue =0;
+float adcPercentage =0;
 float InternalTemperature =0;
 float InternalVoltageReferance =0;
 
-receive_defalt_value defalt_data;     /* Receiving the Defalt_Value for the H1DR5 module */
-RemoteDataBuffer_t RemoteDataBuffer;  /* Remote Buffer of Messages */
+receive_defalt_value EthernetDefaultSetting;  /* Receiving the Default setting of the H1DR5 module */
+RemoteDataBuffer_t RemoteDataBuffer;          /* Remote Buffer of Messages */
 
 /***************************************************************************/
 /* Exported variables ******************************************************/
 /***************************************************************************/
 extern uint8_t ExtraPcPort;
-extern uint8_t messageParams[MAX_PARAMS_PER_MESSAGE];
 extern volatile uint8_t RemoteResponseFlag;
-extern volatile uint8_t numOfElement;
+extern volatile uint8_t NumOfElement;
 extern volatile uint32_t RemoteResponseBuffer[4];
-//extern uint8_t UARTRxBufIndex[NumOfPorts];
-extern varFormat_t remoteVarFormat;
+extern VariableFormat_t RemoteVarFormat;
 
 /* Exported Messaging tasks handles ****************************************/
 extern TaskHandle_t UserTaskHandle;
@@ -95,13 +87,12 @@ extern uint8_t SaveTopologyToRO(void);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif
-//extern uint8_t LoadROtopology(void);
 extern BOS_Status SaveEEportsDir(void);
 extern BOS_Status ClearEEportsDir(void);
 extern BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
 extern BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
 extern BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 
 /* Module exported internal functions */
 extern Module_Status Module_MessagingTask(uint16_t code,uint8_t port,uint8_t src,uint8_t dst,uint8_t shift);
@@ -124,14 +115,16 @@ BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,uint8_t d
 /*****************************  Private Functions **************************/
 /***************************************************************************/
 
+/***************************************************************************/
 /* BackEndTask function ****************************************************/
+/***************************************************************************/
 void BackEndTask(void *argument) {
 
-	uint8_t calculated_crc, port_number, length, port_index , dst;
-	uint8_t temp_length[NumOfPorts] = { 0 };
-	uint8_t temp_index[NumOfPorts] = { 0 };
-
 	BOS_Status result =BOS_OK;
+
+	uint8_t calculated_crc, port_number, length, port_index , dst;
+	uint8_t temp_length[NUM_OF_PORTS] = { 0 };
+	uint8_t temp_index[NUM_OF_PORTS] = { 0 };
 	uint8_t NumofModulesinGroup = 0;
 
 	for (;;) {
@@ -140,100 +133,100 @@ void BackEndTask(void *argument) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
 		/* Parsing all module ports */
-		for (port_DMA = 0; port_DMA < NumOfPorts;) {
+		for (dmaPortIndex = 0; dmaPortIndex < NUM_OF_PORTS;) {
 			/* Computes how many new bytes have been received on each port: */
-			port_index = port_DMA;
-			index_input[port_DMA] = MSG_RX_BUF_SIZE - (*index_dma[port_DMA]);
+			port_index = dmaPortIndex;
+			IndexInput[dmaPortIndex] = MSG_RX_BUF_SIZE - (*dmaIndex[dmaPortIndex]);
 
 			/***************************************************************************************/
 			/* 1- Check if there's new data to process *********************************************/
 			/***************************************************************************************/
-			if (index_input[port_DMA] != index_process[port_DMA]) {
-				port_number = port_DMA + 1;
+			if (IndexInput[dmaPortIndex] != IndexProcess[dmaPortIndex]) {
+				port_number = dmaPortIndex + 1;
 
 				/* CLI Handling: If the received byte is 0x0D and the port is free,
 				 * it assigns the port to the CLI.*/
-				if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 0x0D && portStatus[port_number] == FREE) {
-					for (int i = 0; i <= NumOfPorts; i++) { // Free previous CLI port
-						if (portStatus[i] == CLI)
-							portStatus[i] = FREE;
+				if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 0x0D && PortStatus[port_number] == FREE) {
+					for (int i = 0; i <= NUM_OF_PORTS; i++) { // Free previous CLI port
+						if (PortStatus[i] == CLI)
+							PortStatus[i] = FREE;
 
 					}
 					/* Continue the CLI session on this port */
-					portStatus[port_number] = CLI;
-					PcPort = port_number;
+					PortStatus[port_number] = CLI;
+					pcPort = port_number;
 					ExtraPcPort = port_number;
 
-					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+					cliData = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 
 					xTaskNotifyGive(xCommandConsoleTaskHandle);
 
-					if (Activate_CLI_For_First_Time_Flag == 1)
-						Read_In_CLI_Task_Flag = 1;
+					if (cliFirstTimeActivation == 1)
+						cliDataInputFlag = 1;
 
-					Activate_CLI_For_First_Time_Flag = 1;
+					cliFirstTimeActivation = 1;
 
 				}
 				/* Continue processing CLI data if the port is already in CLI mode */
-				else if (portStatus[port_number] == CLI) {
-					CLI_Data = UARTRxBuf[port_number - 1][index_process[port_DMA]];
-					Read_In_CLI_Task_Flag = 1;
+				else if (PortStatus[port_number] == CLI) {
+					cliData = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
+					cliDataInputFlag = 1;
 				}
 
 				/* Hexabitz Protocol Handling (H and Z Characters): */
-				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 'H' && portStatus[port_number] == FREE) {
-					portStatus[port_number] = H_Status; // H  Character was received, waiting for Z character.
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 'H' && PortStatus[port_number] == FREE) {
+					PortStatus[port_number] = H_Status; // H  Character was received, waiting for Z character.
 				}
 
-				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] == 'Z' && portStatus[port_number] == H_Status) {
-					portStatus[port_number] = Z_Status; // Z  Character was received, waiting for length byte.
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] == 'Z' && PortStatus[port_number] == H_Status) {
+					PortStatus[port_number] = Z_Status; // Z  Character was received, waiting for length byte.
 				}
 
-				else if (UARTRxBuf[port_number - 1][index_process[port_DMA]] != 'Z' && portStatus[port_number] == H_Status) {
-					portStatus[port_number] = FREE; // Z  Character was not received, so there is no message to receive.
+				else if (UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] != 'Z' && PortStatus[port_number] == H_Status) {
+					PortStatus[port_number] = FREE; // Z  Character was not received, so there is no message to receive.
 				}
 
 				/* If a length byte is received after 'Z',
 				 * it prepares to receive the message content. */
-				else if (portStatus[port_number] == Z_Status) {
-					portStatus[port_number] = MSG; // Receive length byte.
-					MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][2] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+				else if (PortStatus[port_number] == Z_Status) {
+					PortStatus[port_number] = MSG; // Receive length byte.
+					MessageBuffer[port_index][MessageIndexEnd[port_index]][2] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 					temp_index[port_index] = 3;
-					temp_length[port_index] = UARTRxBuf[port_number - 1][index_process[port_DMA]] + 1;
+					temp_length[port_index] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]] + 1;
 				}
 
 				/* Message Reception Handling: */
-				else if (portStatus[port_number] == MSG) {
-					/* The message is received and stored in the MSG_Buffer.*/
+				else if (PortStatus[port_number] == MSG) {
+					/* The message is received and stored in the MessageBuffer.*/
 					if (temp_length[port_index] > 1) {
-						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+						MessageBuffer[port_index][MessageIndexEnd[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 						temp_index[port_index]++;
 						temp_length[port_index]--;
 					} else {
 						/* If there is only one byte left to receive (when the message is fully received)
 						 * it updates indices and processes the message. */
-						MSG_Buffer[port_index][MSG_Buffer_Index_End[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][index_process[port_DMA]];
+						MessageBuffer[port_index][MessageIndexEnd[port_index]][temp_index[port_index]] = UARTRxBuf[port_number - 1][IndexProcess[dmaPortIndex]];
 						temp_index[port_index]++;
 						temp_length[port_index]--;
-						MSG_Buffer_Index_End[port_index]++;
-						if (MSG_Buffer_Index_End[port_index] == MSG_COUNT)
-							MSG_Buffer_Index_End[port_index] = 0;
+						MessageIndexEnd[port_index]++;
+						if (MessageIndexEnd[port_index] == MSG_COUNT)
+							MessageIndexEnd[port_index] = 0;
 
-						Process_Message_Buffer[Process_Message_Buffer_Index_End] = port_number;
-						Process_Message_Buffer_Index_End++;
-						if (Process_Message_Buffer_Index_End == MSG_COUNT)
-							Process_Message_Buffer_Index_End = 0;
+						ProcessMessageBuffer[ProcessMessageIndexEnd] = port_number;
+						ProcessMessageIndexEnd++;
+						if (ProcessMessageIndexEnd == MSG_COUNT)
+							ProcessMessageIndexEnd = 0;
 
-						/* The portStatus is set to FREE(End of receiving message)
+						/* The PortStatus is set to FREE(End of receiving message)
 						 * indicating that the port is ready to receive a new message. */
-						portStatus[port_number] = FREE;
+						PortStatus[port_number] = FREE;
 					}
 				}
 
 				/* After processing each byte, update the processing index */
-				index_process[port_DMA]++;
-				if (index_process[port_DMA] == MSG_RX_BUF_SIZE)
-					index_process[port_DMA] = 0;
+				IndexProcess[dmaPortIndex]++;
+				if (IndexProcess[dmaPortIndex] == MSG_RX_BUF_SIZE)
+					IndexProcess[dmaPortIndex] = 0;
 
 			}
 
@@ -241,85 +234,84 @@ void BackEndTask(void *argument) {
 			/* 2- In case there is no bytes to process *********************************************/
 			/***************************************************************************************/
 			/* Increase the DMA port index to parse all Module ports */
-			else if (index_input[port_DMA] == index_process[port_DMA]) {
-				port_DMA++;
+			else if (IndexInput[dmaPortIndex] == IndexProcess[dmaPortIndex]) {
+				dmaPortIndex++;
 			}
 
 			/***************************************************************************************/
 			/* 3- Message Processing ***************************************************************/
 			/***************************************************************************************/
-			if (Process_Message_Buffer_Index_End != Process_Message_Buffer_Index_Start) {
-				port_number = Process_Message_Buffer[Process_Message_Buffer_Index_Start];
+			if (ProcessMessageIndexEnd != ProcessMessageIndexStart) {
+				port_number = ProcessMessageBuffer[ProcessMessageIndexStart];
 				port_index = port_number - 1;
-				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0] = 'H';
-				MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1] = 'Z';
+				MessageBuffer[port_index][MessageIndexStart[port_index]][0] = 'H';
+				MessageBuffer[port_index][MessageIndexStart[port_index]][1] = 'Z';
 
-				length = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
-				dst = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3];
+				length = MessageBuffer[port_index][MessageIndexStart[port_index]][2];
+				dst = MessageBuffer[port_index][MessageIndexStart[port_index]][3];
 
 				/* Forward Message in these cases: wrong ID , dst ~= 0 (explore) ,not MULTICAST , not BROADCAST */
 				if ((dst != myID) && (dst != 0) && (dst != BOS_BROADCAST) && (dst != BOS_MULTICAST)) {
-					messageLength[port_index] = length;
-					memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+					MessageLength[port_index] = length;
+					memcpy(&cMessage[port_index][0], &MessageBuffer[port_index][MessageIndexStart[port_index]][3],length);
 
 					/* in case trace feature is enabled: */
-//					BOSMessaging.trace =((cMessage[port_number - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
 					OptionByte.Trace = ((cMessage[port_number - 1][2] >> 2) & 0x01);
 					if(OptionByte.Trace)
-						indMode =IND_SHORT_BLINK;
+						IndicatorMode =IND_SHORT_BLINK;
 
 					ForwardReceivedMessage(port_number);
 
 				} else {
 					/* Notify Messaging Tasks if Message is for Current Module:
 					 * Prepare CRC Buffer and Calculate CRC. */
-					Calculate_CRC_Buffer[0] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][0];
-					Calculate_CRC_Buffer[1] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][1];
-					Calculate_CRC_Buffer[2] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][2];
+					crcCalculateBuffer[0] = MessageBuffer[port_index][MessageIndexStart[port_index]][0];
+					crcCalculateBuffer[1] = MessageBuffer[port_index][MessageIndexStart[port_index]][1];
+					crcCalculateBuffer[2] = MessageBuffer[port_index][MessageIndexStart[port_index]][2];
 					for (int i = 0; i < length; i++) {
-						Calculate_CRC_Buffer[i + 3] = MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][i + 3];
+						crcCalculateBuffer[i + 3] = MessageBuffer[port_index][MessageIndexStart[port_index]][i + 3];
 					}
 
-					calculated_crc = CalculateCRC8(Calculate_CRC_Buffer, length + 3);
+					calculated_crc = CalculateCRC8(crcCalculateBuffer, length + 3);
 
-					Message_counter++;
-					if (calculated_crc == MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][length + 3]) {
-						Accepted_Messages++;
-						messageLength[port_index] = length;
-						memcpy(&cMessage[port_index][0], &MSG_Buffer[port_index][MSG_Buffer_Index_Start[port_index]][3],length);
+					MessageCounter++;
+					if (calculated_crc == MessageBuffer[port_index][MessageIndexStart[port_index]][length + 3]) {
+						AcceptedMessages++;
+						MessageLength[port_index] = length;
+						memcpy(&cMessage[port_index][0], &MessageBuffer[port_index][MessageIndexStart[port_index]][3],length);
 
 						result =BOS_OK;
 
 						/* Is it a broadcast or a multi-cast message with unique ID? */
 						if(dst == BOS_BROADCAST || dst == BOS_MULTICAST) {
-						if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
-							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+						if(dst == BOS_BROADCAST && cMessage[port_number - 1][MessageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][MessageLength[port_number - 1] - 1]; /* Store bcastID */
 							BroadcastReceivedMessage(BOS_BROADCAST,port_number);
-							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+							cMessage[port_number - 1][MessageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
 						}
 						/* Reflection of last broadcast message! */
-						else if(dst == BOS_BROADCAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+						else if(dst == BOS_BROADCAST && cMessage[port_number - 1][MessageLength[port_number - 1] - 1] == bcastLastID){
 							result =BOS_ERR_MSG_Reflection;
 						}
 
-						if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] != bcastLastID){
-							bcastID =bcastLastID =cMessage[port_number - 1][messageLength[port_number - 1] - 1]; /* Store bcastID */
+						if(dst == BOS_MULTICAST && cMessage[port_number - 1][MessageLength[port_number - 1] - 1] != bcastLastID){
+							bcastID =bcastLastID =cMessage[port_number - 1][MessageLength[port_number - 1] - 1]; /* Store bcastID */
 							BroadcastReceivedMessage(BOS_MULTICAST,port_number);
-							cMessage[port_number - 1][messageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
+							cMessage[port_number - 1][MessageLength[port_number - 1] - 1] =0; /* Reset bcastID location */
 							/* Number of members in this multicast group
 							 * TODO: breaks when message is 14 length and padded */
-							NumofModulesinGroup =cMessage[port_number - 1][messageLength[port_number - 1] - 2];
+							NumofModulesinGroup =cMessage[port_number - 1][MessageLength[port_number - 1] - 2];
 							/* Am I part of this multicast group? */
 							result =BOS_ERR_WrongID;
 								for (uint8_t i = 0; i < NumofModulesinGroup; i++) {
-									if (myID == cMessage[port_number - 1][messageLength[port_number - 1] - 2 - NumofModulesinGroup + i]) {
+									if (myID == cMessage[port_number - 1][MessageLength[port_number - 1] - 2 - NumofModulesinGroup + i]) {
 										result = BOS_OK;
 										break;
 									}
 								}
 							}
 						/* Reflection of last multi-cast message! */
-						else if(dst == BOS_MULTICAST && cMessage[port_number - 1][messageLength[port_number - 1] - 1] == bcastLastID){
+						else if(dst == BOS_MULTICAST && cMessage[port_number - 1][MessageLength[port_number - 1] - 1] == bcastLastID){
 							result =BOS_ERR_MSG_Reflection;
 						}
 					}
@@ -329,35 +321,40 @@ void BackEndTask(void *argument) {
 							NotifyMessagingTask(port_number);
 
 					} else {
-						Rejected_Messages++;
+						RejectedMessages++;
 						//TODO: Implement something here when the message is rejected.
 					}
 
 				}
 
-				MSG_Buffer_Index_Start[port_index]++;
-				if (MSG_Buffer_Index_Start[port_index] == MSG_COUNT)
-					MSG_Buffer_Index_Start[port_index] = 0;
+				MessageIndexStart[port_index]++;
+				if (MessageIndexStart[port_index] == MSG_COUNT)
+					MessageIndexStart[port_index] = 0;
 
-				Process_Message_Buffer_Index_Start++;
-				if (Process_Message_Buffer_Index_Start == MSG_COUNT)
-					Process_Message_Buffer_Index_Start = 0;
+				ProcessMessageIndexStart++;
+				if (ProcessMessageIndexStart == MSG_COUNT)
+					ProcessMessageIndexStart = 0;
 			}
 		}
 	}
 }
 
+/***************************************************************************/
 /* PxMessagingTask function ************************************************/
+/***************************************************************************/
 void PxMessagingTask(void *argument){
 	BOS_Status result =BOS_OK;
 	HAL_StatusTypeDef status =HAL_OK;
+	portBASE_TYPE xReturned;
+
+	bool extendCode = false, extendOptions = false;
+	int8_t *pcOutputString;
+	static int8_t cCLIString[cmdMAX_INPUT_SIZE];
 	uint8_t port, src, dst, temp, i, p, shift, numOfParams;
+	static uint8_t longMessageScratchpad[(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES];
+	uint16_t longMessageLastPtr =0;
 	uint16_t code;
 	uint32_t count, timeout, temp32;
-	bool extendCode = false, extendOptions = false;
-	static int8_t cCLIString[cmdMAX_INPUT_SIZE];
-	portBASE_TYPE xReturned;
-	int8_t *pcOutputString;
 
 	
 	port =(int8_t )(unsigned )argument;
@@ -369,22 +366,23 @@ void PxMessagingTask(void *argument){
 		/* Wait forever until a message is received on one of the ports */
 		ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
 		
-		if(messageLength[port - 1]){
+		if(MessageLength[port - 1]){
 			
 			/* Read message source and destination */
 			dst =cMessage[port - 1][0];
 			src =cMessage[port - 1][1];
 			
-			/* Reset array index shift */
+			/* Reset Array index shift */
 			shift =0;
 			
 			/* Assign the value of option byte to OptionByte structure */
 			*(uint8_t* )&OptionByte =(cMessage[port - 1][2]);
 
 			/* Read message options */
-			if(OptionByte.ExtendedOptions){ // 1st bit (LSB) Extended options - TODO handle extended options case
+			/* TODO handle extended options case */
+			if(OptionByte.ExtendedOptions){ // 1st bit (LSB) Extended options
 				extendOptions = true;
-				(void )extendOptions; // remove warning
+				(void )extendOptions; /* remove warning */
 				++shift;
 			}
 
@@ -399,107 +397,14 @@ void PxMessagingTask(void *argument){
 			/*ACK Massage */
 			if(OptionByte.Acknowledgment){
 				OptionByte.Acknowledgment =false;
-				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
+				SendMessageToModule(src,MSG_ACKNOWLEDGMENT_ACCEPTED,0);
 			}
 
-//		if(messageLength[port - 1]){
-//			/* Long message? Read Options Byte MSB */
-//			if(cMessage[port - 1][2] >> 7){
-//				longMessage =1;
-//			}
-//			else{
-//				longMessage =0;
-//			}
-//
-//			/* Read message source and destination */
-//			dst =cMessage[port - 1][0];
-//			src =cMessage[port - 1][1];
-//
-//			/* Reset array index shift */
-//			shift =0;
-//
-//			/* Read message options */
-//			if(cMessage[port - 1][2] & 0x01){ // 1st bit (LSB) Extended options - TODO handle extended options case
-//				extendOptions = true;
-//				(void )extendOptions; // remove warning
-//				++shift;
-//			}
-//			extendCode =(cMessage[port - 1][2] >> 1) & 0x01; 					// 2nd bit Extended code
-//			BOSMessaging.trace =((cMessage[port - 1][2] >> 2) & 0x03);  // 3rd-4th bits Trace
-//			BOSMessaging.received_Acknowledgment =((cMessage[port - 1][2] >> 4) & 0x01);						    // 5th bit Reserved
-//			BOSMessaging.response =(cMessage[port - 1][2]) & 0x60; 					    // 6th-7th bits Response mode
-//			// 8th bit (MSB) Long message
-//
-//			/* Read message code - LSB first */
-//			if(extendCode == true){
-//				code =(((uint16_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
-//				++shift;
-//			}
-//			else{
-//				code =cMessage[port - 1][3 + shift];
-//			}
-//
-//			/*ACK Massage */
-//			if(true == BOSMessaging.received_Acknowledgment){
-//				OptionByte.Acknowledgment =false;
-//				SendMessageToModule(src,MSG_Acknowledgment_Accepted,0);
-//			}
-
-			/* Is it a transit message? Check for the case when module is being IDed */
-//			if((dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID != 1)) || (dst && (dst < BOS_MULTICAST) && (dst != myID) && (myID == 1) && (code != CODE_MODULE_ID))){
-//				/* Forward the message to its destination */
-//				ForwardReceivedMessage(port);
-//				if(BOSMessaging.trace)
-//					indMode =IND_SHORT_BLINK;
-//
-//				/* Special messages that require local action */
-//				if(code == CODE_UPDATE){ // Remote bootloader update
-//					Delay_ms(100);
-//					remoteBootloaderUpdate(src,dst,port,0);
-//				}
-//				else if(code == CODE_UPDATE_VIA_PORT){ // Remote 'via port' bootloader update
-//					Delay_ms(100);
-//					remoteBootloaderUpdate(src,dst,port,cMessage[port - 1][shift]);
-//				}
-//			}
-//			/* Either broadcast or multicast local message */
-//			else{
-
-			/* Is it a broadcast message with unique ID? */
-//				if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-//					BroadcastReceivedMessage(BOS_BROADCAST,port);
-//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-//					result =BOS_OK;
-//				}
-//				/* Reflection of last broadcast message! */
-//				else if(dst == BOS_BROADCAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-//					result =BOS_ERR_MSG_Reflection;
-//				}
-			/* Is it a multicast message with unique ID? */
-//				if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] != bcastLastID){
-//					bcastID =bcastLastID =cMessage[port - 1][messageLength[port - 1] - 1]; // Store bcastID
-//					BroadcastReceivedMessage(BOS_MULTICAST,port);
-//					cMessage[port - 1][messageLength[port - 1] - 1] =0; // Reset bcastID location
-//					temp =cMessage[port - 1][messageLength[port - 1] - 2]; // Number of members in this multicast group - TODO breaks when message is 14 length and padded
-//					/* Am I part of this multicast group? */
-//					result =BOS_ERR_WrongID;
-//					for(i =0; i < temp; i++){
-//						if(myID == cMessage[port - 1][messageLength[port - 1] - 2 - temp + i]){
-//							result =BOS_OK;
-//							break;
-//						}
-//					}
-//				}
-//				/* Reflection of last multi-cast message! */
-//				else if(dst == BOS_MULTICAST && cMessage[port - 1][messageLength[port - 1] - 1] == bcastLastID){
-//					result =BOS_ERR_MSG_Reflection;
-//				}
 			/* Set shift index to the start of message payload (parameters) */
 			shift +=4;
 
 			/* Message payload size */
-			numOfParams =messageLength[port - 1] - shift;
+			numOfParams =MessageLength[port - 1] - shift;
 
 			/* Process BOS Messages payload */
 			if(result == BOS_OK){
@@ -508,21 +413,20 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_PING:
-						indMode =IND_PING;
-//							osDelay(5);
+						IndicatorMode =IND_PING;
 						if(OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG)
 							SendMessageToModule(src,CODE_PING_RESPONSE,0);
 						break;
 
 					case CODE_PING_RESPONSE:
-						if(PcPort == 0){
-							if(!moduleAlias[myID][0])
+						if(pcPort == 0){
+							if(!ModuleAlias[myID][0])
 								sprintf((char* )pcUserMessage,"Hi from module %d\r\n",src);
 							else
-								sprintf((char* )pcUserMessage,"Hi from module %d (%s)\r\n",src,moduleAlias[src]);
-							writePxMutex(PcPort,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
+								sprintf((char* )pcUserMessage,"Hi from module %d (%s)\r\n",src,ModuleAlias[src]);
+							writePxMutex(pcPort,pcUserMessage,strlen(pcUserMessage),cmd50ms,HAL_MAX_DELAY);
 						}
-						responseStatus =BOS_OK;
+						ResponseStatus =BOS_OK;
 						break;
 
 					case CODE_IND_ON:
@@ -539,15 +443,15 @@ void PxMessagingTask(void *argument){
 
 					case CODE_HI:
 						/* Record your neighbor info */
-						neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
-						neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
+						Neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
+						Neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
 
-						indMode =IND_TOPOLOGY;
+						IndicatorMode =IND_TOPOLOGY;
 
 						/* Send your own info */
-						messageParams[0] =(uint8_t )(myPN >> 8);
-						messageParams[1] =(uint8_t )myPN;
-						messageParams[2] =port;
+						MessageParams[0] =(uint8_t )(myPN >> 8);
+						MessageParams[1] =(uint8_t )myPN;
+						MessageParams[2] =port;
 						osDelay(2);
 						/* Port, Source = 0 (myID), Destination = 0 (adjacent neighbor), message code, number of parameters */
 						SendMessageFromPort(port,0,0,CODE_HI_RESPONSE,3);
@@ -555,62 +459,61 @@ void PxMessagingTask(void *argument){
 
 					case CODE_HI_RESPONSE:
 						/* Record your neighbor info */
-						neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
-						neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
-						responseStatus =BOS_OK;
+						Neighbors[port - 1][0] =((uint16_t )src << 8) + cMessage[port - 1][2 + shift]; /* Neighbor ID + Neighbor own port */
+						Neighbors[port - 1][1] =((uint16_t )cMessage[port - 1][shift] << 8) + cMessage[port - 1][1 + shift]; /* Neighbor PN */
+						ResponseStatus =BOS_OK;
 						break;
 
-						/* Receiving the Defalt_Value for the H1DR5 module */
 					case CODE_H1DR5_receive_Defalt_Value:
-						defalt_data.Local_mac_addr[0] =cMessage[port - 1][0 + shift];
-						defalt_data.Local_mac_addr[1] =cMessage[port - 1][1 + shift];
-						defalt_data.Local_mac_addr[2] =cMessage[port - 1][2 + shift];
-						defalt_data.Local_mac_addr[3] =cMessage[port - 1][3 + shift];
-						defalt_data.Local_mac_addr[4] =cMessage[port - 1][4 + shift];
-						defalt_data.Local_mac_addr[5] =cMessage[port - 1][5 + shift];
+						EthernetDefaultSetting.Local_mac_addr[0] =cMessage[port - 1][0 + shift];
+						EthernetDefaultSetting.Local_mac_addr[1] =cMessage[port - 1][1 + shift];
+						EthernetDefaultSetting.Local_mac_addr[2] =cMessage[port - 1][2 + shift];
+						EthernetDefaultSetting.Local_mac_addr[3] =cMessage[port - 1][3 + shift];
+						EthernetDefaultSetting.Local_mac_addr[4] =cMessage[port - 1][4 + shift];
+						EthernetDefaultSetting.Local_mac_addr[5] =cMessage[port - 1][5 + shift];
 
-						defalt_data.Remote_mac_addr[0] =cMessage[port - 1][6 + shift];
-						defalt_data.Remote_mac_addr[1] =cMessage[port - 1][7 + shift];
-						defalt_data.Remote_mac_addr[2] =cMessage[port - 1][8 + shift];
-						defalt_data.Remote_mac_addr[3] =cMessage[port - 1][9 + shift];
-						defalt_data.Remote_mac_addr[4] =cMessage[port - 1][10 + shift];
-						defalt_data.Remote_mac_addr[5] =cMessage[port - 1][11 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[0] =cMessage[port - 1][6 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[1] =cMessage[port - 1][7 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[2] =cMessage[port - 1][8 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[3] =cMessage[port - 1][9 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[4] =cMessage[port - 1][10 + shift];
+						EthernetDefaultSetting.Remote_mac_addr[5] =cMessage[port - 1][11 + shift];
 
-						defalt_data.Local_IP[0] =cMessage[port - 1][12 + shift];
-						defalt_data.Local_IP[1] =cMessage[port - 1][13 + shift];
-						defalt_data.Local_IP[2] =cMessage[port - 1][14 + shift];
-						defalt_data.Local_IP[3] =cMessage[port - 1][15 + shift];
+						EthernetDefaultSetting.Local_IP[0] =cMessage[port - 1][12 + shift];
+						EthernetDefaultSetting.Local_IP[1] =cMessage[port - 1][13 + shift];
+						EthernetDefaultSetting.Local_IP[2] =cMessage[port - 1][14 + shift];
+						EthernetDefaultSetting.Local_IP[3] =cMessage[port - 1][15 + shift];
 
-						defalt_data.Remote_IP[0] =cMessage[port - 1][16 + shift];
-						defalt_data.Remote_IP[1] =cMessage[port - 1][17 + shift];
-						defalt_data.Remote_IP[2] =cMessage[port - 1][18 + shift];
-						defalt_data.Remote_IP[3] =cMessage[port - 1][19 + shift];
+						EthernetDefaultSetting.Remote_IP[0] =cMessage[port - 1][16 + shift];
+						EthernetDefaultSetting.Remote_IP[1] =cMessage[port - 1][17 + shift];
+						EthernetDefaultSetting.Remote_IP[2] =cMessage[port - 1][18 + shift];
+						EthernetDefaultSetting.Remote_IP[3] =cMessage[port - 1][19 + shift];
 
-						defalt_data.ip_mask[0] =cMessage[port - 1][20 + shift];
-						defalt_data.ip_mask[1] =cMessage[port - 1][21 + shift];
-						defalt_data.ip_mask[2] =cMessage[port - 1][22 + shift];
-						defalt_data.ip_mask[3] =cMessage[port - 1][23 + shift];
+						EthernetDefaultSetting.ip_mask[0] =cMessage[port - 1][20 + shift];
+						EthernetDefaultSetting.ip_mask[1] =cMessage[port - 1][21 + shift];
+						EthernetDefaultSetting.ip_mask[2] =cMessage[port - 1][22 + shift];
+						EthernetDefaultSetting.ip_mask[3] =cMessage[port - 1][23 + shift];
 
-						defalt_data.ip_dest[0] =cMessage[port - 1][24 + shift];
-						defalt_data.ip_dest[1] =cMessage[port - 1][25 + shift];
-						defalt_data.ip_dest[2] =cMessage[port - 1][26 + shift];
-						defalt_data.ip_dest[3] =cMessage[port - 1][27 + shift];
+						EthernetDefaultSetting.ip_dest[0] =cMessage[port - 1][24 + shift];
+						EthernetDefaultSetting.ip_dest[1] =cMessage[port - 1][25 + shift];
+						EthernetDefaultSetting.ip_dest[2] =cMessage[port - 1][26 + shift];
+						EthernetDefaultSetting.ip_dest[3] =cMessage[port - 1][27 + shift];
 
-						defalt_data.Local_PORT =cMessage[port - 1][28 + shift];
-						defalt_data.Remote_PORT =cMessage[port - 1][29 + shift];
+						EthernetDefaultSetting.Local_PORT =cMessage[port - 1][28 + shift];
+						EthernetDefaultSetting.Remote_PORT =cMessage[port - 1][29 + shift];
 						break;
 
 #ifndef __N
 					case CODE_EXPLORE_ADJ:
 						ExploreNeighbors(port);
-						indMode =IND_TOPOLOGY;
+						IndicatorMode =IND_TOPOLOGY;
 						osDelay(50);
 						temp =0;
 						/* Exploration response message */
-						for(uint8_t p =1; p <= NumOfPorts; p++){
-							if(neighbors[p - 1][0]){
-								messageParams[temp] =p;
-								memcpy(messageParams + temp + 1,neighbors[p - 1],(size_t )(4));
+						for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
+							if(Neighbors[p - 1][0]){
+								MessageParams[temp] =p;
+								memcpy(MessageParams + temp + 1,Neighbors[p - 1],(size_t )(4));
 								temp +=5;
 							}
 						}
@@ -618,38 +521,39 @@ void PxMessagingTask(void *argument){
 						break;
 
 					case CODE_EXPLORE_ADJ_RESPONSE:
-						/* Extract the other module neighbors */
+						/* Extract the other module Neighbors */
 						temp =numOfParams / 5;
 						for(uint8_t k =0; k < temp; k++){
-							memcpy(&neighbors2[(cMessage[port - 1][shift + k * 5]) - 1][0],&cMessage[port - 1][1 + shift + k * 5],(size_t )(4));
+							memcpy(&Neighbors2[(cMessage[port - 1][shift + k * 5]) - 1][0],&cMessage[port - 1][1 + shift + k * 5],(size_t )(4));
 						}
-						responseStatus =BOS_OK;
+						ResponseStatus =BOS_OK;
 						break;
 #endif
 
 					case CODE_PORT_DIRECTION:
 						/* Reverse/un-reverse ports according to command parameters */
-						for(uint8_t p =1; p <= NumOfPorts; p++){
+						for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 							if(p != port)
 								SwapUartPins(GetUart(p),cMessage[port - 1][shift + p - 1]);
 						}
 						/* Check the input port direction */
-						SwapUartPins(GetUart(port),cMessage[port - 1][shift + MaxNumOfPorts]);
+						SwapUartPins(GetUart(port),cMessage[port - 1][shift + MAX_NUM_OF_PORTS]);
 						break;
 
 					case CODE_MODULE_ID:
 						if(cMessage[port - 1][shift] == 0) /* Change my own ID */
 							myID =cMessage[port - 1][1 + shift];
 						else if(cMessage[port - 1][shift] == 1){ /* Change my neighbor's ID */
-							messageParams[0] =0; /* change own ID */
-							messageParams[1] =cMessage[port - 1][1 + shift]; /* The new ID */
+							MessageParams[0] =0; /* change own ID */
+							MessageParams[1] =cMessage[port - 1][1 + shift]; /* The new ID */
 							SendMessageFromPort(cMessage[port - 1][2 + shift],0,0,CODE_MODULE_ID,3);
 						}
 						break;
 
 					case CODE_TOPOLOGY:
 						if(OptionByte.LongMessage){
-							/* array is 2-byte oriented thus memcpy can copy only even number of bytes TODO test maybe broken */
+							/* Array is 2-byte oriented thus memcpy can copy only even number of bytes
+							 * TODO test maybe broken */
 							/* Use a 1-byte oriented scratchpad */
 							memcpy(&longMessageScratchpad[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
 							longMessageLastPtr +=numOfParams;
@@ -657,11 +561,11 @@ void PxMessagingTask(void *argument){
 						else{
 							memcpy(&longMessageScratchpad[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
 							longMessageLastPtr +=numOfParams;
-							N =(longMessageLastPtr / (MaxNumOfPorts + 1)) / 2;
-							/* Copy the scratchpad to array */
-							memcpy(&array,&longMessageScratchpad,longMessageLastPtr);
+							N =(longMessageLastPtr / (MAX_NUM_OF_PORTS + 1)) / 2;
+							/* Copy the scratchpad to Array */
+							memcpy(&Array,&longMessageScratchpad,longMessageLastPtr);
 							longMessageLastPtr =0;
-							indMode =IND_TOPOLOGY;
+							IndicatorMode =IND_TOPOLOGY;
 						}
 						break;
 
@@ -672,9 +576,9 @@ void PxMessagingTask(void *argument){
 					case CODE_READ_PORT_DIR_RESPONSE:
 						/* Read module ports directions */
 						for(p =0; p < numOfParams; p++){
-							arrayPortsDir[src - 1] |=(0x8000 >> ((cMessage[port - 1][shift + p]) - 1));
+							ArrayPortsDir[src - 1] |=(0x8000 >> ((cMessage[port - 1][shift + p]) - 1));
 						}
-						responseStatus =BOS_OK;
+						ResponseStatus =BOS_OK;
 						break;
 
 					case CODE_BAUDRATE:
@@ -683,14 +587,14 @@ void PxMessagingTask(void *argument){
 						temp32 =((uint32_t )cMessage[port - 1][shift] << 24) + ((uint32_t )cMessage[port - 1][1 + shift] << 16) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + cMessage[port - 1][3 + shift];
 						if(cMessage[port - 1][4 + shift] == 0xFF) // All ports
 						{
-							for(p =1; p <= NumOfPorts; p++){
+							for(p =1; p <= NUM_OF_PORTS; p++){
 								UpdateBaudrate(p,temp32);
 							}
 						}
 						else{
 							for(p =0; p < numOfParams; p++){
 								temp =cMessage[port - 1][4 + shift + p];
-								if(temp > 0 && temp <= NumOfPorts){
+								if(temp > 0 && temp <= NUM_OF_PORTS){
 									UpdateBaudrate(temp,temp32);
 								}
 							}
@@ -700,7 +604,7 @@ void PxMessagingTask(void *argument){
 					case CODE_EXP_EEPROM:
 						SaveTopologyToRO();
 						SaveEEportsDir();
-						indMode =IND_PING;
+						IndicatorMode =IND_PING;
 						break;
 
 					case CODE_DEF_ARRAY:
@@ -710,7 +614,7 @@ void PxMessagingTask(void *argument){
 						ClearROtopology();
 #endif
 						osDelay(100);
-						indMode =IND_TOPOLOGY;
+						IndicatorMode =IND_TOPOLOGY;
 						break;
 
 					case CODE_CLI_COMMAND:
@@ -724,17 +628,17 @@ void PxMessagingTask(void *argument){
 						else
 							memcpy(cCLIString,&cMessage[port - 1][shift],(size_t )numOfParams);
 						do{
-							/* Pass the inport to CLI command parsers temporarily through PcPort */
-							temp =PcPort;
-							PcPort =port;
+							/* Pass the inport to CLI command parsers temporarily through pcPort */
+							temp =pcPort;
+							pcPort =port;
 							/* Process the command locally */
 							xReturned =FreeRTOS_CLIProcessCommand(cCLIString,pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
-							/* Restore back PcPort */
-							PcPort =temp;
+							/* Restore back pcPort */
+							pcPort =temp;
 							/* Respond to the CLI command */
 							if(OptionByte.Response == BOS_RESPONSE_ALL){
-								/* Copy the generated string to messageParams */
-								memcpy(messageParams,pcOutputString,strlen((char* )pcOutputString));
+								/* Copy the generated string to MessageParams */
+								memcpy(MessageParams,pcOutputString,strlen((char* )pcOutputString));
 								/* Send command response */
 								SendLargeMessageToModule(src,CODE_CLI_RESPONSE,(uint8_t* )pcOutputString,strlen((char* )pcOutputString));
 //									SendMessageToModule(src,CODE_CLI_RESPONSE,strlen((char* )pcOutputString));
@@ -757,7 +661,7 @@ void PxMessagingTask(void *argument){
 						else{
 							memcpy(&pcOutputString[0] + longMessageLastPtr,&cMessage[port - 1][shift],(size_t )numOfParams);
 							longMessageLastPtr =0;
-							responseStatus =BOS_OK;
+							ResponseStatus =BOS_OK;
 							/* Wake up the CliTask again */
 							xTaskNotify((xCommandConsoleTaskHandle),0,eNoAction); // Notify the task without modifying its notification value
 						}
@@ -772,17 +676,18 @@ void PxMessagingTask(void *argument){
 						/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
 						*((unsigned long* )0x20023FF0) =0xDEADBEEF;
 #endif
-						indMode =IND_PING;
+						IndicatorMode =IND_PING;
 						osDelay(10);
 						NVIC_SystemReset();
 						break;
 
 					case CODE_UPDATE_VIA_PORT:
-						/* I'm the last module before target. First, ask the target to jump to factory bootloader */
+						/* I'm the last module before target.
+						 * First, ask the target to jump to factory bootloader */
 						SendMessageFromPort(cMessage[port - 1][shift],0,0,CODE_UPDATE,0);
 						osDelay(100);
 						/* Then, setup myself for remote 'via port' update */
-						remoteBootloaderUpdate(src,myID,port,cMessage[port - 1][shift]);
+						RemoteBootloaderUpdate(src,myID,port,cMessage[port - 1][shift]);
 						break;
 
 					case CODE_DMA_CHANNEL:
@@ -832,135 +737,136 @@ void PxMessagingTask(void *argument){
 					case CODE_READ_REMOTE:
 						if(cMessage[port - 1][shift] == REMOTE_MEMORY_ADD) // request for a memory address
 						{
-// Get requested address
+							/* Get requested address */
 							temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 24) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][5 + shift];
-// Get variable according to requested format
-							switch(cMessage[port - 1][1 + shift]) // requested format
+							/* Get variable according to requested format */
+							switch(cMessage[port - 1][1 + shift]) /* requested format */
 							{
 								case FMT_BOOL:
 								case FMT_UINT8:
-									messageParams[0] =*(__IO uint8_t* )temp32;
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,1);
+									MessageParams[0] =*(__IO uint8_t* )temp32;
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
 									break;
+
 								case FMT_INT8:
-									messageParams[0] =*(__IO int8_t* )temp32;
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,1);
+									MessageParams[0] =*(__IO int8_t* )temp32;
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
 									break;
+
 								case FMT_UINT16:
-									messageParams[0] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
-									messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,2);
+									MessageParams[0] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
+									MessageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 									break;
+
 								case FMT_INT16:
-									messageParams[0] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
-									messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,2);
+									MessageParams[0] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
+									MessageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 									break;
+
 								case FMT_UINT32:
-									messageParams[0] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
-									messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
-									messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
-									messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,4);
+									MessageParams[0] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
+									MessageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
+									MessageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
+									MessageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
 									break;
+
 								case FMT_INT32:
-									messageParams[0] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
-									messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
-									messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
-									messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,4);
+									MessageParams[0] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
+									MessageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
+									MessageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
+									MessageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
 									break;
+
 								case FMT_FLOAT:
-									messageParams[0] =*(__IO uint8_t* )(temp32 + 0);
-									messageParams[1] =*(__IO uint8_t* )(temp32 + 1);
-									messageParams[2] =*(__IO uint8_t* )(temp32 + 2);
-									messageParams[3] =*(__IO uint8_t* )(temp32 + 3);
-									SendMessageToModule(src,
-									CODE_READ_REMOTE_RESPONSE,8);
-									break; // You cannot bitwise floats
+									MessageParams[0] =*(__IO uint8_t* )(temp32 + 0);
+									MessageParams[1] =*(__IO uint8_t* )(temp32 + 1);
+									MessageParams[2] =*(__IO uint8_t* )(temp32 + 2);
+									MessageParams[3] =*(__IO uint8_t* )(temp32 + 3);
+									SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,8);
+									break;
 								default:
 									break;
 							}
 						}
-						else if(cMessage[port - 1][shift] == REMOTE_MODULE_PARAM) // request for a Module param
+						else if(cMessage[port - 1][shift] == REMOTE_MODULE_PARAM) /* request for a Module param */
 						{
-							cMessage[port - 1][messageLength[port - 1] - 1] =0; // adding string termination
-							temp =IsModuleParameter((char* )&cMessage[port - 1][1 + shift]); // extrating module parameter
-							if(temp == 0){ // Parameter does not exist
-								SendMessageToModule(src,
-								CODE_READ_REMOTE_RESPONSE,1);
+							/* adding string termination */
+							cMessage[port - 1][MessageLength[port - 1] - 1] =0;
+							/* Extracting module parameter */
+							temp =IsModuleParameter((char* )&cMessage[port - 1][1 + shift]);
+							if(temp == 0){
+								/* Parameter does not exist */
+								SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
 							}
 							else{
-// Parameter exists. Get its pointer
-								temp32 =(uint32_t )modParam[temp - 1].paramPtr;
-								messageParams[0] =modParam[temp - 1].paramFormat;
-// Send parameter according to its format
-								switch(messageParams[0]) // requested format
+								/* Parameter exists. Get its pointer */
+								temp32 =(uint32_t )ModuleParam[temp - 1].ParamPtr;
+								MessageParams[0] =ModuleParam[temp - 1].ParamFormat;
+								/* Send parameter according to its format */
+								switch(MessageParams[0]) /* requested format */
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
-										messageParams[1] =*(__IO uint8_t* )temp32;
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,2);
+										MessageParams[1] =*(__IO uint8_t* )temp32;
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 										break;
+
 									case FMT_INT8:
-										messageParams[1] =*(__IO int8_t* )temp32;
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,2);
+										MessageParams[1] =*(__IO int8_t* )temp32;
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 										break;
+
 									case FMT_UINT16:
-										messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,3);
+										MessageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
 										break;
+
 									case FMT_INT16:
-										messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,3);
+										MessageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
 										break;
+
 									case FMT_UINT32:
-										messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
-										messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
-										messageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,5);
+										MessageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
+										MessageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
+										MessageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
 										break;
+
 									case FMT_INT32:
-										messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
-										messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
-										messageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,5);
+										MessageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
+										MessageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
+										MessageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
 										break;
+
 									case FMT_FLOAT:
-										messageParams[1] =*(__IO uint8_t* )(temp32 + 0);
-										messageParams[2] =*(__IO uint8_t* )(temp32 + 1);
-										messageParams[3] =*(__IO uint8_t* )(temp32 + 2);
-										messageParams[4] =*(__IO uint8_t* )(temp32 + 3); // You cannot bitwise floats
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,9);
+										MessageParams[1] =*(__IO uint8_t* )(temp32 + 0);
+										MessageParams[2] =*(__IO uint8_t* )(temp32 + 1);
+										MessageParams[3] =*(__IO uint8_t* )(temp32 + 2);
+										MessageParams[4] =*(__IO uint8_t* )(temp32 + 3);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
 										break;
+
 									default:
 										break;
 								}
 							}
 						}
-						else if(cMessage[port - 1][shift] >= REMOTE_BOS_VAR) // request for a BOS var
+						else if(cMessage[port - 1][shift] >= REMOTE_BOS_VAR) /* request for a BOS var */
 						{
-							messageParams[0] =BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F; // send variable format (lower 4 bits)
-							if(messageParams[0] == 0){ // Variable does not exist
-								SendMessageToModule(src,
-								CODE_READ_REMOTE_RESPONSE,1);
+							MessageParams[0] =bosVarRegister[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F; // send variable format (lower 4 bits)
+							/* Variable does not exist */
+							if(MessageParams[0] == 0){
+								SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
 							}
 							else{
 // Variable exists. Get its memory address
@@ -970,51 +876,51 @@ void PxMessagingTask(void *argument){
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
-										messageParams[1] =*(__IO uint8_t* )temp32;
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,2);
+										MessageParams[1] =*(__IO uint8_t* )temp32;
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 										break;
+
 									case FMT_INT8:
-										messageParams[1] =*(__IO int8_t* )temp32;
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,2);
+										MessageParams[1] =*(__IO int8_t* )temp32;
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
 										break;
+
 									case FMT_UINT16:
-										messageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,3);
+										MessageParams[1] =(uint8_t )((*(__IO uint16_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO uint16_t* )temp32) >> 8);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
 										break;
+
 									case FMT_INT16:
-										messageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,3);
+										MessageParams[1] =(uint8_t )((*(__IO int16_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO int16_t* )temp32) >> 8);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
 										break;
+
 									case FMT_UINT32:
-										messageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
-										messageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
-										messageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,5);
+										MessageParams[1] =(uint8_t )((*(__IO uint32_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO uint32_t* )temp32) >> 8);
+										MessageParams[3] =(uint8_t )((*(__IO uint32_t* )temp32) >> 16);
+										MessageParams[4] =(uint8_t )((*(__IO uint32_t* )temp32) >> 24);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
 										break;
+
 									case FMT_INT32:
-										messageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
-										messageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
-										messageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
-										messageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,5);
+										MessageParams[1] =(uint8_t )((*(__IO int32_t* )temp32) >> 0);
+										MessageParams[2] =(uint8_t )((*(__IO int32_t* )temp32) >> 8);
+										MessageParams[3] =(uint8_t )((*(__IO int32_t* )temp32) >> 16);
+										MessageParams[4] =(uint8_t )((*(__IO int32_t* )temp32) >> 24);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
 										break;
+
 									case FMT_FLOAT:
-										messageParams[1] =*(__IO uint8_t* )(temp32 + 0);
-										messageParams[2] =*(__IO uint8_t* )(temp32 + 1);
-										messageParams[3] =*(__IO uint8_t* )(temp32 + 2);
-										messageParams[4] =*(__IO uint8_t* )(temp32 + 3); // You cannot bitwise floats
-										SendMessageToModule(src,
-										CODE_READ_REMOTE_RESPONSE,9);
+										MessageParams[1] =*(__IO uint8_t* )(temp32 + 0);
+										MessageParams[2] =*(__IO uint8_t* )(temp32 + 1);
+										MessageParams[3] =*(__IO uint8_t* )(temp32 + 2);
+										MessageParams[4] =*(__IO uint8_t* )(temp32 + 3);
+										SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
 										break;
+
 									default:
 										break;
 								}
@@ -1025,55 +931,42 @@ void PxMessagingTask(void *argument){
 
 					case CODE_READ_REMOTE_RESPONSE:
 						/* We requested a BOS variable or module param */
-						if(remoteBuffer == REMOTE_BOS_VAR || remoteBuffer == REMOTE_MODULE_PARAM)
-						{
+						if(RemoteBuffer == REMOTE_BOS_VAR || RemoteBuffer == REMOTE_MODULE_PARAM){
 							/* Read variable according to its format */
-							remoteVarFormat =(varFormat_t )cMessage[port - 1][shift];
+							RemoteVarFormat =(VariableFormat_t )cMessage[port - 1][shift];
 							switch(cMessage[port - 1][shift]) /* Remote format */
-							{/* Note that cMessage[port-1][5+shift] can be unaligned.
-								That's why we cannot use simple memory access */
+							{
 								case 0: /* This variable does not exist */
-									responseStatus =BOS_ERR_REMOTE_READ_NO_VAR;
+									ResponseStatus =BOS_ERR_REMOTE_READ_NO_VAR;
 									break;
 
 								case FMT_BOOL:
 								case FMT_UINT8:
-									remoteBuffer =cMessage[port - 1][1 + shift];
+									RemoteBuffer =cMessage[port - 1][1 + shift];
 									break;
 
 								case FMT_INT8:
-									remoteBuffer =(int8_t )cMessage[port - 1][1 + shift];
+									RemoteBuffer =(int8_t )cMessage[port - 1][1 + shift];
 									break;
 
 								case FMT_UINT16:
-									remoteBuffer =((uint16_t )cMessage[port - 1][1 + shift] << 0) +
-									((uint16_t )cMessage[port - 1][2 + shift] << 8);
+									RemoteBuffer =((uint16_t )cMessage[port - 1][1 + shift] << 0) + ((uint16_t )cMessage[port - 1][2 + shift] << 8);
 									break;
 
 								case FMT_INT16:
-									remoteBuffer =((int16_t )cMessage[port - 1][1 + shift] << 0) +
-									((int16_t )cMessage[port - 1][2 + shift] << 8);
+									RemoteBuffer =((int16_t )cMessage[port - 1][1 + shift] << 0) + ((int16_t )cMessage[port - 1][2 + shift] << 8);
 									break;
 
 								case FMT_UINT32:
-									remoteBuffer =((uint32_t )cMessage[port - 1][1 + shift] << 0) +
-									((uint32_t )cMessage[port - 1][2 + shift] << 8) +
-									((uint32_t )cMessage[port - 1][3 + shift] << 16) +
-									((uint32_t )cMessage[port - 1][4 + shift] << 24);
+									RemoteBuffer =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
 									break;
 
 								case FMT_INT32:
-									remoteBuffer =((int32_t )cMessage[port - 1][1 + shift] << 0) +
-									((int32_t )cMessage[port - 1][2 + shift] << 8) +
-									((int32_t )cMessage[port - 1][3 + shift] << 16) +
-									((int32_t )cMessage[port - 1][4 + shift] << 24);
+									RemoteBuffer =((int32_t )cMessage[port - 1][1 + shift] << 0) + ((int32_t )cMessage[port - 1][2 + shift] << 8) + ((int32_t )cMessage[port - 1][3 + shift] << 16) + ((int32_t )cMessage[port - 1][4 + shift] << 24);
 									break;
 
 								case FMT_FLOAT:
-									remoteBuffer =((uint32_t )cMessage[port - 1][1 + shift] << 0) +
-									((uint32_t )cMessage[port - 1][2 + shift] << 8) +
-									((uint32_t )cMessage[port - 1][3 + shift] << 16) +
-									((uint32_t )cMessage[port - 1][4 + shift] << 24);
+									RemoteBuffer =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
 									break;
 
 								default:
@@ -1081,50 +974,38 @@ void PxMessagingTask(void *argument){
 							}
 
 						}
-						else if(remoteBuffer == REMOTE_MEMORY_ADD) /* We requested a memory location */
+						else if(RemoteBuffer == REMOTE_MEMORY_ADD) /* We requested a memory location */
 						{
 							/* Read variable according to requested format */
-							switch(requestFormat) /* Requested format */
-							{/* Note that cMessage[port-1][shift] can be unaligned.
-							 That's why we cannot use simple memory access */
+							switch(RequestFormat) /* Requested format */
+							{
 								case FMT_BOOL:
 								case FMT_UINT8:
-									remoteBuffer =cMessage[port - 1][shift];
+									RemoteBuffer =cMessage[port - 1][shift];
 									break;
 
 								case FMT_INT8:
-									remoteBuffer =(int8_t )cMessage[port - 1][shift];
+									RemoteBuffer =(int8_t )cMessage[port - 1][shift];
 									break;
 
 								case FMT_UINT16:
-									remoteBuffer =((uint16_t )cMessage[port - 1][shift] << 0) +
-									((uint16_t )cMessage[port - 1][1 + shift] << 8);
+									RemoteBuffer =((uint16_t )cMessage[port - 1][shift] << 0) + ((uint16_t )cMessage[port - 1][1 + shift] << 8);
 									break;
 
 								case FMT_INT16:
-									remoteBuffer =((int16_t )cMessage[port - 1][shift] << 0) +
-									((int16_t )cMessage[port - 1][1 + shift] << 8);
+									RemoteBuffer =((int16_t )cMessage[port - 1][shift] << 0) + ((int16_t )cMessage[port - 1][1 + shift] << 8);
 									break;
 
 								case FMT_UINT32:
-									remoteBuffer =((uint32_t )cMessage[port - 1][shift] << 0) +
-									((uint32_t )cMessage[port - 1][1 + shift] << 8) +
-									((uint32_t )cMessage[port - 1][2 + shift] << 16) +
-									((uint32_t )cMessage[port - 1][3 + shift] << 24);
+									RemoteBuffer =((uint32_t )cMessage[port - 1][shift] << 0) + ((uint32_t )cMessage[port - 1][1 + shift] << 8) + ((uint32_t )cMessage[port - 1][2 + shift] << 16) + ((uint32_t )cMessage[port - 1][3 + shift] << 24);
 									break;
 
 								case FMT_INT32:
-									remoteBuffer =((int32_t )cMessage[port - 1][shift] << 0) +
-									((int32_t )cMessage[port - 1][1 + shift] << 8) +
-									((int32_t )cMessage[port - 1][2 + shift] << 16) +
-									((int32_t )cMessage[port - 1][3 + shift] << 24);
+									RemoteBuffer =((int32_t )cMessage[port - 1][shift] << 0) + ((int32_t )cMessage[port - 1][1 + shift] << 8) + ((int32_t )cMessage[port - 1][2 + shift] << 16) + ((int32_t )cMessage[port - 1][3 + shift] << 24);
 									break;
 
 								case FMT_FLOAT:
-									remoteBuffer =((uint32_t )cMessage[port - 1][shift] << 0) +
-									((uint32_t )cMessage[port - 1][1 + shift] << 8) +
-									((uint32_t )cMessage[port - 1][2 + shift] << 16) +
-									((uint32_t )cMessage[port - 1][3 + shift] << 24);
+									RemoteBuffer =((uint32_t )cMessage[port - 1][shift] << 0) + ((uint32_t )cMessage[port - 1][1 + shift] << 8) + ((uint32_t )cMessage[port - 1][2 + shift] << 16) + ((uint32_t )cMessage[port - 1][3 + shift] << 24);
 									break;
 
 								default:
@@ -1134,17 +1015,17 @@ void PxMessagingTask(void *argument){
 						else{
 						}
 						/* Remote read status */
-						if(responseStatus != BOS_ERR_REMOTE_READ_NO_VAR)
-							responseStatus =BOS_OK;
+						if(ResponseStatus != BOS_ERR_REMOTE_READ_NO_VAR)
+							ResponseStatus =BOS_OK;
 						break;
 
 					case CODE_WRITE_REMOTE:
 //					case CODE_WRITE_REMOTE_FORCE:
 
-						responseStatus =BOS_OK; // Initialize response
-						if(cMessage[port - 1][shift]) // request for a BOS var
+						ResponseStatus =BOS_OK; /* Initialize response */
+						if(cMessage[port - 1][shift]) /* request for a BOS var */
 						{
-// Check variable index is within the limit of MAX_BOS_VARS
+							/* Check variable index is within the limit of MAX_BOS_VARS */
 							if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
 								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE/* + 0x10000*/; // Get var memory addres
 //								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE + 0x10000;
@@ -1153,102 +1034,125 @@ void PxMessagingTask(void *argument){
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(uint8_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											/* Create a new one */
+											temp32 =(uint32_t )malloc(sizeof(uint8_t));
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												/* Cannot allocate memory */
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										/* Write remote value */
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO uint8_t* )temp32 =cMessage[port - 1][2 + shift];
 										break;
 
 									case FMT_INT8:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(int8_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											/* Create a new one */
+											temp32 =(uint32_t )malloc(sizeof(int8_t));
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												/* Cannot allocate memory */
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										/* Write remote value */
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO int8_t* )temp32 =(int8_t )cMessage[port - 1][2 + shift];
 										break;
 
 									case FMT_UINT16:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(uint16_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											temp32 =(uint32_t )malloc(sizeof(uint16_t));
+											/* Create a new one */
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												/* Cannot allocate memory */
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										/* Write remote value */
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][2 + shift] << 0) + ((uint16_t )cMessage[port - 1][3 + shift] << 8);
 										break;
 
 									case FMT_INT16:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(int16_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											/* Create a new one */
+											temp32 =(uint32_t )malloc(sizeof(int16_t));
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												/* Cannot allocate memory */
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										/* Write remote value */
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][2 + shift] << 0) + ((int16_t )cMessage[port - 1][3 + shift] << 8);
 										break;
 
 									case FMT_UINT32:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(uint32_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											temp32 =(uint32_t )malloc(sizeof(uint32_t));
+											/* Create a new one */
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												/* Cannot allocate memory */
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
 										break;
 
 									case FMT_INT32:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(int32_t)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											temp32 =(uint32_t )malloc(sizeof(int32_t));
+											/* Create a new one */
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL) // Write remote value
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 											*(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][2 + shift] << 0) + ((int32_t )cMessage[port - 1][3 + shift] << 8) + ((int32_t )cMessage[port - 1][4 + shift] << 16) + ((int32_t )cMessage[port - 1][5 + shift] << 24);
 										break;
 
 									case FMT_FLOAT:
-										if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) == 0){ // Variable does not exist
-											temp32 =(uint32_t )malloc(sizeof(float)); // Create a new one
+										/* Variable does not exist */
+										if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) == 0){
+											temp32 =(uint32_t )malloc(sizeof(float));
+											/* Create a new one */
 											if(temp32 != 0){
-												BOS_var_reg[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
+												bosVarRegister[cMessage[port - 1][shift] - 1] =((temp32 - SRAM_BASE) << 16) + cMessage[port - 1][1 + shift];
 											}
-											else{ // Cannot alocate memory
-												responseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
+											else{
+												ResponseStatus =BOS_ERR_REMOTE_WRITE_MEM_FULL;
 											}
 										}
-										if(responseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL){ // Write remote value
-											remoteBuffer =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
-											*(float* )temp32 =*(float* )&remoteBuffer;
+										if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL){
+											RemoteBuffer =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
+											*(float* )temp32 =*(float* )&RemoteBuffer;
 										}
 										break;
 
@@ -1256,48 +1160,58 @@ void PxMessagingTask(void *argument){
 										break;
 								}
 
-								/* Update local format if needed - Todo give local warning later */
-								if((BOS_var_reg[cMessage[port - 1][shift] - 1] & 0x000F) != cMessage[port - 1][1 + shift]){
-									BOS_var_reg[cMessage[port - 1][shift] - 1] &=(0xFFF0 + cMessage[port - 1][1 + shift]);
-									responseStatus =BOS_ERR_LOCAL_FORMAT_UPDATED;
+								/* Update local format if needed
+								 * Todo give local warning later */
+								if((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) != cMessage[port - 1][1 + shift]){
+									bosVarRegister[cMessage[port - 1][shift] - 1] &=(0xFFF0 + cMessage[port - 1][1 + shift]);
+									ResponseStatus =BOS_ERR_LOCAL_FORMAT_UPDATED;
 								}
 							}
 							else{
-								responseStatus =BOS_ERR_REMOTE_WRITE_INDEX; // BOS var index out of range
+								/* BOS var index out of range */
+								ResponseStatus =BOS_ERR_REMOTE_WRITE_INDEX;
 							}
 						}
-						else // request for a memory address
+						else
 						{
-							// Get the requested address
+							/* request for a memory address */
+							/* Get the requested address */
 							temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 24) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][5 + shift];
-							// Write data to Flash or SRAM based on requested format
+							/* Write data to Flash or SRAM based on requested format */
 							if(temp32 >= SRAM_BASE && temp32 < (SRAM_BASE + SRAM_SIZE_MAX)) // SRAM
 							{
-								switch(cMessage[port - 1][1 + shift]) // Requested format
+								switch(cMessage[port - 1][1 + shift]) /* Requested format */
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
 										*(__IO uint8_t* )temp32 =cMessage[port - 1][6 + shift];
 										break;
+
 									case FMT_INT8:
 										*(__IO int8_t* )temp32 =(int8_t )cMessage[port - 1][6 + shift];
 										break;
+
 									case FMT_UINT16:
 										*(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
 										break;
+
 									case FMT_INT16:
 										*(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][6 + shift] << 0) + ((int16_t )cMessage[port - 1][7 + shift] << 8);
 										break;
+
 									case FMT_UINT32:
 										*(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
 										break;
+
 									case FMT_INT32:
 										*(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][6 + shift] << 0) + ((int32_t )cMessage[port - 1][7 + shift] << 8) + ((int32_t )cMessage[port - 1][8 + shift] << 16) + ((int32_t )cMessage[port - 1][9 + shift] << 24);
 										break;
+
 									case FMT_FLOAT:
-										remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
-										*(float* )temp32 =*(float* )&remoteBuffer;
+										RemoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+										*(float* )temp32 =*(float* )&RemoteBuffer;
 										break;
+
 									default:
 										break;
 								}
@@ -1310,73 +1224,73 @@ void PxMessagingTask(void *argument){
 ////									EraseSector(PAGE(temp32));
 ////								}
 //								/* Write new value */
-//								if(responseStatus == BOS_OK){
+//								if(ResponseStatus == BOS_OK){
 //									switch(cMessage[port - 1][1 + shift]) // Requested format
 //									{
 //										case FMT_BOOL:
 //										case FMT_UINT8:
 //										case FMT_INT8:
 //											if(*(__IO uint16_t* )temp32 != 0xFFFF){
-//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												ResponseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
 //												break;
 //											}
 //											else{
-//												remoteBuffer =cMessage[port - 1][6 + shift];
+//												RemoteBuffer =cMessage[port - 1][6 + shift];
 //												// TOCHECKLATER
 //												// available values in G0 MCU:
 //												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
 //												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
 //												#ifndef STM32G0B1xx
 //												status =HAL_FLASH_Program(
-//												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+//												FLASH_TYPEPROGRAM_HALFWORD,temp32,RemoteBuffer);
 //												#endif
 //												break;
 //											}
 //										case FMT_UINT16:
 //										case FMT_INT16:
 //											if(*(__IO uint16_t* )temp32 != 0xFFFF){
-//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												ResponseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
 //												break;
 //											}
 //											else{
-//												remoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
+//												RemoteBuffer =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
 //												// TOCHECKLATER
 //												// available values in G0 MCU:
 //												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
 //												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
 //												#ifndef STM32G0B1xx
 //												status =HAL_FLASH_Program(
-//												FLASH_TYPEPROGRAM_HALFWORD,temp32,remoteBuffer);
+//												FLASH_TYPEPROGRAM_HALFWORD,temp32,RemoteBuffer);
 //												#endif
 //												break;
 //											}
 //										case FMT_UINT32:
 //										case FMT_INT32:
 //											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
-//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												ResponseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
 //												break;
 //											}
 //											else{
-//												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
+//												RemoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);													// TOCHECKLATER
 //												// TOCHECKLATER
 //												// available values in G0 MCU:
 //												//TypeProgram = FLASH_TYPEPROGRAM_DOUBLEWORD (64-bit)
 //												//TypeProgram = FLASH_TYPEPROGRAM_FAST (32-bit).
 //												#ifndef STM32G0B1xx
 //												status =HAL_FLASH_Program(
-//												FLASH_TYPEPROGRAM_WORD,temp32,remoteBuffer);
+//												FLASH_TYPEPROGRAM_WORD,temp32,RemoteBuffer);
 //												#endif
 //												break;
 //											}
 //										case FMT_FLOAT:
 //											if(*(__IO uint32_t* )temp32 != 0xFFFFFFFF){
-//												responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//												ResponseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
 //												break;
 //											}
 //											else{
-//												remoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
+//												RemoteBuffer =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
 //												status =HAL_FLASH_Program(
-//												FLASH_TYPEPROGRAM_DOUBLEWORD,temp32,remoteBuffer);
+//												FLASH_TYPEPROGRAM_DOUBLEWORD,temp32,RemoteBuffer);
 //												break;
 //											}
 //										default:
@@ -1385,56 +1299,37 @@ void PxMessagingTask(void *argument){
 //								}
 //								HAL_FLASH_Lock();
 //								if(status != HAL_OK)
-//									responseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
+//									ResponseStatus =BOS_ERR_REMOTE_WRITE_FLASH;
 //							}
 							else
-								responseStatus =BOS_ERR_REMOTE_WRITE_ADDRESS;
+								ResponseStatus =BOS_ERR_REMOTE_WRITE_ADDRESS;
 						}
 
 						/* Send confirmation back */
 						if(OptionByte.Response == BOS_RESPONSE_ALL || OptionByte.Response == BOS_RESPONSE_MSG){
-							messageParams[0] =responseStatus;
+							MessageParams[0] =ResponseStatus;
 							SendMessageToModule(src,CODE_WRITE_REMOTE_RESPONSE,1);
 						}
 						break;
 
 					case CODE_WRITE_REMOTE_RESPONSE:
-						responseStatus =(BOS_Status )cMessage[port - 1][shift];
+						ResponseStatus =(BOS_Status )cMessage[port - 1][shift];
 						break;
 
 					case CODE_PORT_FORWARD:
 						writePxMutex(cMessage[port - 1][shift],(char* )&cMessage[port - 1][shift + 1],numOfParams - 1,10,10);
 						break;
 
-//						case CODE_READ_REMOTE_ModBus_RESPONSE:
-//							switch(cMessage[port - 1][0 + shift]){
-//								case 0:
-//									MBmessageParams[0] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-//									MBmessageParams[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-//									MBmessageParams[2] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-//									break;
-//
-//								case 1:
-//									MBmessageParams[3] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-//									MBmessageParams[4] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8) + ((uint32_t )cMessage[port - 1][7 + shift] << 16) + ((uint32_t )cMessage[port - 1][8 + shift] << 24);
-//									MBmessageParams[5] =((uint32_t )cMessage[port - 1][9 + shift] << 0) + ((uint32_t )cMessage[port - 1][10 + shift] << 8) + ((uint32_t )cMessage[port - 1][11 + shift] << 16) + ((uint32_t )cMessage[port - 1][12 + shift] << 24);
-//									break;
-//
-//								case 2:
-//									MBmessageParams[6] =((uint32_t )cMessage[port - 1][1 + shift] << 0) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + ((uint32_t )cMessage[port - 1][3 + shift] << 16) + ((uint32_t )cMessage[port - 1][4 + shift] << 24);
-//
-//							}
-
 					case CODE_READ_ADC_VALUE:
-						ADCPort =cMessage[port - 1][shift];
-						ADCSide =cMessage[port - 1][shift + 1];
-						if(0 == ADCSide){
-							ADCSelectChannel(ADCPort,"top");
-							ReadADCChannel(ADCPort,"top",&ADCValue);
+						adcPort =cMessage[port - 1][shift];
+						adcSide =cMessage[port - 1][shift + 1];
+						if(0 == adcSide){
+							ADCSelectPort(adcPort);
+							ReadADCChannel(adcPort,"top",&adcValue);
 						}
-						else if(1 == ADCSide){
-							ADCSelectChannel(ADCPort,"bottom");
-							ReadADCChannel(ADCPort,"bottom",&ADCValue);
+						else if(1 == adcSide){
+							ADCSelectPort(adcPort);
+							ReadADCChannel(adcPort,"bottom",&adcValue);
 						}
 
 					case CODE_READ_TEMPERATURE:
@@ -1442,8 +1337,8 @@ void PxMessagingTask(void *argument){
 						ReadTempAndVref(&InternalTemperature,&InternalVoltageReferance);
 
 //					case CODE_READ_ADC_PERCENTAGE:
-//						ADCPort = cMessage[port - 1][shift];
-//						GetReadPrecentage(ADCPort, &ADCPercentage);
+//						adcPort = cMessage[port - 1][shift];
+//						GetReadPercentage(adcPort, &adcPercentage);
 //						MBmessageParams[7] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
 //								+ ((uint32_t) cMessage[port - 1][6 + shift] << 8)
 //								+ ((uint32_t) cMessage[port - 1][7 + shift] << 16)
@@ -1454,12 +1349,12 @@ void PxMessagingTask(void *argument){
 //								+ ((uint32_t) cMessage[port - 1][12 + shift] << 24);
 //						break;
 
-					case MSG_Acknowledgment_Accepted:
-						ACK_FLAG =1;
+					case MSG_ACKNOWLEDGMENT_ACCEPTED:
+						ACKMessageFlag =1;
 						break;
 
-					case MSG_rejected:
-						rejected_FLAG =1;
+					case MSG_REJECTED:
+						RejectedMessageFlag =1;
 						break;
 
 					case CODE_READ_RESPONSE:
@@ -1469,7 +1364,7 @@ void PxMessagingTask(void *argument){
 							case 0:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									responseStatus =BOS_ERR_REMOTE_READ_NO_VAR;
+									ResponseStatus =BOS_ERR_REMOTE_READ_NO_VAR;
 								}
 								else
 									result =BOS_ERROR;
@@ -1478,7 +1373,7 @@ void PxMessagingTask(void *argument){
 							case FMT_BOOL:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 								}
 								else
@@ -1488,7 +1383,7 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT8:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 									RemoteResponseBuffer[1] =(uint32_t )cMessage[port - 1][4 + shift];
 									RemoteResponseBuffer[2] =(uint32_t )cMessage[port - 1][5 + shift];
@@ -1501,7 +1396,7 @@ void PxMessagingTask(void *argument){
 							case FMT_INT8:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
 
 								}
@@ -1512,7 +1407,7 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT16:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8);
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8);
 									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][7 + shift] << 0) + ((uint32_t )cMessage[port - 1][8 + shift] << 8);
@@ -1525,9 +1420,8 @@ void PxMessagingTask(void *argument){
 							case FMT_INT16:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) +
-										((uint32_t )cMessage[port - 1][4 + shift] << 8);
+									NumOfElement =cMessage[port - 1][2 + shift];
+									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8);
 								}
 								else
 									result =BOS_ERROR;
@@ -1536,11 +1430,8 @@ void PxMessagingTask(void *argument){
 							case FMT_UINT32:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) +
-										((uint32_t )cMessage[port - 1][4 + shift] << 8) +
-										((uint32_t )cMessage[port - 1][5 + shift] << 16) +
-										((uint32_t )cMessage[port - 1][6 + shift] << 24);
+									NumOfElement =cMessage[port - 1][2 + shift];
+									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + ((uint32_t )cMessage[port - 1][5 + shift] << 16) + ((uint32_t )cMessage[port - 1][6 + shift] << 24);
 
 								}
 								else
@@ -1550,15 +1441,11 @@ void PxMessagingTask(void *argument){
 							case FMT_INT32:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + ((uint32_t )cMessage[port - 1][5 + shift] << 16) + ((uint32_t )cMessage[port - 1][6 + shift] << 24);
-
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);
-
 									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][11 + shift] << 0) | ((uint32_t )cMessage[port - 1][12 + shift] << 8) | ((uint32_t )cMessage[port - 1][13 + shift] << 16) | ((uint32_t )cMessage[port - 1][14 + shift] << 24);
-
 									RemoteResponseBuffer[3] =((uint32_t )cMessage[port - 1][15 + shift] << 0) | ((uint32_t )cMessage[port - 1][16 + shift] << 8) | ((uint32_t )cMessage[port - 1][17 + shift] << 16) | ((uint32_t )cMessage[port - 1][18 + shift] << 24);
-
 								}
 								else
 									result =BOS_ERROR;
@@ -1567,15 +1454,11 @@ void PxMessagingTask(void *argument){
 							case FMT_FLOAT:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
-									numOfElement =cMessage[port - 1][2 + shift];
+									NumOfElement =cMessage[port - 1][2 + shift];
 									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) | ((uint32_t )cMessage[port - 1][4 + shift] << 8) | ((uint32_t )cMessage[port - 1][5 + shift] << 16) | ((uint32_t )cMessage[port - 1][6 + shift] << 24);
-
 									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);
-
 									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][11 + shift] << 0) | ((uint32_t )cMessage[port - 1][12 + shift] << 8) | ((uint32_t )cMessage[port - 1][13 + shift] << 16) | ((uint32_t )cMessage[port - 1][14 + shift] << 24);
-
 									RemoteResponseBuffer[3] =((uint32_t )cMessage[port - 1][15 + shift] << 0) | ((uint32_t )cMessage[port - 1][16 + shift] << 8) | ((uint32_t )cMessage[port - 1][17 + shift] << 16) | ((uint32_t )cMessage[port - 1][18 + shift] << 24);
-
 								}
 								else
 									result =BOS_ERROR;
@@ -1614,7 +1497,6 @@ void PxMessagingTask(void *argument){
 						break;
 				}
 			}
-//			}
 		}
 		
 		/* Is it unknown message? */
@@ -1624,11 +1506,11 @@ void PxMessagingTask(void *argument){
 		}
 		
 		/* Reset message buffer */
-		memset(cMessage[port - 1],0,(size_t )messageLength[port - 1]);
-		messageLength[port - 1] =0;
-		if(portStatus[port] != STREAM && portStatus[port] != CLI && portStatus[port] != PORTBUTTON){
+		memset(cMessage[port - 1],0,(size_t )MessageLength[port - 1]);
+		MessageLength[port - 1] =0;
+		if(PortStatus[port] != STREAM && PortStatus[port] != CLI && PortStatus[port] != PORTBUTTON){
 			/* Free the port */
-			portStatus[port] =FREE;
+			PortStatus[port] =FREE;
 		}
 
 		taskYIELD();
@@ -1647,7 +1529,5 @@ __weak BOS_Status User_MessagingParser(uint16_t code,uint8_t port,uint8_t src,ui
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
-
+/***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

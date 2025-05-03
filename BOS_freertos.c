@@ -38,7 +38,7 @@ TaskHandle_t P5MsgTaskHandle = NULL;
 TaskHandle_t P6MsgTaskHandle = NULL;
 #endif
 
-TaskHandle_t defaultTaskHandle = NULL;
+TaskHandle_t DefaultTaskHandle = NULL;
 TaskHandle_t UserTaskHandle = NULL;
 TaskHandle_t BackEndTaskHandle = NULL;
 TaskHandle_t xCommandConsoleTaskHandle = NULL;
@@ -71,7 +71,7 @@ void MX_FREERTOS_Init(void){
 	/* Note: CMSIS OS priority levels are -3 to +3 and FreeRTOS priority levels are 0 to 6. Use osPriorityIdle to shift CMSIS priority levels to positive */
 
 	/* Create a defaultTask */
-	xTaskCreate(StartDefaultTask,(const char* )"DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&defaultTaskHandle);
+	xTaskCreate(StartDefaultTask,(const char* )"DefaultTask",(DEFAULT_TASK_STACK_SIZE),NULL,osPriorityNormal - osPriorityIdle,&DefaultTaskHandle);
 	
 	/* Create the back-end task */
 	xTaskCreate(BackEndTask,(const char* )"BackEndTask",(BACKEND_TASK_STACK_SIZE),NULL,osPriorityHigh - osPriorityIdle,&BackEndTaskHandle);
@@ -151,23 +151,23 @@ void StartDefaultTask(void *argument){
 	/* Infinite loop */
 	for(;;){
 		/* Switch indicator LED according to mode */
-		switch(indMode){
+		switch(IndicatorMode){
 			case IND_PING:
 				RTOS_IND_blink(80)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			case IND_TOPOLOGY:
 				RTOS_IND_blink(100)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			case IND_SHORT_BLINK:
 				RTOS_IND_blink(30)
 				;
-				indMode =IND_OFF;
+				IndicatorMode =IND_OFF;
 				break;
 				
 			default:
@@ -195,8 +195,8 @@ void StartDefaultTask(void *argument){
 //		HAL_IWDG_Refresh(&hiwdg);
 
 		/* Reset button state if no delay is needed by this module */
-		if(needToDelayButtonStateReset != true)
-			delayButtonStateReset = false;
+		if(NeedToDelayButtonStateReset != true)
+			DelayButtonStateReset = false;
 		
 		taskYIELD();
 	}

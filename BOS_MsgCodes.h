@@ -7,14 +7,13 @@
 
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* Define to prevent recursive inclusion************************************/
 #ifndef BOS_MSGCODES_H
 #define BOS_MSGCODES_H
 
-/* -----------------------------------------------------------------------
- |												BOS Message Codes	      |
-   -----------------------------------------------------------------------
- */
+/***************************************************************************/
+/* BOS Message Codes *******************************************************/
+/***************************************************************************/
 #define	CODE_UNKNOWN_MESSAGE				  0
 #define	CODE_PING							  1
 #define	CODE_PING_RESPONSE					  2
@@ -54,27 +53,22 @@
 #define CODE_READ_VREF						  42
 #define CODE_READ_ADC_PERCENTAGE			  43
 
-#define	MSG_Acknowledgment_Accepted 	  	  44
-#define	MSG_rejected 						  45
-
 #define CODE_READ_RESPONSE			          46
 
 #define ENABLE_STOP_MODE_UARTX                47
 #define ENABLE_STANDBY_MODE_WAKE_UP_PINX      48
 
-/*
-   -----------------------------------------------------------------------
-  |					User Message Codes (70-99)  						  |
-   -----------------------------------------------------------------------
-*/
+/***************************************************************************/
+/* User Message Codes (70 -  99) *******************************************/
+/***************************************************************************/
 
-/*
-   -----------------------------------------------------------------------
-  |				Module Message Codes	                                  |
-   -----------------------------------------------------------------------
-*/
 
-// Reserve 50 messages for each PN based on its decimal value
+
+/***************************************************************************/
+/* Module Message Codes ****************************************************/
+/***************************************************************************/
+/* Reserve 50 messages for each PN based on its decimal value **************/
+
 // H01R0x
 #define	CODE_H01R0_ON						  100
 #define	CODE_H01R0_OFF						  101
@@ -98,7 +92,6 @@
 #define CODE_H05R0_CELLCALINTERRES    		  260
 #define CODE_H05R0_SETCHARGVOLTAGE    		  261
 #define CODE_H05R0_SETCHARGCURRENT  		  262
-
 
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				  350
@@ -157,33 +150,18 @@
 #define CODE_H09R9_STREAM_TEMP                476
 #define CODE_H09R9_STREAM_STOP                477
 
-// H0AR9
+/* H0AR9 */
 #define CODE_H0AR9_SAMPLE_COLOR               500
 #define CODE_H0AR9_SAMPLE_DISTANCE            501
 #define CODE_H0AR9_SAMPLE_TEMP                502
 #define CODE_H0AR9_SAMPLE_HUMIDITY            503
 #define CODE_H0AR9_SAMPLE_PIR                 504
-#define CODE_H0AR9_STREAM_COLOR               505
-#define CODE_H0AR9_STREAM_DISTANCE            506
-#define CODE_H0AR9_STREAM_TEMP                507
-#define CODE_H0AR9_STREAM_HUMIDITY            508
-#define CODE_H0AR9_STREAM_PIR                 509
-#define CODE_H0AR9_STREAM_STOP                510
 
-// H0BR4x
+/* H0BR4x */
 #define CODE_H0BR4_SAMPLE_GYRO                550
 #define CODE_H0BR4_SAMPLE_ACC                 551
 #define CODE_H0BR4_SAMPLE_MAG		          552
 #define CODE_H0BR4_SAMPLE_TEMP		          553
-#define CODE_H0BR4_RESULT_GYRO                554
-#define CODE_H0BR4_RESULT_ACC                 555
-#define CODE_H0BR4_RESULT_MAG		 	      556
-#define CODE_H0BR4_RESULT_TEMP		          557
-#define CODE_H0BR4_STREAM_GYRO	     		  558
-#define CODE_H0BR4_STREAM_ACC		    	  559
-#define CODE_H0BR4_STREAM_MAG		    	  560
-#define CODE_H0BR4_STREAM_TEMP		     	  561
-#define CODE_H0BR4_STREAM_STOP				  562
 
 // H0FR1x
 #define	CODE_H0FR1_ON						  750
@@ -369,4 +347,4 @@
 
 #endif /* BOS_MSGCODES_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

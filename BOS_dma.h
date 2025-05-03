@@ -14,12 +14,19 @@
 /* Includes ****************************************************************/
 #include "BOS.h"
 
+/* UART-DMA Handlers Regarding Connected Ports *****************************/
+#define UART_DMA_PORT_INDEX_P1  0
+#define UART_DMA_PORT_INDEX_P2  1
+#define UART_DMA_PORT_INDEX_P3  2
+#define UART_DMA_PORT_INDEX_P4  3
+#define UART_DMA_PORT_INDEX_P5  4
+#define UART_DMA_PORT_INDEX_P6  5
+
 /* Exported variables ******************************************************/
-extern UART_HandleTypeDef *dmaStreamDst[NumOfPorts];
-extern uint32_t dmaStreamCount[NumOfPorts];
-extern uint32_t dmaStreamTotal[NumOfPorts];
-extern uint8_t Rx_Data[NumOfPorts];
-extern bool MsgDMAStopped[NumOfPorts];
+extern UART_HandleTypeDef *dmaStreamDst[NUM_OF_PORTS];
+extern uint32_t dmaStreamCount[NUM_OF_PORTS];
+extern uint32_t dmaStreamTotal[NUM_OF_PORTS];
+extern bool MsgDMAStopped[NUM_OF_PORTS];
 
 /* External Functions ******************************************************/
 extern BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);

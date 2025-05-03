@@ -25,16 +25,16 @@ static char *pcWelcomeMessage ="\n\r\n\r========================================
 static char *pcNewLine ="\r\n";
 static char *pcEndOfCommandOutputString ="\r\n[Press ENTER to execute the previous command again]\r\n>";
 char pcWelcomePortMessage[40] ={0};
-uint16_t timedoutMsg = 0;
-//uint8_t numOfRecordedSnippets =0;
-snippet_t snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
+uint16_t TimedoutMsg = 0;
+Snippet_t Snippets[MAX_SNIPPETS];		/* Buffer to hold CLI Snippets */
 
 /* Exported variables ******************************************************/
-extern uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE];
+extern uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE];
 
 /* Global function prototypes **********************************************/
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
 Module_Status GetModuleParameter(uint8_t paramIndex, float *value) ;
+
 /* Private function prototypes *********************************************/
 BOS_Status AddSnippet(uint8_t code,char *string);
 BOS_Status ParseSnippetCondition(char *string);
@@ -42,11 +42,11 @@ bool CheckSnippetCondition(uint8_t index);
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString);
 
 /* BOS exported functions **************************************************/
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern BOS_Status SetButtonEvents(uint8_t port, ButtonState_e buttonState, uint8_t mode);
 extern uint8_t IsModuleParameter(char *name);
 extern uint8_t IsMathOperator(char *string);
 extern uint8_t SaveSnippetsToRO(void);
-//extern char Processor_type(uint8_t module_name);
 
 /***************************************************************************/
 /*****************************  Private Functions **************************/
@@ -69,36 +69,36 @@ void prvCLITask(void *pvParameters){
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 
 	/* Restore baud rate to the default for all ports except the PC communication port */
-	if(BOS.clibaudrate != DEF_ARRAY_BAUDRATE){
-		for(uint8_t port =1; port <= NumOfPorts; port++){
-			if(port != PcPort)
+	if(BOS.cliBaudrate != DEF_ARRAY_BAUDRATE){
+		for(uint8_t port =1; port <= NUM_OF_PORTS; port++){
+			if(port != pcPort)
 				UpdateBaudrate(port,DEF_ARRAY_BAUDRATE);
 		}
 	}
 
 	/* Send the welcome message */
-	sprintf(pcWelcomePortMessage,"Connected to module %d (%s), port P%d.\n\n\r>",myID,modulePNstring[myPN],PcPort);
-	writePxITMutex(PcPort,pcWelcomeMessage,strlen(pcWelcomeMessage),10);
-	writePxITMutex(PcPort,pcWelcomePortMessage,strlen(pcWelcomePortMessage),10);
+	sprintf(pcWelcomePortMessage,"Connected to module %d (%s), port P%d.\n\n\r>",myID,ModulePNstring[myPN],pcPort);
+	writePxITMutex(pcPort,pcWelcomeMessage,strlen(pcWelcomeMessage),10);
+	writePxITMutex(pcPort,pcWelcomePortMessage,strlen(pcWelcomePortMessage),10);
 
 	for(;;){
 
 		/* Check if a new character has been received.
 		 * Reading only one byte at a time using CLI Flags. */
-		if(Read_In_CLI_Task_Flag == 1){
-			cRxedChar =CLI_Data;
-			CLI_Data =0;
+		if(cliDataInputFlag == 1){
+			cRxedChar =cliData;
+			cliData =0;
 
 			/* Clear the flag to allow new input */
-			Read_In_CLI_Task_Flag =0;
+			cliDataInputFlag =0;
 
 			/* Echo the received character back to the terminal */
-			writePxITMutex(PcPort,&cRxedChar,1,10);
+			writePxITMutex(pcPort,&cRxedChar,1,10);
 
 			switch(cRxedChar){
 				/* If the Enter key is pressed, process the command */
 				case '\r': /* Enter key */
-					writePxITMutex(PcPort,pcNewLine,strlen(pcNewLine),10);
+					writePxITMutex(pcPort,pcNewLine,strlen(pcNewLine),10);
 
 					/* Repeat last command if input is empty */
 					if(cInputIndex == 0){
@@ -106,7 +106,7 @@ void prvCLITask(void *pvParameters){
 					}
 
 					/* Parse the user input and execute the command */
-					CLI_CommandParser(PcPort,true,cInputString,pcOutputString);
+					CLI_CommandParser(pcPort,true,cInputString,pcOutputString);
 
 					/* Store last command for potential reuse */
 					strcpy((char* )cLastInputString,(char* )cInputString);
@@ -148,7 +148,7 @@ void prvCLITask(void *pvParameters){
 /* Hexabitz CLI command parser */
 void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_t *pcOutputString){
 	portBASE_TYPE xReturned;
-	char idString[MaxLengthOfAlias] ={0};
+	char idString[MAX_LENGTH_OF_ALIAS] ={0};
 	char *loc =0;
 	static uint8_t recordSnippet;
 	static uint8_t group;
@@ -224,8 +224,8 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 
 				/* Handle broadcast */
 				else if(id == BOS_BROADCAST){
-					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
-					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+					memset(BroadcastResponse,0x00,sizeof(BroadcastResponse));
+					strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,BOS_BROADCAST,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
 					/* Execute locally */
 					xReturned =FreeRTOS_CLIProcessCommand((const signed char* )(loc + 1),pcOutputString,configCOMMAND_INT_MAX_OUTPUT_SIZE);
@@ -235,8 +235,8 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 				/* Handle multicast */
 				else if((uint8_t )id == BOS_MULTICAST){
 					group =id >> 8;
-					memset(broadcastResponse,0x00,sizeof(broadcastResponse));
-					strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+					memset(BroadcastResponse,0x00,sizeof(BroadcastResponse));
+					strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 					BroadcastMessage(myID,group,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString));		// Send terminating zero
 					/* Do I need to execute locally? */
 					if(InGroup(myID,group))
@@ -253,11 +253,11 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 						SendMessageToModule(id,CODE_UPDATE,0);
 						osDelay(100);
 						/* Execute locally */
-						remoteBootloaderUpdate(myID,id,PcPort,0);
+						RemoteBootloaderUpdate(myID,id,pcPort,0);
 					}
 					else{
 						/* Forward the command */
-						strncpy((char* )messageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
+						strncpy((char* )MessageParams,loc + 1,(size_t )(strlen((char* )cInputString) - strlen((char* )idString) - 1));
 						SendMessageToModule(id,CODE_CLI_COMMAND,strlen((char* )cInputString) - strlen((char* )idString) - 1);
 						sprintf((char* )pcOutputString,"Command forwarded to Module %d\n\r",id);
 
@@ -271,8 +271,8 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 					if(OptionByte.Response == BOS_RESPONSE_ALL){
 						ulTaskNotifyTake(pdTRUE,1000);		//cmd500ms
 						/* If timeout */
-						if(responseStatus != BOS_OK){
-							++timedoutMsg;
+						if(ResponseStatus != BOS_OK){
+							++TimedoutMsg;
 							sprintf((char* )pcOutputString,"%sModule %d is not reachable.\n\r",(char* )pcOutputString,id);
 						}
 					}
@@ -294,7 +294,7 @@ void CLI_CommandParser(uint8_t port,bool enableOutput,int8_t *cInputString,int8_
 		
 	} while(xReturned != pdFALSE);
 	
-	memset(idString,0x00,MaxLengthOfAlias);
+	memset(idString,0x00,MAX_LENGTH_OF_ALIAS);
 	
 	/* Start to transmit a line separator, just to make the output easier to read. */
 	if(!recordSnippet && enableOutput)
@@ -318,13 +318,13 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 	int currentLength =0;
 
 	/* Reference to the last recorded snippet */
-	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets - 1];
+	Snippet_t *currentSnippet =&Snippets[NumOfRecordedSnippets - 1];
 
 	/* Check for codes */
 	switch(code){
 		case SNIPPET_ACTIVATE:
 			/* Activate the last recorded snippet */
-			currentSnippet->state = true;
+			currentSnippet->State = true;
 			/* Save snippet state to read-only memory */
 			SaveSnippetsToRO();
 			break;
@@ -336,35 +336,35 @@ BOS_Status AddSnippet(uint8_t code,char *string){
 			/* Handle adding commands to the snippet */
 		case SNIPPET_COMMANDS:
 			/* Check if a command buffer already exists */
-			if(currentSnippet->cmd != NULL){
+			if(currentSnippet->CMD != NULL){
 				/* Reallocate memory to accommodate the new command */
-				currentLength =strlen(currentSnippet->cmd);
+				currentLength =strlen(currentSnippet->CMD);
 
 				/* Use a temporary pointer to avoid memory leaks in case of allocation failure */
 				/* Add two more bytes for the ENTER key (0x13) and end of string (0x00) */
-				char *temp =(char* )realloc(currentSnippet->cmd,currentLength + strlen(string) + 2);
+				char *temp =(char* )realloc(currentSnippet->CMD,currentLength + strlen(string) + 2);
 
 				if(temp == NULL){
 					return BOS_ERR_SNIP_MEM_FULL;  /* Memory allocation failed */
 				}
 
-				currentSnippet->cmd =temp;
+				currentSnippet->CMD =temp;
 
 				/* Append the new command */
-				*(currentSnippet->cmd + currentLength) =0x13;  /* ENTER key separator (0x13) */
-				strcpy(currentSnippet->cmd + currentLength + 1,string);
+				*(currentSnippet->CMD + currentLength) =0x13;  /* ENTER key separator (0x13) */
+				strcpy(currentSnippet->CMD + currentLength + 1,string);
 			}
 			else{
 				/* Allocate a new buffer for the command */
-				currentSnippet->cmd =(char* )malloc(strlen(string) + 1);
+				currentSnippet->CMD =(char* )malloc(strlen(string) + 1);
 
-				if(currentSnippet->cmd == NULL){
-					memset(currentSnippet,0,sizeof(snippet_t));  /* Reset snippet structure */
+				if(currentSnippet->CMD == NULL){
+					memset(currentSnippet,0,sizeof(Snippet_t));  /* Reset snippet structure */
 					return BOS_ERR_SNIP_MEM_FULL;  /* Memory allocation failed */
 				}
 
 				/* Copy the command into the allocated buffer */
-				strcpy(currentSnippet->cmd,string);
+				strcpy(currentSnippet->CMD,string);
 			}
 			break;
 			
@@ -387,34 +387,34 @@ BOS_Status ParseSnippetCondition(char *string){
 	uint8_t modPar2 =0;
 	static int8_t cInputString[cmdMAX_INPUT_SIZE];
 
-	/* Ensure there is available memory for storing snippets */
-	if(numOfRecordedSnippets >= MAX_SNIPPETS){
+	/* Ensure there is available memory for storing Snippets */
+	if(NumOfRecordedSnippets >= MAX_SNIPPETS){
 		return BOS_ERR_SNIP_MEM_FULL;
 	}
 
 	/* Initialize snippet structure */
-	snippet_t *currentSnippet =&snippets[numOfRecordedSnippets];
-	memset(&currentSnippet->cond,0,sizeof(snippetConditions_t));
+	Snippet_t *currentSnippet =&Snippets[NumOfRecordedSnippets];
+	memset(&currentSnippet->Condition,0,sizeof(SnippetConditions_t));
 	
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
 	/* Check if the condition starts with "bx." (Button event) */
 	if(string[0] == 'b' && string[2] == '.'){
-		if(string[1] >= '0' && (string[1] - '0') < NumOfPorts){
+		if(string[1] >= '0' && (string[1] - '0') < NUM_OF_PORTS){
 			/* Extract the button port */
 			port =string[1] - '0';
-			currentSnippet->cond.conditionType = SNIP_COND_BUTTON_EVENT;
-			currentSnippet->cond.buffer1[0] =port; /* Store button port number */
+			currentSnippet->Condition.ConditionType = SNIP_COND_BUTTON_EVENT;
+			currentSnippet->Condition.Buffer1[0] =port; /* Store button port number */
 
 			/* Store button event type */
 			if(!strncmp(&string[3],"clicked",7)){
-				currentSnippet->cond.buffer1[1] =CLICKED;
-				if(!(button[port].events & BUTTON_EVENT_CLICKED)){
+				currentSnippet->Condition.Buffer1[1] =CLICKED;
+				if(!(Button[port].Event & BUTTON_EVENT_CLICKED)){
 					SetButtonEvents(port,CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
 			else if(!strncmp(&string[3],"double clicked",14)){
-				currentSnippet->cond.buffer1[1] =DBL_CLICKED;
-				if(!(button[port].events & BUTTON_EVENT_DBL_CLICKED)){
+				currentSnippet->Condition.Buffer1[1] =DBL_CLICKED;
+				if(!(Button[port].Event & BUTTON_EVENT_DBL_CLICKED)){
 					SetButtonEvents(port,DBL_CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
@@ -423,7 +423,7 @@ BOS_Status ParseSnippetCondition(char *string){
 			}
 			
 			/* Record snippet */
-			numOfRecordedSnippets++;
+			NumOfRecordedSnippets++;
 
 			return BOS_OK;
 		}
@@ -448,9 +448,9 @@ BOS_Status ParseSnippetCondition(char *string){
 
 	/******************* CONDITION TYPE #2: MODULE EVENT *******************/
 	if(modPar1 && secondPart == NULL && thirdPart == NULL){
-		currentSnippet->cond.conditionType = SNIP_COND_MODULE_EVENT;
-		currentSnippet->cond.buffer1[1] =modPar1;
-		numOfRecordedSnippets++; /* Record snippet */
+		currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_EVENT;
+		currentSnippet->Condition.Buffer1[1] =modPar1;
+		NumOfRecordedSnippets++; /* Record snippet */
 		return BOS_OK;
 	}
 
@@ -460,27 +460,27 @@ BOS_Status ParseSnippetCondition(char *string){
 		
 		if(modPar2){
 			/* CONDITION TYPE #4: Module parameter compared to another parameter */
-			currentSnippet->cond.conditionType = SNIP_COND_MODULE_PARAM_PARAM;
-			currentSnippet->cond.buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
-			currentSnippet->cond.buffer2[1] =modPar2; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_PARAM_PARAM;
+			currentSnippet->Condition.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.Buffer2[1] =modPar2; /* Leaving first buffer byte for remote module ID */
 		}
 		else{
 			/* CONDITION TYPE #3: Module parameter compared to a constant */
-			currentSnippet->cond.conditionType = SNIP_COND_MODULE_PARAM_CONST;
-			currentSnippet->cond.buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
+			currentSnippet->Condition.ConditionType = SNIP_COND_MODULE_PARAM_CONST;
+			currentSnippet->Condition.Buffer1[1] =modPar1; /* Leaving first buffer byte for remote module ID */
 
 			/* Extract the constant */
 			float constant =atof(thirdPart);
-			memcpy(currentSnippet->cond.buffer2,&constant,sizeof(float));
+			memcpy(currentSnippet->Condition.Buffer2,&constant,sizeof(float));
 
 		}
 
 		/* Validate and store the math operator */
-		currentSnippet->cond.mathOperator =IsMathOperator(secondPart);
-		if(!currentSnippet->cond.mathOperator)
+		currentSnippet->Condition.MathOperator =IsMathOperator(secondPart);
+		if(!currentSnippet->Condition.MathOperator)
 			return BOS_ERR_WrongParam;
 
-		numOfRecordedSnippets++; /* Record snippet */
+		NumOfRecordedSnippets++; /* Record snippet */
 		return BOS_OK;
 	}
 	return BOS_ERR_WrongParam;
@@ -495,13 +495,13 @@ bool CheckSnippetCondition(uint8_t index){
 	float flt2 =0.0f;
 	
 	/* Check conditions based on Snippet type */
-	switch(snippets[index].cond.conditionType){
+	switch(Snippets[index].Condition.ConditionType){
 
 		/* Button Event */
 		case SNIP_COND_BUTTON_EVENT:
-			temp8 =snippets[index].cond.buffer1[0]; /* Get button port */
+			temp8 =Snippets[index].Condition.Buffer1[0]; /* Get button port */
 			/* Check if button state matches Snippet button event */
-			if(snippets[index].cond.buffer1[1] == button[temp8].state)
+			if(Snippets[index].Condition.Buffer1[1] == Button[temp8].State)
 				return true;
 			else
 				return false;
@@ -514,12 +514,12 @@ bool CheckSnippetCondition(uint8_t index){
 		/* Module Parameter Compared to Constant */
 		case SNIP_COND_MODULE_PARAM_CONST:
 			/* Get the module parameter value */
-			GetModuleParameter(snippets[index].cond.buffer1[1] , &flt1);
+			GetModuleParameter(Snippets[index].Condition.Buffer1[1] , &flt1);
 			/* This buffer can be misaligned and cause hardfault */
-			memcpy((uint8_t* )&flt2,&snippets[index].cond.buffer2,sizeof(float));
+			memcpy((uint8_t* )&flt2,&Snippets[index].Condition.Buffer2,sizeof(float));
 
 			/* Perform mathematical comparison */
-			switch(snippets[index].cond.mathOperator){
+			switch(Snippets[index].Condition.MathOperator){
 				case MATH_EQUAL:
 					if(flt1 == flt2)
 						return true;
@@ -573,19 +573,19 @@ BOS_Status ExecuteSnippet(void){
 	 * only one command console interface will be active at a time. */
 	pcOutputString =FreeRTOS_CLIGetOutputBuffer();
 	
-	/* Loop through all recorded snippets */
-	for(snippetIndex =0; snippetIndex < numOfRecordedSnippets; snippetIndex++){
-		/* Process only active snippets */
-		if(snippets[snippetIndex].state){
+	/* Loop through all recorded Snippets */
+	for(snippetIndex =0; snippetIndex < NumOfRecordedSnippets; snippetIndex++){
+		/* Process only active Snippets */
+		if(Snippets[snippetIndex].State){
 			/* Process Snippet condition */
 			if(CheckSnippetCondition(snippetIndex)){
 				/* Disable CLI response to prevent unnecessary output */
 				OptionByte.Response = BOS_RESPONSE_MSG;
 
 				/* Loop over all recorded commands within the snippet */
-				while(ParseSnippetCommand(snippets[snippetIndex].cmd,(int8_t* )&cInputString) != false){
+				while(ParseSnippetCommand(Snippets[snippetIndex].CMD,(int8_t* )&cInputString) != false){
 					/* Pass the parsed command to the CLI command parser */
-					CLI_CommandParser(PcPort,false,cInputString,pcOutputString);
+					CLI_CommandParser(pcPort,false,cInputString,pcOutputString);
 					
 					/* Clear output buffer since we do not need it. Input buffer is cleared in  CLI_CommandParser */
 					memset(pcOutputString,0x00,strlen((char* )pcOutputString));
@@ -606,7 +606,7 @@ bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
 	static char *ptrEnd = NULL;
 
 	/* Return false if the snippet command buffer is NULL */
-	if(snippets[numOfRecordedSnippets - 1].cmd == NULL)
+	if(Snippets[NumOfRecordedSnippets - 1].CMD == NULL)
 		return false;
 
 	/* Initialize ptrStart if it's the first call */
@@ -643,3 +643,4 @@ bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer){
 	return true;
 }
 /***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/
