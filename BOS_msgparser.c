@@ -863,16 +863,16 @@ void PxMessagingTask(void *argument){
 						}
 						else if(cMessage[port - 1][shift] >= REMOTE_BOS_VAR) /* request for a BOS var */
 						{
-							MessageParams[0] =bosVarRegister[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F; // send variable format (lower 4 bits)
+							MessageParams[0] =bosVarRegister[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] & 0x000F; /* send variable format (lower 4 bits) */
 							/* Variable does not exist */
 							if(MessageParams[0] == 0){
 								SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,1);
 							}
 							else{
-// Variable exists. Get its memory address
-								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE/* + 0x10000*/;
-// Send variable according to its format
-								switch(messageParams[0]) // requested format
+                                /* Variable exists. Get its memory address */
+								temp32 =(bosVarRegister[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE; /* + 0x10000*/
+                                /* Send variable according to its format */
+								switch(MessageParams[0]) // requested format
 								{
 									case FMT_BOOL:
 									case FMT_UINT8:
@@ -1027,9 +1027,9 @@ void PxMessagingTask(void *argument){
 						{
 							/* Check variable index is within the limit of MAX_BOS_VARS */
 							if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
-								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE/* + 0x10000*/; // Get var memory addres
-//								temp32 =(BOS_var_reg[cMessage[port - 1][shift] - REMOTE_BOS_VAR - 1] >> 16) + SRAM_BASE + 0x10000;
-// Modify the variable or create a new one if it does not exist
+								/* Get var memory address */
+								temp32 =(bosVarRegister[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE; /* + 0x10000*/
+                                /* Modify the variable or create a new one if it does not exist */
 								switch(cMessage[port - 1][1 + shift]) // requested format
 								{
 									case FMT_BOOL:
