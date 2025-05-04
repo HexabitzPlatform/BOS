@@ -399,7 +399,7 @@ BOS_Status ParseSnippetCondition(char *string){
 	/******************* CONDITION TYPE #1: BUTTON EVENT *******************/
 	/* Check if the condition starts with "bx." (Button event) */
 	if(string[0] == 'b' && string[2] == '.'){
-		if(string[1] >= '0' && (string[1] - '0') < NUM_OF_PORTS){
+		if(string[1] >= '0' && (string[1] - '0') <= NUM_OF_PORTS){
 			/* Extract the button port */
 			port =string[1] - '0';
 			currentSnippet->Condition.ConditionType = SNIP_COND_BUTTON_EVENT;
