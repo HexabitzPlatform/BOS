@@ -109,18 +109,9 @@
 #define CODE_H07R8_AMP_DIS_SHUTDOWN           387
 
 // H08R7x
-#define CODE_H08R7_GET_INFO                   400
-#define CODE_H08R7_SAMPLE_PORT                401
-#define CODE_H08R7_STREAM_PORT                402
-#define CODE_H08R7_STREAM_MEM                 403
-#define CODE_H08R7_RESULT_MEASUREMENT         404
-#define CODE_H08R7_STOP_RANGING               405
-#define CODE_H08R7_SET_UNIT                   406
-#define CODE_H08R7_GET_UNIT                   407
-#define CODE_H08R7_RESPOND_GET_UNIT           408
-#define CODE_H08R7_MAX_RANGE                  409
-#define CODE_H08R7_MIN_RANGE                  410
-#define CODE_H08R7_TIMEOUT                	  411
+#define CODE_H08R7_SAMPLE_PORT                400
+
+
 
 // P08R7
 #define CODE_P08R7_GET_INFO                   420
