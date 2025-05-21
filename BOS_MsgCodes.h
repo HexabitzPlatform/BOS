@@ -275,11 +275,9 @@
 #define CODE_H15R0_AnalogPercentage           1950
 #define CODE_H15R0_AnalogOutValue             1951
 //H2AR3
-#define CODE_H2AR3_SAMPLE_V                   2100
-#define CODE_H2AR3_SAMPLE_A				      2101
-#define CODE_H2AR3_STREAM_V		              2102
-#define CODE_H2AR3_STREAM_A		              2103
-#define CODE_H2AR3_STOP                       2104
+#define CODE_H2AR3_SAMPLE_VOLT                   2100
+#define CODE_H2AR3_SAMPLE_CURR				      2101
+
 
 // H2BR0x  and H2BR1x
 #define CODE_H2BR0_ECG_Sample                 2150
