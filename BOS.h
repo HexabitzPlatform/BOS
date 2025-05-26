@@ -74,7 +74,7 @@ enum ModulePartNumbers_e {
 	_H18R0, _H26R0, _H15R0, _H10R4, _H2AR3, _H41R6, _H3BR6,
 	_H18R1, _H1FR5, _H3BR2, _H21R2, _H17R1, _H15R8, _H2BR0,
 	_H05R0, _H3BR7, _H2BR1, _H07R8, _H08R7, _H16R6, _P08R7,
-	_H19R0
+	_H19R0 , _RPI
 };
 
 /* LED indicator modes */
@@ -345,7 +345,7 @@ typedef struct {
 #define SNIP_COND_MODULE_PARAM_PARAM         4
 
 /* BOS Parameters and Constants */
-#define NUM_OF_MODULE_PN                     46 /* Number of Modules */
+#define NUM_OF_MODULE_PN                     47 /* Number of Modules */
 #define P_LAST                               NUM_OF_PORTS
 #define MAX_MESSAGE_SIZE                     56 /* Max Number of Bytes in One Message */
 #define MAX_PARAMS_PER_MESSAGE               (MAX_MESSAGE_SIZE - 10) /* Calculated max params per message */
