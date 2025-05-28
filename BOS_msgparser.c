@@ -355,7 +355,7 @@ void PxMessagingTask(void *argument){
 	uint16_t longMessageLastPtr =0;
 	uint16_t code;
 	uint32_t count, timeout, temp32;
-
+	uint16_t messageCode ;
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -1028,7 +1028,7 @@ void PxMessagingTask(void *argument){
 							/* Check variable index is within the limit of MAX_BOS_VARS */
 							if(cMessage[port - 1][shift] <= MAX_BOS_VARS){
 								/* Get var memory address */
-								temp32 =(bosVarRegister[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE+0x10000; // Get var memory addres
+                                temp32 =(bosVarRegister[cMessage[port - 1][shift] - 1] >> 16) + SRAM_BASE+0x10000; // Get var memory addres
                                 /* Modify the variable or create a new one if it does not exist */
 								switch(cMessage[port - 1][1 + shift]) // requested format
 								{
@@ -1359,6 +1359,8 @@ void PxMessagingTask(void *argument){
 
 					case CODE_READ_RESPONSE:
 						RemoteResponseFlag =1;
+					    /* Message code stored in bytes [3 + shift, 4 + shift], dedicated for Arduino and Raspberry Pi */
+						messageCode  = ((uint16_t)cMessage[port - 1][3 + shift] << 0) | ((uint16_t)cMessage[port - 1][4 + shift] << 8);
 
 						switch(cMessage[port - 1][shift]){
 							case 0:
@@ -1370,96 +1372,122 @@ void PxMessagingTask(void *argument){
 									result =BOS_ERROR;
 								break;
 
-							case FMT_BOOL:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
-								}
-								else
-									result =BOS_ERROR;
-								break;
+					case FMT_BOOL:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = (uint32_t) cMessage[port - 1][5 + shift];
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-							case FMT_UINT8:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
-									RemoteResponseBuffer[1] =(uint32_t )cMessage[port - 1][4 + shift];
-									RemoteResponseBuffer[2] =(uint32_t )cMessage[port - 1][5 + shift];
+					case FMT_UINT8:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = (uint32_t) cMessage[port - 1][5 + shift];
+							((uint32_t*) RemoteResponseBuffer)[1] = (uint32_t) cMessage[port - 1][6 + shift];
+							((uint32_t*) RemoteResponseBuffer)[2] = (uint32_t) cMessage[port - 1][7 + shift];
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-								}
-								else
-									result =BOS_ERROR;
-								break;
+					case FMT_INT8:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = (uint32_t) cMessage[port - 1][5 + shift];
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-							case FMT_INT8:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =(uint32_t )cMessage[port - 1][3 + shift];
+					case FMT_UINT16:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][6 + shift] << 8);
+							((uint32_t*) RemoteResponseBuffer)[1] = ((uint32_t) cMessage[port - 1][7 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][8 + shift] << 8);
+							((uint32_t*) RemoteResponseBuffer)[2] = ((uint32_t) cMessage[port - 1][9 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][10 + shift] << 8);
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-								}
-								else
-									result =BOS_ERROR;
-								break;
+					case FMT_INT16:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][6 + shift] << 8);
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-							case FMT_UINT16:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8);
-									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][5 + shift] << 0) + ((uint32_t )cMessage[port - 1][6 + shift] << 8);
-									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][7 + shift] << 0) + ((uint32_t )cMessage[port - 1][8 + shift] << 8);
+					case FMT_UINT32:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][6 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][7 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][8 + shift] << 24);
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
-								}
-								else
-									result =BOS_ERROR;
-								break;
-
-							case FMT_INT16:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8);
-								}
-								else
-									result =BOS_ERROR;
-								break;
-
-							case FMT_UINT32:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + ((uint32_t )cMessage[port - 1][5 + shift] << 16) + ((uint32_t )cMessage[port - 1][6 + shift] << 24);
-
-								}
-								else
-									result =BOS_ERROR;
-								break;
-
-							case FMT_INT32:
-								if(BOS_OK == cMessage[port - 1][1 + shift]){
-									result =BOS_OK;
-									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) + ((uint32_t )cMessage[port - 1][4 + shift] << 8) + ((uint32_t )cMessage[port - 1][5 + shift] << 16) + ((uint32_t )cMessage[port - 1][6 + shift] << 24);
-									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);
-									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][11 + shift] << 0) | ((uint32_t )cMessage[port - 1][12 + shift] << 8) | ((uint32_t )cMessage[port - 1][13 + shift] << 16) | ((uint32_t )cMessage[port - 1][14 + shift] << 24);
-									RemoteResponseBuffer[3] =((uint32_t )cMessage[port - 1][15 + shift] << 0) | ((uint32_t )cMessage[port - 1][16 + shift] << 8) | ((uint32_t )cMessage[port - 1][17 + shift] << 16) | ((uint32_t )cMessage[port - 1][18 + shift] << 24);
-								}
-								else
-									result =BOS_ERROR;
-								break;
+					case FMT_INT32:
+						if (BOS_OK == cMessage[port - 1][1 + shift]) {
+							result = BOS_OK;
+							NumOfElement = cMessage[port - 1][2 + shift];
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							((uint32_t*) RemoteResponseBuffer)[0] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][6 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][7 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][8 + shift] << 24);
+							((uint32_t*) RemoteResponseBuffer)[1] = ((uint32_t) cMessage[port - 1][9 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][10 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][11 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][12 + shift] << 24);
+							((uint32_t*) RemoteResponseBuffer)[2] = ((uint32_t) cMessage[port - 1][13 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][14 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][15 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][16 + shift] << 24);
+						} else {
+							result = BOS_ERROR;
+						}
+						break;
 
 							case FMT_FLOAT:
 								if(BOS_OK == cMessage[port - 1][1 + shift]){
 									result =BOS_OK;
 									NumOfElement =cMessage[port - 1][2 + shift];
-									RemoteResponseBuffer[0] =((uint32_t )cMessage[port - 1][3 + shift] << 0) | ((uint32_t )cMessage[port - 1][4 + shift] << 8) | ((uint32_t )cMessage[port - 1][5 + shift] << 16) | ((uint32_t )cMessage[port - 1][6 + shift] << 24);
-									RemoteResponseBuffer[1] =((uint32_t )cMessage[port - 1][7 + shift] << 0) | ((uint32_t )cMessage[port - 1][8 + shift] << 8) | ((uint32_t )cMessage[port - 1][9 + shift] << 16) | ((uint32_t )cMessage[port - 1][10 + shift] << 24);
-									RemoteResponseBuffer[2] =((uint32_t )cMessage[port - 1][11 + shift] << 0) | ((uint32_t )cMessage[port - 1][12 + shift] << 8) | ((uint32_t )cMessage[port - 1][13 + shift] << 16) | ((uint32_t )cMessage[port - 1][14 + shift] << 24);
-									RemoteResponseBuffer[3] =((uint32_t )cMessage[port - 1][15 + shift] << 0) | ((uint32_t )cMessage[port - 1][16 + shift] << 8) | ((uint32_t )cMessage[port - 1][17 + shift] << 16) | ((uint32_t )cMessage[port - 1][18 + shift] << 24);
-								}
+							/* Skip command code bytes [3 + shift, 4 + shift] */
+							RemoteResponseBuffer[0] = ((uint32_t) cMessage[port - 1][5 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][6 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][7 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][8 + shift] << 24);
+							RemoteResponseBuffer[1] = ((uint32_t) cMessage[port - 1][9 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][10 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][11 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][12 + shift] << 24);
+							RemoteResponseBuffer[2] = ((uint32_t) cMessage[port - 1][13 + shift] << 0)
+									| ((uint32_t) cMessage[port - 1][14 + shift] << 8)
+									| ((uint32_t) cMessage[port - 1][15 + shift] << 16)
+									| ((uint32_t) cMessage[port - 1][16 + shift] << 24);		}
 								else
 									result =BOS_ERROR;
 								break;
