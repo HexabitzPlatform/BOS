@@ -290,12 +290,9 @@
 #define CODE_H2BR0_EOG_CheckEyeBlink          2157
 #define CODE_H2BR0_LeadsStatus                2158
 
-
-
+// H2BR1
 #define CODE_H2BR1_HR_Sample                  2175
 #define CODE_H2BR1_SPO2_Sample                2176
-#define CODE_H2BR1_FingerState                2177
-
 
 // H1DR1x
 #define CODE_H1DR1_MODE                       2900
