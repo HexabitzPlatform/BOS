@@ -84,8 +84,10 @@
 #define CODE_H05R0_CELLPOWER				  252
 #define CODE_H05R0_CELLTEMPERATURE			  253
 #define CODE_H05R0_CELLCAPACITY				  254
+#define CODE_H05R0_SOC    		        	  255
 #define CODE_H05R0_CELLAGE					  258
 #define CODE_H05R0_CELLCYCLES    			  259
+
 
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				  350
