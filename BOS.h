@@ -721,7 +721,7 @@ extern BOS_Status SendMessageToModule(uint8_t dst, uint16_t code, uint16_t numbe
 extern BOS_Status SendMessageToGroup(char *group, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status SendMessageFromPort(uint8_t port, uint8_t src, uint8_t dst, uint16_t code, uint16_t numberOfParams);
 extern BOS_Status BroadcastMessage(uint8_t src, uint8_t dstGroup, uint16_t code, uint16_t numberOfParams);
-extern BOS_Status ReadDataFromSensorModule(uint8_t disModuleID, uint16_t code, uint32_t *pDataReceived, uint16_t timeout);
+extern BOS_Status SendDataRequestToModule(uint8_t disModuleID, uint16_t code, uint32_t *pDataReceived, uint16_t timeout);
 
 /* ============================ DMA Stream APIs ============================ */
 extern BOS_Status StreamPortToPort(uint8_t srcP, uint8_t srcM, uint8_t dstP, uint8_t dstM, uint8_t direction, uint32_t size, uint32_t timeout, bool stored);
