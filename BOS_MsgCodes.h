@@ -134,8 +134,6 @@
 
 //H09R9
 #define CODE_H09R9_SAMPLE_TEMP                475
-#define CODE_H09R9_STREAM_TEMP                476
-#define CODE_H09R9_STREAM_STOP                477
 
 /* H0AR9 */
 #define CODE_H0AR9_SAMPLE_COLOR               500
