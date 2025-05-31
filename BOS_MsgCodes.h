@@ -188,44 +188,43 @@
 #define CODE_H16R6_CROSSFADEMODEALLLEDRGB     1115
 //#define CODE_H16R6_SPRINKLEMODE               1116
 // H17R1x
-#define CODE_H17R1_StepperIcInit              1150
-#define CODE_H17R1_STEPPER_MOVE               1151
-#define CODE_H17R1_StepperRun                 1152
-#define CODE_H17R1_StepperStop                1153
+#define CODE_H17R1_STEPPERICINIT              1150
+#define CODE_H17R1_STEPPERMOVE                1151
+#define CODE_H17R1_STEPPERRUN                 1152
+#define CODE_H17R1_STEPPERSTOP                1153
 
 //H18R1
-#define CODE_H18R1_Turn_ON					  1200
-#define CODE_H18R1_Turn_OFF					  1201
-#define CODE_H18R1_Turn_PWM					  1202
+#define CODE_H18R1_TURNON                     1200
+#define CODE_H18R1_TURNOFF                    1201
+#define CODE_H18R1_TURNPWM                    1202
 
 //H1AR0
-#define CODE_H1AR0_Transmit_Data			  1300
+#define CODE_H1AR0_Transmit_Data              1300
 
 // H1BR6x
-#define CODE_H1BR6_READ_WAVE            	  1350
-#define CODE_H1BR6_SCAN_WAVE			   	  1351
+#define CODE_H1BR6_READ_WAVE                  1350
+#define CODE_H1BR6_SCAN_WAVE                  1351
 
 // H10R4x
-#define CODE_H10R4_STOP						  1360
-#define CODE_H10R4_STREAM_PORT				  1361
-#define CODE_H10R4_STREAM_CLI				  1362
-#define CODE_H10R4_STREAM_RAW				  1363
-#define CODE_H10R4_STREAM_VARIANT			  1364
-#define CODE_H10R4_STREAM_BUFFER			  1365
-#define CODE_H10R4_STREAM_TYPE				  1366
+#define CODE_H10R4_STOP                       1360
+#define CODE_H10R4_STREAM_PORT                1361
+#define CODE_H10R4_STREAM_CLI                 1362
+#define CODE_H10R4_STREAM_RAW                 1363
+#define CODE_H10R4_STREAM_VARIANT             1364
+#define CODE_H10R4_STREAM_BUFFER              1365
+#define CODE_H10R4_STREAM_TYPE                1366
 
 //H1DR5x
-#define CODE_H1DR5_EthernetSendData			  1450
+#define CODE_H1DR5_ETHERNETSENDDATA           1450
 //#define CODE_H1DR5_Ethernet_Receive_Data    1451
-#define CODE_H1DR5_SetLocalIP	              1452
-#define CODE_H1DR5_SetRemoteIP             	  1453
-#define CODE_H1DR5_SetSubnetMask    		  1454
-#define CODE_H1DR5_SetLocalPORT           	  1455
-#define CODE_H1DR5_SetRemotePORT	          1456
-#define CODE_H1DR5_SetRemoteIPRemoteMAC       1457
-#define CODE_H1DR5_DefaultValues              1458
-/* Receiving the Defalt_Value for the H1DR5 module */
-#define CODE_H1DR5_receive_Defalt_Value       1459
+#define CODE_H1DR5_SETLOCALIP                 1452
+#define CODE_H1DR5_SETREMOTEIP                1453
+#define CODE_H1DR5_SETSUBNETMASK              1454
+#define CODE_H1DR5_SETLOCALPORT               1455
+#define CODE_H1DR5_SETREMOTEPORT              1456
+#define CODE_H1DR5_SETREMOTEIPREMOTEMAC       1457
+#define CODE_H1DR5_DEFAULTVALUES              1458
+#define CODE_H1DR5_RECEIVEDEFAULTVALUE        1459
 
 // H1FR5x
 #define CODE_H1FR5_GET_POSITION               1550
@@ -249,11 +248,11 @@
 #define CODE_H23Rx_SCAN_INQUIRE               1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
 #define CODE_H23Rx_DISCONNECT_INQUIRE         1702
-#define CODE_H23Rx_CLEAR_USER_BUFFER		  1703
-#define CODE_H23Rx_SEND_DATA		 		  1704
-#define CODE_H23Rx_SET_NAME					  1705
-#define CODE_H23Rx_SET_DISCOVERABLE			  1706
-#define CODE_H23Rx_STREAM_TO_PORT			  1707
+#define CODE_H23Rx_CLEAR_USER_BUFFER          1703
+#define CODE_H23Rx_SEND_DATA                  1704
+#define CODE_H23Rx_SET_NAME                   1705
+#define CODE_H23Rx_SET_DISCOVERABLE           1706
+#define CODE_H23Rx_STREAM_TO_PORT             1707
 
 // H26R0x
 #define CODE_H26R0_SET_RATE                   1900
@@ -275,8 +274,8 @@
 #define CODE_H15R0_AnalogPercentage           1950
 #define CODE_H15R0_AnalogOutValue             1951
 //H2AR3
-#define CODE_H2AR3_SAMPLE_VOLT                   2100
-#define CODE_H2AR3_SAMPLE_CURR				      2101
+#define CODE_H2AR3_SAMPLE_VOLT                2100
+#define CODE_H2AR3_SAMPLE_CURR				  2101
 
 
 // H2BR0x  and H2BR1x

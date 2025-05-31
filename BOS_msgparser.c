@@ -464,7 +464,7 @@ void PxMessagingTask(void *argument){
 						ResponseStatus =BOS_OK;
 						break;
 
-					case CODE_H1DR5_receive_Defalt_Value:
+					case CODE_H1DR5_DEFAULTVALUES:
 						EthernetDefaultSetting.Local_mac_addr[0] =cMessage[port - 1][0 + shift];
 						EthernetDefaultSetting.Local_mac_addr[1] =cMessage[port - 1][1 + shift];
 						EthernetDefaultSetting.Local_mac_addr[2] =cMessage[port - 1][2 + shift];
