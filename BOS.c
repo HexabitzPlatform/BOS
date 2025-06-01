@@ -1900,9 +1900,13 @@ uint32_t* ReadRemoteVar(uint8_t module,uint32_t remoteVarAddress,VariableFormat_
 	MessageParams[0] =remoteVarAddress + REMOTE_BOS_VAR; // Send BOS variable index
 	SendMessageToModule(module,CODE_READ_REMOTE,1);
 	
-	/* Wait until read is complete */
-	uint32_t t0 =HAL_GetTick();
-	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+//	/* Wait until read is complete */
+//	uint32_t t0 =HAL_GetTick();
+//	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+//	};
+	uint32_t startTime = xTaskGetTickCount();
+
+	while ((ResponseStatus != BOS_OK) && (xTaskGetTickCount() - startTime) < pdMS_TO_TICKS(timeout)){
 	};
 	
 	/* Return the read value address */
