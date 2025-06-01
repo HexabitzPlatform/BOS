@@ -170,33 +170,34 @@
 #define	CODE_H0FR7_STOP_MEASUREMENT			  777
 
 // H16R6x
-#define CODE_H16R6_SETCOLOR                   1100
-#define CODE_H16R6_SETALLCOLOR                1101
-#define CODE_H16R6_SETRGB                     1102
-#define CODE_H16R6_SETALLRGB                  1103
-#define CODE_H16R6_SETLEDOFF                  1104
-#define CODE_H16R6_SETALLLEDOFF               1105
-#define CODE_H16R6_SETLEDON                   1106
-#define CODE_H16R6_SETALLLEDON                1107
-#define CODE_H16R6_SCROLLMODE                 1108
-#define CODE_H16R6_FLASHMODE                  1109
-#define CODE_H16R6_COLORPICKERMODE            1110
-#define CODE_H16R6_SETCOLORSOMELED            1111
-#define CODE_H16R6_MOTIONMODE                 1112
-#define CODE_H16R6_CROSSFADEMODE              1113
-#define CODE_H16R6_CROSSFADEMODELEDRGB        1114
-#define CODE_H16R6_CROSSFADEMODEALLLEDRGB     1115
-//#define CODE_H16R6_SPRINKLEMODE               1116
+#define CODE_H16R6_SET_COLOR                  1100
+#define CODE_H16R6_SET_ALL_COLOR              1101
+#define CODE_H16R6_SET_RGB                    1102
+#define CODE_H16R6_SET_ALL_RGB                1103
+#define CODE_H16R6_SET_LED_OFF                1104
+#define CODE_H16R6_SET_ALL_LED_OFF            1105
+#define CODE_H16R6_SET_LED_ON                 1106
+#define CODE_H16R6_SET_ALL_LED_ON             1107
+#define CODE_H16R6_SCROLL_MODE                1108
+#define CODE_H16R6_FLASH_MODE                 1109
+#define CODE_H16R6_COLOR_PICKER_MODE          1110
+#define CODE_H16R6_SET_COLOR_SOME_LED         1111
+#define CODE_H16R6_MOTION_MODE                1112
+#define CODE_H16R6_CROSS_FADE_MODE            1113
+#define CODE_H16R6_CROSS_FADE_MODE_LED_RGB    1114
+#define CODE_H16R6_CROSS_FADE_MODE_ALL_LED_RGB 1115
+//#define CODE_H16R6_SPRINKLEMODE             1116
+
 // H17R1x
-#define CODE_H17R1_STEPPERICINIT              1150
-#define CODE_H17R1_STEPPERMOVE                1151
-#define CODE_H17R1_STEPPERRUN                 1152
-#define CODE_H17R1_STEPPERSTOP                1153
+#define CODE_H17R1_STEPPER_IC_INIT            1150
+#define CODE_H17R1_STEPPER_MOVE               1151
+#define CODE_H17R1_STEPPER_RUN                1152
+#define CODE_H17R1_STEPPER_STOP               1153
 
 //H18R1
-#define CODE_H18R1_TURNON                     1200
-#define CODE_H18R1_TURNOFF                    1201
-#define CODE_H18R1_TURNPWM                    1202
+#define CODE_H18R1_TURN_ON                    1200
+#define CODE_H18R1_TURN_OFF                   1201
+#define CODE_H18R1_TURN_PWM                   1202
 
 //H1AR0
 #define CODE_H1AR0_Transmit_Data              1300
@@ -215,16 +216,16 @@
 #define CODE_H10R4_STREAM_TYPE                1366
 
 //H1DR5x
-#define CODE_H1DR5_ETHERNETSENDDATA           1450
+#define CODE_H1DR5_ETHERNET_SEND_DATA         1450
 //#define CODE_H1DR5_Ethernet_Receive_Data    1451
-#define CODE_H1DR5_SETLOCALIP                 1452
-#define CODE_H1DR5_SETREMOTEIP                1453
-#define CODE_H1DR5_SETSUBNETMASK              1454
-#define CODE_H1DR5_SETLOCALPORT               1455
-#define CODE_H1DR5_SETREMOTEPORT              1456
-#define CODE_H1DR5_SETREMOTEIPREMOTEMAC       1457
-#define CODE_H1DR5_DEFAULTVALUES              1458
-#define CODE_H1DR5_RECEIVEDEFAULTVALUE        1459
+#define CODE_H1DR5_SET_LOCAL_IP               1452
+#define CODE_H1DR5_SET_REMOTE_IP              1453
+#define CODE_H1DR5_SET_SUBNET_MASK            1454
+#define CODE_H1DR5_SET_LOCAL_PORT             1455
+#define CODE_H1DR5_SET_REMOTE_PORT            1456
+#define CODE_H1DR5_SET_REMOTE_IP_REMOTE_MAC   1457
+#define CODE_H1DR5_DEFAULT_VALUES             1458
+#define CODE_H1DR5_RECEIVE_DEFAULT_VALUE      1459
 
 // H1FR5x
 #define CODE_H1FR5_GET_POSITION               1550
@@ -245,7 +246,7 @@
 #define CODE_H21R2_ESP_WRITE_TO_CLIENT        1659
 
 // H23R0x and H23R3x
-#define CODE_H23Rx_SCAN_INQUIRE               1700
+#define CODE_H23Rx_SCAN_INQUIRE              1700
 #define CODE_H23Rx_CONNECT_INQUIRE            1701
 #define CODE_H23Rx_DISCONNECT_INQUIRE         1702
 #define CODE_H23Rx_CLEAR_USER_BUFFER          1703
@@ -261,11 +262,12 @@
 #define CODE_H26R0_STREAM_PORT_OUNCE          1903
 #define CODE_H26R0_STREAM_PORT_POUND          1904
 #define CODE_H26R0_STOP                       1905
-#define CODE_H26R0_SAMPLE_PORT_GRAM           1906
-#define CODE_H26R0_SAMPLE_PORT_KGRAM          1907
+#define CODE_H26R0_STREAM_PORT                    6
+#define CODE_H26R0_SAMPLE_PORT_GRAM         1906
+#define CODE_H26R0_SAMPLE_PORT_KGRAM         1907
 #define CODE_H26R0_SAMPLE_PORT_OUNCE          1908
-#define CODE_H26R0_SAMPLE_PORT_POUND          1909
-#define CODE_H26R0_ZEROCAL                	  1910
+#define CODE_H26R0_SAMPLE_PORT_POUND         1909
+#define CODE_H26R0_ZEROCAL                    1910
 #define CODE_H26R0_STREAM_RAW                 1911
 #define CODE_H26R0_SAMPLE_RAW                 1912
 #define CODE_H26R0_STREAM_FORMAT              1913
@@ -273,56 +275,56 @@
 // H15R0x
 #define CODE_H15R0_AnalogPercentage           1950
 #define CODE_H15R0_AnalogOutValue             1951
+
 //H2AR3
 #define CODE_H2AR3_SAMPLE_VOLT                2100
-#define CODE_H2AR3_SAMPLE_CURR				  2101
+#define CODE_H2AR3_SAMPLE_CURR                2101
 
-
-// H2BR0x  and H2BR1x
-#define CODE_H2BR0_ECG_Sample                 2150
-#define CODE_H2BR0_EOG_Sample                 2151
-#define CODE_H2BR0_EEG_Sample                 2152
-#define CODE_H2BR0_EMG_Sample                 2153
-#define CODE_H2BR0_EMG_SetThreshold           2154
-#define CODE_H2BR0_EMG_CheckPulse             2155
-#define CODE_H2BR0_ECG_HeartRate              2156
-#define CODE_H2BR0_EOG_CheckEyeBlink          2157
-#define CODE_H2BR0_LeadsStatus                2158
+// H2BR0x and H2BR1x
+#define CODE_H2BR0_ECG_SAMPLE                 2150
+#define CODE_H2BR0_EOG_SAMPLE                 2151
+#define CODE_H2BR0_EEG_SAMPLE                 2152
+#define CODE_H2BR0_EMG_SAMPLE                 2153
+#define CODE_H2BR0_EMG_SET_THRESHOLD          2154
+#define CODE_H2BR0_EMG_CHECK_PULSE            2155
+#define CODE_H2BR0_ECG_HEART_RATE             2156
+#define CODE_H2BR0_EOG_CHECK_EYE_BLINK        2157
+#define CODE_H2BR0_LEADS_STATUS               2158
 
 // H2BR1
-#define CODE_H2BR1_HR_Sample                  2175
-#define CODE_H2BR1_SPO2_Sample                2176
+#define CODE_H2BR1_HR_SAMPLE                  2175
+#define CODE_H2BR1_SPO2_SAMPLE                2176
 
 // H1DR1x
-#define CODE_H1DR1_MODE                       2900
-#define CODE_H1DR1_READ                       2901
-#define CODE_H1DR1_WRITE                      2902
-#define CODE_H1DR1_MULTIWRITE                 2903
-#define CODE_H1DR1_STIMEOUT                   2904
+#define CODE_H1DR1_MODE                   2900
+#define CODE_H1DR1_READ                   2901
+#define CODE_H1DR1_WRITE                   2902
+#define CODE_H1DR1_MULTIWRITE                   2903
+#define CODE_H1DR1_STIMEOUT                 2904
 
 //H12R0x
-#define CODE_H12R0_STREAM_PORT                2905
-#define CODE_H12R0_STOP          		      2906
-#define CODE_H12R0_SAMPLE          		      2907
+#define CODE_H12R0_STREAM_PORT               2905
+#define CODE_H12R0_STOP                     2906
+#define CODE_H12R0_SAMPLE                   2907
 
 //H3BR6 and H3BR7
-#define CODE_H3BRx_SevenDisplayNumber          2950
-#define CODE_H3BRx_SevenDisplayNumberF         2951
-#define CODE_H3BRx_SevenDisplayQuantities      2952
-#define CODE_H3BRx_SevenDisplayLetter          2953
-#define CODE_H3BRx_SevenDisplaySentence        2954
-#define CODE_H3BRx_SevenDisplayMovingSentence  2955
-#define CODE_H3BRx_SevenDisplayOff             2956
-#define CODE_H3BRx_SetIndicator                2957
-#define CODE_H3BRx_ClearIndicator              2958
+#define CODE_H3BRX_SEVEN_DISPLAY_NUMBER          2950
+#define CODE_H3BRX_SEVEN_DISPLAY_NUMBER_F        2951
+#define CODE_H3BRX_SEVEN_DISPLAY_QUANTITIES      2952
+#define CODE_H3BRX_SEVEN_DISPLAY_LETTER          2953
+#define CODE_H3BRX_SEVEN_DISPLAY_SENTENCE        2954
+#define CODE_H3BRX_SEVEN_DISPLAY_MOVING_SENTENCE 2955
+#define CODE_H3BRX_SEVEN_DISPLAY_OFF             2956
+#define CODE_H3BRX_SET_INDICATOR                 2957
+#define CODE_H3BRX_CLEAR_INDICATOR               2958
 
 // H3BR2x
-#define CODE_H3BR2_SevenDisplayNumber          2975
-#define CODE_H3BR2_SevenDisplayNumberHexa      2976
-#define CODE_H3BR2_SevenDisplayOneDigit        2977
-#define CODE_H3BR2_SevenDisplayOneDigitHexa    2978
-#define CODE_H3BR2_SevenDisplayOff             2979
-#define CODE_H3BR2_SevenDisplayNumberF         2980
+#define CODE_H3BR2_SEVEN_DISPLAY_NUMBER          2975
+#define CODE_H3BR2_SEVEN_DISPLAY_NUMBER_HEXA     2976
+#define CODE_H3BR2_SEVEN_DISPLAY_ONE_DIGIT       2977
+#define CODE_H3BR2_SEVEN_DISPLAY_ONE_DIGIT_HEXA  2978
+#define CODE_H3BR2_SEVEN_DISPLAY_OFF             2979
+#define CODE_H3BR2_SEVEN_DISPLAY_NUMBER_F        2980
 
 #endif /* BOS_MSGCODES_H */
 
