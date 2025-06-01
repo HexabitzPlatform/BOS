@@ -637,7 +637,8 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	
 	/* Reset ResponseStatus in case response is expected
 	 * TODO should be tailored for each port */
-	ResponseStatus =BOS_ERR_NoResponse;
+	if(ResponseStatus != BOS_OK)
+		ResponseStatus =BOS_ERR_NoResponse;
 	
 	return result;
 }

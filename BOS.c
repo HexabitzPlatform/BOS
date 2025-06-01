@@ -1939,13 +1939,17 @@ uint32_t* ReadRemoteMemory(uint8_t module,uint32_t remoteVarAddress,VariableForm
 	SendMessageToModule(module,CODE_READ_REMOTE,6);
 	
 	/* Wait until read is complete */
-	uint32_t t0 =HAL_GetTick();
-	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+//	uint32_t t0 =HAL_GetTick();
+//	while((ResponseStatus != BOS_OK) && ((HAL_GetTick() - t0) < timeout)){
+//	};
+
+	uint32_t startTime = xTaskGetTickCount();
+
+	while ((ResponseStatus != BOS_OK) && (xTaskGetTickCount() - startTime) < pdMS_TO_TICKS(timeout)){
 	};
-	
 	/* Return the read value address */
 //	if(ResponseStatus == BOS_OK)
-		return ((uint32_t* )&RemoteBuffer);
+	return ((uint32_t* )&RemoteBuffer);
 //	else
 //		return NULL;
 }
