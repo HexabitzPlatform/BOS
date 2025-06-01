@@ -7,38 +7,32 @@
 
  */
 
-/* Define to prevent recursive inclusion -------------------------------------*/
+/* Define to prevent recursive inclusion ***********************************/
 #ifndef BOS_DMA_H
 #define BOS_DMA_H
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS.h"
 
-/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports
- *
- * Access each port Byte:
- * Rx_Data[GetPort(huart) - 1];
- */
-extern uint8_t Rx_Data[NumOfPorts];
+/* UART-DMA Handlers Regarding Connected Ports *****************************/
+#define UART_DMA_PORT_INDEX_P1  0
+#define UART_DMA_PORT_INDEX_P2  1
+#define UART_DMA_PORT_INDEX_P3  2
+#define UART_DMA_PORT_INDEX_P4  3
+#define UART_DMA_PORT_INDEX_P5  4
+#define UART_DMA_PORT_INDEX_P6  5
 
-/* External definitions -------------------------------------------------------*/
-#define MSG_DMA_PRIORITY 					DMA_PRIORITY_HIGH					// Messaging backend priority
-#define STREAM_DMA_PRIORITY 				DMA_PRIORITY_MEDIUM
-#define FRONTEND_DMA_PRIORITY 				DMA_PRIORITY_LOW
+/* Exported variables ******************************************************/
+extern UART_HandleTypeDef *dmaStreamDst[NUM_OF_PORTS];
+extern uint32_t dmaStreamCount[NUM_OF_PORTS];
+extern uint32_t dmaStreamTotal[NUM_OF_PORTS];
+extern bool MsgDMAStopped[NUM_OF_PORTS];
 
-/* External variables ---------------------------------------------------------*/
-
-extern UART_HandleTypeDef *dmaStreamDst[NumOfPorts];
-extern uint32_t dmaStreamCount[NumOfPorts];
-extern uint32_t dmaStreamTotal[NumOfPorts];
-extern bool MsgDMAStopped[NumOfPorts];
-
-/* External functions ---------------------------------------------------------*/
-
+/* External Functions ******************************************************/
 extern BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
 extern void DMA_IRQHandler(uint8_t port);
 extern void ResetUartORE(void);
 
 #endif /* BOS_DMA_H */
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

@@ -7,22 +7,24 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS_messaging.h"
 
-/* Private and global variables ----------------------------------------------*/
-extern uint8_t cMessage[NumOfPorts][MAX_MESSAGE_SIZE];		// Buffer for messages received and ready to be parsed 
-extern char message[MAX_MESSAGE_SIZE];										// Buffer to construct a message to be sent
-extern uint8_t dstGroupID;
-extern uint16_t bcastRoutes[MaxNumOfModules]; /* P1 is LSB */
-extern uint8_t crcBuffer[MAX_MESSAGE_SIZE];
-extern bool AddBcastPayload;
-BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
-BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
-uint32_t totalnumberoftransmiitedmesg=0;
+/* Private and global variables ********************************************/
+uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
+uint8_t StreamCplt =1;
+uint16_t dmaDstPort[NUM_OF_PORTS] ={0};
+uint32_t dmaStreamPort =0;
+
 volatile uint8_t RemoteResponseFlag;
-volatile uint8_t numOfElement;
+volatile uint8_t NumOfElement;
 volatile uint32_t RemoteResponseBuffer[4];
+
+#ifndef __N
+uint8_t Route[MAX_NUM_OF_MODULES];
+#else
+	 uint8_t Route[__N];
+#endif
 
 /* Messaging tasks */
 extern TaskHandle_t UserTaskHandle;
@@ -45,60 +47,69 @@ extern TaskHandle_t P5MsgTaskHandle;
 extern TaskHandle_t P6MsgTaskHandle;
 #endif
 
-#ifndef __N
-uint8_t route[MaxNumOfModules];
-#else
-	 uint8_t route[__N];
-#endif
-
-/* UARTcmd task */
-extern TaskHandle_t xCommandConsoleTaskHandle;
-
-/* Private and Global Function Definitions */
-void StreamTimerCallback(TimerHandle_t xTimerStream);
+/* Exported Functions ******************************************************/
 extern BOS_Status SaveEEstreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src1,uint8_t dst1,uint8_t src2,uint8_t dst2,uint8_t src3,uint8_t dst3);
 
-/* -----------------------------------------------------------------------
- |												 Private Functions	 														|
- ----------------------------------------------------------------------- 
- */
+/* Private function prototypes *********************************************/
+BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst);
+BOS_Status BroadcastReceivedMessage(uint8_t dstType,uint8_t IncomingPort);
+BOS_Status ForwardReceivedMessage(uint8_t IncomingPort);
+void StreamTimerCallback(TimerHandle_t xTimerStream);
+void NotifyMessagingTask(uint8_t port);
 
-/* --- Setup DMA streams upon request from another module --- 
- */
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
+
+/* Setup DMA streams upon request from another module */
 BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uint8_t src,uint8_t dst){
 	TimerHandle_t xTimerStream = NULL;
 	
-	/* Sanity check */
-	if(src == dst){							// Streaming inside destination module. Lock this port to streaming but no need to setup DMA
-		portStatus[src] =STREAM;
+	/* Sanity check to prevent invalid streaming requests */
+	/* Prevent streaming within the same module */
+	if(src == dst){
+		PortStatus[src] =STREAM;
 		return BOS_ERR_WrongParam;
 	}
-	else if(src == 0 || dst == 0) 			// Streaming outside source module or inside destination module without defining ports. Do not lock the port and do not setup DMA
+	/* Ensure valid source and destination */
+	if(src == 0 || dst == 0){
 		return BOS_ERR_WrongParam;
+	}
 	
 	/* Start DMA streams */
 	if(direction == FORWARD){
-		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
-			return BOS_ERR_PORT_BUSY;
+		/* Virtual port: Source -> Destination memory */
+		if(dst == P_VIRTUAL){
+			if(StartDMAstream(GetUart(src),GetUart(dst),count) == BOS_ERR_PORT_BUSY)
+				return BOS_ERR_PORT_BUSY;
+		}
+		else{
+			if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
+				return BOS_ERR_PORT_BUSY;
+		}
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&src,StreamTimerCallback);
 		dmaStreamTotal[src - 1] =count;
 	}
+
 	else if(direction == BACKWARD){
 		if(StartDMAstream(GetUart(dst),GetUart(src),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
-		dmaStreamTotal[src - 1] =count;
+		dmaStreamTotal[dst - 1] =count;
 	}
+
 	else if(direction == BIDIRECTIONAL){
 		if(StartDMAstream(GetUart(src),GetUart(dst),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
+
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&src,StreamTimerCallback);
 		dmaStreamTotal[src - 1] =count;
 		if(StartDMAstream(GetUart(dst),GetUart(src),1) == BOS_ERR_PORT_BUSY)
 			return BOS_ERR_PORT_BUSY;
+
 		/* Create a timeout timer */
 		xTimerStream =xTimerCreate("StreamTimer",pdMS_TO_TICKS(timeout),pdFALSE,(void* )&dst,StreamTimerCallback);
 		dmaStreamTotal[dst - 1] =count;
@@ -106,34 +117,66 @@ BOS_Status SetupDMAStreams(uint8_t direction,uint32_t count,uint32_t timeout,uin
 	else
 		return BOS_ERR_WrongParam;
 	
-	/* Start the timeout timer */
+	/* Store port mapping for active DMA streams */
+	if(direction == FORWARD)
+		dmaDstPort[src - 1] =(direction << 8) + dst;
+	else if(direction == BACKWARD)
+		dmaDstPort[dst - 1] =(direction << 8) + src;
+	else if(direction == BIDIRECTIONAL){
+		dmaDstPort[src - 1] =(direction << 8) + dst;
+		dmaDstPort[dst - 1] =(direction << 8) + src;
+	}
+
+	dmaStreamPort =(direction << 16) + (dst << 8) + src;
+
+	/* Start timeout timers if they were created successfully */
 	if(xTimerStream != NULL)
 		xTimerStart(xTimerStream,portMAX_DELAY);
 	
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- DMA stream timer callback --- 
- */
+/***************************************************************************/
+/* DMA stream timer callback */
 void StreamTimerCallback(TimerHandle_t xTimerStream){
-	uint32_t tid =0;
-	
-	tid =(uint32_t )pvTimerGetTimerID(xTimerStream);
-	
-	StopStreamDMA(tid);
-	
-	SwitchStreamDMAToMsg(tid);
+	uint8_t srcP =0;
+	uint8_t dmaDstPort =0;
+	uint8_t direction =0;
+
+	/* Extract direction, destination, and source from 'ports' */
+	direction =dmaStreamPort >> 16;
+	dmaDstPort =dmaStreamPort >> 8;
+	srcP =(uint8_t )dmaStreamPort;
+
+    /* Process timeout based on the streaming direction */
+    switch (direction) {
+        case FORWARD:
+            SwitchStreamDMAToMsg(srcP);
+            break;
+
+        case BACKWARD:
+            SwitchStreamDMAToMsg(dmaDstPort);
+            StreamCplt = 1;  /* Mark stream as complete */
+            break;
+
+        case BIDIRECTIONAL:
+            SwitchStreamDMAToMsg(srcP);
+            SwitchStreamDMAToMsg(dmaDstPort);
+            StreamCplt = 1;  /* Mark stream as complete */
+            break;
+
+        default:
+            /* Handle invalid direction */
+            break;
+    }
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Forward a received message to its destination 
- */
+/***************************************************************************/
+/* Forward a received message to its destination */
 BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	BOS_Status result =BOS_OK;
-	uint8_t port, dst;
+	uint8_t port =0;
+	uint8_t dst =0;
 	
 	/* Single-cast. Do not add broadcast ID */
 	AddBcastPayload = false;
@@ -141,26 +184,22 @@ BOS_Status ForwardReceivedMessage(uint8_t incomingPort){
 	dst =cMessage[incomingPort - 1][0];
 	
 	/* Find best output port for destination module */
-	//port =FindRoute(myID,dst);
-
-	//Replace FindRoute() with Output_Port_Array
-	#ifdef __N
-		port = Output_Port_Array[dst - 1];
-	#else
-		port =FindRoute(myID,dst);
-	#endif
+#ifdef __N
+	port = OutputPortArray[dst - 1];
+#else
+	port =FindRoute(myID,dst);
+#endif
 	
-	/* Forward the message. Set src and code to 0 to inform the API to copy the exact message received on incomingPort 
-	 which is passed thru numberOfParams and to use port as output port */
+	/* Forward the message.
+	 * Set src and code to 0 to inform the API to copy the exact message received on
+	 * incomingPort which is passed thru numberOfParams and to use port as output port */
 	SendMessageFromPort(port,0,dst,0,incomingPort);
 	
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a received message to all connected modules - TODO update with new protocol
- */
+/***************************************************************************/
+/* Broadcast a received message to all connected modules */
 BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	BOS_Status result =BOS_OK;
 	
@@ -168,8 +207,11 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	AddBcastPayload = false;
 	dstGroupID =dstGroup;
 	
-	/* Forward the message with a broadcast flag. Set src and code to 0 to inform the API to copy the exact message received on 
-	 incomingPort which is passed thru numberOfParams. Src will be updated with original source inside the function */
+	/* Forward the message with a broadcast flag.
+	 * Set src and code to 0 to inform the API to copy the exact message received on
+	 * incomingPort which is passed thru numberOfParams.
+	 * Src will be updated with original source inside the function. */
+
 	if(dstGroup == BOS_BROADCAST)
 		SendMessageFromPort(0,0,BOS_BROADCAST,0,incomingPort);
 	else
@@ -178,46 +220,38 @@ BOS_Status BroadcastReceivedMessage(uint8_t dstGroup,uint8_t incomingPort){
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Activate Messaging Tasks
- */
+/***************************************************************************/
+/* Activate Messaging Tasks */
 void NotifyMessagingTask(uint8_t port){
 	switch(port){
 #ifdef _P1
 		case P1:
-			xTaskNotifyGive(P1MsgTaskHandle)
-			;
+			xTaskNotifyGive(P1MsgTaskHandle);
 			break;
 #endif
 #ifdef _P2
 		case P2:
-			xTaskNotifyGive(P2MsgTaskHandle)
-			;
+			xTaskNotifyGive(P2MsgTaskHandle);
 			break;
 #endif
 #ifdef _P3
 		case P3:
-			xTaskNotifyGive(P3MsgTaskHandle)
-			;
+			xTaskNotifyGive(P3MsgTaskHandle);
 			break;
 #endif
 #ifdef _P4
 		case P4:
-			xTaskNotifyGive(P4MsgTaskHandle)
-			;
+			xTaskNotifyGive(P4MsgTaskHandle);
 			break;
 #endif
 #ifdef _P5
 		case P5:
-			xTaskNotifyGive(P5MsgTaskHandle)
-			;
+			xTaskNotifyGive(P5MsgTaskHandle);
 			break;
 #endif
 #ifdef _P6
 		case P6:
-			xTaskNotifyGive(P6MsgTaskHandle)
-			;
+			xTaskNotifyGive(P6MsgTaskHandle);
 			break;
 #endif
 		default:
@@ -225,10 +259,8 @@ void NotifyMessagingTask(uint8_t port){
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Broadcast a message to all connected modules
- */
+/***************************************************************************/
+/* Broadcast a message to all connected modules */
 BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t numberOfParams){
 	/* Set a flag to populate broadcast ID and groups */
 	AddBcastPayload = true;
@@ -240,62 +272,61 @@ BOS_Status BroadcastMessage(uint8_t src,uint8_t dstGroup,uint16_t code,uint16_t 
 	else
 		SendMessageFromPort(0,src,BOS_MULTICAST,code,numberOfParams);
 	
-	/* Reset messageParams buffer */
-	memset(messageParams,0,numberOfParams);
+	/* Reset MessageParams buffer */
+	memset(MessageParams,0,numberOfParams);
 	
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Read message codes data from a remote sensor "input" module
- */
-BOS_Status ReadDataFromSensorModule(uint8_t disModuleID,uint16_t Code,uint32_t *pDataReceived,uint16_t timeout)
- {
-	BOS_Status result = BOS_OK;
-	uint8_t dataIndex = 0;
-	uint32_t tickstart = HAL_GetTick();
+/***************************************************************************/
+/* Read message codes data from a remote sensor "input" module */
+BOS_Status SendDataRequestToModule(uint8_t disModuleID,uint16_t code,uint32_t *pDataReceived,uint16_t timeout){
+	BOS_Status result =BOS_OK;
+	uint8_t dataIndex =0;
+	uint32_t tickstart =HAL_GetTick();
 
 	/* Sending a message to the module */
-	messageParams[0] = myID;        // source module ID
-	SendMessageToModule(disModuleID, Code, 1);
+	MessageParams[0] =myID; /* source module ID */
+	SendMessageToModule(disModuleID,code,1);
 
 	/* timeout loop */
-	while (0 == RemoteResponseFlag) {
-		if ((HAL_GetTick() - tickstart) > timeout)
-			return result = BOS_ERR_TIMEOUT;
+	while(0 == RemoteResponseFlag){
+		if((HAL_GetTick() - tickstart) > timeout)
+			return BOS_ERR_TIMEOUT;
 	}
 
-	if (RemoteResponseFlag) {
-		RemoteResponseFlag = 0;
-		tickstart = HAL_GetTick();
-		for (dataIndex = 0; dataIndex < numOfElement; dataIndex++)
-			pDataReceived[dataIndex] = RemoteResponseBuffer[dataIndex];
+	if(RemoteResponseFlag){
+		RemoteResponseFlag =0;
+		tickstart =HAL_GetTick();
+		for(dataIndex =0; dataIndex < NumOfElement; dataIndex++)
+			pDataReceived[dataIndex] =RemoteResponseBuffer[dataIndex];
 
 		/* NULL DATA */
-		if (0 == RemoteResponseBuffer && RemoteResponseBuffer[1]
-				&& RemoteResponseBuffer[2] && RemoteResponseBuffer[3])
-			return result = BOS_ERROR;
+		if((0 == RemoteResponseBuffer[0]) && (0 == RemoteResponseBuffer[1]) && (0 == RemoteResponseBuffer[2]) && (0 == RemoteResponseBuffer[3]))
+			return BOS_ERROR;
 
-		return result = BOS_OK;
-	} else
-		return result = BOS_ERROR;
+		for(size_t i =0; i < sizeof(RemoteResponseBuffer) / sizeof(RemoteResponseBuffer[0]); i++){
+			RemoteResponseBuffer[i] =0x00;
+		}
+
+		return BOS_OK;
+	}
+	else
+		return BOS_ERROR;
 
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Send a message to a group of modules. If current module is part of the group it will be exempted 
- */
+/***************************************************************************/
+/* Send a message to a group of modules. If current module is part of the group it will be exempted */
 BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
 	uint8_t i =0;
 	
 	/* Search for group alias*/
 
-	for(i =0; i < MaxNumOfGroups; i++){
+	for(i =0; i < MAX_NUM_OF_GROUPS; i++){
 		/* This group exists */
-		if(!strcmp(group,groupAlias[i])){
+		if(!strcmp(group,GroupAlias[i])){
 			/* Multicast the message to this group */
 			result =BroadcastMessage(myID,i,code,numberOfParams);
 			
@@ -307,31 +338,27 @@ BOS_Status SendMessageToGroup(char *group,uint16_t code,uint16_t numberOfParams)
 	return BOS_ERR_WrongGroup;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Send a message to another module 
- */
+/***************************************************************************/
+/* Send a message to another module */
 BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
 	
-	/* Singlecast message */
+	/* Single-cast message */
 	if(dst != BOS_BROADCAST){
-		/* Find best output port for destination module */
-//		port =FindRoute(myID,dst);
 
-		//Replace FindRoute() with Output_Port_Array
-		#ifdef __N
-				port = Output_Port_Array[dst - 1];
-		#else
-				port =FindRoute(myID,dst);
-		#endif
+		/* Find best output port for destination module */
+#ifdef __N
+	    port = OutputPortArray[dst - 1];
+#else
+		port =FindRoute(myID,dst);
+#endif
 		
 		/* Transmit the message from this port */
 		SendMessageFromPort(port,myID,dst,code,numberOfParams);
 		
-		/* Reset messageParams buffer */
-		memset(messageParams,0,numberOfParams);
+		/* Reset MessageParams buffer */
+		memset(MessageParams,0,numberOfParams);
 	}
 	/* Broadcast message */
 	else{
@@ -341,10 +368,51 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
 	return result;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+/* Send large data (over 46 Bytes) to module */
+BOS_Status SendLargeMessageToModule(uint8_t dst,uint16_t code,uint8_t *pParameters,uint16_t numberOfParams){
+	uint16_t totalNumberOfParams =numberOfParams;
+	uint16_t ptrShift =0, chunkSize =0;
+	uint8_t port =0;
+	bool LongMessageFlag = false;
 
+	/* Find best output port for destination module */
+#ifdef __N
+		port = OutputPortArray[dst - 1];
+#else
+	    port =FindRoute(myID,dst);
+#endif
+
+	while(totalNumberOfParams > 0){
+		chunkSize =(totalNumberOfParams > MAX_PARAMS_PER_MESSAGE) ?MAX_PARAMS_PER_MESSAGE: totalNumberOfParams;
+
+		/* Copy the relevant chunk of data into MessageParams */
+		memcpy(MessageParams,pParameters + ptrShift,chunkSize);
+
+		/* Update total number of remaining parameters */
+		totalNumberOfParams -=chunkSize;
+		ptrShift +=chunkSize;
+
+		if(totalNumberOfParams > 0){
+			/* Set long message flag */
+			OptionByte.LongMessage = true;
+		}
+		else{
+			/* Last message, clear long message flag */
+			OptionByte.LongMessage = false;
+		}
+
+		/* Send the message */
+		SendMessageToModule(dst,code,chunkSize);
+
+	}
+
+	return BOS_OK;
+}
+
+/***************************************************************************/
 /* --- Send a message from a specific port 
- Note: The messageParams buffer does not get erased here to enable reuse for other transmissions.
+ Note: The MessageParams buffer does not get erased here to enable reuse for other transmissions.
  Make sure you manually erase the buffer when you're done with it. 
 
  #		port			src				dst							case
@@ -361,15 +429,19 @@ BOS_Status SendMessageToModule(uint8_t dst,uint16_t code,uint16_t numberOfParams
  */
 BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t code,uint16_t numberOfParams){
 	BOS_Status result =BOS_OK;
-	uint8_t length =0, shift =0;
-	static uint16_t totalNumberOfParams =0;
-	static uint16_t ptrShift =0,pp=0;
-	bool extendOptions = false, extendCode = false;
 	UBaseType_t TaskPriority;
-	
-	/* Sanity check broadcast/multi-cast and not allowed cases */
+	bool extendCode = false;
+	bool extendOptions = false;
+	uint8_t shift =0;
+	uint8_t length =0;
+	uint8_t groupMembers =0;
+	static uint8_t LongMessageFlag =0;
+	static uint16_t totalNumberOfParams =0;
+	static uint16_t ptrShift =0, pp =0;
+
+	/* Sanity check for invalid broadcast/multi-cast cases */
 	if((port == 0 && dst == 0) ||																												// cases 3 & 4
-	(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 										// cases 1 & 2
+	(port == 0 && dst != BOS_BROADCAST && dst != BOS_MULTICAST) || 				// cases 1 & 2
 	(port != 0 && src != 0 && dst == 0)){																						// case 7
 		return BOS_ERR_WrongParam;
 	}
@@ -378,18 +450,22 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	TaskPriority =uxTaskPriorityGet( NULL);
 	vTaskPrioritySet( NULL,osPriorityHigh - osPriorityIdle);
 	
-	/* HZ Delimiter */
-	message[0] ='H';
-	message[1] ='Z';
+	/***************************************************************************/
+	/* Start constructing the message buffer ***********************************/
+	/***************************************************************************/
+
+	/* Add the HZ Delimiter to mark the start of the message */
+	Message[0] ='H';
+	Message[1] ='Z';
 	
-	/* Should I copy message buffer from another port or construct from scratch? */
+	/* If copying from an incoming message (e.g., broadcast or received message) */
 	if((port == 0 && src == 0 && (dst == BOS_BROADCAST || dst == BOS_MULTICAST)) || code == 0)					// case 2 and part of case 6
 	{
-		/* Get message length from the incoming port */
-		length =messageLength[numberOfParams - 1];
+		/* Retrieve message length from received buffer */
+		length =MessageLength[numberOfParams - 1];
 		
-		/* Copy message buffer from the incoming port as is */
-		memcpy(&message[3],&cMessage[numberOfParams - 1][0],(size_t )length);
+		/* Copy message buffer from the received message */
+		memcpy(&Message[3],&cMessage[numberOfParams - 1][0],(size_t )length);
 	}
 	/* Construct message from scratch - case 5 */
 	else{
@@ -397,73 +473,73 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 		if(src == 0)
 			src =myID;
 		
+		/* ToDo: Implement extended options */
+		if(OptionByte.ExtendedOptions == true)
+			++shift;
+
 		/* Extended code flag? */
 		if(code > 0xFF)
-			extendCode = true;
+			OptionByte.ExtendedMessageCode = true;
 		
-		/* TODO implement extended options */
-
 		/* Construct the message */
 
 		/* Header */
-		message[2] =length;
-		message[3] =dst;
-		message[4] =src;
-		/* Options */
-		/* Long Message (8th-MSB) Response (7th - 6th) : Reserved (5th) : Trace (4th-3rd) : Extended Code (2nd) : Extended Options (1st-LSB) */
-		message[5] =(BOSMessaging.response) | (BOSMessaging.Acknowledgment << 4) | (BOSMessaging.trace << 2) | (extendCode << 1) | (extendOptions);
-		if(extendOptions == true){
-			++shift;
-		}
-		
+		Message[2] =length;
+		Message[3] =dst;
+		Message[4] =src;
+
+		/* Assign the Options byte value */
+		Message[5] =*(uint8_t* )&OptionByte;
+
 		/* Code - LSB first */
-		message[6 + shift] =(uint8_t )code;
-		if(extendCode == true){
+		Message[6 + shift] =(uint8_t )code;
+
+		if(OptionByte.ExtendedMessageCode){
 			++shift;
-			message[6 + shift] =(uint8_t )(code >> 8);
+			Message[6 + shift] =(uint8_t )(code >> 8);
 		}
 		
 		/* Parameters */
-
 		if(numberOfParams <= MAX_PARAMS_PER_MESSAGE){
-			memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
+			memcpy((char* )&Message[7 + shift],(&MessageParams[0] + ptrShift),numberOfParams);
 			/* Calculate message length */
 			length =numberOfParams + shift + 4;
 		}
-		else{
-			/* Long message: Set Options byte 8th bit */
-			message[5] |=0x80;
-			totalNumberOfParams =numberOfParams;
-			numberOfParams = MAX_PARAMS_PER_MESSAGE;
-			/* Break into multiple messages */
-			while(totalNumberOfParams != 0){
-				if((totalNumberOfParams / numberOfParams) >= 1){
-					/* Call this function recursively */
-					SendMessageFromPort(port,src,dst,code,numberOfParams);
-					osDelay(10);
-					/* Update remaining number of parameters */
-					totalNumberOfParams -=numberOfParams;
-					ptrShift +=numberOfParams;
-				}
-				else{
-					message[5] &=0x7F; /* Last message. Reset long message flag */
-					numberOfParams =totalNumberOfParams;
-					memcpy((char* )&message[7 + shift],(&messageParams[0] + ptrShift),numberOfParams);
-					ptrShift =0;
-					totalNumberOfParams =0;
-					/* Calculate message length */
-					length =numberOfParams + shift + 4;
-				}
-			}
-		}
+//		else{
+//			/* Long message: Set Options byte 8th bit */
+//			LongMessageFlag = true;
+//			message[5] |=0x80;
+//			totalNumberOfParams =numberOfParams;
+//			numberOfParams = MAX_PARAMS_PER_MESSAGE;
+//			/* Break into multiple messages */
+//			while(totalNumberOfParams != 0){
+//				if((totalNumberOfParams / numberOfParams) >= 1){
+//					/* Call this function recursively */
+//					SendMessageFromPort(port,src,dst,code,numberOfParams);
+////					osDelay(10);
+//					/* Update remaining number of parameters */
+//					totalNumberOfParams -=numberOfParams;
+//					ptrShift +=numberOfParams;
+//				}
+//				else{
+//					LongMessageFlag = false;
+//					message[5] &=0x7F; /* Last message. Reset long message flag */
+//					numberOfParams =totalNumberOfParams;
+//					memcpy((char* )&message[7 + shift],(&MessageParams[0] + ptrShift),numberOfParams);
+//					ptrShift =0;
+//					totalNumberOfParams =0;
+//					/* Calculate message length */
+//					length =numberOfParams + shift + 4;
+//				}
+//			}
+//		}
 		
 		/* Check if brodcast payload (bcast ID and groups) should be appended to message payload */
-		/* TODO - handle the edge case of brodcast/multi-cast long message. bcastID should go into each message but the groups only in the last one */
-
+		/* TODO - handle the edge case of brodcast/multi-cast long message.
+		 * bcastID should go into each message but the groups only in the last one */
 		if(AddBcastPayload == true){
-			uint8_t groupMembers =0;
-			
-			/* Add group members if it's a multicast */
+
+			/* If it's a multi-cast, add group members */
 			if(dstGroupID < BOS_BROADCAST){
 				/* Extract and add group member IDs to the Message */
 				for(uint16_t i =1; i <= N; i++)						// N modules
@@ -471,22 +547,22 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 					if(InGroup(i,dstGroupID)){
 						++groupMembers;							// Add this member
 						if((numberOfParams + groupMembers + 1) < MAX_PARAMS_PER_MESSAGE)
-							message[7 + shift + numberOfParams + groupMembers - 1] =i;
+							Message[7 + shift + numberOfParams + groupMembers - 1] =i;
 						else
 							return BOS_ERR_MSG_DOES_NOT_FIT;
 					}
 				}
 				/* Add number of members */
-				message[7 + shift + numberOfParams + groupMembers] =groupMembers;
+				Message[7 + shift + numberOfParams + groupMembers] =groupMembers;
 			}
 			
 			/* Add unique broadcast ID */
 			if((dstGroupID == BOS_BROADCAST) && ((numberOfParams + 1) < MAX_PARAMS_PER_MESSAGE))
-				message[7 + shift + numberOfParams] =++bcastID;
+				Message[7 + shift + numberOfParams] =++bcastID;
 			else if(dstGroupID == BOS_BROADCAST)
 				return BOS_ERR_MSG_DOES_NOT_FIT;
 			else if((dstGroupID < BOS_BROADCAST) && ((numberOfParams + groupMembers + 2) < MAX_PARAMS_PER_MESSAGE))		// Multicast
-				message[7 + shift + numberOfParams + groupMembers + 1] =++bcastID;
+				Message[7 + shift + numberOfParams + groupMembers + 1] =++bcastID;
 			else if(dstGroupID < BOS_BROADCAST)																																		// Multicast
 				return BOS_ERR_MSG_DOES_NOT_FIT;
 			
@@ -499,151 +575,277 @@ BOS_Status SendMessageFromPort(uint8_t port,uint8_t src,uint8_t dst,uint16_t cod
 	}
 	
 	/* Copy message length */
-	message[2] =length;
+	Message[2] =length;
 	
-	/* End of message - Calculate CRC8 */
-	memcpy(crcBuffer,&message[0],length + 3);
-	
-	/* crc calculation function added for test */
-	message[length + 3] =CalculateCRC8(crcBuffer,(length + 3));
-	/* end of crc calculation function addition */
-
+	/* Compute and append CRC */
+	memcpy(crcBuffer,&Message[0],length + 3);
+	Message[length + 3] =CalculateCRC8(crcBuffer,(length + 3));
 	memset(crcBuffer,0,sizeof(crcBuffer));
 	
+	/* Send Single-cast Message */
 	if(dst != BOS_BROADCAST && dst != BOS_MULTICAST){
-		/* Transmit the message - single-cast */
+		writePxITMutex(port,Message,length + 4,cmd50ms);
+//		Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
 
-		if(code == MSG_Acknowledgment_Accepted || code==MSG_rejected){
-			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-		}
-		else{
-
-			for(uint8_t Number_of_attempt =0; Number_of_attempt < BOSMessaging.trial; Number_of_attempt++){
-				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-				osDelay(200);
-				if(ACK_FLAG == true)
-					break;
-				if(rejected_FLAG == true)
-					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
-			}
-		}
-		ACK_FLAG =false; rejected_FLAG=false;
+//		if(code == MSG_Acknowledgment_Accepted || code == MSG_rejected){
+////			Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			writePxITMutex(port,message,length + 4,cmd50ms);
+//		}
+//		else{
+//			for(uint8_t Number_of_attempt =0; Number_of_attempt < 3; Number_of_attempt++){
+////				Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//				writePxITMutex(port,message,length + 4,cmd50ms);
+//				if(ACKMessageFlag == true)
+//					break;
+//				if(RejectedMessageFlag == true)
+//					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//			}
+//		}
+//		ACKMessageFlag =false;
+//		RejectedMessageFlag =false;
 	}
 
-	/* Transmit the message - multi-cast or broadcast */
 	else{
-		if(code == 0 && src == 0){					// Forwarded broadcast or multicast. Update with original source.
-			src =message[4];
+		/* Broadcast or multicast handling */
+
+		/* Update original source ID */
+		if(code == 0 && src == 0){
+			src =Message[4];
 		}
 		
 		/* Get broadcast routes */
 		FindBroadcastRoutes(src);
 		
 		/* Send to all my broadcast ports */
-		for(uint8_t p =1; p <= NumOfPorts; p++){
+		for(uint8_t p =1; p <= NUM_OF_PORTS; p++){
 			if((bcastRoutes[myID - 1] >> (p - 1)) & 0x01){
 				/* Transmit the message from this port */
-				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
-				osDelay(200);
-				if(rejected_FLAG == true)
-					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+//				Send_BOS_Message(p,message,length + 4,cmd50ms,dst);
+				writePxITMutex(p,Message,length + 4,cmd50ms);
+				if(RejectedMessageFlag == true){
+//					Send_BOS_Message(port,message,length + 4,cmd50ms,dst);
+					writePxITMutex(port,Message,length + 4,cmd50ms);
+				}
 			}
-			rejected_FLAG=false;
+//			RejectedMessageFlag=false;
 			Delay_us(10);
 		}
 	}
 	
-	/* Put the priority of current running task back to its default state */
+	/* Restore the original task priority */
 	vTaskPrioritySet( NULL,TaskPriority);
 	
-	/* Reset responseStatus in case response is expected - TODO should be tailored for each port */
-	responseStatus =BOS_ERR_NoResponse;
+	/* Reset ResponseStatus in case response is expected
+	 * TODO should be tailored for each port */
+	if(ResponseStatus != BOS_OK)
+		ResponseStatus =BOS_ERR_NoResponse;
 	
 	return result;
 }
 
-/*-----------------------------------------------------------*/
-
-/* --- Start a single-cast DMA stream across the array. Transfer ends after (count) bytes are transferred 
- or timeout (ms), whichever comes first. If stored = true, the stream is stored in emulated eeprom --- 
- */
-BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dstP,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored){
+/***************************************************************************/
+/* Start a single-cast DMA stream across the array.
+ * Transfer ends after (count) bytes are transferred or timeout (ms),
+ * whichever comes first. If stored = true, the stream is stored in emulated eeprom */
+BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint8_t dstM,uint8_t direction,uint32_t count,uint32_t timeout,bool stored){
 	BOS_Status result =BOS_OK;
 	uint8_t port =0, temp1 =0, temp2 =0;
 	
 	/* Is the source a different module? */
 	if(srcM != myID){
 		/* Forward this task to the source module */
-		messageParams[0] =(uint8_t )(count >> 24); /* Count */
-		messageParams[1] =(uint8_t )(count >> 16);
-		messageParams[2] =(uint8_t )(count >> 8);
-		messageParams[3] =(uint8_t )count;
-		messageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
-		messageParams[5] =(uint8_t )(timeout >> 16);
-		messageParams[6] =(uint8_t )(timeout >> 8);
-		messageParams[7] =(uint8_t )timeout;
-		messageParams[8] =direction; /* Stream direction */
-		messageParams[9] =srcP; /* Source port */
-		messageParams[10] =dstM; /* destination module */
-		messageParams[11] =dstP; /* destination port */
-		messageParams[12] =stored; /* EEPROM storage */
+		MessageParams[0] =(uint8_t )(count >> 24); /* Count */
+		MessageParams[1] =(uint8_t )(count >> 16);
+		MessageParams[2] =(uint8_t )(count >> 8);
+		MessageParams[3] =(uint8_t )count;
+		MessageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
+		MessageParams[5] =(uint8_t )(timeout >> 16);
+		MessageParams[6] =(uint8_t )(timeout >> 8);
+		MessageParams[7] =(uint8_t )timeout;
+		MessageParams[8] =direction; /* Stream direction */
+		MessageParams[9] =srcP;      /* Source port */
+		MessageParams[10] =dstM;     /* destination module */
+		MessageParams[11] =dmaDstPort;     /* destination port */
+		MessageParams[12] =stored;   /* EEPROM storage */
+
+		/* Send the message to the source module */
 		SendMessageToModule(srcM,CODE_DMA_SCAST_STREAM,13);
 		
 		return result;
 	}
 	
-	/* Inform participating modules */
-	for(uint8_t i =0; i < sizeof(route); i++){
+	/* Inform all participating modules along the Route */
+	for(uint8_t i =0; i < sizeof(Route); i++){
 		FindRoute(srcM,dstM);
 		/* Message other modules */
-		if(route[i]){
+		if(Route[i]){
 			/* Find out the inport and outport to this module from previous one */
-			if(route[i + 1]){
-				temp1 =FindRoute(route[i],route[i + 1]);
+			if(Route[i + 1]){
+				temp1 =FindRoute(Route[i],Route[i + 1]);
 			}
 			else{
-				temp1 =FindRoute(route[i],srcM);
+				temp1 =FindRoute(Route[i],srcM);
 			}
 			FindRoute(srcM,dstM);
-			if(route[i] == dstM){
-				temp2 =dstP;
+			if(Route[i] == dstM){
+				temp2 =dmaDstPort;
 			}
 			else{
-				temp2 =FindRoute(route[i],route[i - 1]);
+				temp2 =FindRoute(Route[i],Route[i - 1]);
 			}
 			/* Message parameters*/
-			messageParams[0] =(uint8_t )(count >> 24); /* Count */
-			messageParams[1] =(uint8_t )(count >> 16);
-			messageParams[2] =(uint8_t )(count >> 8);
-			messageParams[3] =(uint8_t )count;
-			messageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
-			messageParams[5] =(uint8_t )(timeout >> 16);
-			messageParams[6] =(uint8_t )(timeout >> 8);
-			messageParams[7] =(uint8_t )timeout;
-			messageParams[8] =direction; /* Stream direction */
-			messageParams[9] =temp1; /* Source port */
-			messageParams[10] =temp2; /* destination port */
-			messageParams[11] =stored; /* EEPROM storage */
+			MessageParams[0] =(uint8_t )(count >> 24); /* Count */
+			MessageParams[1] =(uint8_t )(count >> 16);
+			MessageParams[2] =(uint8_t )(count >> 8);
+			MessageParams[3] =(uint8_t )count;
+			MessageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
+			MessageParams[5] =(uint8_t )(timeout >> 16);
+			MessageParams[6] =(uint8_t )(timeout >> 8);
+			MessageParams[7] =(uint8_t )timeout;
+			MessageParams[8] =direction; /* Stream direction */
+			MessageParams[9] =temp1;     /* Source port */
+			MessageParams[10] =temp2;    /* destination port */
+			MessageParams[11] =stored;   /* EEPROM storage */
 			FindRoute(srcM,dstM);
-			SendMessageToModule(route[i],CODE_DMA_CHANNEL,12);
+
+			/* Send message to the current Route module */
+			SendMessageToModule(Route[i],CODE_DMA_CHANNEL,12);
 			osDelay(10);
 		}
 	}
-	
-	if(srcM == dstM)
-		port =dstP;
-	else
-		port =FindRoute(srcM,dstM);
-	
-	/* Setup my own DMA stream */
-	SetupDMAStreams(direction,count,timeout,srcP,port);
-	
-	// Store my own streams to EEPROM
-	if(stored){
-		SaveEEstreams(direction,count,timeout,srcP,port,0,0,0,0);
+
+	/* Check if the source port is virtual (indicating memory transfer) */
+	if(srcP != P_VIRTUAL){
+		if(srcM == dstM)
+			port =dmaDstPort;
+		else
+			port =FindRoute(srcM,dstM);
+
+		/* Setup my own DMA stream */
+		SetupDMAStreams(direction,count,timeout,srcP,port);
+
+		/* If storage is enabled, save the stream configuration */
+		if(stored){
+			SaveEEstreams(direction,count,timeout,srcP,port,0,0,0,0);
+		}
 	}
 	
 	return result;
 }
 
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************************************************************************/
+/*
+ * @brief: Transferring stream data from port in the source module to port in the destination module and vice versa.
+ * @param1: source port number.
+ * @param2: source module id.
+ * @param3: destination port number.
+ * @param4: destination module id.
+ * @param5: flow data direction(FORWARD,BACKWARD,BIDIRECTIONAL)
+ * @param6: size of stream data.
+ * @param7: flow data timeout.
+ * @param8: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
+BOS_Status StreamPortToPort(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint8_t dstM,uint8_t direction,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(srcP,srcM,dmaDstPort,dstM,direction,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
+	}
+
+	return result;
+}
+
+/***************************************************************************/
+/*
+ * @brief: Transferring stream data from port in the source module to RAM memory in the destination module.
+ * @param1: source port number.
+ * @param2: destination module id.
+ * @param3: size of stream data.
+ * @param4: flow data timeout.
+ * @param5: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
+BOS_Status StreamPortToMemory(uint8_t srcP,uint8_t dstM,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(srcP,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
+	}
+
+	return result;
+}
+
+/***************************************************************************/
+/*
+ * @brief: Transferring stream data from RAM memory in the source module to port in the destination module.
+ * @param1: destination port number.
+ * @param2: destination module id.
+ * @param3: buffer to be sent.
+ * @param4: size of stream data.
+ * @param5: flow data timeout.
+ * @param6: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
+BOS_Status StreamMemoryToPort(uint8_t dmaDstPort,uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dmaDstPort,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
+	}
+	if(myID == dstM)
+		port =dmaDstPort;
+	else
+		port =FindRoute(myID,dstM);
+	/* Timeout before sending data to ensure the UART DMA destination is set */
+	HAL_Delay(10);
+	HAL_UART_Transmit_IT(GetUart(port),pBuffer,size);
+
+	return result;
+}
+
+/***************************************************************************/
+/*
+ * @brief: Transferring stream data from RAM memory in the source module to RAM memory in the destination module.
+ * @param1: destination module id.
+ * @param2: buffer to be sent.
+ * @param3: size of stream data.
+ * @param4: flow data timeout.
+ * @param5: storing the physical data flow path in EEPROM memory(true,false)
+ * @retval: BOS_Status.
+ */
+BOS_Status StreamMemoryToMemory(uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint32_t timeout,bool stored){
+	BOS_Status result =BOS_OK;
+	uint8_t port =0;
+
+	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
+	if(StreamCplt == 1){
+		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
+			return result =BOS_ERROR;
+
+		StreamCplt =0;
+	}
+	port =FindRoute(myID,dstM);
+	/* Timeout before sending data to ensure the UART DMA destination is set */
+	HAL_Delay(10);
+	HAL_UART_Transmit_IT(GetUart(port),pBuffer,size);
+
+	return result;
+}
+
+/***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

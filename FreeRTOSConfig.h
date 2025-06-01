@@ -7,22 +7,10 @@
 
  */
 
+/* Define to prevent recursive inclusion************************************/
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
-/*-----------------------------------------------------------
- * Application specific definitions.
- *
- * These definitions should be adjusted for your particular hardware and
- * application requirements.
- *
- * THESE PARAMETERS ARE DESCRIBED WITHIN THE 'CONFIGURATION' SECTION OF THE
- * FreeRTOS API DOCUMENTATION AVAILABLE ON THE FreeRTOS.org WEB SITE.
- *
- * See http://www.freertos.org/a00110.html.
- *----------------------------------------------------------*/
-
-/* Section where include file can be added */
 
 /* Ensure stdint is only used by the compiler, and not the assembler. */
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
@@ -36,8 +24,6 @@ extern uint32_t SystemCoreClock;
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 7 )
-//#define configMINIMAL_STACK_SIZE                 ((uint16_t)160)
-//#define configTOTAL_HEAP_SIZE                    ((size_t)19000)
 #ifdef STM32G0B1xx
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)2500)
 #else
@@ -168,3 +154,4 @@ uint32_t ulMainGetRunTimeCounterValue(void);
 
 #endif /* FREERTOS_CONFIG_H */
 
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

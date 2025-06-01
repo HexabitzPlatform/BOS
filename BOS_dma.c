@@ -5,7 +5,7 @@
  File Name     : BOS_dma.c
  Description   : Source code for BOS communication/backend DMAs.
 
- Required MCU resources :
+ Required MCU resources:
 
  >> At least n UART RX DMA channels where n is number of module ports (up to number of available UARTs).
  >> At least one UART TX DMA channel.
@@ -13,111 +13,103 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS.h"
 #include "BOS_DMA.h"
 
-/*Rx_Data[NumOfPorts]: This array is used to receive data from all ports
- *
- * Access each port Byte:
- * Rx_Data[GetPort(huart) - 1];
- */
-uint8_t Rx_Data[NumOfPorts] = {0};
+/* Private variables *******************************************************/
+uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE] ={0};
+UART_HandleTypeDef *dmaStreamDst[NUM_OF_PORTS] ={0};
+uint32_t dmaStreamCount[NUM_OF_PORTS] ={0};
+uint32_t dmaStreamTotal[NUM_OF_PORTS] ={0};
+bool MsgDMAStopped[NUM_OF_PORTS] ={0};
 
-/* Exported variables ---------------------------------------------------------*/
+/* Exported variables ******************************************************/
+extern uint16_t dmaDstPort[NUM_OF_PORTS];
+extern uint8_t StreamCplt;
 
-uint8_t UARTRxBuf[NumOfPorts][MSG_RX_BUF_SIZE] ={0};
-uint8_t crcBuffer[MAX_MESSAGE_SIZE] ={0};
-uint8_t UARTRxBufIndex[NumOfPorts] ={0};
-UART_HandleTypeDef *dmaStreamDst[NumOfPorts] ={0};
-uint32_t dmaStreamCount[NumOfPorts] ={0};
-uint32_t dmaStreamTotal[NumOfPorts] ={0};
-bool MsgDMAStopped[NumOfPorts] ={0};
-
-/* Private variables ---------------------------------------------------------*/
-
-/* External functions --------------------------------------------------------*/
-extern void DMA_STREAM_Setup(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num);
-
-
-/*-----------------------------------------------------------*/
-
-/* Setup and start a streaming DMA (port-to-port) 
- */
+/***************************************************************************/
+/* Setup and start a streaming DMA (port-to-port) */
 BOS_Status StartDMAstream(UART_HandleTypeDef *huartSrc,UART_HandleTypeDef *huartDst,uint16_t num){
 	uint8_t srcPort =GetPort(huartSrc);
 	
-	// 1. Check if single- or multi-cast 
-	// 1.a. If single-cast, switch the DMA channel to streaming if it's available 
-	if(portStatus[srcPort] == FREE || portStatus[srcPort] == MSG || portStatus[srcPort] == CLI)		// This port is not streaming so it's single-cast
-	{
+	/* switch the DMA channel to streaming if it's available */
+	if(PortStatus[srcPort] == FREE || PortStatus[srcPort] == MSG || PortStatus[srcPort] == CLI){
 		SwitchMsgDMAToStream(srcPort);
 	}
-	// 1.b. If multi-cast, do some stuff - TODO
-	else if(portStatus[srcPort] == STREAM){
-		return BOS_ERR_PORT_BUSY;		// Multi-casting not implemented right now
+	else if(PortStatus[srcPort] == STREAM){
+		return BOS_ERR_PORT_BUSY;
 	}
 	else
 		return BOS_ERR_PORT_BUSY;
-	
-	// 2. Setup streaming destination
+
+	/* Setup the streaming destination */
 	dmaStreamDst[srcPort - 1] =huartDst;
 	
-	// 3. Lock the ports 
-	portStatus[srcPort] =STREAM;
+	/* Lock the source port by marking it as STREAM
+	 * This prevents other tasks from using it while streaming is active */
+	PortStatus[srcPort] =STREAM;
 	
-	// 4. Initialize stream counter 
+	/* Initialize the DMA stream counter */
 	dmaStreamCount[srcPort - 1] =0;
 	
-	// 5. Setup and start the DMA stream
+	/* Setup and start the actual DMA stream */
 	DMA_STREAM_Setup(huartSrc,huartDst,num);
 	
 	return BOS_OK;
 }
 
-/*-----------------------------------------------------------*/
-
-/* DMA interrupt service routine 
- */
+/***************************************************************************/
+/* DMA interrupt service routine */
 void DMA_IRQHandler(uint8_t port){
-	if(portStatus[port] != STREAM){
-		HAL_DMA_IRQHandler(&msgRxDMA[port - 1]);
+
+	if(PortStatus[port] != STREAM){
+		HAL_DMA_IRQHandler(UARTDMAHandler[port - 1]);
 	}
 	else{
-		HAL_DMA_IRQHandler(&streamDMA[port - 1]);
+		HAL_DMA_IRQHandler(UARTDMAHandler[port - 1]);
 		if(dmaStreamTotal[port - 1])
 			++dmaStreamCount[port - 1];
-		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1]){
-			StopStreamDMA(port);
+		if(dmaStreamCount[port - 1] >= dmaStreamTotal[port - 1] || ((uint8_t )dmaDstPort[port - 1] == P_VIRTUAL)){
+
+			uint8_t direction =dmaDstPort[port - 1] >> 8;
+			uint8_t dst =(uint8_t )dmaDstPort[port - 1];
+			if((direction == FORWARD) || (direction == BACKWARD)){
+				SwitchStreamDMAToMsg(port);
+				StreamCplt =1;
+			}
+
+			else{
+				SwitchStreamDMAToMsg(port);
+				SwitchStreamDMAToMsg(dst);
+				StreamCplt =1;
+			}
 		}
 	}
 }
 
-/*-----------------------------------------------------------*/
-
-/* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup
- */
+/***************************************************************************/
+/* Reset UART ORE (overrun) flag in case other modules were already transmitting on startup */
 void ResetUartORE(void){
-#if defined(_Usart1)
+#if defined(_USART1)
 	__HAL_UART_CLEAR_OREFLAG(&huart1);
 #endif
-#if defined(_Usart2)
+#if defined(_USART2)
 	__HAL_UART_CLEAR_OREFLAG(&huart2);
 #endif
-#if defined(_Usart3)
+#if defined(_USART3)
 	__HAL_UART_CLEAR_OREFLAG(&huart3);
 #endif
-#if defined(_Usart4) || defined(_Uart4)
+#if defined(_USART4) || defined(_UART4)
 	__HAL_UART_CLEAR_OREFLAG(&huart4);
 #endif
-#if defined(_Usart5) || defined(_Uart5)
+#if defined(_USART5) || defined(_UART5)
 	__HAL_UART_CLEAR_OREFLAG(&huart5);
 #endif
-#if defined(_Usart6)
+#if defined(_USART6)
 	__HAL_UART_CLEAR_OREFLAG(&huart6);
 #endif
 }
 
-/*-----------------------------------------------------------*/
-
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************************************************************************/
+/***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

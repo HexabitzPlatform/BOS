@@ -7,31 +7,31 @@
 
  */
 
-/* Includes ------------------------------------------------------------------*/
+/* Includes ****************************************************************/
 #include "BOS.h"
 
-/* Private and Golbal variables ----------------------------------------------*/
+/* Local Variables *********************************************************/
+const char MathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
+
+/* Exported variables ******************************************************/
 extern BOS_t BOS;
 extern BOS_t BOS_default;
-extern uint8_t numOfRecordedSnippets;
 
-/* Define BOS keywords */
-const char mathStr[NUM_MATH_OPERATORS][3] ={"==", ">", "<", ">=", "<=", "!="};
-
-/* Define long messages -------------------------------------------------------*/
-
-/* Exported functions */
-extern uint8_t SaveToRO(void);
+/* Exported Functions ******************************************************/
+extern uint8_t SaveSnippetsToRO(void);
 extern BOS_Status SaveEEparams(void);
 extern BOS_Status ClearEEportsDir(void);
+extern BOS_Status AddPortButton(ButtonType_e buttonType, uint8_t port);
 #ifndef __N
 extern uint8_t ClearROtopology(void);
 #endif
 extern void RegisterModuleCLICommands(void);
 extern bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
-extern void remoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
+extern void RemoteBootloaderUpdate(uint8_t src,uint8_t dst,uint8_t inport,uint8_t outport);
 
-/* Create CLI commands --------------------------------------------------------*/
+/***************************************************************************/
+/* CLI Commands Declarations ***********************************************/
+/***************************************************************************/
 static portBASE_TYPE prvTaskStatsCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE prvRunTimeStatsCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
@@ -44,7 +44,7 @@ static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE statusCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
-static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
+//static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE removebuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
@@ -66,8 +66,11 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
-static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
+static portBASE_TYPE GetReadPercentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString);
 
+/***************************************************************************/
+/* CLI-FreeRtos Definitions ************************************************/
+/***************************************************************************/
 /* CLI command structure : run-time-stats 
  This generates a table that shows how much run time each task has */
 static const CLI_Command_Definition_t prvRunTimeStatsCommandDefinition ={
@@ -75,7 +78,8 @@ static const CLI_Command_Definition_t prvRunTimeStatsCommandDefinition ={
 	(const int8_t* )"run-time-stats:\r\n Display a table showing how much processing time each FreeRTOS task has used\r\n\r\n", prvRunTimeStatsCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : task-stats" 
  This generates a table that gives information on each task in the system. */
 static const CLI_Command_Definition_t prvTaskStatsCommandDefinition ={
@@ -83,14 +87,16 @@ static const CLI_Command_Definition_t prvTaskStatsCommandDefinition ={
 	(const int8_t* )"task-stats:\r\n Display a table showing the state of each FreeRTOS task\r\n\r\n", prvTaskStatsCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : ping */
 static const CLI_Command_Definition_t pingCommandDefinition ={
 	(const int8_t* )"ping", /* The command string to type. */
 	(const int8_t* )"ping:\r\n Ping a module\r\n\r\n", pingCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : update */
 static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition ={
 	(const int8_t* )"update", /* The command string to type. */
@@ -100,7 +106,8 @@ static const CLI_Command_Definition_t bootloaderUpdateCommandDefinition ={
 							target module is not part of the topology or if programming port is not in the shortest path to target module.\r\n\r\n", bootloaderUpdateCommand, /* The function to run. */
 	-1 /* Variable number of parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : explore */
 #ifndef __N
 static const CLI_Command_Definition_t exploreCommandDefinition ={
@@ -109,219 +116,242 @@ static const CLI_Command_Definition_t exploreCommandDefinition ={
 	0 /* No parameters are expected. */
 };
 #endif
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : reset */
 static const CLI_Command_Definition_t resetCommandDefinition ={
 	(const int8_t* )"reset", /* The command string to type. */
 	(const int8_t* )"reset:\r\n Reset the module\r\n\r\n", resetCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : name */
 static const CLI_Command_Definition_t nameCommandDefinition ={
 	(const int8_t* )"name", /* The command string to type. */
 	(const int8_t* )"name:\r\n Name the module with an alias (1st par.)\r\n\r\n", nameCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : group */
 static const CLI_Command_Definition_t groupCommandDefinition ={
 	(const int8_t* )"group", /* The command string to type. */
 	(const int8_t* )"group:\r\n Group multiple modules (2nd+ par.) into a new or existing group (1st par.)\r\n\r\n", groupCommand, /* The function to run. */
 	-1 /* Variable number of parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : status */
 static const CLI_Command_Definition_t statusCommandDefinition ={
 	(const int8_t* )"status", /* The command string to type. */
 	(const int8_t* )"status:\r\n Display module status\r\n\r\n", statusCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : info */
 static const CLI_Command_Definition_t infoCommandDefinition ={
 	(const int8_t* )"info", /* The command string to type. */
 	(const int8_t* )"info:\r\n Display array information\r\n\r\n", infoCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : scast */
-static const CLI_Command_Definition_t scastCommandDefinition ={
-	(const int8_t* )"scast", /* The command string to type. */
-	(const int8_t* )"scast:\r\n Start a single-cast DMA stream. Source port (1st par.), source module (2nd par.), destination port (3rd par.), \
-                     destination module (4th par.), direction ('forward', 'backward', 'bidirectional') (5th par.), transfer count (bytes) (6th par.), transfer timeout (ms) (7th par.)\r\n\r\n", scastCommand, /* The function to run. */
-    7 /* Seven parameters are expected. */
-};
-/*-----------------------------------------------------------*/
+//static const CLI_Command_Definition_t scastCommandDefinition ={
+//	(const int8_t* )"scast", /* The command string to type. */
+//	(const int8_t* )"scast:\r\n Start a single-cast DMA stream. Source port (1st par.), source module (2nd par.), destination port (3rd par.), \
+//                     destination module (4th par.), direction ('forward', 'backward', 'bidirectional') (5th par.), transfer count (bytes) (6th par.), transfer timeout (ms) (7th par.)\r\n\r\n", scastCommand, /* The function to run. */
+//    7 /* Seven parameters are expected. */
+//};
+
+/***************************************************************************/
 /* CLI command structure : add button */
 static const CLI_Command_Definition_t addbuttonCommandDefinition ={
 	(const int8_t* )"add-button", /* The command string to type. */
 	(const int8_t* )"add-button:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n", addbuttonCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : remove button */
 static const CLI_Command_Definition_t removebuttonCommandDefinition ={
 	(const int8_t* )"remove-button", /* The command string to type. */
 	(const int8_t* )"remove-button:\r\n Remove a button that was previously defined at this port (1st par.)\r\n\r\n", removebuttonCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : set */
 static const CLI_Command_Definition_t setCommandDefinition ={
 	(const int8_t* )"set", /* The command string to type. */
 	(const int8_t* )"set:\r\n Set a parameter (1st par.) with a given value (2nd par.)\r\n\r\n", setCommand, /* The function to run. */
 	-1 /* Variable number of parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : get */
 static const CLI_Command_Definition_t getCommandDefinition ={
 	(const int8_t* )"get", /* The command string to type. */
 	(const int8_t* )"get:\r\n Get the current value of a parameter (1st par.)\r\n\r\n", getCommand, /* The function to run. */
 	-1 /* Variable number of parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : default */
 static const CLI_Command_Definition_t defaultCommandDefinition ={
 	(const int8_t* )"default", /* The command string to type. */
 	(const int8_t* )"default:\r\n Type 'default params' to set all parameters to default values\r\n Type 'default array' to remove current topology\r\n\r\n", defaultCommand, /* The function to run. */
 	1 /* One parameter is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : time */
 static const CLI_Command_Definition_t timeCommandDefinition ={
 	(const int8_t* )"time", /* The command string to type. */
 	(const int8_t* )"time:\r\n Display current time in HH:MM:SS-msec format\r\n\r\n", timeCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : date */
 static const CLI_Command_Definition_t dateCommandDefinition ={
 	(const int8_t* )"date", /* The command string to type. */
 	(const int8_t* )"date:\r\n Display current date in Weekday MM/DD/YYYY format\r\n\r\n", dateCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : set-baudrate */
 const CLI_Command_Definition_t setBaudrateCommandDefinition ={
 	(const int8_t* )"set-baudrate", /* The command string to type. */
 	(const int8_t* )"set-baudrate:\r\n Set UART baudrate\r\n\t(1st parameter): P1 to P6\r\n\t(2nd parameter): baudrate\r\n\r\n", setBaudrateCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : uuid */
 static const CLI_Command_Definition_t uuidCommandDefinition ={
 	(const int8_t* )"uuid", /* The command string to type. */
 	(const int8_t* )"uuid:\r\n Display MCU unique UID\r\n\r\n", uuidCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : idcode */
 static const CLI_Command_Definition_t idcodeCommandDefinition ={
 	(const int8_t* )"idcode", /* The command string to type. */
 	(const int8_t* )"idcode:\r\n Display MCU IDCODE (DEV_ID and REV_ID)\r\n\r\n", idcodeCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : flash-size */
 static const CLI_Command_Definition_t flashsizeCommandDefinition ={
 	(const int8_t* )"flash-size", /* The command string to type. */
 	(const int8_t* )"flash-size:\r\n Display MCU Flash size in Kbytes\r\n\r\n", flashsizeCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : snip */
 static const CLI_Command_Definition_t snipCommandDefinition ={
 	(const int8_t* )"snip", /* The command string to type. */
 	(const int8_t* )"snip:\r\n Display a list of stored Command Snippets to edit or delete\r\n\r\n", snipCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : act-snip */
 static const CLI_Command_Definition_t actSnipCommandDefinition ={
 	(const int8_t* )"act-snip", /* The command string to type. */
 	(const int8_t* )"act-snip:\r\n Activate a Command Snippet\r\n\r\n", actSnipCommand, /* The function to run. */
 	1 /* One parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : pause-snip */
 static const CLI_Command_Definition_t pauseSnipCommandDefinition ={
 	(const int8_t* )"pause-snip", /* The command string to type. */
 	(const int8_t* )"pause-snip:\r\n Pause a Command Snippet\r\n\r\n", pauseSnipCommand, /* The function to run. */
 	1 /* One parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : del-snip */
 static const CLI_Command_Definition_t delSnipCommandDefinition ={
 	(const int8_t* )"del-snip", /* The command string to type. */
 	(const int8_t* )"del-snip:\r\n Delete a Command Snippet\r\n\r\n", delSnipCommand, /* The function to run. */
 	1 /* One parameters is expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : bridge */
 static const CLI_Command_Definition_t bridgeCommandDefinition ={
 	(const int8_t* )"bridge", /* The command string to type. */
 	(const int8_t* )"bridge:\r\n Bridge two array ports\r\n\r\n", bridgeCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : Unbridge */
 static const CLI_Command_Definition_t unbridgeCommandDefinition ={
 	(const int8_t* )"unbridge", /* The command string to type. */
 	(const int8_t* )"unbridge:\r\n Un-bridge two array ports\r\n\r\n", unbridgeCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : test port */
 static const CLI_Command_Definition_t testportCommandDefinition ={
 	(const int8_t* )"test-port", /* The command string to type. */
 	(const int8_t* )"test-port:\r\n test port functionality. you can choose either to test one specific port or to test all ports. please type Px where x stands for the number of port or type <all> to test all port\r\n\r\n", testportCommand, /* The function to run. */
 	1 /* one parameter is expected. */
 };
-/*-----------------------------------------------------------*/
 
+/***************************************************************************/
 /* CLI command structure : Read ADC value */
 static const CLI_Command_Definition_t ADCReadCommandDefinition ={
 	(const int8_t* )"read-adc", /* The command string to type. */
 	(const int8_t* )"read-adc:\r\n Read ADC Value from Port 2 or Port 3 and choose the side whereas top or bottom\r\n\r\n", ADCReadCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : Read internal temperature value */
 static const CLI_Command_Definition_t ReadTempDefinition ={
 	(const int8_t* )"read-temp", /* The command string to type. */
 	(const int8_t* )"read-temp:\r\n Read internal temperature\r\n\r\n", ReadTempCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : Read internal voltage reference value */
 static const CLI_Command_Definition_t ReadVrefDefinition ={
 	(const int8_t* )"read-vref", /* The command string to type. */
 	(const int8_t* )"read-vref:\r\n Read internal reference Voltage\r\n\r\n", ReadVrefCommand, /* The function to run. */
 	0 /* No parameters are expected. */
 };
-/*-----------------------------------------------------------*/
+
+/***************************************************************************/
 /* CLI command structure : Read ADC Percentage value */
 static const CLI_Command_Definition_t GetReadPercentageDefinition ={
 	(const int8_t* )"read-adc-percentage", /* The command string to type. */
-	(const int8_t* )"read-adc-percentage:\r\n Get percentage value from port 2 or port 3\r\n\r\n", GetReadPrecentageCommand, /* The function to run. */
-	1 /* one parameter is expected. */
+	(const int8_t* )"read-adc-percentage:\r\n Get percentage value from port 2 or port 3\r\n\r\n", GetReadPercentageCommand, /* The function to run. */
+	2 /* Two parameter is expected. */
 };
-/*-----------------------------------------------------------*/
 
-/*-----------------------------------------------------------*/
-
-/* --- Register user CLI Commands 
- This function is declared as __weak to be overwritten by other implementations in user file.
- */
+/***************************************************************************/
+/*****************************  Private Functions **************************/
+/***************************************************************************/
+/* This function is declared as __weak to be overwritten by other implementations in user file. */
 __weak void RegisterUserCLICommands(void){
 	
 }
 
-/*-----------------------------------------------------------*/
-
-/* Register the commands.
- */
+/***************************************************************************/
+/* Register the commands */
 void vRegisterCLICommands(void){
 	/* Register all BOS CLI commands */
 	FreeRTOS_CLIRegisterCommand(&prvTaskStatsCommandDefinition);
@@ -336,7 +366,6 @@ void vRegisterCLICommands(void){
 	FreeRTOS_CLIRegisterCommand(&groupCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&statusCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&infoCommandDefinition);
-	FreeRTOS_CLIRegisterCommand(&scastCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&addbuttonCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&removebuttonCommandDefinition);
 	FreeRTOS_CLIRegisterCommand(&setCommandDefinition);
@@ -359,9 +388,9 @@ void vRegisterCLICommands(void){
 	FreeRTOS_CLIRegisterCommand(&ReadTempDefinition);
 	FreeRTOS_CLIRegisterCommand(&ReadVrefDefinition);
 	FreeRTOS_CLIRegisterCommand(&GetReadPercentageDefinition);
-	numOfBosCommands =34;			// Add "help" command
+	NumOfBosCommands =34;			// Add "help" command
 #ifndef __N
-	numOfBosCommands =35;
+	NumOfBosCommands =35;
 #endif
 	
 	/* Register module CLI commands */
@@ -371,11 +400,9 @@ void vRegisterCLICommands(void){
 	RegisterUserCLICommands();
 }
 
-/* -----------------------------------------------------------------------
- |															Commands																 	|
- -----------------------------------------------------------------------
- */
-
+/***************************************************************************/
+/************************ CLI Commands Definitions *************************/
+/***************************************************************************/
 static portBASE_TYPE prvTaskStatsCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	const int8_t *const pcTaskTableHeader =(int8_t* )"Task State Priority Stack #\r\n************************************************\r\n";
 	
@@ -394,8 +421,8 @@ static portBASE_TYPE prvTaskStatsCommand(int8_t *pcWriteBuffer,size_t xWriteBuff
 	 pdFALSE. */
 	return pdFALSE;
 }
-/*-----------------------------------------------------------*/
 
+/***************************************************************************/
 static portBASE_TYPE prvRunTimeStatsCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	const int8_t *const pcStatsTableHeader =(int8_t* )"Task Abs Time % Time\r\n****************************************\r\n";
 	
@@ -415,8 +442,7 @@ static portBASE_TYPE prvRunTimeStatsCommand(int8_t *pcWriteBuffer,size_t xWriteB
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessage1 =(int8_t* )"Hi from module %d\r\n";
 	static const int8_t *pcMessage2 =(int8_t* )"Hi from module %d (%s)\r\n";
@@ -429,10 +455,10 @@ static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the ping */
-	if(!moduleAlias[myID][0])
+	if(!ModuleAlias[myID][0])
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage1,myID);
 	else
-		sprintf((char* )pcWriteBuffer,(char* )pcMessage2,myID,moduleAlias[myID]);
+		sprintf((char* )pcWriteBuffer,(char* )pcMessage2,myID,ModuleAlias[myID]);
 	
 	RTOS_IND_blink(200);
 	
@@ -441,9 +467,7 @@ static portBASE_TYPE pingCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
-
+/***************************************************************************/
 static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessage =(int8_t* )"Update firmware for module %d\n\r";
 	static const int8_t *pcMessageWrongValue =(int8_t* )"Wrong value!\n\r";
@@ -467,7 +491,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 		/* Respond to the update command */
 		sprintf((char* )pcWriteBuffer,(char* )pcMessage,myID);
 		strcat((char* )pcWriteBuffer,(char* )pcBootloaderUpdateMessage);
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 		#ifndef STM32G0B1xx
 		/* Address for RAM signature (STM32F09x) - Last 4 words of SRAM */
 		*((unsigned long* )0x20007FF0) =0xDEADBEEF;
@@ -475,7 +499,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 		/* Address for RAM signature (STM32G0Bx) - Last 4 words of SRAM */
 		*((unsigned long* )0x20023FF0) =0xDEADBEEF; //Boundary address[0x20000000 - 0x20023FFF]
 		#endif
-		indMode =IND_PING;
+		IndicatorMode =IND_PING;
 		osDelay(10);
 		NVIC_SystemReset();
 	}
@@ -502,14 +526,14 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 			/* I'm the source of the command and the target is > 1 hop away */
 			if(module != myID){
 				/* Deactivate responses */
-				BOSMessaging.response = BOS_RESPONSE_NONE;
+				OptionByte.Response = BOS_RESPONSE_NONE;
 				
 				/* Forward the command */
-				messageParams[0] =port;
+				MessageParams[0] =port;
 				SendMessageToModule(module,CODE_UPDATE_VIA_PORT,1);
 				osDelay(100);
 				/* Execute locally */
-				remoteBootloaderUpdate(myID,module,PcPort,port);
+				RemoteBootloaderUpdate(myID,module,pcPort,port);
 			}
 			/* I'm the source of the command and my neighbor is the target */
 			else{
@@ -517,7 +541,7 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 				SendMessageFromPort(port,0,0,CODE_UPDATE,0);
 				osDelay(100);
 				/* Then, setup myself for remote 'via port' update */
-				remoteBootloaderUpdate(myID,myID,PcPort,port);
+				RemoteBootloaderUpdate(myID,myID,pcPort,port);
 			}
 		}
 		else
@@ -534,47 +558,46 @@ static portBASE_TYPE bootloaderUpdateCommand(int8_t *pcWriteBuffer,size_t xWrite
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
 #ifndef __N
 static portBASE_TYPE exploreCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-//	BOS_Status result = BOS_OK;
-//	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
-//	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
-//	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
-//	
-//	/* Remove compile time warnings about unused parameters, and check the
-//	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-//	write buffer length is adequate, so does not check for buffer overflows. */
-//	( void ) pcCommandString;
-//	( void ) xWriteBufferLen;
-//	configASSERT( pcWriteBuffer );
+	BOS_Status result = BOS_OK;
+	static const int8_t *pcMessage = ( int8_t * ) "\nThe array is being explored. Please wait...\n\r";
+	static const int8_t *pcMessageOK = ( int8_t * ) "\nThe array exploration succeeded. I found %d modules including myself. Here is the discovered topology:\n\r";
+	static const int8_t *pcMessageErr = ( int8_t * ) "\nThe array exploration failed. Please double check connections, reset the modules and try again.\n\r";
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	( void ) pcCommandString;
+	( void ) xWriteBufferLen;
+	configASSERT( pcWriteBuffer );
+
+	/* Respond to the update command */
+	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
+	writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+
+	/* Call array exploration routine */
+	result = Explore();
+	if (result == BOS_OK) {
+		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
+		writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+		DisplayTopology(pcPort);
+		DisplayPortsDir(pcPort);
+	} else {
+		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
+		writePxMutex(pcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
+	}
+	sprintf( ( char * ) pcWriteBuffer, " ");
 	
-//	/* Respond to the update command */
-//	strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessage );
-//	writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//	
-//	/* Call array exploration routine */
-//	result = Explore();
-//	if (result == BOS_OK) {
-//		sprintf( ( char * ) pcWriteBuffer, ( char * ) pcMessageOK, N);
-//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//		DisplayTopology(PcPort);
-//		DisplayPortsDir(PcPort);
-//	} else {
-//		strcpy( ( char * ) pcWriteBuffer, ( char * ) pcMessageErr );
-//		writePxMutex(PcPort, (char*) pcWriteBuffer, strlen((char*) pcWriteBuffer), cmd50ms, HAL_MAX_DELAY);
-//	}
-//	sprintf( ( char * ) pcWriteBuffer, " ");
-//	
-//	/* There is no more data to return after this single string, so return
-//	pdFALSE. */
-//	return pdFALSE;
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
 	return 0;
 }
 #endif
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE resetCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	/* Remove compile time warnings about unused parameters, and check the
 	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -590,8 +613,7 @@ static portBASE_TYPE resetCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,c
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1;
@@ -612,8 +634,8 @@ static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	
 	/* Check alias length */
-	if(xParameterStringLength1 > MaxLengthOfAlias){
-		pcParameterString1[MaxLengthOfAlias] ='\0';
+	if(xParameterStringLength1 > MAX_LENGTH_OF_ALIAS){
+		pcParameterString1[MAX_LENGTH_OF_ALIAS] ='\0';
 	}
 	
 	/* Name the module */
@@ -634,15 +656,14 @@ static portBASE_TYPE nameCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1, *pcParameterString, count;
 	static portBASE_TYPE xParameterStringLength1, xParameterStringLength;
-	char module[MaxLengthOfAlias + 30] ={0};
+	char module[MAX_LENGTH_OF_ALIAS + 30] ={0};
 	int16_t modID =0, type =0;
-	char alias[MaxLengthOfAlias + 1] ={0};
+	char alias[MAX_LENGTH_OF_ALIAS + 1] ={0};
 	
 	static const int8_t *pcMessageWrongModule =(int8_t* )"%s is a wrong module ID or alias\n\r";
 	static const int8_t *pcMessageOKnew =(int8_t* )"] added to new group %s\n\r";
@@ -664,9 +685,9 @@ static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,c
 	
 	/* Is it new or existing group? */
 	type =1;
-	for(uint8_t i =0; i < MaxNumOfGroups; i++){
+	for(uint8_t i =0; i < MAX_NUM_OF_GROUPS; i++){
 		/* This group already exists */
-		if(!strcmp(alias,groupAlias[i])){
+		if(!strcmp(alias,GroupAlias[i])){
 			type =0;
 			break;
 		}
@@ -723,8 +744,7 @@ static portBASE_TYPE groupCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,c
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE statusCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	/* Remove compile time warnings about unused parameters, and check the
 	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -741,8 +761,7 @@ static portBASE_TYPE statusCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	
@@ -759,16 +778,16 @@ static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	
 	/* Respond to the info command */
 	sprintf((char* )pcWriteBuffer,"\n\rNumber of modules: %d\n",N);
-	writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
+	writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
 	cmd50ms,HAL_MAX_DELAY);
 	sprintf((char* )pcWriteBuffer,"\n\rArray topology:\n");
-	writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
+	writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),
 	cmd50ms,HAL_MAX_DELAY);
-	DisplayTopology(PcPort);
-	DisplayPortsDir(PcPort);
+	DisplayTopology(pcPort);
+	DisplayPortsDir(pcPort);
 	if(result == BOS_ERR_NoResponse){
 		sprintf((char* )pcWriteBuffer,"Could not read ports direction for some modules! Please try again\n\r");
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 	}
 	sprintf((char* )pcWriteBuffer," ");
 	
@@ -777,82 +796,7 @@ static portBASE_TYPE infoCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
-static portBASE_TYPE scastCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-	BOS_Status result =BOS_OK;
-	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3, *pcParameterString4;
-	static int8_t *pcParameterString5, *pcParameterString6, *pcParameterString7;
-	portBASE_TYPE xParameterStringLength1 =0, xParameterStringLength2 =0, xParameterStringLength3 =0;
-	portBASE_TYPE xParameterStringLength4 =0, xParameterStringLength5 =0, xParameterStringLength6 =0;
-	portBASE_TYPE xParameterStringLength7 =0;
-	uint8_t direction =0, srcP =0, dstP =0, srcM =0, dstM =0;
-	uint32_t count =0, timeout =0;
-	char par1[MaxLengthOfAlias + 1] ={0}, par2[MaxLengthOfAlias + 1] ={0}, par3[MaxLengthOfAlias + 1] ={0};
-	
-	static const int8_t *pcMessage =(int8_t* )"Activating a %s single-cast DMA stream from P%d in module %s to P%d in module %s. The stream will deactivate after %d bytes or %d ms\n\r";
-	
-	/* Remove compile time warnings about unused parameters, and check the
-	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-	 write buffer length is adequate, so does not check for buffer overflows. */
-	(void )xWriteBufferLen;
-	configASSERT(pcWriteBuffer);
-	
-	/* Obtain the 1st parameter string. */
-	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
-	if(pcParameterString1[0] == 'P'){
-		srcP =(uint8_t )atol((char* )pcParameterString1 + 1);
-	}
-	
-	/* Obtain the 2nd parameter string. */
-	pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
-	strncpy(par1,(char* )pcParameterString2,xParameterStringLength2);
-	srcM =(uint8_t )GetID(par1);
-	
-	/* Obtain the 3rd parameter string. */
-	pcParameterString3 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,3,&xParameterStringLength3);
-	if(pcParameterString3[0] == 'p'){
-		dstP =(uint8_t )atol((char* )pcParameterString3 + 1);
-	}
-	
-	/* Obtain the 4th parameter string. */
-	pcParameterString4 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,4,&xParameterStringLength4);
-	strncpy(par2,(char* )pcParameterString4,xParameterStringLength4);
-	dstM =(uint8_t )GetID(par2);
-	
-	/* Obtain the 5th parameter string. */
-	pcParameterString5 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,5,&xParameterStringLength5);
-	/* Read the color value. */
-	if(!strncmp((const char* )pcParameterString5,"forward",xParameterStringLength5))
-		direction =FORWARD;
-	else if(!strncmp((const char* )pcParameterString5,"backward",xParameterStringLength5))
-		direction =BACKWARD;
-	else if(!strncmp((const char* )pcParameterString5,"bidirectional",xParameterStringLength5))
-		direction =BIDIRECTIONAL;
-	strncpy(par3,(char* )pcParameterString5,xParameterStringLength5);
-	
-	/* Obtain the 6th parameter string. */
-	pcParameterString6 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,6,&xParameterStringLength6);
-	count =(uint32_t )atol((char* )pcParameterString6);
-	
-	/* Obtain the 7th parameter string. */
-	pcParameterString7 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,7,&xParameterStringLength7);
-	timeout =(uint32_t )atol((char* )pcParameterString7);
-	
-	result =StartScastDMAStream(srcP,srcM,dstP,dstM,direction,count,timeout,false);
-	
-	/* Respond to the command */
-	if(result == BOS_OK){
-		sprintf((char* )pcWriteBuffer,(char* )pcMessage,par3,srcP,par1,dstP,par2,count,timeout);
-	}
-	
-	/* There is no more data to return after this single string, so return
-	 pdFALSE. */
-	return pdFALSE;
-}
-
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1, *pcParameterString2;
@@ -901,8 +845,7 @@ static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE removebuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1;
@@ -935,8 +878,7 @@ static portBASE_TYPE removebuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBuff
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1, *pcParameterString2, *pcParameterString3, *pcParameterString4, *pcParameterString5;
@@ -944,7 +886,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	portBASE_TYPE xParameterStringLength4 =0, xParameterStringLength5 =0;
 	uint16_t temp16 =0;
 	uint32_t temp2 =0;
-	uint8_t extraMessage =0, temp81, temp82, temp83, temp84;
+	uint8_t extraMessage =0, temp81 =0, temp82 =0, temp83 =0, temp84 =0;
 	
 	static const int8_t *pcMessageOK =(int8_t* )"%s was set to %s\n\r";
 	static const int8_t *pcMessageWrongParam =(int8_t* )"Wrong parameter!\n\r";
@@ -967,40 +909,28 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
 			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_ALL;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+				OptionByte.Response = BOS_RESPONSE_ALL;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 8) | (uint16_t )OptionByte.Response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_MSG;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+				OptionByte.Response = BOS_RESPONSE_MSG;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 8) | (uint16_t )OptionByte.Response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"cli",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_CLI;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+				OptionByte.Response = BOS_RESPONSE_CLI;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 8) | (uint16_t )OptionByte.Response);
 			}
 			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOSMessaging.response = BOS_RESPONSE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+				OptionByte.Response = BOS_RESPONSE_NONE;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 8) | (uint16_t )OptionByte.Response);
 			}
 			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
 			if(!strncmp((const char* )pcParameterString2,"all",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_BOTH;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"message",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_MESSAGE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"response",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_RESPONSE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
-			}
-			else if(!strncmp((const char* )pcParameterString2,"none",xParameterStringLength2)){
-				BOSMessaging.trace =TRACE_NONE;
-				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )BOSMessaging.trace << 8) | (uint16_t )BOSMessaging.response);
+				OptionByte.Trace =true;
+				EE_WriteVariable(_EE_PARAMS_BASE,((uint16_t )OptionByte.Trace << 8) | (uint16_t )OptionByte.Response);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1008,9 +938,9 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){
 			temp2 =atoi((const char* )pcParameterString2);
 			if(temp2 <= DEF_CLI_BAUDRATE){
-				BOS.clibaudrate =temp2;
-				EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.clibaudrate);
-				EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.clibaudrate >> 16));
+				BOS.cliBaudrate =temp2;
+				EE_WriteVariable(_EE_CLI_BAUD,(uint16_t )BOS.cliBaudrate);
+				EE_WriteVariable(_EE_CLI_BAUD + 1,(uint16_t )(BOS.cliBaudrate >> 16));
 				extraMessage =1;
 			}
 			else
@@ -1019,7 +949,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"debounce",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= USHRT_MAX){
-				BOS.buttons.debounce =temp16;
+				BOS.Buttons.Debounce =temp16;
 				EE_WriteVariable(_EE_PARAMS_DEBOUNCE,temp16);
 			}
 			else
@@ -1028,7 +958,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"singleclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= USHRT_MAX){
-				BOS.buttons.singleClickTime =temp16;
+				BOS.Buttons.SingleClickTime =temp16;
 				EE_WriteVariable(_EE_PARAMS_SINGLE_CLICK,temp16);
 			}
 			else
@@ -1037,8 +967,8 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"mininterclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= UCHAR_MAX){
-				BOS.buttons.minInterClickTime =temp16;
-				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.buttons.minInterClickTime);
+				BOS.Buttons.minInterClickTime =temp16;
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1046,8 +976,8 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		else if(!strncmp((const char* )pcParameterString1 + 4,"maxinterclicktime",xParameterStringLength1 - 4)){
 			temp16 =atoi((const char* )pcParameterString2);
 			if(temp16 >= 1 && temp16 <= UCHAR_MAX){
-				BOS.buttons.maxInterClickTime =temp16;
-				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.buttons.maxInterClickTime << 8) | (uint16_t )BOS.buttons.minInterClickTime);
+				BOS.Buttons.maxInterClickTime =temp16;
+				EE_WriteVariable(_EE_PARAMS_DBL_CLICK,((uint16_t )BOS.Buttons.maxInterClickTime << 8) | (uint16_t )BOS.Buttons.minInterClickTime);
 			}
 			else
 				result =BOS_ERR_WrongValue;
@@ -1078,7 +1008,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(BOS.date.month,BOS.date.day,BOS.date.year,BOS.date.weekday,temp83,temp82,temp81,temp84,BOS.daylightsaving);
+				result =BOS_CalendarConfig(BOS.Date.Month,BOS.Date.Day,BOS.Date.Year,BOS.Date.Weekday,temp83,temp82,temp81,temp84);
 			}
 		}
 	}
@@ -1139,7 +1069,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 				result =BOS_ERR_WrongValue;
 			else{
 				GetTimeDate();
-				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.time.seconds,BOS.time.minutes,BOS.time.hours,BOS.time.ampm,BOS.daylightsaving);
+				result =BOS_CalendarConfig(temp82,temp83,temp16,temp81,BOS.Time.Seconds,BOS.Time.Minutes,BOS.Time.Hours,BOS.Time.AMPM);
 			}
 		}
 	}
@@ -1165,8 +1095,7 @@ static portBASE_TYPE setCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1, *pcParameterString2;
@@ -1189,39 +1118,35 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(!strncmp((const char* )pcParameterString1,"bos.",4)){
 		if(!strncmp((const char* )pcParameterString1 + 4,"response",xParameterStringLength1 - 4)){
-			if(BOSMessaging.response == BOS_RESPONSE_ALL)
+			if(OptionByte.Response == BOS_RESPONSE_ALL)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOSMessaging.response == BOS_RESPONSE_MSG)
+			else if(OptionByte.Response == BOS_RESPONSE_MSG)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOSMessaging.response == BOS_RESPONSE_NONE)
+			else if(OptionByte.Response == BOS_RESPONSE_NONE)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
 			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"trace",xParameterStringLength1 - 4)){
-			if(BOSMessaging.trace == TRACE_BOTH)
+			if(OptionByte.Trace == true)
 				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"all");
-			else if(BOSMessaging.trace == TRACE_MESSAGE)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"msg");
-			else if(BOSMessaging.trace == TRACE_NONE)
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,"none");
 			else
 				result =BOS_ERR_WrongValue;
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"clibaudrate",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.clibaudrate);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.cliBaudrate);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"debounce",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.debounce);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.Debounce);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"singleclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.singleClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.SingleClickTime);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"mininterclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.minInterClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.minInterClickTime);
 		}
 		else if(!strncmp((const char* )pcParameterString1 + 4,"maxinterclicktime",xParameterStringLength1 - 4)){
-			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.buttons.maxInterClickTime);
+			sprintf((char* )pcWriteBuffer,"%d\n\r",BOS.Buttons.maxInterClickTime);
 		}
 		else
 			result =BOS_ERR_WrongParam;
@@ -1230,8 +1155,8 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 		pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
 		temp8 =0;
 		/* Check group exists */
-		for(i =0; i < MaxNumOfGroups; i++){
-			if(!strcmp((char* )pcParameterString2,groupAlias[i])){
+		for(i =0; i < MAX_NUM_OF_GROUPS; i++){
+			if(!strcmp((char* )pcParameterString2,GroupAlias[i])){
 				temp8 =1;
 				break;
 			}
@@ -1266,8 +1191,7 @@ static portBASE_TYPE getCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,con
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	static int8_t *pcParameterString1;
@@ -1293,7 +1217,7 @@ static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	else if(!strncmp((const char* )pcParameterString1,"array",xParameterStringLength1)){
 		/* Broadcast the default array Message */
 		SendMessageToModule(BOS_BROADCAST,CODE_DEF_ARRAY,0);
-		indMode =IND_TOPOLOGY;
+		IndicatorMode =IND_TOPOLOGY;
 		osDelay(100);
 		/* Clear the topology */
 		ClearEEportsDir();
@@ -1315,8 +1239,7 @@ static portBASE_TYPE defaultCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE timeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessage24 =(int8_t* )"Current time is %02d:%02d:%02d-%03d\n\r";
 	static const int8_t *pcMessage12 =(int8_t* )"Current time is %02d:%02d:%02d-%03d %s\n\r";
@@ -1329,13 +1252,13 @@ static portBASE_TYPE timeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	
 	GetTimeDate();
 	/* Respond to the command */
-	if(BOS.hourformat == 24)
-		sprintf((char* )pcWriteBuffer,(char* )pcMessage24,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec);
-	else if(BOS.hourformat == 12){
-		if(BOS.time.ampm == RTC_AM)
-			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec,"AM");
-		else if(BOS.time.ampm == RTC_PM)
-			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.time.hours,BOS.time.minutes,BOS.time.seconds,BOS.time.msec,"PM");
+	if(BOS.HourFormat == 24)
+		sprintf((char* )pcWriteBuffer,(char* )pcMessage24,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec);
+	else if(BOS.HourFormat == 12){
+		if(BOS.Time.AMPM == RTC_AM)
+			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec,"AM");
+		else if(BOS.Time.AMPM == RTC_PM)
+			sprintf((char* )pcWriteBuffer,(char* )pcMessage12,BOS.Time.Hours,BOS.Time.Minutes,BOS.Time.Seconds,BOS.Time.mSec,"PM");
 	}
 	
 	/* There is no more data to return after this single string, so return
@@ -1343,8 +1266,7 @@ static portBASE_TYPE timeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE dateCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageDate =(int8_t* )"Current date is %s\n\r";
 	
@@ -1363,8 +1285,7 @@ static portBASE_TYPE dateCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE setBaudrateCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	BOS_Status result =BOS_OK;
 	int8_t *pcParameterString1;
@@ -1408,8 +1329,7 @@ static portBASE_TYPE setBaudrateCommand(int8_t *pcWriteBuffer,size_t xWriteBuffe
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE uuidCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageUUID =(int8_t* )"MCU UUID is\n\r";
 	
@@ -1422,8 +1342,8 @@ static portBASE_TYPE uuidCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	/* Respond to the command */
 	sprintf((char* )pcWriteBuffer,"%s",(char* )pcMessageUUID);
 	for(uint8_t i =0; i < 3; i++){
-#if defined  (STM32F0)
-		sprintf((char* )pcWriteBuffer,"%s%08X",(char* )pcWriteBuffer,*(uint32_t* )(MCU_F0_UUID_BASE + i * 4));
+#if defined  (STM32G0)
+		sprintf((char* )pcWriteBuffer,"%s%08X",(char* )pcWriteBuffer,*(uint32_t* )(MCU_G0_UUID_BASE + i * 4));
 #endif
 	}
 	strcat((char* )pcWriteBuffer,"\r\n");
@@ -1433,50 +1353,32 @@ static portBASE_TYPE uuidCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
+/***************************************************************************/
+static portBASE_TYPE idcodeCommand(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString) {
+    static const int8_t *pcMessageDEVID = (int8_t*) "MCU DEV_ID is %s\n\r";
+    static const int8_t *pcMessageREVID = (int8_t*) "%sMCU REV_ID is %d.0\n\r";
+    uint16_t dev = 0;
 
-static portBASE_TYPE idcodeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
-	static const int8_t *pcMessageDEVID =(int8_t* )"MCU DEV_ID is %s\n\r";
-	static const int8_t *pcMessageREVID =(int8_t* )"%sMCU REV_ID is %d.0\n\r";
-	uint16_t dev =0;
-	
-	/* Remove compile time warnings about unused parameters, and check the
-	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
-	 write buffer length is adequate, so does not check for buffer overflows. */
-	(void )xWriteBufferLen;
-	configASSERT(pcWriteBuffer);
-	
-	/* Respond to the command */
-	dev =HAL_GetDEVID();
-	switch(dev){
-		case 0x444:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F03x");
-			break;
-		case 0x445:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F04x");
-			break;
-		case 0x440:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F05x");
-			break;
-		case 0x448:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F07x");
-			break;
-		case 0x442:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"STM32F09x");
-			break;
-		default:
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageDEVID,"UNKNOWN");
-			break;
-	}
-	sprintf((char* )pcWriteBuffer,(char* )pcMessageREVID,(char* )pcWriteBuffer,HAL_GetREVID() >> 12);
-	
-	/* There is no more data to return after this single string, so return
-	 pdFALSE. */
-	return pdFALSE;
+    (void)xWriteBufferLen;
+    configASSERT(pcWriteBuffer);
+
+    dev = HAL_GetDEVID();
+
+    switch(dev) {
+        case 0x467:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "STM32G0B1");
+            break;
+        default:
+            sprintf((char*)pcWriteBuffer, (char*)pcMessageDEVID, "UNKNOWN");
+            break;
+    }
+
+    sprintf((char*)pcWriteBuffer, (char*)pcMessageREVID, (char*)pcWriteBuffer, HAL_GetREVID() >> 12);
+
+    return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE flashsizeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageFLASH =(int8_t* )"MCU Flash size is %d Kbytes\n\r";
 	
@@ -1487,15 +1389,14 @@ static portBASE_TYPE flashsizeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the command */
-	sprintf((char* )pcWriteBuffer,(char* )pcMessageFLASH,(*(uint32_t* )(MCU_F0_FLASH_SIZE_BASE)) & 0x0000FFFF);
+	sprintf((char* )pcWriteBuffer,(char* )pcMessageFLASH,(*(uint32_t* )(MCU_G0_FLASH_SIZE_BASE)) & 0x0000FFFF);
 	
 	/* There is no more data to return after this single string, so return
 	 pdFALSE. */
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageSnipWelcome =(int8_t* )"The following Command Snippets are stored in memory:\n\n\r";
 	static const int8_t *pcMessageSnipAction =(int8_t* )"To delete a Snippet, type: del-snip x\n\rTo activate a Snippet, type: \
@@ -1519,35 +1420,27 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	configASSERT(pcWriteBuffer);
 	
 	/* Respond to the command */
-	writePxMutex(PcPort,(char* )pcMessageSnipWelcome,strlen((char* )pcMessageSnipWelcome),cmd50ms,HAL_MAX_DELAY);
+	writePxMutex(pcPort,(char* )pcMessageSnipWelcome,strlen((char* )pcMessageSnipWelcome),cmd50ms,HAL_MAX_DELAY);
 	
 	/* Go through all stored Snippets */
 	uint8_t count =1;
-	for(uint8_t s =0; s < numOfRecordedSnippets; s++){
-		if(snippets[s].cond.conditionType)
-			sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipStart,count,status[snippets[s].state]);
+	for(uint8_t s =0; s < NumOfRecordedSnippets; s++){
+		if(Snippets[s].Condition.ConditionType)
+			sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipStart,count,status[Snippets[s].State]);
 		
 		// Parse conditions
-		switch(snippets[s].cond.conditionType){
+		switch(Snippets[s].Condition.ConditionType){
 			case SNIP_COND_BUTTON_EVENT:
 
-				switch(snippets[s].cond.buffer1[1]){
+				switch(Snippets[s].Condition.Buffer1[1]){
 					case CLICKED:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventClicked,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cmd);
+						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventClicked,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
 						break;
+
 					case DBL_CLICKED:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cmd);
+						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
 						break;
-					case PRESSED_FOR_X1_SEC:
-					case PRESSED_FOR_X2_SEC:
-					case PRESSED_FOR_X3_SEC:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventPressed,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
-						break;
-					case RELEASED_FOR_Y1_SEC:
-					case RELEASED_FOR_Y2_SEC:
-					case RELEASED_FOR_Y3_SEC:
-						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventReleased,(char* )pcWriteBuffer,snippets[s].cond.buffer1[0],snippets[s].cond.buffer1[2],snippets[s].cmd);
-						break;
+
 					default:
 						break;
 				}
@@ -1556,8 +1449,8 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 				
 			case SNIP_COND_MODULE_PARAM_CONST:
 				// Get the module parameter, math operator and constant values.
-				memcpy((uint8_t* )&flt1,&snippets[s].cond.buffer2,sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
-				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,modParam[snippets[s].cond.buffer1[1] - 1].paramName,mathStr[snippets[s].cond.mathOperator - 1],flt1);
+				memcpy((uint8_t* )&flt1,&Snippets[s].Condition.Buffer2,sizeof(float));	// This buffer can be misaligned and cause hardfault on F0
+				sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipModuleParamConst,(char* )pcWriteBuffer,ModuleParam[Snippets[s].Condition.Buffer1[1] - 1].ParamName,MathStr[Snippets[s].Condition.MathOperator - 1],flt1);
 				break;
 				
 			default:
@@ -1565,14 +1458,14 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 		}
 		
 		// Parse commands
-		while(ParseSnippetCommand(snippets[s].cmd,(int8_t* )&commands) != false){
+		while(ParseSnippetCommand(Snippets[s].CMD,(int8_t* )&commands) != false){
 			sprintf((char* )pcWriteBuffer,(char* )pcMessageCmds,pcWriteBuffer,commands);
 			memset(&commands,0x00,strlen((char* )commands));
 		}
 		
 		// Finish and write the buffer
 		strcat((char* )pcWriteBuffer,(char* )pcMessageEnd);
-		writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
+		writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),cmd50ms,HAL_MAX_DELAY);
 		
 		++count;
 	}
@@ -1584,8 +1477,7 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE actSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"Snippet was activated. Type snip to view updated list\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"The Snippet number was not found\n\r";
@@ -1603,13 +1495,13 @@ static portBASE_TYPE actSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	/* Respond to the command */
 	if(result == BOS_OK){
-		snippets[index - 1].state = true;
-		SaveToRO();
+		Snippets[index - 1].State = true;
+		SaveSnippetsToRO();
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageOK);
 	}
 	else
@@ -1620,8 +1512,7 @@ static portBASE_TYPE actSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE pauseSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"Snippet was paused. Type snip to view updated list\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"The Snippet number was not found\n\r";
@@ -1639,13 +1530,13 @@ static portBASE_TYPE pauseSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	/* Respond to the command */
 	if(result == BOS_OK){
-		snippets[index - 1].state = false;
-		SaveToRO();
+		Snippets[index - 1].State = false;
+		SaveSnippetsToRO();
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageOK);
 	}
 	else
@@ -1656,8 +1547,7 @@ static portBASE_TYPE pauseSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"Snippet was deleted. Type snip to view updated list\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"The Snippet number was not found\n\r";
@@ -1675,29 +1565,29 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	uint8_t index =(uint8_t )atoi((char* )pcParameterString1);
 	
-	if(!index || index > numOfRecordedSnippets)
+	if(!index || index > NumOfRecordedSnippets)
 		result =BOS_ERROR;
 	
 	if(result == BOS_OK){
 		// Delete the Snippet
-		snippets[index - 1].cond.conditionType =0;
-		snippets[index - 1].cond.mathOperator =0;
-		memset(snippets[index - 1].cond.buffer1,0,4);
-		snippets[index - 1].state = false;
-		free(snippets[index - 1].cmd);
-		snippets[index - 1].cmd = NULL;
+		Snippets[index - 1].Condition.ConditionType =0;
+		Snippets[index - 1].Condition.MathOperator =0;
+		memset(Snippets[index - 1].Condition.Buffer1,0,4);
+		Snippets[index - 1].State = false;
+		free(Snippets[index - 1].CMD);
+		Snippets[index - 1].CMD = NULL;
 		
 		// Reorder remaining Snippets to avoid empty indices
-		for(uint8_t s =index; s < numOfRecordedSnippets; s++){
-			if(snippets[s].cond.conditionType){
-				memcpy(&snippets[s - 1],&snippets[s],sizeof(snippet_t));
-				memset(&snippets[s],0,sizeof(snippet_t));
+		for(uint8_t s =index; s < NumOfRecordedSnippets; s++){
+			if(Snippets[s].Condition.ConditionType){
+				memcpy(&Snippets[s - 1],&Snippets[s],sizeof(Snippet_t));
+				memset(&Snippets[s],0,sizeof(Snippet_t));
 			}
 		}
-		--numOfRecordedSnippets;
+		--NumOfRecordedSnippets;
 		
 		// Write updated list to RO
-		SaveToRO();
+		SaveSnippetsToRO();
 	}
 	
 	/* Respond to the command */
@@ -1711,8 +1601,7 @@ static portBASE_TYPE delSnipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE bridgeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"P%d and P%d are bridged together\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong syntax\n\r";
@@ -1764,8 +1653,7 @@ static portBASE_TYPE bridgeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE unbridgeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"P%d and P%d are un-bridged\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong syntax\n\r";
@@ -1817,8 +1705,7 @@ static portBASE_TYPE unbridgeCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	return pdFALSE;
 }
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageOK =(int8_t* )"P%d is working correctly\n\r";
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong syntax\n\r";
@@ -1829,7 +1716,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	portBASE_TYPE xParameterStringLength1 =0;
 	BOS_Status result =BOS_OK;
 	uint8_t portt, ports;
-	extern uint8_t UARTRxBufIndex[NumOfPorts];
+//	extern uint8_t UARTRxBufIndex[NUM_OF_PORTS];
 	char WriteVaule[1] ="H";
 	char ReadValue[1];
 	int LastEnter =0;
@@ -1843,9 +1730,9 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
 	if(strcmp((char* )pcParameterString1,"all") == 0){
 		if(LastEnter == 0)
-			LastEnter =UARTRxBufIndex[PcPort - 1];
-		for(ports =1; ports <= NumOfPorts; ports++){
-			if(PcPort != ports){
+//			LastEnter =UARTRxBufIndex[pcPort - 1];
+		for(ports =1; ports <= NUM_OF_PORTS; ports++){
+			if(pcPort != ports){
 				WriteVaule[0] =rand();
 				writePxMutex(ports,WriteVaule,1,10,100);
 #ifndef H41R6
@@ -1860,15 +1747,15 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 				
 				if(result == BOS_OK){
 					sprintf((char* )pcWriteBuffer,(char* )pcMessageOK,ports);
-					writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+					writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
 				}
 				else if(result == BOS_ERR_Keyword){
 					sprintf((char* )pcWriteBuffer,(char* )pcMessageFail,ports);
-					writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+					writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
 				}
 				strcpy((char* )pcWriteBuffer,(char* )pcMessageWait);
-				writePxMutex(PcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
-				while(UARTRxBuf[PcPort - 1][LastEnter + 1] == 0){
+				writePxMutex(pcPort,(char* )pcWriteBuffer,strlen((char* )pcWriteBuffer),10,100);
+				while(UARTRxBuf[pcPort - 1][LastEnter + 1] == 0){
 					Delay_ms(1);
 				}
 				LastEnter++;
@@ -1877,7 +1764,7 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	}
 	else if(pcParameterString1[0] == 'p'){
 		portt =(uint8_t )atol((char* )pcParameterString1 + 1);
-		if(portt > 0 && portt <= NumOfPorts){
+		if(portt > 0 && portt <= NUM_OF_PORTS){
 			if(result == BOS_OK){
 				WriteVaule[0] =rand();
 				writePxMutex(portt,WriteVaule,1,cmd50ms,100);
@@ -1909,10 +1796,8 @@ static portBASE_TYPE testportCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	 pdFALSE. */
 	return pdFALSE;
 }
-/*-----------------------------------------------------------*/
 
-/*-----------------------------------------------------------*/
-
+/***************************************************************************/
 static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong Parameter\n\r";	//wrong parameter was entered it's not top nor bottom
 	static const int8_t *pcMessageWrong1 =(int8_t* )"Wrong Port number \n\r"; //wrong port number was entered
@@ -1946,15 +1831,15 @@ static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 			
 			if(strcmp((char* )pcParameterString2,"top") == 0)
 				ADC_Side ="top";
-			else if(strcmp((char* )pcParameterString2,"top") == 0)
+			else if(strcmp((char* )pcParameterString2,"bottom") == 0)
 				ADC_Side ="bottom";
 			
-			ADCSelectChannel(ADCports,ADC_Side);
+			ADCSelectPort(ADCports);
 			ReadADCChannel(ADCports,ADC_Side,&ADC_Value_CLI);
 			
 			strcpy(pcWriteBuffer,(char* )&ADC_Value_CLI);
 			
-			sprintf(pcWriteBuffer,"ADC_Value=%u \r\n",(uint16_t )ADC_Value_CLI);
+			sprintf(pcWriteBuffer,"ADC value = %0.2f \r\n", ADC_Value_CLI);
 			
 		}
 		else
@@ -1969,6 +1854,7 @@ static portBASE_TYPE ADCReadCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen
 	return pdFALSE;
 }
 
+/***************************************************************************/
 static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	
 	float ADC_Value_TEMP =0, ADC_Value_Vref =0;
@@ -1990,6 +1876,7 @@ static portBASE_TYPE ReadTempCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	return pdFALSE;
 }
 
+/***************************************************************************/
 static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	float ADC_Value_TEMP =0, ADC_Value_Vref =0;
 	
@@ -2003,19 +1890,24 @@ static portBASE_TYPE ReadVrefCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLe
 	
 	strcpy(pcWriteBuffer,(char* )&ADC_Value_TEMP);
 	
-	sprintf(pcWriteBuffer,"internal reference voltage is=%.2fV \r\n",ADC_Value_Vref);
+	sprintf(pcWriteBuffer,"internal reference voltage is = %.2fV \r\n",ADC_Value_Vref);
 	
 	/* There is no more data to return after this single string, so return
 	 pdFALSE. */
 	return pdFALSE;
 }
 
-static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
+/***************************************************************************/
+static portBASE_TYPE GetReadPercentageCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,const int8_t *pcCommandString){
 	static const int8_t *pcMessageWrong =(int8_t* )"Wrong Port number \n\r"; //wrong port number was entered
 	int8_t *pcParameterString1;
+	int8_t *pcParameterString2;
 	portBASE_TYPE xParameterStringLength1 =0;
+	portBASE_TYPE xParameterStringLength2 =0;
+
 	BOS_Status result =BOS_OK;
 	uint8_t ADCports;
+	char *ADC_Side;
 	float ADC_Value_CLI =0;
 	/* Remove compile time warnings about unused parameters, and check the
 	 write buffer is not NULL.  NOTE - for simplicity, this example assumes the
@@ -2026,12 +1918,21 @@ static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWrit
 	/* Obtain the 1st parameter string. */
 
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
+	pcParameterString2 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,2,&xParameterStringLength2);
+
 	
 	if(*pcParameterString1 == '2' || *pcParameterString1 == '3'){
 		ADCports =(uint8_t )atol((char* )pcParameterString1);
-		GetReadPrecentage(ADCports,&ADC_Value_CLI);
+		if (strcmp((char*) pcParameterString2, "top") == 0	|| strcmp((char*) pcParameterString2, "bottom") == 0) {
+
+			if (strcmp((char*) pcParameterString2, "top") == 0)
+				ADC_Side = "top";
+			else if (strcmp((char*) pcParameterString2, "bottom") == 0)
+				ADC_Side = "bottom";
+		}
+		GetReadPercentage(ADCports, ADC_Side, &ADC_Value_CLI);
 		
-		sprintf(pcWriteBuffer,"ADC value percentage is=%.2f%% %\r\n",ADC_Value_CLI);
+		sprintf(pcWriteBuffer,"ADC value percentage is = %.2f%% %\r\n",ADC_Value_CLI);
 	}
 	else
 		strcpy((char* )pcWriteBuffer,(char* )pcMessageWrong);
@@ -2041,5 +1942,5 @@ static portBASE_TYPE GetReadPrecentageCommand(int8_t *pcWriteBuffer,size_t xWrit
 	return pdFALSE;
 	
 }
-/*-----------------------------------------------------------*/
-/************************ (C) COPYRIGHT HEXABITZ *****END OF FILE****/
+/***************************************************************************/
+/************************ (C) COPYRIGHT HEXABITZ **** END OF FILE **********/
