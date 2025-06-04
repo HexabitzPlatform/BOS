@@ -2098,6 +2098,10 @@ void convert_to_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
             memcpy(bytes8, value, sizeof(uint16_t));
             break;
 
+        case FMT_INT16:
+            memcpy(bytes8, value, sizeof(int16_t));
+            break;
+
         case FMT_UINT32:
             memcpy(bytes8, value, sizeof(uint32_t));
             break;
