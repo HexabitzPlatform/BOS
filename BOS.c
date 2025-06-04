@@ -2089,4 +2089,57 @@ BOS_Status printfp(uint8_t port,char *str){
 }
 
 /***************************************************************************/
+/* convert from specific data type (16,32) to bytes (8) */
+void convert_to_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
+    if (!value || !bytes8) return;
+
+    switch (type) {
+        case FMT_UINT16:
+            memcpy(bytes8, value, sizeof(uint16_t));
+            break;
+
+        case FMT_UINT32:
+            memcpy(bytes8, value, sizeof(uint32_t));
+            break;
+
+        case FMT_INT32:
+            memcpy(bytes8, value, sizeof(int32_t));
+            break;
+
+        case FMT_FLOAT:
+            memcpy(bytes8, value, sizeof(float));
+            break;
+
+        default:
+            break;
+    }
+}
+
+/***************************************************************************/
+/* convert from bytes (8) to specific data type (16,32)  */
+void convert_from_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
+    if (!bytes8 || !value) return;
+
+    switch (type) {
+        case FMT_UINT16:
+            memcpy(value, bytes8, sizeof(uint16_t));
+            break;
+
+        case FMT_UINT32:
+            memcpy(value, bytes8, sizeof(uint32_t));
+            break;
+
+        case FMT_INT32:
+            memcpy(value, bytes8, sizeof(int32_t));
+            break;
+
+        case FMT_FLOAT:
+            memcpy(value, bytes8, sizeof(float));
+            break;
+
+        default:
+            break;
+    }
+}
+/***************************************************************************/
 /***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/
