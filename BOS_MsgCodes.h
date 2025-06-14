@@ -164,10 +164,7 @@
 #define	CODE_H0FR7_OFF						  771
 #define	CODE_H0FR7_TOGGLE					  772
 #define	CODE_H0FR7_PWM						  773
-#define	CODE_H0FR7_SAMPLE_PORT				  774
-#define	CODE_H0FR7_STREAM_PORT				  775
-#define	CODE_H0FR7_STREAM_BUFFER			  776
-#define	CODE_H0FR7_STOP_MEASUREMENT			  777
+#define	CODE_H0FR7_GET_CURRENT			      774
 
 // H16R6x
 #define CODE_H16R6_SET_COLOR                  1100
