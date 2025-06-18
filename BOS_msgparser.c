@@ -873,9 +873,9 @@ static BOS_Status HandleBaudRateCode(uint8_t src, uint8_t port, uint8_t shift)
 	numOfParams =MessageLength[port - 1] - shift;
     /* Change baudrate of specified ports */
     temp =temp32 =0;
-//    temp32 =((uint32_t )cMessage[port - 1][shift] << 24) + ((uint32_t )cMessage[port - 1][1 + shift] << 16) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + cMessage[port - 1][3 + shift];
+    temp32 =((uint32_t )cMessage[port - 1][shift] << 24) + ((uint32_t )cMessage[port - 1][1 + shift] << 16) + ((uint32_t )cMessage[port - 1][2 + shift] << 8) + cMessage[port - 1][3 + shift];
 
-    convert_from_bytes(&temp32, &cMessage[port - 1][shift], FMT_UINT32);
+//    convert_from_bytes(&temp32, &cMessage[port - 1][shift], FMT_UINT32);
 
     if(cMessage[port - 1][4 + shift] == 0xFF) // All ports
     {
@@ -1515,7 +1515,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     /* Write remote value */
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 //                        *(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][2 + shift] << 0) + ((uint16_t )cMessage[port - 1][3 + shift] << 8);
-                    	convert_from_bytes(&temp32, &cMessage[port - 1][2 + shift], FMT_UINT16);
+                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT16);
                     break;
 
                 case FMT_INT16:
@@ -1534,7 +1534,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     /* Write remote value */
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 //                        *(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][2 + shift] << 0) + ((int16_t )cMessage[port - 1][3 + shift] << 8);
-                    	convert_from_bytes(&temp32, &cMessage[port - 1][2 + shift], FMT_UINT16);
+                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT16);
                     break;
 
                 case FMT_UINT32:
@@ -1552,7 +1552,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     }
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 //                        *(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][2 + shift] << 0) + ((uint32_t )cMessage[port - 1][3 + shift] << 8) + ((uint32_t )cMessage[port - 1][4 + shift] << 16) + ((uint32_t )cMessage[port - 1][5 + shift] << 24);
-                    	convert_from_bytes(&temp32, &cMessage[port - 1][2 + shift], FMT_UINT32);
+                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT32);
                     break;
 
                 case FMT_INT32:
@@ -1569,7 +1569,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     }
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
 //                        *(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][2 + shift] << 0) + ((int32_t )cMessage[port - 1][3 + shift] << 8) + ((int32_t )cMessage[port - 1][4 + shift] << 16) + ((int32_t )cMessage[port - 1][5 + shift] << 24);
-                    	convert_from_bytes(&temp32, &cMessage[port - 1][2 + shift], FMT_INT32);
+                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT32);
                     break;
 
                 case FMT_FLOAT:
