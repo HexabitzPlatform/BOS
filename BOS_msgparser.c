@@ -1631,22 +1631,22 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
 
                 case FMT_UINT16:
 //                    *(__IO uint16_t* )temp32 =((uint16_t )cMessage[port - 1][6 + shift] << 0) + ((uint16_t )cMessage[port - 1][7 + shift] << 8);
-                    convert_from_bytes(&temp32, &cMessage[port - 1][6 + shift], FMT_UINT16);
+                    convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT16);
                     break;
 
                 case FMT_INT16:
                     *(__IO int16_t* )temp32 =((int16_t )cMessage[port - 1][6 + shift] << 0) + ((int16_t )cMessage[port - 1][7 + shift] << 8);
-//                	convert_from_bytes(&temp32, &cMessage[port - 1][6 + shift], FMT_INT16);
+//                	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_INT16);
                     break;
 
                 case FMT_UINT32:
 //                    *(__IO uint32_t* )temp32 =((uint32_t )cMessage[port - 1][6 + shift] << 0) + ((uint32_t )cMessage[port - 1][7 + shift] << 8) + ((uint32_t )cMessage[port - 1][8 + shift] << 16) + ((uint32_t )cMessage[port - 1][9 + shift] << 24);
-                	convert_from_bytes(&temp32, &cMessage[port - 1][6 + shift], FMT_UINT32);
+                	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT32);
                     break;
 
                 case FMT_INT32:
 //                    *(__IO int32_t* )temp32 =((int32_t )cMessage[port - 1][6 + shift] << 0) + ((int32_t )cMessage[port - 1][7 + shift] << 8) + ((int32_t )cMessage[port - 1][8 + shift] << 16) + ((int32_t )cMessage[port - 1][9 + shift] << 24);
-                	convert_from_bytes(&temp32, &cMessage[port - 1][6 + shift], FMT_INT32);
+                	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_INT32);
                     break;
 
                 case FMT_FLOAT:
