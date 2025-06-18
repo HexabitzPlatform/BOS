@@ -2089,29 +2089,35 @@ BOS_Status printfp(uint8_t port,char *str){
 }
 
 /***************************************************************************/
-/* convert from specific data type (16,32) to bytes (8) */
-void convert_to_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
-    if (!value || !bytes8) return;
+/* @brief: Converts a value of a specific data type (uint32_t, int32_t, uint16_t, int16_t, float)
+ *  into its corresponding byte representation (uint8_t array)
+ *  @param1: Value to be converted.
+ *  @param2: The array to be converted to.
+ *  @param3: data format type.
+ *  @retval: Nothing.
+ */
+void EncodeValueToBytes(void* value, uint8_t* bytes, VariableFormat_t type) {
+    if (!value || !bytes) return;
 
     switch (type) {
         case FMT_UINT16:
-            memcpy(bytes8, value, sizeof(uint16_t));
+            memcpy(bytes, value, sizeof(uint16_t));
             break;
 
         case FMT_INT16:
-            memcpy(bytes8, value, sizeof(int16_t));
+            memcpy(bytes, value, sizeof(int16_t));
             break;
 
         case FMT_UINT32:
-            memcpy(bytes8, value, sizeof(uint32_t));
+            memcpy(bytes, value, sizeof(uint32_t));
             break;
 
         case FMT_INT32:
-            memcpy(bytes8, value, sizeof(int32_t));
+            memcpy(bytes, value, sizeof(int32_t));
             break;
 
         case FMT_FLOAT:
-            memcpy(bytes8, value, sizeof(float));
+            memcpy(bytes, value, sizeof(float));
             break;
 
         default:
@@ -2120,29 +2126,35 @@ void convert_to_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
 }
 
 /***************************************************************************/
-/* convert from bytes (8) to specific data type (16,32)  */
-void convert_from_bytes(void* value, uint8_t* bytes8, VariableFormat_t type) {
-    if (!bytes8 || !value) return;
+/* @brief: Converts an 8-byte array (uint8_t[8]) into a corresponding value of a specific data type
+ * (uint32_t, int32_t, uint16_t, int16_t, or float).
+ *  @param1: Value to be converted.
+ *  @param2: The array to be converted to.
+ *  @param3: data format type.
+ *  @retval: Nothing.
+ */
+void DecodeBytesToValue(void* value, uint8_t* bytes, VariableFormat_t type) {
+    if (!bytes || !value) return;
 
     switch (type) {
         case FMT_UINT16:
-            memcpy(value, bytes8, sizeof(uint16_t));
+            memcpy(value, bytes, sizeof(uint16_t));
             break;
 
         case FMT_INT16:
-            memcpy(value, bytes8, sizeof(int16_t));
+            memcpy(value, bytes, sizeof(int16_t));
             break;
 
         case FMT_UINT32:
-            memcpy(value, bytes8, sizeof(uint32_t));
+            memcpy(value, bytes, sizeof(uint32_t));
             break;
 
         case FMT_INT32:
-            memcpy(value, bytes8, sizeof(int32_t));
+            memcpy(value, bytes, sizeof(int32_t));
             break;
 
         case FMT_FLOAT:
-            memcpy(value, bytes8, sizeof(float));
+            memcpy(value, bytes, sizeof(float));
             break;
 
         default:

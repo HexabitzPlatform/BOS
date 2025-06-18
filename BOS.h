@@ -769,8 +769,8 @@ extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t wakeupPins);
 extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t wakeupPins);
 
 /* ======================== Codec APIs ======================== */
-void convert_to_bytes(void* value, uint8_t* bytes8, VariableFormat_t type);
-void convert_from_bytes(void* value, uint8_t* bytes8, VariableFormat_t type);
+void EncodeValueToBytes(void* value, uint8_t* bytes, VariableFormat_t type);
+void DecodeBytesToValue(void* value, uint8_t* bytes, VariableFormat_t type);
 
 #endif /* BOS_H */
 

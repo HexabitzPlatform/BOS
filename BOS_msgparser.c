@@ -1054,13 +1054,13 @@ static BOS_Status HandleDMAChannelCode(uint8_t src, uint8_t port, uint8_t shift)
     if(numOfParams == 17)
         temp =cMessage[port - 1][15 + shift];
 
-    convert_from_bytes(&count, &cMessage[port - 1][shift], FMT_UINT32);
-    convert_from_bytes(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
+    DecodeBytesToValue(&count, &cMessage[port - 1][shift], FMT_UINT32);
+    DecodeBytesToValue(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
 
     /* Activate the stream */
     if(temp == false){
-        convert_from_bytes(&count, &cMessage[port - 1][shift], FMT_UINT32);
-        convert_from_bytes(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
+    	DecodeBytesToValue(&count, &cMessage[port - 1][shift], FMT_UINT32);
+    	DecodeBytesToValue(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
         if(cMessage[port - 1][9 + shift] && cMessage[port - 1][10 + shift])
             SetupDMAStreams(cMessage[port - 1][8 + shift],count,timeout,cMessage[port - 1][9 + shift],cMessage[port - 1][10 + shift]);
         if(cMessage[port - 1][11 + shift] && cMessage[port - 1][12 + shift])
@@ -1094,8 +1094,8 @@ static BOS_Status HandleDMASingleCastStreamCode(uint8_t src, uint8_t port, uint8
     BOS_Status Status = BOS_OK;
     uint32_t count, timeout;
 
-    convert_from_bytes(&count, &cMessage[port - 1][shift], FMT_UINT32);
-    convert_from_bytes(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
+    DecodeBytesToValue(&count, &cMessage[port - 1][shift], FMT_UINT32);
+    DecodeBytesToValue(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
     StartScastDMAStream(cMessage[port - 1][9 + shift],myID,cMessage[port - 1][11 + shift],cMessage[port - 1][10 + shift],cMessage[port - 1][8 + shift],count,timeout,cMessage[port - 1][12 + shift]);
 
     return Status;
@@ -1128,27 +1128,27 @@ static BOS_Status HandleReadRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
                 break;
 
             case FMT_UINT16:
-            	convert_to_bytes((uint32_t*)temp32, &MessageParams[0], FMT_UINT16);
+            	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[0], FMT_UINT16);
                 SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
                 break;
 
             case FMT_INT16:
-            	convert_to_bytes((uint32_t*)temp32, &MessageParams[0], FMT_INT16);
+            	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[0], FMT_INT16);
                 SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,2);
                 break;
 
             case FMT_UINT32:
-            	convert_to_bytes((uint32_t*)temp32, &MessageParams[0], FMT_UINT32);
+            	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[0], FMT_UINT32);
                 SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
                 break;
 
             case FMT_INT32:
-            	convert_to_bytes((uint32_t*)temp32, &MessageParams[0], FMT_INT32);
+            	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[0], FMT_INT32);
                 SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,4);
                 break;
 
             case FMT_FLOAT:
-            	convert_to_bytes((uint32_t*)temp32, &MessageParams[0], FMT_FLOAT);
+            	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[0], FMT_FLOAT);
                 SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,8);
                 break;
             default:
@@ -1184,27 +1184,27 @@ static BOS_Status HandleReadRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
                     break;
 
                 case FMT_UINT16:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT16);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT16);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
                     break;
 
                 case FMT_INT16:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_INT16);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_INT16);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
                     break;
 
                 case FMT_UINT32:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
                     break;
 
                 case FMT_INT32:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_INT32);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_INT32);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
                     break;
 
                 case FMT_FLOAT:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_FLOAT);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_FLOAT);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
                     break;
 
@@ -1238,26 +1238,26 @@ static BOS_Status HandleReadRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
                     break;
 
                 case FMT_UINT16:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT16);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT16);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
                     break;
 
                 case FMT_INT16:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_INT16);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_INT16);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,3);
                     break;
 
                 case FMT_UINT32:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
                     break;
 
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_UINT32);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,5);
                     break;
 
                 case FMT_FLOAT:
-                	convert_to_bytes((uint32_t*)temp32, &MessageParams[1], FMT_FLOAT);
+                	EncodeValueToBytes((uint32_t*)temp32, &MessageParams[1], FMT_FLOAT);
                     SendMessageToModule(src,CODE_READ_REMOTE_RESPONSE,9);
                     break;
 
@@ -1296,23 +1296,23 @@ static BOS_Status HandleReadRemoteResponseCode(uint8_t src, uint8_t port, uint8_
                 break;
 
             case FMT_UINT16:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_UINT16);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_UINT16);
                 break;
 
             case FMT_INT16:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_INT16);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_INT16);
                 break;
 
             case FMT_UINT32:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_UINT32);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_UINT32);
                 break;
 
             case FMT_INT32:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_INT32);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_INT32);
                 break;
 
             case FMT_FLOAT:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_FLOAT);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][1 + shift], FMT_FLOAT);
                 break;
 
             default:
@@ -1335,23 +1335,23 @@ static BOS_Status HandleReadRemoteResponseCode(uint8_t src, uint8_t port, uint8_
                 break;
 
             case FMT_UINT16:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][shift], FMT_UINT16);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][shift], FMT_UINT16);
                 break;
 
             case FMT_INT16:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][shift], FMT_INT16);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][shift], FMT_INT16);
                 break;
 
             case FMT_UINT32:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][shift], FMT_UINT32);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][shift], FMT_UINT32);
                 break;
 
             case FMT_INT32:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][shift], FMT_INT32);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][shift], FMT_INT32);
                 break;
 
             case FMT_FLOAT:
-            	convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][shift], FMT_FLOAT);
+            	DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][shift], FMT_FLOAT);
                 break;
 
             default:
@@ -1436,7 +1436,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     }
                     /* Write remote value */
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
-                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT16);
+                    	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT16);
                     break;
 
                 case FMT_INT16:
@@ -1454,7 +1454,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     }
                     /* Write remote value */
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
-                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT16);
+                    	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT16);
                     break;
 
                 case FMT_UINT32:
@@ -1471,7 +1471,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                         }
                     }
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
-                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT32);
+                    	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_UINT32);
                     break;
 
                 case FMT_INT32:
@@ -1487,7 +1487,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                         }
                     }
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL)
-                    	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT32);
+                    	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][2 + shift], FMT_INT32);
                     break;
 
                 case FMT_FLOAT:
@@ -1503,7 +1503,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                         }
                     }
                     if(ResponseStatus != BOS_ERR_REMOTE_WRITE_MEM_FULL){
-                        convert_from_bytes(&RemoteBuffer, &cMessage[port - 1][2 + shift], FMT_FLOAT);
+                        DecodeBytesToValue(&RemoteBuffer, &cMessage[port - 1][2 + shift], FMT_FLOAT);
                         *(float* )temp32 =*(float* )&RemoteBuffer;
                     }
                     break;
@@ -1544,7 +1544,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     break;
 
                 case FMT_UINT16:
-                    convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT16);
+                    DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT16);
                     break;
 
                 case FMT_INT16:
@@ -1552,11 +1552,11 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                     break;
 
                 case FMT_UINT32:
-                	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT32);
+                	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_UINT32);
                     break;
 
                 case FMT_INT32:
-                	convert_from_bytes((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_INT32);
+                	DecodeBytesToValue((uint32_t* )temp32, &cMessage[port - 1][6 + shift], FMT_INT32);
                     break;
 
                 case FMT_FLOAT:
@@ -1720,9 +1720,9 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
                 Status = BOS_OK;
                 NumOfElement = cMessage[port - 1][2 + shift];
 
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT16);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][7 + shift], FMT_UINT16);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][9 + shift], FMT_UINT16);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT16);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][7 + shift], FMT_UINT16);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][9 + shift], FMT_UINT16);
             } else {
                 Status = BOS_ERROR;
             }
@@ -1733,7 +1733,7 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
                 Status = BOS_OK;
                 NumOfElement = cMessage[port - 1][2 + shift];
                 /* Skip command code bytes [3 + shift, 4 + shift] */
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT16);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT16);
             } else {
                 Status = BOS_ERROR;
             }
@@ -1744,7 +1744,7 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
                 Status = BOS_OK;
                 NumOfElement = cMessage[port - 1][2 + shift];
                 /* Skip command code bytes [3 + shift, 4 + shift] */
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
             } else {
                 Status = BOS_ERROR;
             }
@@ -1755,9 +1755,9 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
                 Status = BOS_OK;
                 NumOfElement = cMessage[port - 1][2 + shift];
                 /* Skip command code bytes [3 + shift, 4 + shift] */
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][9 + shift], FMT_UINT32);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][13 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][9 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][13 + shift], FMT_UINT32);
             } else {
                 Status = BOS_ERROR;
             }
@@ -1768,9 +1768,9 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
                 Status =BOS_OK;
                 NumOfElement =cMessage[port - 1][2 + shift];
                 /* Skip command code bytes [3 + shift, 4 + shift] */
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][9 + shift], FMT_UINT32);
-                convert_from_bytes((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][13 + shift], FMT_UINT32);}
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[0], &cMessage[port - 1][5 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[1], &cMessage[port - 1][9 + shift], FMT_UINT32);
+                DecodeBytesToValue((uint32_t *)&RemoteResponseBuffer[2], &cMessage[port - 1][13 + shift], FMT_UINT32);}
             else
                 Status =BOS_ERROR;
             break;
