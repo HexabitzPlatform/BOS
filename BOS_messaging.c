@@ -798,12 +798,9 @@ BOS_Status StreamMemoryToPort(uint8_t dmaDstPort,uint8_t dstM,uint8_t *pBuffer,u
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
 
-	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1){
-		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dmaDstPort,dstM,FORWARD,size,timeout,stored))
-			return result =BOS_ERROR;
-		StreamCplt =0;
-	}
+	if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dmaDstPort,dstM,FORWARD,size,timeout,stored))
+		return result =BOS_ERROR;
+
 	if(myID == dstM)
 		port =dmaDstPort;
 	else
@@ -829,12 +826,8 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint
 	BOS_Status result =BOS_OK;
 	uint8_t port =0;
 
-	/* If the stream completes either by reaching the total size limit or by timing out, reconfigure the stream path */
-	if(StreamCplt == 1){
-		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
-			return result =BOS_ERROR;
-	StreamCplt =0;
-	}
+	if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
+		return result =BOS_ERROR;
 
 	port =FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
