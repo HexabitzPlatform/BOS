@@ -1325,11 +1325,11 @@ void PxMessagingTask(void *argument){
 						adcSide =cMessage[port - 1][shift + 1];
 						if(0 == adcSide){
 							ADCSelectPort(adcPort);
-							ReadADCChannel(adcPort,"top",&adcValue);
+							ReadADCChannel(adcPort,TOP,&adcValue);
 						}
 						else if(1 == adcSide){
 							ADCSelectPort(adcPort);
-							ReadADCChannel(adcPort,"bottom",&adcValue);
+							ReadADCChannel(adcPort,BOTTOM,&adcValue);
 						}
 
 					case CODE_READ_TEMPERATURE:

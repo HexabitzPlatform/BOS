@@ -200,6 +200,12 @@ typedef enum {
 	NRST_PIN     /* Reset pin */
 } WakeupPins_t;
 
+/* Module layer identifiers in a Hexabitz */
+typedef enum {
+	TOP = 0,     /* Top module layer */
+	BOTTOM       /* Bottom module layer */
+} ModuleLayer_t ;
+
 /* Typedef Structure Definitions *******************************************/
 /* Button configuration settings */
 typedef struct {
@@ -397,6 +403,10 @@ typedef struct {
 #define	MSG_REJECTED 						  45
 #define MSG_MAX_SIZE 	                      56
 #define MSG_COUNT 	                          5
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
 /* TODO: messages count should be increased, but there's no enough memory now */
 
 /***************************************************************************/
