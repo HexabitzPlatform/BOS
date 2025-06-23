@@ -166,6 +166,12 @@
 #define	CODE_H0FR7_PWM						  773
 #define	CODE_H0FR7_GET_CURRENT			      774
 
+// H14RAx
+#define	CODE_H14RA_ON						  1000
+#define	CODE_H14RA_OFF                        1001
+#define	CODE_H14RA_SPEED                      1002
+#define	CODE_H14RA_PWM                        1003
+
 // H16R6x
 #define CODE_H16R6_SET_COLOR                  1100
 #define CODE_H16R6_SET_ALL_COLOR              1101
