@@ -1059,8 +1059,6 @@ static BOS_Status HandleDMAChannelCode(uint8_t src, uint8_t port, uint8_t shift)
 
     /* Activate the stream */
     if(temp == false){
-    	DecodeBytesToValue(&count, &cMessage[port - 1][shift], FMT_UINT32);
-    	DecodeBytesToValue(&timeout, &cMessage[port - 1][4 + shift], FMT_UINT32);
         if(cMessage[port - 1][9 + shift] && cMessage[port - 1][10 + shift])
             SetupDMAStreams(cMessage[port - 1][8 + shift],count,timeout,cMessage[port - 1][9 + shift],cMessage[port - 1][10 + shift]);
         if(cMessage[port - 1][11 + shift] && cMessage[port - 1][12 + shift])
