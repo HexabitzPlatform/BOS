@@ -654,14 +654,14 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint
 	/* Is the source a different module? */
 	if(srcM != myID){
 		/* Forward this task to the source module */
-		MessageParams[0] =(uint8_t )(count >> 24); /* Count */
-		MessageParams[1] =(uint8_t )(count >> 16);
-		MessageParams[2] =(uint8_t )(count >> 8);
-		MessageParams[3] =(uint8_t )count;
-		MessageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
-		MessageParams[5] =(uint8_t )(timeout >> 16);
-		MessageParams[6] =(uint8_t )(timeout >> 8);
-		MessageParams[7] =(uint8_t )timeout;
+		MessageParams[0] =(uint8_t )count; /* Count */
+		MessageParams[1] =(uint8_t )(count >> 8);
+		MessageParams[2] =(uint8_t )(count >> 16);
+		MessageParams[3] =(uint8_t )(count >> 24);
+		MessageParams[4] =(uint8_t )timeout; /* Timeout */
+		MessageParams[5] =(uint8_t )(timeout >> 8);
+		MessageParams[6] =(uint8_t )(timeout >> 16);
+		MessageParams[7] =(uint8_t )(timeout >> 24);
 		MessageParams[8] =direction; /* Stream direction */
 		MessageParams[9] =srcP;      /* Source port */
 		MessageParams[10] =dstM;     /* destination module */
@@ -694,14 +694,14 @@ BOS_Status StartScastDMAStream(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint
 				temp2 =FindRoute(Route[i],Route[i - 1]);
 			}
 			/* Message parameters*/
-			MessageParams[0] =(uint8_t )(count >> 24); /* Count */
-			MessageParams[1] =(uint8_t )(count >> 16);
-			MessageParams[2] =(uint8_t )(count >> 8);
-			MessageParams[3] =(uint8_t )count;
-			MessageParams[4] =(uint8_t )(timeout >> 24); /* Timeout */
-			MessageParams[5] =(uint8_t )(timeout >> 16);
-			MessageParams[6] =(uint8_t )(timeout >> 8);
-			MessageParams[7] =(uint8_t )timeout;
+			MessageParams[0] =(uint8_t )count; /* Count */
+			MessageParams[1] =(uint8_t )(count >> 8);
+			MessageParams[2] =(uint8_t )(count >> 16);
+			MessageParams[3] =(uint8_t )(count >> 24);
+			MessageParams[4] =(uint8_t )timeout; /* Timeout */
+			MessageParams[5] =(uint8_t )(timeout >> 8);
+			MessageParams[6] =(uint8_t )(timeout >> 16);
+			MessageParams[7] =(uint8_t )(timeout >> 24);
 			MessageParams[8] =direction; /* Stream direction */
 			MessageParams[9] =temp1;     /* Source port */
 			MessageParams[10] =temp2;    /* destination port */
@@ -753,7 +753,6 @@ BOS_Status StreamPortToPort(uint8_t srcP,uint8_t srcM,uint8_t dmaDstPort,uint8_t
 	if(StreamCplt == 1){
 		if(BOS_OK != StartScastDMAStream(srcP,srcM,dmaDstPort,dstM,direction,size,timeout,stored))
 			return result =BOS_ERROR;
-
 		StreamCplt =0;
 	}
 
@@ -778,7 +777,6 @@ BOS_Status StreamPortToMemory(uint8_t srcP,uint8_t dstM,uint32_t size,uint32_t t
 	if(StreamCplt == 1){
 		if(BOS_OK != StartScastDMAStream(srcP,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
 			return result =BOS_ERROR;
-
 		StreamCplt =0;
 	}
 
@@ -804,7 +802,6 @@ BOS_Status StreamMemoryToPort(uint8_t dmaDstPort,uint8_t dstM,uint8_t *pBuffer,u
 	if(StreamCplt == 1){
 		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,dmaDstPort,dstM,FORWARD,size,timeout,stored))
 			return result =BOS_ERROR;
-
 		StreamCplt =0;
 	}
 	if(myID == dstM)
@@ -836,9 +833,9 @@ BOS_Status StreamMemoryToMemory(uint8_t dstM,uint8_t *pBuffer,uint32_t size,uint
 	if(StreamCplt == 1){
 		if(BOS_OK != StartScastDMAStream(P_VIRTUAL,myID,P_VIRTUAL,dstM,FORWARD,size,timeout,stored))
 			return result =BOS_ERROR;
-
-		StreamCplt =0;
+	StreamCplt =0;
 	}
+
 	port =FindRoute(myID,dstM);
 	/* Timeout before sending data to ensure the UART DMA destination is set */
 	HAL_Delay(10);
