@@ -356,6 +356,7 @@ void PxMessagingTask(void *argument){
 	uint16_t code;
 	uint32_t count, timeout, temp32;
 	uint16_t messageCode ;
+
 	
 	port =(int8_t )(unsigned )argument;
 	
@@ -1320,17 +1321,19 @@ void PxMessagingTask(void *argument){
 						writePxMutex(cMessage[port - 1][shift],(char* )&cMessage[port - 1][shift + 1],numOfParams - 1,10,10);
 						break;
 
-					case CODE_READ_ADC_VALUE:
-						adcPort =cMessage[port - 1][shift];
-						adcSide =cMessage[port - 1][shift + 1];
-						if(0 == adcSide){
-							ADCSelectPort(adcPort);
-							ReadADCChannel(adcPort,TOP,&adcValue);
-						}
-						else if(1 == adcSide){
-							ADCSelectPort(adcPort);
-							ReadADCChannel(adcPort,BOTTOM,&adcValue);
-						}
+//					case CODE_READ_ADC_VALUE:
+//						adcPort =cMessage[port - 1][shift];
+//						adcSide =cMessage[port - 1][shift + 1];
+//						if(adcSide == TOP){
+//							ADCSelectPort(adcPort);
+//							ReadADCChannel(adcPort,TOP,&adcValue);
+//						}
+//						else if(adcSide == BOTTOM){
+//							ADCSelectPort(adcPort);
+//							ReadADCChannel(adcPort,BOTTOM,&adcValue);
+//						}
+//
+//		                break;
 
 					case CODE_READ_TEMPERATURE:
 					case CODE_READ_VREF:
