@@ -27,7 +27,7 @@ char Message[MAX_MESSAGE_SIZE] ={0};	/* Buffer to construct a message to be sent
 const char ModulePNstring[NUM_OF_MODULE_PN][PN_NUM_OF_CHARACTERS] ={"", "H01R0", "P01R0", "H23R0", "H23R1", "H23R3", "H07R3", "H08R6",
 	"P08R6", "H09R0", "H09R9", "H1BR6", "H12R0", "H13R7", "H0FR1", "H0FR6", "H0FR7", "H1AR2", "H0AR9", "H1DR1",
 	"H1DR5", "H0BR4", "H18R0", "H26R0", "H15R0", "H10R4", "H2AR3", "H41R6", "H3BR6", "H18R1", "H1FR5", "H3BR2",
-	"H21R2", "H17R1", "H15R8", "H2BR0", "H05R0", "H3BR7", "H2BR1", "H07R8", "H08R7", "H16R6", "P08R7", "H19R0" , "RPI" , "H14RA"};
+	"H21R2", "H17R1", "H15R8", "H2BR0", "H05R0", "H3BR7", "H2BR1", "H07R8", "H08R7", "H16R6", "P08R7", "H19R0" , "RPI" , "H14RA" , "H14R9"};
 static const char BOSkeywords[NUM_OF_KEYWORDS][4] ={"me", "all", "if", "for"};
 static const char *WeekdayString[] ={"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 const char *MonthStringAbreviated[] ={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};

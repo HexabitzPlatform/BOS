@@ -33,7 +33,7 @@ extern uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE];
 
 /* Global function prototypes **********************************************/
 bool ParseSnippetCommand(char *snippetBuffer,int8_t *cliBuffer);
-Module_Status GetModuleParameter(uint8_t paramIndex, float *value) ;
+Module_Status GetModuleParameter(uint8_t paramIndex, float *value);
 
 /* Private function prototypes *********************************************/
 BOS_Status AddSnippet(uint8_t code,char *string);
