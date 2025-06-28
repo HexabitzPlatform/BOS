@@ -55,8 +55,8 @@
 
 #define CODE_READ_RESPONSE			          46
 
-#define ENABLE_STOP_MODE_UARTX                47
-#define ENABLE_STANDBY_MODE_WAKE_UP_PINX      48
+#define CODE_ENABLE_STOP_MODE_UARTX           47
+#define CODE_ENABLE_STANDBY_MODE_WAKE_UP_PINX 48
 
 #define CODE_RAW_DATA                         49
 

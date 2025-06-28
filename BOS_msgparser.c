@@ -604,12 +604,12 @@ void PxMessagingTask(void *argument)
                     break;
 
                     /* Power Mode: Stop mode enable */
-                case ENABLE_STOP_MODE_UARTX:
+                case CODE_ENABLE_STOP_MODE_UARTX:
                     result = HandleStopModeUartxCode(src, port, shift);
                     break;
 
                     /* Power Mode: Standby mode enable */
-                case ENABLE_STANDBY_MODE_WAKE_UP_PINX:
+                case CODE_ENABLE_STANDBY_MODE_WAKE_UP_PINX:
                     result = HandleEnStandbyModeWakeupPinxCode(src, port, shift);
                     break;
 
