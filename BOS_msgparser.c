@@ -139,6 +139,7 @@ static BOS_Status HandleRejectedCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleStopModeUartxCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleEnStandbyModeWakeupPinxCode(uint8_t src, uint8_t port, uint8_t shift);
+static BOS_Status HandleRawDataCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint8_t shift);
 
 /***************************************************************************/
@@ -613,6 +614,10 @@ void PxMessagingTask(void *argument)
                     result = HandleEnStandbyModeWakeupPinxCode(src, port, shift);
                     break;
 
+                case CODE_RAW_DATA:
+                    result = HandleRawDataCode(src, port, shift);
+                    break;
+
                 default:
                     result = HandleDefaultCode(src, port, shift);
                     break;
@@ -843,35 +848,66 @@ static BOS_Status HandleModuleIDCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-static BOS_Status HandleTopologyCode(uint8_t src, uint8_t port, uint8_t shift)
-{
-    BOS_Status Status = BOS_OK;
-    static uint8_t longMessageScratchpad[(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES];
-    uint16_t longMessageLastPtr = 0;
-    uint8_t numOfParams;
+static BOS_Status HandleTopologyCode(uint8_t src, uint8_t port, uint8_t shift) {
+	BOS_Status Status = BOS_OK;
+	static uint8_t longMessageScratchpad [(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES] = { 0 };
+	uint16_t longMessageLastPtr = 0;
+	uint8_t numOfParams;
 
-    /* Message payload size */
-    numOfParams = MessageLength[port - 1] - shift;
-    if (OptionByte.LongMessage)
-    {
-        /* Array is 2-byte oriented thus memcpy can copy only even number of bytes
-         * TODO test maybe broken */
-        /* Use a 1-byte oriented scratchpad */
-        memcpy(&longMessageScratchpad[0] + longMessageLastPtr, &cMessage[port - 1][shift], (size_t)numOfParams);
-        longMessageLastPtr += numOfParams;
-    }
-    else
-    {
-        memcpy(&longMessageScratchpad[0] + longMessageLastPtr, &cMessage[port - 1][shift], (size_t)numOfParams);
-        longMessageLastPtr += numOfParams;
-        N = (longMessageLastPtr / (MAX_NUM_OF_PORTS + 1)) / 2;
-        /* Copy the scratchpad to Array */
-        memcpy(&Array, &longMessageScratchpad, longMessageLastPtr);
-        longMessageLastPtr = 0;
-        IndicatorMode = IND_TOPOLOGY;
-    }
+	/* Message payload size */
+	numOfParams = MessageLength [port - 1] - shift;
 
-    return Status;
+	if (OptionByte.LongMessage) {
+		memcpy(&longMessageScratchpad [0] + longMessageLastPtr, &cMessage [port - 1] [shift], (size_t) numOfParams);
+		longMessageLastPtr += numOfParams;
+	} else {
+		memcpy(&longMessageScratchpad [0] + longMessageLastPtr, &cMessage [port - 1] [shift], (size_t) numOfParams);
+		longMessageLastPtr += numOfParams;
+		N = (longMessageLastPtr / (MAX_NUM_OF_PORTS + 1)) / 2;
+
+		/* Copy the scratchpad to Array */
+		memcpy(&Array, &longMessageScratchpad, longMessageLastPtr);
+
+		longMessageLastPtr = 0;
+		IndicatorMode = IND_TOPOLOGY;
+	}
+
+//	BOS_Status Status = BOS_OK;
+//
+//	static uint8_t longMessageScratchpad [(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES] = { 0 };
+//	static uint16_t longMessageLastPtr = 0;
+//
+//	/* Determine how many bytes of payload are available in this fragment*/
+//	uint8_t numOfParams = MessageLength [port - 1] - shift;
+//
+//	memcpy(longMessageScratchpad + longMessageLastPtr, &cMessage [port - 1] [shift], (size_t) numOfParams);
+//
+//	/* Advance the scratchpad pointer by the number of bytes just copied.
+//	 * This prepares for the next fragment (if any) */
+//	longMessageLastPtr += numOfParams;
+//
+//	/* If this is the last fragment , we process the accumulated message in the scratchpad */
+//	if (!OptionByte.LongMessage) {
+//		/* If total number of bytes is odd, we pad the scratchpad with one extra byte (zero),
+//		 * because we are going to cast the bytes into uint16_t (which requires even byte count)*/
+//		if (longMessageLastPtr % 2 != 0)
+//			longMessageScratchpad [longMessageLastPtr++] = 0; // pad with zero to make even
+//
+//		/*Calculate how many uint16_t entries we now have in the scratchpad */
+//		uint16_t totalU16s = longMessageLastPtr / 2;
+//
+//		/* the total number of modules (N) is totalU16s divided by entries per module */
+//		N = totalU16s / (MAX_NUM_OF_PORTS + 1);
+//
+//		memcpy(&Array, longMessageScratchpad, longMessageLastPtr);
+//
+//		/* Reset the scratchpad pointer for the next incoming message */
+//		longMessageLastPtr = 0;
+//
+//		IndicatorMode = IND_TOPOLOGY;
+//	}
+
+	return Status;
 }
 
 /***************************************************************************/
@@ -1887,6 +1923,35 @@ static BOS_Status HandleEnStandbyModeWakeupPinxCode(uint8_t src, uint8_t port, u
     return Status;
 }
 
+/***************************************************************************/
+static BOS_Status HandleRawDataCode(uint8_t src, uint8_t port, uint8_t shift) {
+	BOS_Status Status = BOS_OK;
+
+	static uint8_t longMessageScratchpad [100] = { 0 };
+	static uint16_t longMessageLastPtr = 0;
+
+	/* Determine how many bytes of payload are available in this fragment*/
+	uint8_t numOfParams = MessageLength [port - 1] - shift;
+
+	memcpy(longMessageScratchpad + longMessageLastPtr, &cMessage [port - 1] [shift], (size_t) numOfParams);
+
+	/* Advance the scratchpad pointer by the number of bytes just copied.
+	 * This prepares for the next fragment (if any) */
+	longMessageLastPtr += numOfParams;
+
+	/* If this is the last fragment , we process the accumulated message in the scratchpad */
+	if (!OptionByte.LongMessage) {
+
+		memcpy(&Array, longMessageScratchpad, longMessageLastPtr);
+
+		/* Reset the scratchpad pointer for the next incoming message */
+		longMessageLastPtr = 0;
+
+		IndicatorMode = IND_TOPOLOGY;
+	}
+
+	return Status;
+}
 /***************************************************************************/
 static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint8_t shift)
 {
