@@ -925,15 +925,33 @@ BOS_Status Explore(void)
 	uint16_t temp16 = 0;
 	myID = 1; 		/* Master ID */
 
+	uint8_t ExBoardPort = 0;
+
+	/* Step 0: ******************************************************************/
+	/* Keep master ports to normal and explore adjacent Neighbors ***************/
+	/* **************************************************************************/
+
+	ExploreNeighbors(pcPort);
+
+	osDelay(50);
+
+	for (port = 1; port <= NUM_OF_PORTS; port++) {
+		if (Neighbors [port - 1] [0])
+			ExBoardPort = port;
+
+	}
+
 	/* Step 1: ******************************************************************/
 	/* Reverse master ports and explore adjacent Neighbors **********************/
 	/* **************************************************************************/
 
-	pcPort = ExtraPcPort;
-	for (uint8_t port=1 ; port<=NUM_OF_PORTS ; port++) {
-		if (port != pcPort)	SwapUartPins(GetUart(port), REVERSED);
+//	pcPort = ExtraPcPort;
+	for (uint8_t port = 1; port <= NUM_OF_PORTS; port++) {
+		if ((port != pcPort) && (port != ExBoardPort))
+			SwapUartPins(GetUart(port), REVERSED);
 	}
-	ExploreNeighbors(pcPort); IndicatorMode = IND_TOPOLOGY;
+	ExploreNeighbors(pcPort);
+	IndicatorMode = IND_TOPOLOGY;
 	osDelay(50);
 
 	/* Step 2: ******************************************************************/
@@ -1070,7 +1088,7 @@ BOS_Status Explore(void)
 	/* Make sure all connected modules have been discovered *********************/
 	/* **************************************************************************/
 
-	pcPort = ExtraPcPort;
+//	pcPort = ExtraPcPort;
 	ExploreNeighbors(pcPort);
 	osDelay(50);
 
@@ -1151,8 +1169,9 @@ BOS_Status Explore(void)
 		}
 
 		/* Step 5e - Update master ports > all normal *******************************/
-		for (port=1 ; port<=NUM_OF_PORTS ; port++) {
-			if (port != pcPort)	SwapUartPins(GetUart(port), NORMAL);
+		for (port = 1; port <= NUM_OF_PORTS; port++) {
+			if ((port != pcPort) && (port != ExBoardPort))
+				SwapUartPins(GetUart(port), NORMAL);
 		}
 	}
 
