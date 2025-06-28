@@ -780,6 +780,10 @@ extern BOS_Status EnableStopModebyUARTx(uint8_t port);
 extern BOS_Status EnableStandbyModebyWakeupPinx(WakeupPins_t wakeupPins);
 extern BOS_Status DisableStandbyModeWakeupPinx(WakeupPins_t wakeupPins);
 
+/* ======================== Codec APIs ======================== */
+void EncodeValueToBytes(void* value, uint8_t* bytes, VariableFormat_t type);
+void DecodeBytesToValue(void* value, uint8_t* bytes, VariableFormat_t type);
+
 #endif /* BOS_H */
 
 /***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/

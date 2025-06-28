@@ -2108,4 +2108,77 @@ BOS_Status printfp(uint8_t port,char *str){
 }
 
 /***************************************************************************/
+/* @brief: Converts a value of a specific data type (uint32_t, int32_t, uint16_t, int16_t, float)
+ *  into its corresponding byte representation (uint8_t array)
+ *  @param1: Value to be converted.
+ *  @param2: The array to be converted to.
+ *  @param3: data format type.
+ *  @retval: Nothing.
+ */
+void EncodeValueToBytes(void* value, uint8_t* bytes, VariableFormat_t type) {
+    if (!value || !bytes) return;
+
+    switch (type) {
+        case FMT_UINT16:
+            memcpy(bytes, value, sizeof(uint16_t));
+            break;
+
+        case FMT_INT16:
+            memcpy(bytes, value, sizeof(int16_t));
+            break;
+
+        case FMT_UINT32:
+            memcpy(bytes, value, sizeof(uint32_t));
+            break;
+
+        case FMT_INT32:
+            memcpy(bytes, value, sizeof(int32_t));
+            break;
+
+        case FMT_FLOAT:
+            memcpy(bytes, value, sizeof(float));
+            break;
+
+        default:
+            break;
+    }
+}
+
+/***************************************************************************/
+/* @brief: Converts an 8-byte array (uint8_t[8]) into a corresponding value of a specific data type
+ * (uint32_t, int32_t, uint16_t, int16_t, or float).
+ *  @param1: Value to be converted.
+ *  @param2: The array to be converted to.
+ *  @param3: data format type.
+ *  @retval: Nothing.
+ */
+void DecodeBytesToValue(void* value, uint8_t* bytes, VariableFormat_t type) {
+    if (!bytes || !value) return;
+
+    switch (type) {
+        case FMT_UINT16:
+            memcpy(value, bytes, sizeof(uint16_t));
+            break;
+
+        case FMT_INT16:
+            memcpy(value, bytes, sizeof(int16_t));
+            break;
+
+        case FMT_UINT32:
+            memcpy(value, bytes, sizeof(uint32_t));
+            break;
+
+        case FMT_INT32:
+            memcpy(value, bytes, sizeof(int32_t));
+            break;
+
+        case FMT_FLOAT:
+            memcpy(value, bytes, sizeof(float));
+            break;
+
+        default:
+            break;
+    }
+}
+/***************************************************************************/
 /***************** (C) COPYRIGHT HEXABITZ ***** END OF FILE ****************/
