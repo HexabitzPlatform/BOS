@@ -641,19 +641,20 @@ void PxMessagingTask(void *argument)
 }
 
 /***************************************************************************/
-/* User message parser:
- This function is declared as __weak to be overwritten by other implementations in user file.
+/* User message parser Definitions *****************************************/
+/***************************************************************************/
+/* This function is declared as __weak to be overwritten by other
+ * implementations in user file.
  */
-__weak BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift)
+__weak BOS_Status User_MessagingParser(uint16_t code, uint8_t port, uint8_t src, uint8_t dst, uint8_t shift) {
+	BOS_Status result = BOS_ERR_UnknownMessage;
 
-{
-    BOS_Status result = BOS_ERR_UnknownMessage;
-
-    return result;
+	return result;
 }
 
 /***************************************************************************/
-
+/* Private function Definitions ********************************************/
+/***************************************************************************/
 static BOS_Status HandlePingCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -666,7 +667,6 @@ static BOS_Status HandlePingCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandlePingResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -686,7 +686,6 @@ static BOS_Status HandlePingResponseCode(uint8_t src, uint8_t port, uint8_t shif
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleHiCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -709,7 +708,6 @@ static BOS_Status HandleHiCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleHiResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -723,7 +721,6 @@ static BOS_Status HandleHiResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleEthernetDefaultValuesCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -769,7 +766,6 @@ static BOS_Status HandleEthernetDefaultValuesCode(uint8_t src, uint8_t port, uin
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleExploreAdjacentCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -794,7 +790,6 @@ static BOS_Status HandleExploreAdjacentCode(uint8_t src, uint8_t port, uint8_t s
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleExploreAdjacentResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -814,7 +809,6 @@ static BOS_Status HandleExploreAdjacentResponseCode(uint8_t src, uint8_t port, u
 }
 
 /***************************************************************************/
-
 static BOS_Status HandlePortDirectionCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -832,7 +826,6 @@ static BOS_Status HandlePortDirectionCode(uint8_t src, uint8_t port, uint8_t shi
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleModuleIDCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -850,7 +843,6 @@ static BOS_Status HandleModuleIDCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleTopologyCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -883,7 +875,6 @@ static BOS_Status HandleTopologyCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadPortDirectionResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -902,7 +893,6 @@ static BOS_Status HandleReadPortDirectionResponseCode(uint8_t src, uint8_t port,
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleBaudRateCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -939,7 +929,6 @@ static BOS_Status HandleBaudRateCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleExploreEEPROMCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -952,7 +941,6 @@ static BOS_Status HandleExploreEEPROMCode(uint8_t src, uint8_t port, uint8_t shi
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleDefArrayCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -969,7 +957,6 @@ static BOS_Status HandleDefArrayCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleCLICommandCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1017,7 +1004,6 @@ static BOS_Status HandleCLICommandCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleCLIResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1049,7 +1035,6 @@ static BOS_Status HandleCLIResponseCode(uint8_t src, uint8_t port, uint8_t shift
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleUpdateCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1070,7 +1055,6 @@ static BOS_Status HandleUpdateCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleUpdateViaPortCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1086,7 +1070,6 @@ static BOS_Status HandleUpdateViaPortCode(uint8_t src, uint8_t port, uint8_t shi
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleDMAChannelCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1137,7 +1120,6 @@ static BOS_Status HandleDMAChannelCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleDMASingleCastStreamCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1151,7 +1133,6 @@ static BOS_Status HandleDMASingleCastStreamCode(uint8_t src, uint8_t port, uint8
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1324,7 +1305,6 @@ static BOS_Status HandleReadRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadRemoteResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1422,7 +1402,6 @@ static BOS_Status HandleReadRemoteResponseCode(uint8_t src, uint8_t port, uint8_
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1589,8 +1568,7 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
                 break;
             }
 
-            /* Update local format if needed
-             * Todo give local warning later */
+            /* Update local format if needed */
             if ((bosVarRegister[cMessage[port - 1][shift] - 1] & 0x000F) != cMessage[port - 1][1 + shift])
             {
                 bosVarRegister[cMessage[port - 1][shift] - 1] &= (0xFFF0 + cMessage[port - 1][1 + shift]);
@@ -1661,7 +1639,6 @@ static BOS_Status HandleWriteRemoteCode(uint8_t src, uint8_t port, uint8_t shift
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleWriteRemoteResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1672,7 +1649,6 @@ static BOS_Status HandleWriteRemoteResponseCode(uint8_t src, uint8_t port, uint8
 }
 
 /***************************************************************************/
-
 static BOS_Status HandlePortForwardCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1687,7 +1663,6 @@ static BOS_Status HandlePortForwardCode(uint8_t src, uint8_t port, uint8_t shift
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadADCVauleCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1697,19 +1672,18 @@ static BOS_Status HandleReadADCVauleCode(uint8_t src, uint8_t port, uint8_t shif
     if (0 == adcSide)
     {
         ADCSelectPort(adcPort);
-        ReadADCChannel(adcPort, "top", &adcValue);
+        ReadADCChannel(adcPort, TOP, &adcValue);
     }
     else if (1 == adcSide)
     {
         ADCSelectPort(adcPort);
-        ReadADCChannel(adcPort, "bottom", &adcValue);
+        ReadADCChannel(adcPort, BOTTOM, &adcValue);
     }
 
     return Status;
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadTempAndVrefCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1720,7 +1694,6 @@ static BOS_Status HandleReadTempAndVrefCode(uint8_t src, uint8_t port, uint8_t s
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleAckAcceptedCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1731,7 +1704,6 @@ static BOS_Status HandleAckAcceptedCode(uint8_t src, uint8_t port, uint8_t shift
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleRejectedCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1742,7 +1714,6 @@ static BOS_Status HandleRejectedCode(uint8_t src, uint8_t port, uint8_t shift)
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1904,7 +1875,6 @@ static BOS_Status HandleStopModeUartxCode(uint8_t src, uint8_t port, uint8_t shi
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleEnStandbyModeWakeupPinxCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
@@ -1918,7 +1888,6 @@ static BOS_Status HandleEnStandbyModeWakeupPinxCode(uint8_t src, uint8_t port, u
 }
 
 /***************************************************************************/
-
 static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
