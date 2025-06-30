@@ -140,7 +140,7 @@ static BOS_Status HandleReadResponseCode(uint8_t src, uint8_t port, uint8_t shif
 static BOS_Status HandleStopModeUartxCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleEnStandbyModeWakeupPinxCode(uint8_t src, uint8_t port, uint8_t shift);
 static BOS_Status HandleRawDataCode(uint8_t src, uint8_t port, uint8_t shift);
-static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint8_t shift);
+static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint16_t code, uint8_t shift);
 
 /***************************************************************************/
 /*****************************  Private Functions **************************/
@@ -619,7 +619,7 @@ void PxMessagingTask(void *argument)
                     break;
 
                 default:
-                    result = HandleDefaultCode(src, port, shift);
+                    result = HandleDefaultCode(src, port, code, shift);
                     break;
                 }
             }
@@ -1954,20 +1954,21 @@ static BOS_Status HandleRawDataCode(uint8_t src, uint8_t port, uint8_t shift) {
 	return Status;
 }
 /***************************************************************************/
-static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint8_t shift)
+static BOS_Status HandleDefaultCode(uint8_t src, uint8_t port, uint16_t code, uint8_t shift)
 {
     BOS_Status Status = BOS_OK;
-    uint16_t code, dst;
+//    uint16_t code, dst;
 
+    uint16_t dst;
     dst = cMessage[port - 1][0];
     /* Read message code - LSB first */
-    if (OptionByte.ExtendedMessageCode)
-    {
-        code = (((uint16_t)cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
-        ++shift;
-    }
-    else
-        code = cMessage[port - 1][3 + shift];
+//    if (OptionByte.ExtendedMessageCode)
+//    {
+//        code = (((uint16_t)cMessage[port - 1][4 + shift] << 8) + cMessage[port - 1][3 + shift]);
+//        ++shift;
+//    }
+//    else
+//        code = cMessage[port - 1][3 + shift];
 
     /* First check user-defined messages */
     Status = (BOS_Status)User_MessagingParser(code, port, src, dst, shift);
