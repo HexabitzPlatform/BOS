@@ -115,15 +115,20 @@
 // H08R7x
 #define CODE_H08R7_SAMPLE_PORT                400
 
-
-
 // P08R7
-#define CODE_P08R7_GET_INFO                   420
-#define CODE_P08R7_SAMPLE_PORT                421
-#define CODE_P08R7_STREAM_PORT                422
+#define CODE_P08R7_SAMPLE_PORT                410
 
 // H08R6x
+#define CODE_H08R7_SAMPLE_DISTANCE            420
+#define CODE_H08R7_SAMPLE_DISTANCE_AVRG       421
+#define CODE_H08R7_MOTION_INDICATOR           422
+#define CODE_H08R7_NUM_OF_TARGETS             423
 
+// P08R6x
+#define CODE_P08R7_SAMPLE_DISTANCE            430
+#define CODE_P08R7_SAMPLE_DISTANCE_AVRG       431
+#define CODE_P08R7_MOTION_INDICATOR           432
+#define CODE_P08R7_NUM_OF_TARGETS             433
 
 // H09R0
 #define CODE_H09R0_STREAM_PORT_C              450
