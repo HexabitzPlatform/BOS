@@ -179,6 +179,10 @@
 #define	CODE_H14RA_SPEED                      1002
 #define	CODE_H14RA_PWM                        1003
 
+// H14R9x
+#define	CODE_H14R9_ANGLE                      1010
+#define	CODE_H14R9_PWM                        1011
+
 // H16R6x
 #define CODE_H16R6_SET_COLOR                  1100
 #define CODE_H16R6_SET_ALL_COLOR              1101
