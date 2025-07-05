@@ -418,11 +418,19 @@ BOS_Status ParseSnippetCondition(char *string){
 					SetButtonEvents(port,DBL_CLICKED,BUTTON_EVENT_MODE_OR);
 				}
 			}
+
+			else if(!strncmp(&string[3],"released",8)){
+				currentSnippet->Condition.Buffer1[1] =RELEASED;
+				if(!(Button[port].Event & BUTTON_EVENT_RELEASED)){
+					SetButtonEvents(port,RELEASED,BUTTON_EVENT_MODE_OR);
+				}
+			}
 			else{
 				return BOS_ERR_WrongParam;
 			}
 			
 			/* Record snippet */
+
 			NumOfRecordedSnippets++;
 
 			return BOS_OK;

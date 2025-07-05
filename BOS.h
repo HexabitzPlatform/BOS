@@ -95,10 +95,8 @@ enum DMAStreamDirection_e {
 /* Button types */
 typedef enum  {
 	NONE = 0,      /* No button */
-	MOMENTARY_NO,  /* Momentary button, normally open */
-	MOMENTARY_NC,  /* Momentary button, normally closed */
-	ONOFF_NO,      /* On/Off button, normally open */
-	ONOFF_NC       /* On/Off button, normally closed */
+	SWITCH_NO,  /* Button, normally open */
+	SWITCH_NC,  /* Button, normally closed */
 }ButtonType_e;
 
 /* Boot statuses */
@@ -314,6 +312,7 @@ typedef struct {
 /* Button Events Definition */
 #define BUTTON_EVENT_CLICKED                 0x01
 #define BUTTON_EVENT_DBL_CLICKED             0x02
+#define BUTTON_EVENT_RELEASED                0x03
 #define BUTTON_EVENT_MODE_CLEAR              0
 #define BUTTON_EVENT_MODE_OR                 1
 

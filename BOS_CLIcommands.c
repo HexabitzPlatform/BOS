@@ -170,7 +170,7 @@ static const CLI_Command_Definition_t infoCommandDefinition ={
 /* CLI command structure : add button */
 static const CLI_Command_Definition_t addbuttonCommandDefinition ={
 	(const int8_t* )"add-button", /* The command string to type. */
-	(const int8_t* )"add-button:\r\n Define a button at one of the array ports. Button type ('momentary-no', 'momentary-nc', 'onoff-no', 'onoff-nc')(1st par.), Button port (2nd par.)\r\n\r\n", addbuttonCommand, /* The function to run. */
+	(const int8_t* )"add-button:\r\n Define a button at one of the array ports. Button type ('switch-no', 'switch-nc')(1st par.), Button port (2nd par.)\r\n\r\n", addbuttonCommand, /* The function to run. */
 	2 /* Two parameters are expected. */
 };
 
@@ -814,17 +814,11 @@ static portBASE_TYPE addbuttonCommand(int8_t *pcWriteBuffer,size_t xWriteBufferL
 	
 	/* Obtain the 1st parameter string. */
 	pcParameterString1 =(int8_t* )FreeRTOS_CLIGetParameter(pcCommandString,1,&xParameterStringLength1);
-	if(!strncmp((const char* )pcParameterString1,"momentary-no",xParameterStringLength1)){
-		type =MOMENTARY_NO;
+	if(!strncmp((const char* )pcParameterString1,"switch-no",xParameterStringLength1)){
+		type =SWITCH_NO;
 	}
-	else if(!strncmp((const char* )pcParameterString1,"momentary-nc",xParameterStringLength1)){
-		type =MOMENTARY_NC;
-	}
-	else if(!strncmp((const char* )pcParameterString1,"onoff-no",xParameterStringLength1)){
-		type =ONOFF_NO;
-	}
-	else if(!strncmp((const char* )pcParameterString1,"onoff-nc",xParameterStringLength1)){
-		type =ONOFF_NC;
+	else if(!strncmp((const char* )pcParameterString1,"switch-nc",xParameterStringLength1)){
+		type =SWITCH_NC;
 	}
 	
 	/* Obtain the 2nd parameter string. */
@@ -1405,8 +1399,7 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 	static const int8_t *pcMessageSnipStart =(int8_t* )"[%02d] %s\n\r";
 	static const int8_t *pcMessageSnipButtonEventClicked =(int8_t* )"%sif b%d.clicked";
 	static const int8_t *pcMessageSnipButtonEventDblClicked =(int8_t* )"%sif b%d.double clicked";
-	static const int8_t *pcMessageSnipButtonEventPressed =(int8_t* )"%sif b%d.pressed for %d";
-	static const int8_t *pcMessageSnipButtonEventReleased =(int8_t* )"%sif b%d.released for %d";
+	static const int8_t *pcMessageSnipButtonEventReleased =(int8_t* )"%sif b%d.released";
 	static const int8_t *pcMessageSnipModuleParamConst =(int8_t* )"%sif %s %s %.1f";
 	static const int8_t *pcMessageCmds =(int8_t* )"%s\n\r\t%s";
 	static const int8_t *pcMessageEnd =(int8_t* )"\n\rend if\n\n\r";
@@ -1440,6 +1433,10 @@ static portBASE_TYPE snipCommand(int8_t *pcWriteBuffer,size_t xWriteBufferLen,co
 
 					case DBL_CLICKED:
 						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventDblClicked,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
+						break;
+
+					case RELEASED:
+						sprintf((char* )pcWriteBuffer,(char* )pcMessageSnipButtonEventReleased,(char* )pcWriteBuffer,Snippets[s].Condition.Buffer1[0],Snippets[s].CMD);
 						break;
 
 					default:
