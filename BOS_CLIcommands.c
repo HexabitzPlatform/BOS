@@ -389,9 +389,9 @@ void vRegisterCLICommands(void){
 	FreeRTOS_CLIRegisterCommand(&ReadTempDefinition);
 	FreeRTOS_CLIRegisterCommand(&ReadVrefDefinition);
 	FreeRTOS_CLIRegisterCommand(&GetReadPercentageDefinition);
-	NumOfBosCommands =34;			// Add "help" command
+	NumOfBosCommands =32;			// Add "help" command
 #ifndef __N
-	NumOfBosCommands =35;
+	NumOfBosCommands =33;
 #endif
 	
 	/* Register module CLI commands */
