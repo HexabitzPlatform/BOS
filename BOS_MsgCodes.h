@@ -213,6 +213,12 @@
 #define CODE_H18R1_TURN_OFF                   1201
 #define CODE_H18R1_TURN_PWM                   1202
 
+//H19R0
+#define CODE_H19R0_STOP                       1250
+#define CODE_H19R0_SET_POSITION               1251
+#define CODE_H19R0_SET_SPEED                  1252
+#define CODE_H19R0_SET_TORQUE                 1253
+
 //H1AR0
 #define CODE_H1AR0_Transmit_Data              1300
 
