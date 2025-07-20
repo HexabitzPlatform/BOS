@@ -203,9 +203,9 @@
 //#define CODE_H16R6_SPRINKLEMODE             1116
 
 // H17R1x
-#define CODE_H17R1_STEPPER_MOVE               1150
-#define CODE_H17R1_STEPPER_RUN                1151
-#define CODE_H17R1_STEPPER_STOP               1152
+#define CODE_H17R1_MOTOR_STEP_CONTROL         1150
+#define CODE_H17R1_MOTOR_TURN_ON              1151
+#define CODE_H17R1_MOTOR_TURN_OFF             1152
 
 //H18R1
 #define CODE_H18R1_TURN_ON                    1200
