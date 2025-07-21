@@ -169,9 +169,7 @@
 // H0FR7x
 #define	CODE_H0FR7_ON						  770
 #define	CODE_H0FR7_OFF						  771
-#define	CODE_H0FR7_TOGGLE					  772
-#define	CODE_H0FR7_PWM						  773
-#define	CODE_H0FR7_GET_CURRENT			      774
+#define	CODE_H0FR7_PWM						  772
 
 // H14RAx
 #define	CODE_H14RA_ON						  1000
