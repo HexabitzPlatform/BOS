@@ -89,7 +89,7 @@
 #define CODE_H05R0_CELL_STATE_OF_CHARGE       255
 #define CODE_H05R0_CELL_AGE       			  256
 #define CODE_H05R0_CELL_CYCLES         		  257
-#define CODE_H05R0_BATTERY_STATUS             258
+#define CODE_H05R0_CHARGING_STATUS            258
 #define CODE_H05R0_CHARGER_CURRENT            259
 #define CODE_H05R0_VBUS_VOLTAGE               260
 #define CODE_H05R0_ENABLE_VBUS                261
