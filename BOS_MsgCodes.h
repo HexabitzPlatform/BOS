@@ -81,14 +81,19 @@
 #define	CODE_H01R0_DIM						  106
 
 // H05R0x
-#define CODE_H05R0_CELLVOLTAGE				  250
-#define CODE_H05R0_CELLCURRENT			      251
-#define CODE_H05R0_CELLPOWER				  252
-#define CODE_H05R0_CELLTEMPERATURE			  253
-#define CODE_H05R0_CELLCAPACITY				  254
-#define CODE_H05R0_SOC    		        	  255
-#define CODE_H05R0_CELLAGE					  258
-#define CODE_H05R0_CELLCYCLES    			  259
+#define CODE_H05R0_CELL_VOLTAGE     		  250
+#define CODE_H05R0_CELL_CURRENT         	  251
+#define CODE_H05R0_CELL_POWER      		 	  252
+#define CODE_H05R0_CELL_TEMPERATURE     	  253
+#define CODE_H05R0_CELL_CAPACITY     		  254
+#define CODE_H05R0_CELL_STATE_OF_CHARGE       255
+#define CODE_H05R0_CELL_AGE       			  256
+#define CODE_H05R0_CELL_CYCLES         		  257
+#define CODE_H05R0_BATTERY_STATUS             258
+#define CODE_H05R0_CHARGER_CURRENT            259
+#define CODE_H05R0_VBUS_VOLTAGE               260
+#define CODE_H05R0_ENABLE_VBUS                261
+#define CODE_H05R0_ENABLE_3V3                 262
 
 
 // H07R3x
