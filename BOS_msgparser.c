@@ -1942,7 +1942,7 @@ static BOS_Status HandleRawDataCode(uint8_t src, uint8_t port, uint8_t shift) {
 	/* If this is the last fragment , we process the accumulated message in the scratchpad */
 	if (!OptionByte.LongMessage) {
 
-		memcpy(&StreamBuffer, longMessageScratchpad, longMessageLastPtr);
+		memcpy(&RawDataBuffer[port - 1], longMessageScratchpad, longMessageLastPtr);
 
 		/* Reset the scratchpad pointer for the next incoming message */
 		memset(longMessageScratchpad, 0, sizeof(longMessageScratchpad));

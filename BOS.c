@@ -55,7 +55,7 @@ uint8_t MessageLength[NUM_OF_PORTS] ={0};
 uint8_t PortStatus[NUM_OF_PORTS + 1] ={0};
 uint8_t cMessage[NUM_OF_PORTS][MAX_MESSAGE_SIZE] ={0};	/* Buffer for received messages and ready to be parsed */
 uint8_t MessageParams[MAX_PARAMS_PER_MESSAGE] ={0};
-uint8_t StreamBuffer[STREAM_BUF_SIZE] = {0};
+uint8_t RawDataBuffer[NUM_OF_PORTS][STREAM_BUF_SIZE] = {0};
 
 uint16_t myPN = MODULE_PN;
 uint16_t Neighbors[NUM_OF_PORTS][2] ={0};

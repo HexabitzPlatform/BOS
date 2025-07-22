@@ -614,7 +614,7 @@ extern uint8_t cliDataInputFlag;
 extern uint8_t IndexInput[NUM_OF_PORTS] ;
 extern uint8_t IndexProcess[NUM_OF_PORTS] ;
 extern uint8_t UARTRxBuf[NUM_OF_PORTS][MSG_RX_BUF_SIZE];
-extern uint8_t StreamBuffer[STREAM_BUF_SIZE];
+extern uint8_t RawDataBuffer[NUM_OF_PORTS][STREAM_BUF_SIZE];
 
 extern uint16_t myPN;
 extern uint16_t Neighbors[NUM_OF_PORTS][2];
