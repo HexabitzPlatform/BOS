@@ -46,6 +46,8 @@ float InternalVoltageReferance = 0;
 receive_defalt_value EthernetDefaultSetting; /* Receiving the Default setting of the H1DR5 module */
 RemoteDataBuffer_t RemoteDataBuffer;         /* Remote Buffer of Messages */
 
+static uint8_t longMessageScratchpad [(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES] = { 0 };
+uint16_t longMessageLastPtr = 0;
 /***************************************************************************/
 /* Exported variables ******************************************************/
 /***************************************************************************/
@@ -850,8 +852,6 @@ static BOS_Status HandleModuleIDCode(uint8_t src, uint8_t port, uint8_t shift)
 /***************************************************************************/
 static BOS_Status HandleTopologyCode(uint8_t src, uint8_t port, uint8_t shift) {
 	BOS_Status Status = BOS_OK;
-	static uint8_t longMessageScratchpad [(MAX_NUM_OF_PORTS + 1) * MAX_NUM_OF_MODULES] = { 0 };
-	uint16_t longMessageLastPtr = 0;
 	uint8_t numOfParams;
 
 	/* Message payload size */
