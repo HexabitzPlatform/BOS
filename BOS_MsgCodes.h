@@ -187,23 +187,22 @@
 #define	CODE_H14R9_PWM                        1011
 
 // H16R6x
-#define CODE_H16R6_SET_COLOR                  1100
-#define CODE_H16R6_SET_ALL_COLOR              1101
-#define CODE_H16R6_SET_RGB                    1102
-#define CODE_H16R6_SET_ALL_RGB                1103
-#define CODE_H16R6_SET_LED_OFF                1104
-#define CODE_H16R6_SET_ALL_LED_OFF            1105
-#define CODE_H16R6_SET_LED_ON                 1106
-#define CODE_H16R6_SET_ALL_LED_ON             1107
-#define CODE_H16R6_SCROLL_MODE                1108
-#define CODE_H16R6_FLASH_MODE                 1109
-#define CODE_H16R6_COLOR_PICKER_MODE          1110
-#define CODE_H16R6_SET_COLOR_SOME_LED         1111
-#define CODE_H16R6_MOTION_MODE                1112
-#define CODE_H16R6_CROSS_FADE_MODE            1113
-#define CODE_H16R6_CROSS_FADE_MODE_LED_RGB    1114
-#define CODE_H16R6_CROSS_FADE_MODE_ALL_LED_RGB 1115
-//#define CODE_H16R6_SPRINKLEMODE             1116
+#define CODE_H16R6_SET_LED_RGB                 1100
+#define CODE_H16R6_SET_MATRIX_COLOR            1101
+#define CODE_H16R6_SET_LED_COLOR               1102
+#define CODE_H16R6_SET_MATRIX_RGB              1103
+#define CODE_H16R6_OFF_LED                     1104
+#define CODE_H16R6_OFF_MATRIX                  1105
+#define CODE_H16R6_ON_LED                      1106
+#define CODE_H16R6_ON_MATRIX                   1107
+#define CODE_H16R6_SCROLL_MATRIX               1108
+#define CODE_H16R6_FLASH_MATRIX                1109
+#define CODE_H16R6_PICKER_MATRIX               1110
+#define CODE_H16R6_SET_MATRIX_RANGE_COLOR      1111
+#define CODE_H16R6_MOTION_MODE                 1112
+#define CODE_H16R6_FADE_MATRIX_RGB             1113
+#define CODE_H16R6_FADE_LED_RGB                1114
+#define CODE_H16R6_FADE_MATRIX_RGB_EXT         1115
 
 // H17R1x
 #define CODE_H17R1_MOTOR_STEP_CONTROL         1150
