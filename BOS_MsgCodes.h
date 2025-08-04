@@ -176,6 +176,11 @@
 #define	CODE_H0FR7_OFF						  771
 #define	CODE_H0FR7_PWM						  772
 
+// H0FR9x
+#define CODE_H0FR9_RELAY_ON                   780
+#define CODE_H0FR9_RELAY_OFF                  781
+#define CODE_H0FR9_RELAY_TOGGLE               782
+
 // H14RAx
 #define	CODE_H14RA_ON						  1000
 #define	CODE_H14RA_OFF                        1001
