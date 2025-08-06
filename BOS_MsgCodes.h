@@ -94,7 +94,8 @@
 #define CODE_H05R0_VBUS_VOLTAGE               260
 #define CODE_H05R0_ENABLE_VBUS                261
 #define CODE_H05R0_ENABLE_3V3                 262
-
+#define CODE_H05R0_DISABLE_VBUS               263
+#define CODE_H05R0_DISABLE_3V3                264
 
 // H07R3x
 #define CODE_H07R3_PLAY_SINE				  350
