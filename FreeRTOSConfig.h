@@ -138,7 +138,12 @@ uint32_t ulMainGetRunTimeCounterValue(void);
 
 /* Software Timers */
 #define configUSE_TIMERS 	1
-#define	configTIMER_TASK_PRIORITY		3			// (osPriorityNormal-osPriorityIdle)	
+#ifdef H1DR1
+  #define configTIMER_TASK_PRIORITY   6   // (osPriorityNormal-osPriorityIdle)
+#else
+  #define configTIMER_TASK_PRIORITY   3   // (osPriorityNormal-osPriorityIdle)
+#endif
+
 #define configTIMER_QUEUE_LENGTH		4
 #define configTIMER_TASK_STACK_DEPTH		configMINIMAL_STACK_SIZE	
 
